@@ -325,6 +325,7 @@ function MobileDrawer({ open, onClose, tab, onTab, theme, onTheme }) {
 
 // ── MayaOwl ────────────────────────────────────────────────────
 function MayaOwl({ size = 120, mood = 'calm', speaking = false, idle = true }) {
+  const uid = React.useId().replace(/:/g, '')
   const [blinking, setBlinking] = useState(false)
   const [bob, setBob] = useState(0)
   useEffect(() => {
@@ -353,7 +354,7 @@ function MayaOwl({ size = 120, mood = 'calm', speaking = false, idle = true }) {
         overflow: 'visible',
       }}>
         <defs>
-          <filter id="owlGlow" x="-20%" y="-20%" width="140%" height="140%">
+          <filter id={`${uid}-glow`} x="-20%" y="-20%" width="140%" height="140%">
             <feGaussianBlur in="SourceAlpha" stdDeviation="2.5"/>
             <feOffset dx="0" dy="3" result="offsetblur"/>
             <feComponentTransfer><feFuncA type="linear" slope="0.2"/></feComponentTransfer>
@@ -375,7 +376,7 @@ function MayaOwl({ size = 120, mood = 'calm', speaking = false, idle = true }) {
         <ellipse cx="175" cy="203" rx="12" ry="4.5" fill={oc.tuft} opacity="0.5" transform="rotate(18 175 203)"/>
 
         {/* Body */}
-        <ellipse cx="100" cy="140" rx="58" ry="65" fill={oc.body} filter="url(#owlGlow)"/>
+        <ellipse cx="100" cy="140" rx="58" ry="65" fill={oc.body} filter={`url(#${uid}-glow)`}/>
 
         {/* Wing left */}
         <path d="M 44 125 Q 34 155 52 192 Q 60 168 66 138 Z" fill={oc.body} opacity="0.88"/>

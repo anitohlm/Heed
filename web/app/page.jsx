@@ -219,6 +219,32 @@ const getFieldLabel = () => ({
   letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 6,
 })
 
+// ── ThemeSwitcher ──────────────────────────────────────────────
+const THEME_META = {
+  'parchment-light': { dot: '#8B2E16', label: 'Parchment Light' },
+  'midnight-fern':   { dot: '#6A9E6A', label: 'Midnight Fern' },
+  'inkwash':         { dot: '#A0682A', label: 'Inkwash' },
+}
+function ThemeSwitcher({ theme, onTheme }) {
+  return (
+    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+      {Object.entries(THEME_META).map(([id, { dot, label }]) => (
+        <button
+          key={id}
+          title={label}
+          onClick={() => onTheme(id)}
+          style={{
+            width: 14, height: 14, borderRadius: '50%', background: dot, padding: 0,
+            border: theme === id ? `2px solid ${C.ink}` : '2px solid transparent',
+            outline: theme === id ? `2px solid ${dot}` : 'none',
+            outlineOffset: 2, cursor: 'pointer', transition: 'outline 0.15s',
+          }}
+        />
+      ))}
+    </div>
+  )
+}
+
 // ── MayaOwl ────────────────────────────────────────────────────
 function MayaOwl({ size = 120, mood = 'calm', speaking = false, idle = true }) {
   const [blinking, setBlinking] = useState(false)
@@ -1297,6 +1323,16 @@ export default function HeedApp() {
   const [dismissedIds, setDismissedIds] = useState(new Set())
   const [routines, setRoutines] = useState(ROUTINES)
   const [tab, setTab] = useState('today')
+  const [theme, setTheme] = useState(() => {
+    if (typeof window !== 'undefined') return localStorage.getItem('heed-theme') || DEFAULT_THEME
+    return DEFAULT_THEME
+  })
+  // Sync themeState before render so all C.xxx reads get the right palette
+  setThemeState(theme)
+  const handleSetTheme = useCallback((name) => setTheme(name), [])
+  useEffect(() => {
+    if (typeof window !== 'undefined') localStorage.setItem('heed-theme', theme)
+  }, [theme])
   const [toast, setToast] = useState(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [askOpen, setAskOpen] = useState(false)
@@ -1427,9 +1463,12 @@ export default function HeedApp() {
             <div style={{ fontSize: 11.5, color: C.inkMute, fontStyle: 'italic', marginTop: 3, letterSpacing: 0.2 }}>The agent that remembers what you forget.</div>
           </div>
         </div>
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: 13, color: C.inkSoft, fontWeight: 500 }}>{todayStr}</div>
-          <div style={{ fontSize: 11.5, color: C.inkMute, marginTop: 2 }}>Hi, Maya 👋</div>
+        <div className="heed-header-date" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <ThemeSwitcher theme={theme} onTheme={handleSetTheme}/>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: 13, color: C.inkSoft, fontWeight: 500 }}>{todayStr}</div>
+            <div style={{ fontSize: 11.5, color: C.inkMute, marginTop: 2 }}>Hi, Maya 👋</div>
+          </div>
         </div>
       </header>
 

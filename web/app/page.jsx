@@ -1334,6 +1334,7 @@ export default function HeedApp() {
     if (typeof window !== 'undefined') localStorage.setItem('heed-theme', theme)
   }, [theme])
   const [toast, setToast] = useState(null)
+  const [drawerOpen, setDrawerOpen] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
   const [askOpen, setAskOpen] = useState(false)
   const [routineModalOpen, setRoutineModalOpen] = useState(false)
@@ -1456,13 +1457,16 @@ export default function HeedApp() {
         body { margin: 0; }
       `}</style>
 
-      <header style={{ borderBottom: `1px solid ${C.hairline}`, padding: '20px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: `linear-gradient(180deg, ${C.paperHi} 0%, ${C.paper} 100%)`, position: 'sticky', top: 0, zIndex: 10, backdropFilter: 'blur(8px)' }}>
+      <header className="heed-header" style={{ borderBottom: `1px solid ${C.hairline}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: `linear-gradient(180deg, ${C.paperHi} 0%, ${C.paper} 100%)`, position: 'sticky', top: 0, zIndex: 10, backdropFilter: 'blur(8px)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <MayaOwl size={48}/>
+          <MayaOwl size={40}/>
           <div>
-            <div style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 26, fontWeight: 700, color: C.warmDark, letterSpacing: -0.7, lineHeight: 1 }}>Heed</div>
-            <div style={{ fontSize: 11.5, color: C.inkMute, fontStyle: 'italic', marginTop: 3, letterSpacing: 0.2 }}>The agent that remembers what you forget.</div>
+            <div style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 24, fontWeight: 700, color: C.warmDark, letterSpacing: -0.7, lineHeight: 1 }}>Heed</div>
+            <div className="heed-header-subtitle" style={{ fontSize: 11.5, color: C.inkMute, fontStyle: 'italic', marginTop: 3, letterSpacing: 0.2 }}>The agent that remembers what you forget.</div>
           </div>
+        </div>
+        <div className="heed-tab-name" style={{ fontSize: 14, fontWeight: 600, color: C.ink }}>
+          {tabs.find(t => t.id === tab)?.label}
         </div>
         <div className="heed-header-date" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <ThemeSwitcher theme={theme} onTheme={handleSetTheme}/>
@@ -1471,9 +1475,10 @@ export default function HeedApp() {
             <div style={{ fontSize: 11.5, color: C.inkMute, marginTop: 2 }}>Hi, Maya 👋</div>
           </div>
         </div>
+        <button className="heed-hamburger" onClick={() => setDrawerOpen(true)} style={{ color: C.ink, fontSize: 22 }}>☰</button>
       </header>
 
-      <nav style={{ display: 'flex', gap: 4, padding: '0 32px', borderBottom: `1px solid ${C.hairline}`, background: C.paper }}>
+      <nav className="heed-nav" style={{ display: 'flex', gap: 4, padding: '0 32px', borderBottom: `1px solid ${C.hairline}`, background: C.paper }}>
         {tabs.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)} style={{ background: 'transparent', border: 'none', padding: '14px 20px', fontSize: 14, fontWeight: tab === t.id ? 700 : 500, color: tab === t.id ? C.warmDark : C.inkMute, cursor: 'pointer', borderBottom: `2px solid ${tab === t.id ? C.warmDark : 'transparent'}`, marginBottom: -1, fontFamily: 'inherit', transition: 'color 0.15s' }}>
             {t.label}
@@ -1481,7 +1486,7 @@ export default function HeedApp() {
         ))}
       </nav>
 
-      <main style={{ maxWidth: 820, margin: '0 auto', padding: '28px 32px 100px 32px', minHeight: 'calc(100vh - 140px)', display: 'flex', flexDirection: 'column' }}>
+      <main className="heed-main" style={{ maxWidth: 820, margin: '0 auto', padding: '28px 32px 100px 32px', minHeight: 'calc(100vh - 140px)', display: 'flex', flexDirection: 'column' }}>
         {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} upcomingContexts={upcomingContexts} onMarkDone={handleMarkDone} onSkip={handleSkip}/>}
         {tab === 'calendar' && <CalendarTab/>}
         {tab === 'ask' && <AskTab/>}

@@ -97,7 +97,7 @@ export const OWL_THEMES = {
     cheek:   '#D9907F',
   },
   'inkwash': {
-    body:    '#2A4A2E',
+    body:    '#7AAA78',
     eyeRing: '#F0E6C4',
     pupil:   '#18140C',
     tuft:    '#A0682A',

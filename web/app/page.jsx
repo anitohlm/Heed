@@ -1,24 +1,21 @@
 "use client"
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import './globals.css'
+import { THEMES, OWL_THEMES, themeState, setThemeState, DEFAULT_THEME } from './themes'
 
 // Functions backend URL — baked in at build time via NEXT_PUBLIC_FUNCTIONS_URL
 const FUNCTIONS_URL = process.env.NEXT_PUBLIC_FUNCTIONS_URL || 'http://localhost:7071'
 
-// ── Design tokens ──────────────────────────────────────────────
-const C = {
-  cream: '#0F1419', paper: '#1A2128', paperHi: '#222B33',
-  ink: '#F5EDD8', inkSoft: '#D8CDB1', inkMute: '#8A8270',
-  warm: '#E0B36A', warmDark: '#D4A24C', warmDeep: '#0F1419',
-  belly: '#3A3326', bellySoft: '#2C2820',
-  rust: '#E8714C', rustSoft: '#3A1F18',
-  sage: '#8FB89A', sageSoft: '#1F2D24',
-  ochre: '#D4A24C', ochreSoft: '#2D2618',
-  rose: '#D9907F',
-  border: '#2A3540', hairline: '#1F2730',
-  shadowSoft: '0 2px 12px rgba(0,0,0,0.35)',
-  shadowMed: '0 6px 22px rgba(0,0,0,0.45)',
-}
+// ── Design tokens (getter proxy — reads active theme on each access) ──────
+const C = {}
+;['cream','paper','paperHi','border','hairline','ink','inkSoft','inkMute',
+  'warm','warmDark','warmDeep','belly','bellySoft','rust','rustSoft','sage','sageSoft',
+  'ochre','ochreSoft','rose','shadowSoft','shadowMed'].forEach(key => {
+  Object.defineProperty(C, key, {
+    get() { return THEMES[themeState.current][key] },
+    enumerable: true,
+  })
+})
 const CATEGORY = {
   relationships: { color: '#E8714C', bg: '#3A1F18', icon: '✿' },
   finance:       { color: '#E0B36A', bg: '#2D2618', icon: '◈' },

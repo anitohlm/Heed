@@ -710,7 +710,7 @@ function AskTab({ prefill = '' }) {
   const scrollRef = useRef(null)
   useEffect(() => {
     if (prefill) setInput(prefill)
-  }, [prefill])
+  }, [prefill, setInput])
   const owlMood = busy ? 'thinking' : 'calm'
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight

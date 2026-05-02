@@ -2,6 +2,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import './globals.css'
 
+// Functions backend URL — baked in at build time via NEXT_PUBLIC_FUNCTIONS_URL
+const FUNCTIONS_URL = process.env.NEXT_PUBLIC_FUNCTIONS_URL || 'http://localhost:7071'
+
 // ── Design tokens ──────────────────────────────────────────────
 const C = {
   cream: '#0F1419', paper: '#1A2128', paperHi: '#222B33',
@@ -160,7 +163,7 @@ function useChat() {
     let finalText = ''
 
     try {
-      const resp = await fetch('/api/agent/stream', {
+      const resp = await fetch(`${FUNCTIONS_URL}/api/advisor_stream`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: trimmed, history: snapshot }),
@@ -1259,8 +1262,6 @@ function AddRoutineModal({ open, onClose, onSubmit }) {
 
 // ── Main App ───────────────────────────────────────────────────
 export default function HeedApp() {
-  const FUNCTIONS_URL = (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_FUNCTIONS_URL) || 'http://localhost:7071'
-
   const [apiTasks, setApiTasks] = useState([])
   const [apiContexts, setApiContexts] = useState({ active: [], upcoming: [] })
   const [dismissedIds, setDismissedIds] = useState(new Set())

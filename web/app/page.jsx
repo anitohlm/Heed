@@ -484,9 +484,52 @@ function CategoryBadge({ category }) {
   )
 }
 
-function SectionHeader({ children, count, accent = C.warmDark }) {
+// ── BotanicalDivider ───────────────────────────────────────────
+function BotanicalDivider({ type = 'leaf' }) {
+  const color = C.inkMute
+  if (type === 'stem') {
+    return (
+      <svg width="22" height="22" viewBox="0 0 22 22" style={{ flexShrink: 0 }}>
+        <line x1="11" y1="2" x2="11" y2="20" stroke={color} strokeWidth="1.3"/>
+        <ellipse cx="5" cy="9" rx="6" ry="2.5" fill={color} opacity="0.55" transform="rotate(-20 5 9)"/>
+        <ellipse cx="17" cy="13" rx="6" ry="2.5" fill={color} opacity="0.45" transform="rotate(20 17 13)"/>
+        <ellipse cx="4" cy="16" rx="5" ry="2" fill={color} opacity="0.35" transform="rotate(-25 4 16)"/>
+      </svg>
+    )
+  }
+  if (type === 'berry') {
+    return (
+      <svg width="22" height="22" viewBox="0 0 22 22" style={{ flexShrink: 0 }}>
+        <path d="M 2 11 Q 11 7 20 11" stroke={color} strokeWidth="1.3" fill="none"/>
+        {[5, 11, 17].map(x => (
+          <circle key={x} cx={x} cy={11 + Math.sin((x / 22) * Math.PI * 2) * 2.5} r="2.2" fill={color} opacity="0.55"/>
+        ))}
+      </svg>
+    )
+  }
+  if (type === 'thorn') {
+    return (
+      <svg width="22" height="22" viewBox="0 0 22 22" style={{ flexShrink: 0 }}>
+        <line x1="2" y1="11" x2="20" y2="11" stroke={color} strokeWidth="1.3"/>
+        <path d="M 7 11 L 5 7" stroke={color} strokeWidth="1.3" strokeLinecap="round"/>
+        <path d="M 15 11 L 17 7" stroke={color} strokeWidth="1.3" strokeLinecap="round"/>
+      </svg>
+    )
+  }
   return (
-    <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 14 }}>
+    <svg width="22" height="22" viewBox="0 0 22 22" style={{ flexShrink: 0 }}>
+      <path d="M 2 11 Q 11 7 20 11" stroke={color} strokeWidth="1.3" fill="none"/>
+      <ellipse cx="6"  cy="9"  rx="5" ry="2.2" fill={color} opacity="0.5" transform="rotate(-15 6 9)"/>
+      <ellipse cx="11" cy="7"  rx="5" ry="2.2" fill={color} opacity="0.4"/>
+      <ellipse cx="16" cy="9"  rx="5" ry="2.2" fill={color} opacity="0.5" transform="rotate(15 16 9)"/>
+    </svg>
+  )
+}
+
+function SectionHeader({ children, count, accent = C.warmDark, motif }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+      {motif && <BotanicalDivider type={motif}/>}
       <h3 style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 19, fontWeight: 600, color: accent, margin: 0, letterSpacing: -0.3 }}>{children}</h3>
       {count !== undefined && (
         <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, letterSpacing: 0.6, textTransform: 'uppercase' }}>
@@ -737,23 +780,23 @@ function TodayTab({ tasks, routines, upcomingContexts, onMarkDone, onSkip }) {
   return (
     <div>
       <ContextBanner upcomingContexts={upcomingContexts}/>
-      <SectionHeader>Top of mind</SectionHeader>
+      <SectionHeader motif="leaf">Top of mind</SectionHeader>
       {heroTask ? <HeroCard task={heroTask} onMarkDone={onMarkDone} onSkip={onSkip}/> : (
         <div style={{ fontSize: 13.5, color: C.inkMute, fontStyle: 'italic', padding: '12px 0' }}>Nothing critical right now. Nice.</div>
       )}
       <div style={{ marginTop: 28 }}>
-        <SectionHeader count={routines.length}>Routines</SectionHeader>
+        <SectionHeader motif="stem" count={routines.length}>Routines</SectionHeader>
         {routines.map((r, i) => <RoutineCard key={r.id} routine={r} delay={i * 80}/>)}
       </div>
       {otherOverdue.length > 0 && (
         <div style={{ marginTop: 28 }}>
-          <SectionHeader count={otherOverdue.length}>Also overdue</SectionHeader>
+          <SectionHeader motif="thorn" count={otherOverdue.length}>Also overdue</SectionHeader>
           {otherOverdue.map((t, i) => <TaskCard key={t.id} task={t} delay={i * 50} onMarkDone={onMarkDone} onSkip={onSkip}/>)}
         </div>
       )}
       {upcoming.length > 0 && (
         <div style={{ marginTop: 28 }}>
-          <SectionHeader count={upcoming.length}>Coming up</SectionHeader>
+          <SectionHeader motif="berry" count={upcoming.length}>Coming up</SectionHeader>
           {upcoming.map((t, i) => <TaskCard key={t.id} task={t} delay={i * 50} onMarkDone={onMarkDone} onSkip={onSkip}/>)}
         </div>
       )}

@@ -1260,6 +1260,39 @@ function AddRoutineModal({ open, onClose, onSubmit }) {
   )
 }
 
+// ── Toast ──────────────────────────────────────────────────────
+function Toast({ message, onView, onDismiss }) {
+  return (
+    <div style={{
+      position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
+      background: '#222B33', border: '1px solid #2A3540', borderLeft: `3px solid ${C.sage}`,
+      borderRadius: 10, padding: '10px 16px', display: 'flex', alignItems: 'center',
+      gap: 10, boxShadow: '0 6px 22px rgba(0,0,0,0.45)', zIndex: 9999,
+      animation: 'heed-slideUp 0.4s cubic-bezier(0.16,1,0.3,1)', whiteSpace: 'nowrap',
+    }}>
+      <span style={{ fontSize: 16 }}>✓</span>
+      <span style={{ fontSize: 13, color: C.ink, fontWeight: 500 }}>{message}</span>
+      <button
+        onClick={onView}
+        style={{
+          marginLeft: 8, background: 'transparent', border: `1px solid ${C.sage}`,
+          color: C.sage, padding: '4px 10px', borderRadius: 6,
+          fontSize: 11, cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit',
+        }}
+      >
+        View Tracks
+      </button>
+      <button
+        onClick={onDismiss}
+        aria-label="Dismiss"
+        style={{ marginLeft: 4, background: 'none', border: 'none',
+                 color: C.inkMute, fontSize: 18, cursor: 'pointer',
+                 lineHeight: 1, padding: 0 }}
+      >×</button>
+    </div>
+  )
+}
+
 // ── Main App ───────────────────────────────────────────────────
 export default function HeedApp() {
   const [apiTasks, setApiTasks] = useState([])
@@ -1267,6 +1300,7 @@ export default function HeedApp() {
   const [dismissedIds, setDismissedIds] = useState(new Set())
   const [routines, setRoutines] = useState(ROUTINES)
   const [tab, setTab] = useState('today')
+  const [toast, setToast] = useState(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [askOpen, setAskOpen] = useState(false)
   const [routineModalOpen, setRoutineModalOpen] = useState(false)
@@ -1281,7 +1315,13 @@ export default function HeedApp() {
       .then(r => r.json())
       .then(data => data && setApiContexts(data))
       .catch(() => {})
-  }, [FUNCTIONS_URL])
+  }, [])
+
+  useEffect(() => {
+    if (!toast) return
+    const t = setTimeout(() => setToast(null), 3000)
+    return () => clearTimeout(t)
+  }, [toast])
 
   const displayTasks = apiTasks
     .filter(t => t.status === 'active' && !dismissedIds.has(t.id))
@@ -1310,6 +1350,11 @@ export default function HeedApp() {
     }).catch(() => {})
   }, [FUNCTIONS_URL])
 
+  const handleToastView = useCallback(() => {
+    setToast(null)
+    setTab('tracks')
+  }, [])
+
   const handleAddTask = useCallback(async (data) => {
     const body = { name: data.name, category: data.category, importance: data.importance, explicit_cadence_days: data.explicit_cadence_days || null }
     try {
@@ -1321,6 +1366,7 @@ export default function HeedApp() {
       if (resp.ok) {
         const newTask = await resp.json()
         setApiTasks(t => [...t, newTask])
+        setToast({ message: 'Task added' })
       }
     } catch {}
     setTab('today')
@@ -1345,6 +1391,7 @@ export default function HeedApp() {
 
   const handleAddRoutine = useCallback((routineData) => {
     setRoutines(r => [...r, routineData])
+    setToast({ message: 'Routine added' })
     setTab('today')
   }, [])
 
@@ -1413,6 +1460,7 @@ export default function HeedApp() {
       <AddRoutineModal open={routineModalOpen} onClose={() => setRoutineModalOpen(false)} onSubmit={handleAddRoutine}/>
       <AddContextModal open={contextModalOpen} onClose={() => setContextModalOpen(false)} onSubmit={handleAddContext}/>
       <AskInlineModal open={askOpen} onClose={() => setAskOpen(false)}/>
+      {toast && <Toast message={toast.message} onView={handleToastView} onDismiss={() => setToast(null)} />}
       <HeedFAB onAddTask={() => setModalOpen(true)} onAskHeed={() => setAskOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)}/>
     </div>
   )

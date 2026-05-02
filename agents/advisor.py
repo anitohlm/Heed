@@ -139,6 +139,32 @@ TOOLS = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "suggest_followups",
+            "description": "Suggest 2-3 contextual follow-up chips to show the user after your response. Always call this at the end of every response. Chips must be specific to what you just said — 'What about my gym routine?' beats 'Tell me more.'",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "chips": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "emoji": {"type": "string"},
+                                "text": {"type": "string"},
+                            },
+                            "required": ["emoji", "text"],
+                        },
+                        "minItems": 2,
+                        "maxItems": 3,
+                    },
+                },
+                "required": ["chips"],
+            },
+        },
+    },
 ]
 
 
@@ -186,6 +212,11 @@ def _dispatch_tool(name: str, arguments: dict, user_id: str) -> str:
                 "proposed": True,
                 "action": action.model_dump(mode="json"),
                 "validation": {"allowed_immediately": allowed, "reason": reason},
+            })
+        elif name == "suggest_followups":
+            return json.dumps({
+                "proposed": True,
+                "chips_count": len(arguments.get("chips", [])),
             })
         else:
             return json.dumps({"error": f"Unknown tool: {name}"})

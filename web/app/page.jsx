@@ -53,6 +53,30 @@ const CONTEXTS_PAST = [
   { type: 'illness', start: 'Feb 10, 2026', end: 'Feb 14, 2026', desc: 'Flu — bed rest' },
   { type: 'busy', start: 'Mar 16, 2026', end: 'Mar 22, 2026', desc: 'Client deadline week' },
 ]
+const CONTEXTS_UPCOMING_DEMO = [
+  {
+    type: 'travel',
+    start: 'Apr 28, 2026',
+    end: 'May 2, 2026',
+    desc: 'Singapore trip',
+    _startDate: new Date('2026-04-28'),
+    askQuery: 'Plan around my Singapore trip',
+    plan: {
+      before: [
+        'Pay Maynilad & Meralco this week',
+        'Submit timesheet (Friday)',
+        'Refill water dispenser the day before you fly',
+      ],
+      during: [
+        'Morning and evening routines paused automatically',
+      ],
+      after: [
+        'Soft-start May 3 — essentials only',
+        'Aircon cleaning can wait until that weekend',
+      ],
+    },
+  },
+]
 const SUGGESTIONS = [
   { text: "What am I forgetting?", emoji: "🌿" },
   { text: "Plan around my Singapore trip", emoji: "✈️" },
@@ -1361,10 +1385,11 @@ export default function HeedApp() {
     .filter(t => t.status === 'active' && !dismissedIds.has(t.id))
     .map(computeTaskDisplay)
 
-  const upcomingContexts = [
+  const apiUpcoming = [
     ...(apiContexts.upcoming || []).map(c => ({ ...mapApiContext(c), _startDate: c.start_date ? new Date(c.start_date) : null })),
     ...(apiContexts.active || []).map(c => ({ ...mapApiContext(c), _startDate: c.start_date ? new Date(c.start_date) : null })),
   ]
+  const upcomingContexts = apiUpcoming.length > 0 ? apiUpcoming : CONTEXTS_UPCOMING_DEMO
 
   const handleMarkDone = useCallback(async (task) => {
     const taskId = typeof task === 'string' ? task : task.id

@@ -6,6 +6,15 @@ import { THEMES, OWL_THEMES, themeState, setThemeState, DEFAULT_THEME } from './
 // Functions backend URL — baked in at build time via NEXT_PUBLIC_FUNCTIONS_URL
 const FUNCTIONS_URL = process.env.NEXT_PUBLIC_FUNCTIONS_URL || 'http://localhost:7071'
 
+// ── Module-level tab definitions (shared by HeedApp and MobileDrawer) ─────
+const APP_TABS = [
+  { id: 'today',    label: 'Today' },
+  { id: 'calendar', label: 'Calendar' },
+  { id: 'ask',      label: 'Ask Heed' },
+  { id: 'tracks',   label: 'Tracks' },
+  { id: 'context',  label: 'Context' },
+]
+
 // ── Design tokens (getter proxy — reads active theme on each access) ──────
 const C = {}
 ;['cream','paper','paperHi','border','hairline','ink','inkSoft','inkMute',
@@ -247,13 +256,15 @@ function ThemeSwitcher({ theme, onTheme }) {
 
 // ── MobileDrawer ───────────────────────────────────────────────
 function MobileDrawer({ open, onClose, tab, onTab, theme, onTheme }) {
-  const drawerTabs = [
-    { id: 'today',    label: 'Today' },
-    { id: 'calendar', label: 'Calendar' },
-    { id: 'ask',      label: 'Ask Heed' },
-    { id: 'tracks',   label: 'Tracks' },
-    { id: 'context',  label: 'Context' },
-  ]
+  const drawerTabs = APP_TABS
+
+  useEffect(() => {
+    if (!open) return
+    const fn = (e) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', fn)
+    return () => window.removeEventListener('keydown', fn)
+  }, [open, onClose])
+
   return (
     <>
       <div
@@ -262,11 +273,13 @@ function MobileDrawer({ open, onClose, tab, onTab, theme, onTheme }) {
       />
       <div
         className={`heed-drawer${open ? ' open' : ''}`}
+        role="dialog"
+        aria-label="Navigation"
         style={{ background: C.paper, borderLeft: `1px solid ${C.border}`, display: 'flex', flexDirection: 'column' }}
       >
         <div style={{ height: 64, borderBottom: `1px solid ${C.hairline}`, display: 'flex', alignItems: 'center', padding: '0 20px', justifyContent: 'space-between' }}>
           <span style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 18, fontWeight: 700, color: C.warmDark }}>Heed</span>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 22, color: C.inkMute, cursor: 'pointer', padding: 4, lineHeight: 1 }}>×</button>
+          <button onClick={onClose} aria-label="Close navigation" style={{ background: 'none', border: 'none', fontSize: 22, color: C.inkMute, cursor: 'pointer', padding: 4, lineHeight: 1 }}>×</button>
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -1494,13 +1507,7 @@ export default function HeedApp() {
     setTab('today')
   }, [])
 
-  const tabs = [
-    { id: 'today', label: 'Today' },
-    { id: 'calendar', label: 'Calendar' },
-    { id: 'ask', label: 'Ask Heed' },
-    { id: 'tracks', label: 'Tracks' },
-    { id: 'context', label: 'Context' },
-  ]
+  const tabs = APP_TABS
 
   const todayStr = TODAY_DATE.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
 

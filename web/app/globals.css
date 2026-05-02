@@ -27,12 +27,12 @@ input, select, textarea {
   display: none;
   position: fixed; inset: 0;
   background: rgba(0,0,0,0.45);
-  z-index: 100;
+  z-index: 200;
 }
 .heed-drawer-backdrop.visible { display: block; }
 .heed-drawer {
   position: fixed; top: 0; right: 0; bottom: 0; width: 260px;
-  z-index: 101;
+  z-index: 201;
   transform: translateX(100%);
   transition: transform 0.28s cubic-bezier(0.16,1,0.3,1);
 }

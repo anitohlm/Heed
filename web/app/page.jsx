@@ -56,10 +56,10 @@ const CONTEXTS_PAST = [
 const CONTEXTS_UPCOMING_DEMO = [
   {
     type: 'travel',
-    start: 'Apr 28, 2026',
-    end: 'May 2, 2026',
+    start: 'Jun 5, 2026',
+    end: 'Jun 9, 2026',
     desc: 'Singapore trip',
-    _startDate: new Date('2026-04-28'),
+    _startDate: new Date('2026-06-05'),
     askQuery: 'Plan around my Singapore trip',
     plan: {
       before: [
@@ -604,8 +604,9 @@ function RoutineCard({ routine, delay = 0, onMarkDone, onLighten, onEdit }) {
 }
 
 // ── ContextBanner ──────────────────────────────────────────────
-function ContextBanner({ upcomingContexts }) {
+function ContextBanner({ upcomingContexts, onAskHeed }) {
   const [hover, setHover] = useState(false)
+  const [planExpanded, setPlanExpanded] = useState(false)
   if (!upcomingContexts || upcomingContexts.length === 0) return null
   const ctx = upcomingContexts[0]
   const daysAway = ctx._startDate ? Math.ceil((ctx._startDate - new Date()) / 86400000) : null
@@ -616,23 +617,81 @@ function ContextBanner({ upcomingContexts }) {
       style={{
         background: `linear-gradient(120deg, ${C.ochreSoft} 0%, ${C.bellySoft} 100%)`,
         border: `1px solid ${C.ochre}66`, borderRadius: 14, padding: '14px 18px', marginBottom: 22,
-        display: 'flex', alignItems: 'center', gap: 14,
         boxShadow: hover ? C.shadowMed : C.shadowSoft, transition: 'all 0.2s ease',
         position: 'relative', overflow: 'hidden', animation: 'heed-fadeUp 0.5s ease both',
       }}
     >
       <div style={{ position: 'absolute', right: -10, top: -10, width: 80, height: 80, opacity: 0.08, background: C.ochre, borderRadius: '50%' }}/>
-      <div style={{ fontSize: 28, lineHeight: 1, flexShrink: 0 }}>✈️</div>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 10.5, fontWeight: 700, color: C.warmDark, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 2 }}>
-          Upcoming{daysAway != null ? ` · ${daysAway} days away` : ''}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        <div style={{ fontSize: 28, lineHeight: 1, flexShrink: 0 }}>✈️</div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 10.5, fontWeight: 700, color: C.warmDark, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 2 }}>
+            Upcoming{daysAway != null ? ` · ${daysAway} days away` : ''}
+          </div>
+          <div style={{ fontSize: 14, color: C.ink, lineHeight: 1.4 }}>
+            <strong>{ctx.desc}</strong>{ctx.start && ctx.end ? ` ${ctx.start} – ${ctx.end}.` : ''}{' '}
+            I've already noted this to plan around it.
+          </div>
         </div>
-        <div style={{ fontSize: 14, color: C.ink, lineHeight: 1.4 }}>
-          <strong>{ctx.desc}</strong>{ctx.start && ctx.end ? ` ${ctx.start} – ${ctx.end}.` : ''}{' '}
-          I've already noted this to plan around it.
-        </div>
+        {ctx.plan && (
+          <button
+            onClick={() => setPlanExpanded(e => !e)}
+            style={{ ...btnGhost, fontSize: 12, whiteSpace: 'nowrap', color: planExpanded ? C.warmDark : C.inkSoft, borderColor: planExpanded ? `${C.ochre}44` : C.border }}
+          >
+            {planExpanded ? 'Hide plan ↑' : 'See plan →'}
+          </button>
+        )}
       </div>
-      <button style={{ ...btnGhost, fontSize: 12, whiteSpace: 'nowrap' }}>See plan →</button>
+      {planExpanded && ctx.plan && (
+        <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${C.border}`, animation: 'heed-fadeIn 0.25s ease' }}>
+          <div style={{ display: 'flex', gap: 16, marginBottom: 10 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 9.5, fontWeight: 700, color: C.ochre, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 6 }}>Before you leave</div>
+              {ctx.plan.before.map((item, i) => (
+                <div key={i} style={{ display: 'flex', gap: 7, alignItems: 'flex-start', fontSize: 12, color: C.inkSoft, marginBottom: 4, lineHeight: 1.4 }}>
+                  <span style={{ width: 5, height: 5, borderRadius: '50%', background: C.ochre, flexShrink: 0, marginTop: 5 }}/>
+                  {item}
+                </div>
+              ))}
+            </div>
+            <div style={{ flex: 1 }}>
+              {ctx.plan.during.length > 0 && (
+                <>
+                  <div style={{ fontSize: 9.5, fontWeight: 700, color: C.sage, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 6 }}>While away</div>
+                  {ctx.plan.during.map((item, i) => (
+                    <div key={i} style={{ display: 'flex', gap: 7, alignItems: 'flex-start', fontSize: 12, color: C.inkSoft, marginBottom: 4, lineHeight: 1.4 }}>
+                      <span style={{ width: 5, height: 5, borderRadius: '50%', background: C.sage, flexShrink: 0, marginTop: 5 }}/>
+                      {item}
+                    </div>
+                  ))}
+                </>
+              )}
+              {ctx.plan.after.length > 0 && (
+                <>
+                  <div style={{ fontSize: 9.5, fontWeight: 700, color: C.inkMute, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 6, marginTop: ctx.plan.during.length > 0 ? 10 : 0 }}>When you're back</div>
+                  {ctx.plan.after.map((item, i) => (
+                    <div key={i} style={{ display: 'flex', gap: 7, alignItems: 'flex-start', fontSize: 12, color: C.inkSoft, marginBottom: 4, lineHeight: 1.4 }}>
+                      <span style={{ width: 5, height: 5, borderRadius: '50%', background: C.inkMute, flexShrink: 0, marginTop: 5 }}/>
+                      {item}
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+          </div>
+          {ctx.askQuery && onAskHeed && (
+            <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 11, color: C.inkMute }}>Want a more detailed plan?</span>
+              <button
+                onClick={() => onAskHeed(ctx.askQuery)}
+                style={{ background: 'none', border: 'none', color: C.sage, fontSize: 11, fontWeight: 700, cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}
+              >
+                Ask Heed →
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

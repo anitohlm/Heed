@@ -201,23 +201,23 @@ function useChat() {
   return { messages, input, setInput, thinking, streaming, busy, send }
 }
 
-// ── Button styles ──────────────────────────────────────────────
-const btnPrimary = {
+// ── Button style factories (called each render so C reads current theme) ──
+const getBtnPrimary = () => ({
   background: C.warmDark, color: C.cream, border: 'none',
   padding: '7px 14px', borderRadius: 7, fontSize: 12.5, fontWeight: 600,
   cursor: 'pointer', letterSpacing: 0.2, fontFamily: 'inherit',
   transition: 'all 0.15s', boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
-}
-const btnGhost = {
+})
+const getBtnGhost = () => ({
   background: 'transparent', color: C.inkSoft,
   border: `1px solid ${C.border}`, padding: '7px 12px',
   borderRadius: 7, fontSize: 12.5, fontWeight: 500,
   cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
-}
-const fieldLabel = {
+})
+const getFieldLabel = () => ({
   display: 'block', fontSize: 11, fontWeight: 700, color: C.inkMute,
   letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 6,
-}
+})
 
 // ── MayaOwl ────────────────────────────────────────────────────
 function MayaOwl({ size = 120, mood = 'calm', speaking = false, idle = true }) {
@@ -414,8 +414,8 @@ function HeroCard({ task, onMarkDone, onSkip }) {
         </div>
       </div>
       <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
-        <button style={btnPrimary} onClick={() => onMarkDone && onMarkDone(task.id)}>Mark done</button>
-        <button style={btnGhost} onClick={() => onSkip && onSkip(task.id)}>Skip</button>
+        <button style={getBtnPrimary()} onClick={() => onMarkDone && onMarkDone(task.id)}>Mark done</button>
+        <button style={getBtnGhost()} onClick={() => onSkip && onSkip(task.id)}>Skip</button>
       </div>
     </div>
   )
@@ -466,8 +466,8 @@ function TaskCard({ task, delay = 0, onMarkDone, onSkip }) {
       </div>
       {hover && (
         <div style={{ marginTop: 10, display: 'flex', gap: 6, animation: 'heed-fadeIn 0.2s ease' }}>
-          <button style={btnPrimary} onClick={() => onMarkDone && onMarkDone(task.id)}>Mark done</button>
-          <button style={btnGhost} onClick={() => onSkip && onSkip(task.id)}>Skip</button>
+          <button style={getBtnPrimary()} onClick={() => onMarkDone && onMarkDone(task.id)}>Mark done</button>
+          <button style={getBtnGhost()} onClick={() => onSkip && onSkip(task.id)}>Skip</button>
         </div>
       )}
     </div>
@@ -538,9 +538,9 @@ function RoutineCard({ routine, delay = 0 }) {
         </div>
       </div>
       <div style={{ marginTop: 12, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-        <button style={btnPrimary}>Mark today done</button>
-        {isAttentionWorthy && <button style={{ ...btnPrimary, background: C.ochre, color: C.warmDeep }}>Lighten this week</button>}
-        <button style={btnGhost}>Edit</button>
+        <button style={getBtnPrimary()}>Mark today done</button>
+        {isAttentionWorthy && <button style={{ ...getBtnPrimary(), background: C.ochre, color: C.warmDeep }}>Lighten this week</button>}
+        <button style={getBtnGhost()}>Edit</button>
       </div>
     </div>
   )
@@ -575,7 +575,7 @@ function ContextBanner({ upcomingContexts }) {
           I've already noted this to plan around it.
         </div>
       </div>
-      <button style={{ ...btnGhost, fontSize: 12, whiteSpace: 'nowrap' }}>See plan →</button>
+      <button style={{ ...getBtnGhost(), fontSize: 12, whiteSpace: 'nowrap' }}>See plan →</button>
     </div>
   )
 }
@@ -691,7 +691,7 @@ function AskTab() {
           onFocus={e => { e.target.style.borderColor = C.warmDark }}
           onBlur={e => { e.target.style.borderColor = C.border }}
         />
-        <button onClick={() => send(input)} disabled={busy || !input.trim()} style={{ ...btnPrimary, padding: '12px 22px', fontSize: 13, opacity: (busy || !input.trim()) ? 0.5 : 1 }}>Send</button>
+        <button onClick={() => send(input)} disabled={busy || !input.trim()} style={{ ...getBtnPrimary(), padding: '12px 22px', fontSize: 13, opacity: (busy || !input.trim()) ? 0.5 : 1 }}>Send</button>
       </div>
     </div>
   )
@@ -766,7 +766,7 @@ function ContextTab({ upcoming, active, onAddContext }) {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
         <SectionHeader>Context windows</SectionHeader>
-        <button onClick={onAddContext} style={btnPrimary}>+ Add context</button>
+        <button onClick={onAddContext} style={getBtnPrimary()}>+ Add context</button>
       </div>
       <div style={{ background: C.paper, border: `1px solid ${C.border}`, borderRadius: 14, padding: 18, marginBottom: 16, boxShadow: C.shadowSoft }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: C.sage, letterSpacing: 0.8, marginBottom: 12, textTransform: 'uppercase' }}>Upcoming</div>
@@ -843,9 +843,9 @@ function CalendarTab() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18, gap: 12, flexWrap: 'wrap' }}>
         <SectionHeader>{fmtMonth(weekStart)}</SectionHeader>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <button onClick={() => setWeekOffset(o => o - 1)} style={{ ...btnGhost, padding: '6px 12px', fontSize: 13 }}>‹ Previous</button>
-          <button onClick={() => setWeekOffset(0)} style={{ ...btnGhost, padding: '6px 12px', fontSize: 13, background: weekOffset === 0 ? C.bellySoft : 'transparent', borderColor: weekOffset === 0 ? C.warmDark + '66' : C.border, color: weekOffset === 0 ? C.warmDark : C.inkSoft, fontWeight: weekOffset === 0 ? 600 : 500 }}>This week</button>
-          <button onClick={() => setWeekOffset(o => o + 1)} style={{ ...btnGhost, padding: '6px 12px', fontSize: 13 }}>Next ›</button>
+          <button onClick={() => setWeekOffset(o => o - 1)} style={{ ...getBtnGhost(), padding: '6px 12px', fontSize: 13 }}>‹ Previous</button>
+          <button onClick={() => setWeekOffset(0)} style={{ ...getBtnGhost(), padding: '6px 12px', fontSize: 13, background: weekOffset === 0 ? C.bellySoft : 'transparent', borderColor: weekOffset === 0 ? C.warmDark + '66' : C.border, color: weekOffset === 0 ? C.warmDark : C.inkSoft, fontWeight: weekOffset === 0 ? 600 : 500 }}>This week</button>
+          <button onClick={() => setWeekOffset(o => o + 1)} style={{ ...getBtnGhost(), padding: '6px 12px', fontSize: 13 }}>Next ›</button>
         </div>
       </div>
       <div style={{ background: `linear-gradient(120deg, ${C.bellySoft} 0%, ${C.ochreSoft}88 100%)`, border: `1px solid ${C.border}`, borderRadius: 12, padding: '12px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12, animation: 'heed-fadeUp 0.4s ease' }}>
@@ -1009,7 +1009,7 @@ function AskInlineModal({ open, onClose }) {
               style={{ flex: 1, background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '10px 14px', fontSize: 14, color: C.ink, outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.15s' }}
               onFocus={e => { e.target.style.borderColor = C.warmDark }} onBlur={e => { e.target.style.borderColor = C.border }}
             />
-            <button onClick={() => send(input)} disabled={busy || !input.trim()} style={{ ...btnPrimary, padding: '10px 18px', fontSize: 13, opacity: (busy || !input.trim()) ? 0.5 : 1 }}>Send</button>
+            <button onClick={() => send(input)} disabled={busy || !input.trim()} style={{ ...getBtnPrimary(), padding: '10px 18px', fontSize: 13, opacity: (busy || !input.trim()) ? 0.5 : 1 }}>Send</button>
           </div>
         </div>
       </div>
@@ -1053,14 +1053,14 @@ function AddTaskModal({ open, onClose, onSubmit }) {
             <button onClick={onClose} aria-label="Close" style={{ background: 'transparent', border: 'none', color: C.inkMute, cursor: 'pointer', fontSize: 20, padding: 4, lineHeight: 1, fontFamily: 'inherit' }}>×</button>
           </div>
           <div style={{ marginBottom: 14 }}>
-            <label style={fieldLabel}>Task name</label>
+            <label style={getFieldLabel()}>Task name</label>
             <input ref={inputRef} value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === 'Enter' && submit()} placeholder="e.g. Clean the aircon filter"
               style={{ width: '100%', boxSizing: 'border-box', background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '10px 14px', fontSize: 14, color: C.ink, outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.15s' }}
               onFocus={e => { e.target.style.borderColor = C.warmDark }} onBlur={e => { e.target.style.borderColor = C.border }}
             />
           </div>
           <div style={{ marginBottom: 14 }}>
-            <label style={fieldLabel}>Category</label>
+            <label style={getFieldLabel()}>Category</label>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {Object.keys(CATEGORY).map(cat => (
                 <button key={cat} onClick={() => setCategory(cat)} style={{ background: category === cat ? CATEGORY[cat].bg : C.paper, color: category === cat ? CATEGORY[cat].color : C.inkSoft, border: `1.5px solid ${category === cat ? CATEGORY[cat].color : C.border}`, padding: '6px 12px', borderRadius: 999, fontSize: 12, fontWeight: 600, cursor: 'pointer', textTransform: 'capitalize', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.15s' }}>
@@ -1070,7 +1070,7 @@ function AddTaskModal({ open, onClose, onSubmit }) {
             </div>
           </div>
           <div style={{ marginBottom: 14 }}>
-            <label style={fieldLabel}>How important?</label>
+            <label style={getFieldLabel()}>How important?</label>
             <div style={{ display: 'flex', gap: 6 }}>
               {[{v:'low',label:'Low',tone:C.sage},{v:'medium',label:'Medium',tone:C.ochre},{v:'high',label:'High',tone:C.rust}].map(({v,label,tone}) => (
                 <button key={v} onClick={() => setImportance(v)} style={{ flex: 1, background: importance === v ? tone : C.paper, color: importance === v ? C.cream : C.inkSoft, border: `1.5px solid ${importance === v ? tone : C.border}`, padding: '8px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}>{label}</button>
@@ -1078,7 +1078,7 @@ function AddTaskModal({ open, onClose, onSubmit }) {
             </div>
           </div>
           <div style={{ marginBottom: 18 }}>
-            <label style={fieldLabel}>How often?</label>
+            <label style={getFieldLabel()}>How often?</label>
             <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
               <button onClick={() => setCadenceMode('learn')} style={{ flex: 1, background: cadenceMode === 'learn' ? C.bellySoft : C.paper, color: cadenceMode === 'learn' ? C.warmDark : C.inkSoft, border: `1.5px solid ${cadenceMode === 'learn' ? C.warmDark + '66' : C.border}`, padding: '8px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, transition: 'all 0.15s' }}>
                 <span style={{ color: C.sage }}>✨</span>Let Heed learn it
@@ -1099,8 +1099,8 @@ function AddTaskModal({ open, onClose, onSubmit }) {
             )}
           </div>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            <button onClick={onClose} style={btnGhost}>Cancel</button>
-            <button onClick={submit} disabled={!name.trim()} style={{ ...btnPrimary, padding: '8px 18px', opacity: name.trim() ? 1 : 0.5, cursor: name.trim() ? 'pointer' : 'not-allowed' }}>Add task</button>
+            <button onClick={onClose} style={getBtnGhost()}>Cancel</button>
+            <button onClick={submit} disabled={!name.trim()} style={{ ...getBtnPrimary(), padding: '8px 18px', opacity: name.trim() ? 1 : 0.5, cursor: name.trim() ? 'pointer' : 'not-allowed' }}>Add task</button>
           </div>
         </div>
       </div>
@@ -1152,7 +1152,7 @@ function AddContextModal({ open, onClose, onSubmit }) {
             <button onClick={onClose} aria-label="Close" style={{ background: 'transparent', border: 'none', color: C.inkMute, cursor: 'pointer', fontSize: 20, padding: 4, lineHeight: 1, fontFamily: 'inherit' }}>×</button>
           </div>
           <div style={{ marginBottom: 14 }}>
-            <label style={fieldLabel}>Type</label>
+            <label style={getFieldLabel()}>Type</label>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {typeOptions.map(({v,label,icon,tone}) => (
                 <button key={v} onClick={() => setType(v)} style={{ flex: 1, minWidth: 100, background: type === v ? tone : C.paper, color: type === v ? C.cream : C.inkSoft, border: `1.5px solid ${type === v ? tone : C.border}`, padding: '8px 10px', borderRadius: 8, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'all 0.15s' }}>
@@ -1162,7 +1162,7 @@ function AddContextModal({ open, onClose, onSubmit }) {
             </div>
           </div>
           <div style={{ marginBottom: 14 }}>
-            <label style={fieldLabel}>What's happening?</label>
+            <label style={getFieldLabel()}>What's happening?</label>
             <input ref={descRef} value={description} onChange={e => setDescription(e.target.value)} onKeyDown={e => e.key === 'Enter' && isValid && submit()}
               placeholder={type==='travel'?"e.g. Singapore for DEF CON":type==='illness'?"e.g. Flu, taking it easy":type==='busy'?"e.g. Client deadline week":"e.g. Tita's 60th birthday weekend"}
               style={inputStyle} onFocus={e=>{e.target.style.borderColor=C.warmDark}} onBlur={e=>{e.target.style.borderColor=C.border}}
@@ -1170,17 +1170,17 @@ function AddContextModal({ open, onClose, onSubmit }) {
           </div>
           <div style={{ marginBottom: 18, display: 'flex', gap: 10 }}>
             <div style={{ flex: 1 }}>
-              <label style={fieldLabel}>From</label>
+              <label style={getFieldLabel()}>From</label>
               <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={{ ...inputStyle, colorScheme: 'dark' }}/>
             </div>
             <div style={{ flex: 1 }}>
-              <label style={fieldLabel}>To</label>
+              <label style={getFieldLabel()}>To</label>
               <input type="date" value={endDate} min={startDate || undefined} onChange={e => setEndDate(e.target.value)} style={{ ...inputStyle, colorScheme: 'dark' }}/>
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            <button onClick={onClose} style={btnGhost}>Cancel</button>
-            <button onClick={submit} disabled={!isValid} style={{ ...btnPrimary, padding: '8px 18px', opacity: isValid ? 1 : 0.5, cursor: isValid ? 'pointer' : 'not-allowed' }}>Add context</button>
+            <button onClick={onClose} style={getBtnGhost()}>Cancel</button>
+            <button onClick={submit} disabled={!isValid} style={{ ...getBtnPrimary(), padding: '8px 18px', opacity: isValid ? 1 : 0.5, cursor: isValid ? 'pointer' : 'not-allowed' }}>Add context</button>
           </div>
         </div>
       </div>
@@ -1227,14 +1227,14 @@ function AddRoutineModal({ open, onClose, onSubmit }) {
           </div>
           <div style={{ flex: 1, overflowY: 'auto' }}>
             <div style={{ marginBottom: 14 }}>
-              <label style={fieldLabel}>Routine name</label>
+              <label style={getFieldLabel()}>Routine name</label>
               <input ref={nameRef} value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Morning routine, Sunday reset"
                 style={{ width: '100%', boxSizing: 'border-box', background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '10px 14px', fontSize: 14, color: C.ink, outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.15s' }}
                 onFocus={e=>{e.target.style.borderColor=C.warmDark}} onBlur={e=>{e.target.style.borderColor=C.border}}
               />
             </div>
             <div style={{ marginBottom: 14 }}>
-              <label style={fieldLabel}>Items in this routine</label>
+              <label style={getFieldLabel()}>Items in this routine</label>
               {items.map((item, idx) => (
                 <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
                   <input value={item.name} onChange={e => updateItem(item.id, e.target.value)} placeholder={`Item ${idx+1} (e.g. ${['Stretch 5 min','Vitamins','Read 10 pages'][idx]||'...'})`} style={inputStyle}/>
@@ -1248,8 +1248,8 @@ function AddRoutineModal({ open, onClose, onSubmit }) {
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 12, borderTop: `1px solid ${C.hairline}`, flexShrink: 0 }}>
-            <button onClick={onClose} style={btnGhost}>Cancel</button>
-            <button onClick={submit} disabled={!name.trim()||items.every(i=>!i.name.trim())} style={{ ...btnPrimary, padding: '8px 18px', opacity: (name.trim()&&items.some(i=>i.name.trim())) ? 1 : 0.5, cursor: (name.trim()&&items.some(i=>i.name.trim())) ? 'pointer' : 'not-allowed' }}>Build routine</button>
+            <button onClick={onClose} style={getBtnGhost()}>Cancel</button>
+            <button onClick={submit} disabled={!name.trim()||items.every(i=>!i.name.trim())} style={{ ...getBtnPrimary(), padding: '8px 18px', opacity: (name.trim()&&items.some(i=>i.name.trim())) ? 1 : 0.5, cursor: (name.trim()&&items.some(i=>i.name.trim())) ? 'pointer' : 'not-allowed' }}>Build routine</button>
           </div>
         </div>
       </div>

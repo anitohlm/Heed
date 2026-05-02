@@ -489,7 +489,7 @@ function BotanicalDivider({ type = 'leaf' }) {
   const color = C.inkMute
   if (type === 'stem') {
     return (
-      <svg width="22" height="22" viewBox="0 0 22 22" style={{ flexShrink: 0 }}>
+      <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true" style={{ flexShrink: 0 }}>
         <line x1="11" y1="2" x2="11" y2="20" stroke={color} strokeWidth="1.3"/>
         <ellipse cx="5" cy="9" rx="6" ry="2.5" fill={color} opacity="0.55" transform="rotate(-20 5 9)"/>
         <ellipse cx="17" cy="13" rx="6" ry="2.5" fill={color} opacity="0.45" transform="rotate(20 17 13)"/>
@@ -499,17 +499,19 @@ function BotanicalDivider({ type = 'leaf' }) {
   }
   if (type === 'berry') {
     return (
-      <svg width="22" height="22" viewBox="0 0 22 22" style={{ flexShrink: 0 }}>
+      <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true" style={{ flexShrink: 0 }}>
         <path d="M 2 11 Q 11 7 20 11" stroke={color} strokeWidth="1.3" fill="none"/>
-        {[5, 11, 17].map(x => (
-          <circle key={x} cx={x} cy={11 + Math.sin((x / 22) * Math.PI * 2) * 2.5} r="2.2" fill={color} opacity="0.55"/>
-        ))}
+        {[5, 11, 17].map((x) => {
+          const t = (x - 2) / 18
+          const pathY = Math.pow(1-t,2)*11 + 2*(1-t)*t*7 + Math.pow(t,2)*11
+          return <circle key={x} cx={x} cy={pathY + 3} r="2.2" fill={color} opacity="0.55"/>
+        })}
       </svg>
     )
   }
   if (type === 'thorn') {
     return (
-      <svg width="22" height="22" viewBox="0 0 22 22" style={{ flexShrink: 0 }}>
+      <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true" style={{ flexShrink: 0 }}>
         <line x1="2" y1="11" x2="20" y2="11" stroke={color} strokeWidth="1.3"/>
         <path d="M 7 11 L 5 7" stroke={color} strokeWidth="1.3" strokeLinecap="round"/>
         <path d="M 15 11 L 17 7" stroke={color} strokeWidth="1.3" strokeLinecap="round"/>
@@ -517,7 +519,7 @@ function BotanicalDivider({ type = 'leaf' }) {
     )
   }
   return (
-    <svg width="22" height="22" viewBox="0 0 22 22" style={{ flexShrink: 0 }}>
+    <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true" style={{ flexShrink: 0 }}>
       <path d="M 2 11 Q 11 7 20 11" stroke={color} strokeWidth="1.3" fill="none"/>
       <ellipse cx="6"  cy="9"  rx="5" ry="2.2" fill={color} opacity="0.5" transform="rotate(-15 6 9)"/>
       <ellipse cx="11" cy="7"  rx="5" ry="2.2" fill={color} opacity="0.4"/>

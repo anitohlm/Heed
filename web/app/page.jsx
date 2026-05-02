@@ -1562,18 +1562,26 @@ function CalendarTab() {
           })}
         </div>
       </div>
-      <div style={{ marginTop: 16, padding: '12px 16px', background: C.paper, border: `1px solid ${C.border}`, borderRadius: 10, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, letterSpacing: 0.6, textTransform: 'uppercase', marginRight: 4 }}>Legend</div>
-        {[
-          { color: C.rust,     bg: C.rustSoft,  label: 'Critical / overdue' },
-          { color: C.warmDark, bg: C.bellySoft,  label: 'High importance' },
-          { color: C.ochre,    bg: C.ochreSoft,  label: 'Medium' },
-          { color: C.sage,     bg: C.sageSoft,   label: 'Routine / easy' },
-        ].map(({ color, bg, label }) => (
-          <div key={label} style={{ display: 'inline-flex', alignItems: 'center', gap: 0, borderRadius: 5, border: `1px solid ${color}44`, borderLeft: `3px solid ${color}`, background: bg, padding: '4px 10px', fontSize: 11.5, color: C.ink, fontWeight: 500 }}>
-            {label}
-          </div>
-        ))}
+      <div style={{ marginTop: 16, padding: '14px 18px', background: C.paper, border: `1px solid ${C.border}`, borderRadius: 10, boxShadow: C.shadowSoft }}>
+        <div style={{ fontSize: 10.5, fontWeight: 700, color: C.inkMute, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 10 }}>Key</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: '8px 24px' }}>
+          {[
+            { color: C.rust,     label: 'Critical / overdue', shape: 'circle'  },
+            { color: C.warmDark, label: 'High importance',     shape: 'diamond' },
+            { color: C.ochre,    label: 'Medium priority',     shape: 'square'  },
+            { color: C.sage,     label: 'Routine / easy',      shape: 'ring'    },
+          ].map(({ color, label, shape }) => (
+            <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" style={{ flexShrink: 0 }}>
+                {shape === 'circle'  && <circle cx="6" cy="6" r="5" fill={color}/>}
+                {shape === 'diamond' && <polygon points="6,1 11,6 6,11 1,6" fill={color}/>}
+                {shape === 'square'  && <rect x="1.5" y="1.5" width="9" height="9" rx="1.5" fill={color}/>}
+                {shape === 'ring'    && <circle cx="6" cy="6" r="4" fill="none" stroke={color} strokeWidth="2"/>}
+              </svg>
+              <span style={{ fontSize: 12, color: C.ink, fontWeight: 500 }}>{label}</span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   )

@@ -71,7 +71,7 @@ const CONTEXTS_UPCOMING_DEMO = [
         'Morning and evening routines paused automatically',
       ],
       after: [
-        'Soft-start May 3 — essentials only',
+        'Soft-start Jun 10 — essentials only',
         'Aircon cleaning can wait until that weekend',
       ],
     },
@@ -646,13 +646,17 @@ function ContextBanner({ upcomingContexts, onAskHeed }) {
         <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${C.border}`, animation: 'heed-fadeIn 0.25s ease' }}>
           <div style={{ display: 'flex', gap: 16, marginBottom: 10 }}>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 9.5, fontWeight: 700, color: C.ochre, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 6 }}>Before you leave</div>
-              {ctx.plan.before.map((item, i) => (
-                <div key={i} style={{ display: 'flex', gap: 7, alignItems: 'flex-start', fontSize: 12, color: C.inkSoft, marginBottom: 4, lineHeight: 1.4 }}>
-                  <span style={{ width: 5, height: 5, borderRadius: '50%', background: C.ochre, flexShrink: 0, marginTop: 5 }}/>
-                  {item}
-                </div>
-              ))}
+              {ctx.plan.before && ctx.plan.before.length > 0 && (
+                <>
+                  <div style={{ fontSize: 9.5, fontWeight: 700, color: C.ochre, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 6 }}>Before you leave</div>
+                  {ctx.plan.before.map((item, i) => (
+                    <div key={i} style={{ display: 'flex', gap: 7, alignItems: 'flex-start', fontSize: 12, color: C.inkSoft, marginBottom: 4, lineHeight: 1.4 }}>
+                      <span style={{ width: 5, height: 5, borderRadius: '50%', background: C.ochre, flexShrink: 0, marginTop: 5 }}/>
+                      {item}
+                    </div>
+                  ))}
+                </>
+              )}
             </div>
             <div style={{ flex: 1 }}>
               {ctx.plan.during.length > 0 && (

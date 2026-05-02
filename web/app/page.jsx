@@ -940,7 +940,14 @@ function RoutineCard({ routine, delay = 0, onMarkDone, onLighten, onEdit }) {
         <div style={{ fontSize: 10, fontWeight: 700, color: C.inkMute, letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 6 }}>Last 14 days</div>
         <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
           {routine.completion14d.map((done, i) => (
-            <div key={i} style={{ width: 18, height: 18, borderRadius: 4, background: done ? C.sage : 'transparent', border: done ? 'none' : `1.5px dashed ${C.border}` }}/>
+            <svg key={i} width="16" height="18" viewBox="0 0 16 18" fill="none" aria-hidden="true">
+              <path d="M8 1 C8 1, 15 5, 15 10 C15 14, 12 17, 8 17 C4 17, 1 14, 1 10 C1 5, 8 1, 8 1 Z"
+                fill={done ? C.accentAlt : 'transparent'}
+                stroke={done ? 'none' : C.border}
+                strokeWidth="1.5"
+                strokeDasharray={done ? 'none' : '2 2'}
+              />
+            </svg>
           ))}
           <div style={{ marginLeft: 8, fontSize: 10, color: C.inkMute, fontStyle: 'italic' }}>today →</div>
         </div>

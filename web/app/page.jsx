@@ -417,8 +417,8 @@ function HeroCard({ task, onMarkDone, onSkip }) {
         </div>
       </div>
       <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
-        <button style={btnPrimary} onClick={() => onMarkDone && onMarkDone(task.id)}>Mark done</button>
-        <button style={btnGhost} onClick={() => onSkip && onSkip(task.id)}>Skip</button>
+        <button style={btnPrimary} onClick={() => onMarkDone && onMarkDone(task)}>Mark done</button>
+        <button style={btnGhost} onClick={() => onSkip && onSkip(task)}>Skip</button>
       </div>
     </div>
   )
@@ -469,8 +469,8 @@ function TaskCard({ task, delay = 0, onMarkDone, onSkip }) {
       </div>
       {hover && (
         <div style={{ marginTop: 10, display: 'flex', gap: 6, animation: 'heed-fadeIn 0.2s ease' }}>
-          <button style={btnPrimary} onClick={() => onMarkDone && onMarkDone(task.id)}>Mark done</button>
-          <button style={btnGhost} onClick={() => onSkip && onSkip(task.id)}>Skip</button>
+          <button style={btnPrimary} onClick={() => onMarkDone && onMarkDone(task)}>Mark done</button>
+          <button style={btnGhost} onClick={() => onSkip && onSkip(task)}>Skip</button>
         </div>
       )}
     </div>
@@ -520,9 +520,19 @@ function RoutineCard({ routine, delay = 0, onMarkDone, onLighten, onEdit }) {
         </div>
       </div>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
-        {routine.items.map((item, i) => (
-          <span key={i} style={{ fontSize: 12, padding: '4px 10px', background: C.bellySoft, color: C.warmDark, borderRadius: 6, fontWeight: 500 }}>{item}</span>
-        ))}
+        {routine.items.map((item, i) => {
+          const isOptional = routine.lightenedItems?.includes(item)
+          return (
+            <span key={i} style={{
+              fontSize: 12, padding: '4px 10px', borderRadius: 6, fontWeight: 500,
+              background: isOptional ? 'transparent' : C.bellySoft,
+              color: isOptional ? C.inkMute : C.warmDark,
+              border: isOptional ? `1px dashed ${C.border}` : 'none',
+              textDecoration: isOptional ? 'line-through' : 'none',
+              opacity: isOptional ? 0.6 : 1,
+            }}>{item}</span>
+          )
+        })}
       </div>
       <div style={{ marginBottom: 14 }}>
         <div style={{ fontSize: 10, fontWeight: 700, color: C.inkMute, letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 6 }}>Last 14 days</div>
@@ -533,13 +543,33 @@ function RoutineCard({ routine, delay = 0, onMarkDone, onLighten, onEdit }) {
           <div style={{ marginLeft: 8, fontSize: 10, color: C.inkMute, fontStyle: 'italic' }}>today →</div>
         </div>
       </div>
-      <div style={{ background: isAttentionWorthy ? C.ochreSoft : C.sageSoft, border: `1px solid ${isAttentionWorthy ? C.ochre + '44' : C.sage + '44'}`, borderRadius: 10, padding: '10px 14px', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-        <div style={{ marginTop: 1 }}><MayaOwl size={24} idle={false}/></div>
-        <div style={{ flex: 1, fontSize: 12.5, color: C.ink, lineHeight: 1.5 }}>
-          <div style={{ fontWeight: 600, marginBottom: 2 }}>{routine.insight}</div>
-          {routine.suggestion && <div style={{ fontStyle: 'italic' }}>{routine.suggestion}</div>}
+      {routine.lightenedItems?.length ? (
+        <div style={{ background: C.sageSoft, border: `1px solid ${C.sage}44`, borderRadius: 10, padding: '10px 14px', animation: 'heed-fadeIn 0.3s ease' }}>
+          <div style={{ fontSize: 12.5, fontWeight: 700, color: C.sage, marginBottom: 8 }}>✓ Lightened for this week</div>
+          <div style={{ display: 'flex', gap: 16 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: C.inkMute, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 4 }}>Keeping</div>
+              {routine.items.filter(i => !routine.lightenedItems.includes(i)).map(item => (
+                <div key={item} style={{ fontSize: 12, color: C.ink, marginBottom: 2 }}>· {item}</div>
+              ))}
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: C.inkMute, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 4 }}>Optional this week</div>
+              {routine.lightenedItems.map(item => (
+                <div key={item} style={{ fontSize: 12, color: C.inkMute, textDecoration: 'line-through', marginBottom: 2 }}>· {item}</div>
+              ))}
+            </div>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div style={{ background: isAttentionWorthy ? C.ochreSoft : C.sageSoft, border: `1px solid ${isAttentionWorthy ? C.ochre + '44' : C.sage + '44'}`, borderRadius: 10, padding: '10px 14px', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+          <div style={{ marginTop: 1 }}><MayaOwl size={24} idle={false}/></div>
+          <div style={{ flex: 1, fontSize: 12.5, color: C.ink, lineHeight: 1.5 }}>
+            <div style={{ fontWeight: 600, marginBottom: 2 }}>{routine.insight}</div>
+            {routine.suggestion && <div style={{ fontStyle: 'italic' }}>{routine.suggestion}</div>}
+          </div>
+        </div>
+      )}
       <div style={{ marginTop: 12, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         <button style={btnPrimary} onClick={() => onMarkDone && onMarkDone(routine.id)}>Mark today done</button>
         {isAttentionWorthy && <button style={{ ...btnPrimary, background: C.ochre, color: C.warmDeep }} onClick={() => onLighten && onLighten(routine.id)}>Lighten this week</button>}
@@ -1274,7 +1304,7 @@ function AddRoutineModal({ open, onClose, onSubmit, initialData = null }) {
 }
 
 // ── Toast ──────────────────────────────────────────────────────
-function Toast({ message, onView, onDismiss }) {
+function Toast({ message, onView, onUndo, onDismiss }) {
   return (
     <div style={{
       position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
@@ -1285,23 +1315,13 @@ function Toast({ message, onView, onDismiss }) {
     }}>
       <span style={{ fontSize: 16 }}>✓</span>
       <span style={{ fontSize: 13, color: C.ink, fontWeight: 500 }}>{message}</span>
-      <button
-        onClick={onView}
-        style={{
-          marginLeft: 8, background: 'transparent', border: `1px solid ${C.sage}`,
-          color: C.sage, padding: '4px 10px', borderRadius: 6,
-          fontSize: 11, cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit',
-        }}
-      >
-        View Tracks
-      </button>
-      <button
-        onClick={onDismiss}
-        aria-label="Dismiss"
-        style={{ marginLeft: 4, background: 'none', border: 'none',
-                 color: C.inkMute, fontSize: 18, cursor: 'pointer',
-                 lineHeight: 1, padding: 0 }}
-      >×</button>
+      {onUndo && (
+        <button onClick={onUndo} style={{ marginLeft: 8, background: 'transparent', border: `1px solid ${C.inkMute}`, color: C.inkSoft, padding: '4px 10px', borderRadius: 6, fontSize: 11, cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>Undo</button>
+      )}
+      {onView && (
+        <button onClick={onView} style={{ marginLeft: onUndo ? 4 : 8, background: 'transparent', border: `1px solid ${C.sage}`, color: C.sage, padding: '4px 10px', borderRadius: 6, fontSize: 11, cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>View Tracks</button>
+      )}
+      <button onClick={onDismiss} aria-label="Dismiss" style={{ marginLeft: 4, background: 'none', border: 'none', color: C.inkMute, fontSize: 18, cursor: 'pointer', lineHeight: 1, padding: 0 }}>×</button>
     </div>
   )
 }
@@ -1346,8 +1366,14 @@ export default function HeedApp() {
     ...(apiContexts.active || []).map(c => ({ ...mapApiContext(c), _startDate: c.start_date ? new Date(c.start_date) : null })),
   ]
 
-  const handleMarkDone = useCallback(async (taskId) => {
+  const handleMarkDone = useCallback(async (task) => {
+    const taskId = typeof task === 'string' ? task : task.id
+    const taskName = typeof task === 'string' ? 'Task' : task.name
     setDismissedIds(s => new Set([...s, taskId]))
+    setToast({
+      message: `"${taskName}" marked done`,
+      onUndo: () => { setDismissedIds(s => { const n = new Set(s); n.delete(taskId); return n }); setToast(null) },
+    })
     fetch(`${FUNCTIONS_URL}/api/completions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1355,8 +1381,14 @@ export default function HeedApp() {
     }).catch(() => {})
   }, [FUNCTIONS_URL])
 
-  const handleSkip = useCallback(async (taskId) => {
+  const handleSkip = useCallback(async (task) => {
+    const taskId = typeof task === 'string' ? task : task.id
+    const taskName = typeof task === 'string' ? 'Task' : task.name
     setDismissedIds(s => new Set([...s, taskId]))
+    setToast({
+      message: `"${taskName}" skipped`,
+      onUndo: () => { setDismissedIds(s => { const n = new Set(s); n.delete(taskId); return n }); setToast(null) },
+    })
     fetch(`${FUNCTIONS_URL}/api/completions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1380,7 +1412,7 @@ export default function HeedApp() {
       if (resp.ok) {
         const newTask = await resp.json()
         setApiTasks(t => [...t, newTask])
-        setToast({ message: 'Task added' })
+        setToast({ message: 'Task added', showView: true })
         setTab('today')
       }
     } catch {}
@@ -1411,7 +1443,7 @@ export default function HeedApp() {
         ? rs.map(r => r.id === routineData.id ? { ...r, name: routineData.name, items: routineData.items } : r)
         : [...rs, routineData]
     )
-    setToast({ message: isEdit ? 'Routine updated' : 'Routine added' })
+    setToast({ message: isEdit ? 'Routine updated' : 'Routine added', showView: true })
     setEditingRoutine(null)
     setTab('today')
   }, [])
@@ -1427,7 +1459,12 @@ export default function HeedApp() {
   }, [])
 
   const handleLightenRoutine = useCallback((routineId) => {
-    setRoutines(rs => rs.map(r => r.id === routineId ? { ...r, suggestion: null, insight: 'Lightened for this week.' } : r))
+    setRoutines(rs => rs.map(r => {
+      if (r.id !== routineId) return r
+      // Keep the first half as core; make the rest optional this week
+      const keepCount = Math.ceil(r.items.length / 2)
+      return { ...r, suggestion: null, insight: 'Lightened for this week.', lightenedItems: r.items.slice(keepCount) }
+    }))
     setToast({ message: 'Routine lightened for this week' })
   }, [])
 
@@ -1501,7 +1538,7 @@ export default function HeedApp() {
       <AddRoutineModal open={routineModalOpen} onClose={() => { setRoutineModalOpen(false); setEditingRoutine(null) }} onSubmit={handleAddRoutine} initialData={editingRoutine}/>
       <AddContextModal open={contextModalOpen} onClose={() => setContextModalOpen(false)} onSubmit={handleAddContext}/>
       <AskInlineModal open={askOpen} onClose={() => setAskOpen(false)}/>
-      {toast && <Toast message={toast.message} onView={handleToastView} onDismiss={() => setToast(null)} />}
+      {toast && <Toast message={toast.message} onView={toast.showView ? handleToastView : undefined} onUndo={toast.onUndo} onDismiss={() => setToast(null)} />}
       <HeedFAB onAddTask={() => setModalOpen(true)} onAskHeed={() => setAskOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)}/>
     </div>
   )

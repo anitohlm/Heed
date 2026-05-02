@@ -339,68 +339,111 @@ function MayaOwl({ size = 120, mood = 'calm', speaking = false, idle = true }) {
     const id = setInterval(() => setBob(b => (b + 1) % 360), 60)
     return () => clearInterval(id)
   }, [idle])
+
+  const oc = OWL_THEMES[themeState.current]
   const eyeOpenY = blinking ? 0.05 : (mood === 'thinking' ? 0.7 : 1)
   const beakTilt = mood === 'thinking' ? -3 : (mood === 'happy' ? 4 : 0)
   const bobY = idle ? Math.sin(bob * Math.PI / 180) * 1.5 : 0
+
   return (
     <div style={{ display: 'inline-block', position: 'relative' }}>
-      <svg width={size} height={size} viewBox="0 0 200 200" style={{
+      <svg width={size} height={Math.round(size * 1.25)} viewBox="0 0 200 250" style={{
         transition: 'transform 0.4s cubic-bezier(0.34,1.56,0.64,1)',
         transform: `translateY(${speaking ? -2 + bobY : bobY}px) scale(${speaking ? 1.02 : 1})`,
+        overflow: 'visible',
       }}>
         <defs>
-          <filter id="owlShadow" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
+          <filter id="owlGlow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur in="SourceAlpha" stdDeviation="2.5"/>
             <feOffset dx="0" dy="3" result="offsetblur"/>
-            <feComponentTransfer><feFuncA type="linear" slope="0.35"/></feComponentTransfer>
+            <feComponentTransfer><feFuncA type="linear" slope="0.2"/></feComponentTransfer>
             <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
           </filter>
-          <radialGradient id="bodyGrad" cx="40%" cy="35%">
-            <stop offset="0%" stopColor="#9A7048"/>
-            <stop offset="60%" stopColor="#6E4A30"/>
-            <stop offset="100%" stopColor="#4A301F"/>
-          </radialGradient>
-          <radialGradient id="bellyGrad" cx="50%" cy="40%">
-            <stop offset="0%" stopColor="#C9B68C"/>
-            <stop offset="100%" stopColor="#9C8862"/>
-          </radialGradient>
         </defs>
-        <ellipse cx="100" cy="115" rx="68" ry="72" fill="url(#bodyGrad)" filter="url(#owlShadow)"/>
-        <ellipse cx="100" cy="130" rx="45" ry="52" fill="url(#bellyGrad)"/>
-        <g opacity="0.35" fill="#D4A24C">
-          {[[85,115],[100,110],[115,115],[92,130],[108,130],[85,145],[100,148],[115,145],[92,160],[108,160]].map(([x,y],i)=>(
-            <circle key={i} cx={x} cy={y} r="1.2"/>
+
+        {/* Branch */}
+        <path d="M 15 210 Q 60 205 100 208 Q 140 211 185 208"
+          stroke={oc.beak} strokeWidth="8" fill="none" strokeLinecap="round" opacity="0.65"/>
+        {/* Bark texture on branch */}
+        <path d="M 40 208 Q 60 205 80 208" stroke={oc.beak} strokeWidth="2" fill="none" opacity="0.3" strokeLinecap="round"/>
+        <path d="M 110 208 Q 135 205 155 209" stroke={oc.beak} strokeWidth="2" fill="none" opacity="0.3" strokeLinecap="round"/>
+
+        {/* Branch leaves */}
+        <ellipse cx="28" cy="202" rx="16" ry="6" fill={oc.tuft} opacity="0.7" transform="rotate(-25 28 202)"/>
+        <ellipse cx="50" cy="199" rx="13" ry="5" fill={oc.tuft} opacity="0.5" transform="rotate(10 50 199)"/>
+        <ellipse cx="155" cy="200" rx="15" ry="5.5" fill={oc.tuft} opacity="0.65" transform="rotate(-12 155 200)"/>
+        <ellipse cx="175" cy="203" rx="12" ry="4.5" fill={oc.tuft} opacity="0.5" transform="rotate(18 175 203)"/>
+
+        {/* Body */}
+        <ellipse cx="100" cy="140" rx="58" ry="65" fill={oc.body} filter="url(#owlGlow)"/>
+
+        {/* Wing left */}
+        <path d="M 44 125 Q 34 155 52 192 Q 60 168 66 138 Z" fill={oc.body} opacity="0.88"/>
+        {/* Wing right */}
+        <path d="M 156 125 Q 166 155 148 192 Q 140 168 134 138 Z" fill={oc.body} opacity="0.88"/>
+
+        {/* Belly patch */}
+        <ellipse cx="100" cy="155" rx="36" ry="46" fill={oc.eyeRing} opacity="0.35"/>
+
+        {/* Belly scallop dots */}
+        <g opacity="0.45" fill={oc.beak}>
+          {[[87,138],[100,132],[113,138],[91,152],[109,152],[87,166],[100,170],[113,166],[91,180],[109,180]].map(([x,y],i) => (
+            <circle key={i} cx={x} cy={y} r="1.3"/>
           ))}
         </g>
-        <path d="M 38 100 Q 30 130 48 165 Q 55 145 60 115 Z" fill="#3A2616" opacity="0.9"/>
-        <path d="M 162 100 Q 170 130 152 165 Q 145 145 140 115 Z" fill="#3A2616" opacity="0.9"/>
-        <path d="M 65 60 Q 60 38 72 30 Q 78 48 78 62 Z" fill="#4A301F"/>
-        <path d="M 135 60 Q 140 38 128 30 Q 122 48 122 62 Z" fill="#4A301F"/>
-        <ellipse cx="100" cy="78" rx="52" ry="48" fill="#9C8862"/>
-        <circle cx="78" cy="78" r="20" fill="#E8DCB8" stroke="#3A2616" strokeWidth="2"/>
-        <circle cx="122" cy="78" r="20" fill="#E8DCB8" stroke="#3A2616" strokeWidth="2"/>
+
+        {/* Ear tufts */}
+        <path d="M 72 82 Q 66 58 79 50 Q 85 68 85 83 Z" fill={oc.tuft}/>
+        <path d="M 128 82 Q 134 58 121 50 Q 115 68 115 83 Z" fill={oc.tuft}/>
+
+        {/* Face disk */}
+        <ellipse cx="100" cy="102" rx="44" ry="42" fill={oc.eyeRing} opacity="0.22"/>
+
+        {/* Eye rings */}
+        <circle cx="78" cy="100" r="20" fill={oc.eyeRing} stroke={oc.body} strokeWidth="2.5"/>
+        <circle cx="122" cy="100" r="20" fill={oc.eyeRing} stroke={oc.body} strokeWidth="2.5"/>
+
+        {/* Left eye pupil + highlight */}
         <g style={{ transition: 'transform 0.12s ease-out' }}>
-          <ellipse cx="78" cy="78" rx="10" ry={10 * eyeOpenY} fill="#0F1419"/>
-          {!blinking && (<><circle cx="80" cy="74" r="3.5" fill="#F5EDD8"/><circle cx="76" cy="80" r="1.5" fill="#F5EDD8" opacity="0.6"/></>)}
+          <ellipse cx="78" cy="100" rx="10" ry={10 * eyeOpenY} fill={oc.pupil}/>
+          {!blinking && (
+            <>
+              <circle cx="80" cy="96" r="3.5" fill={oc.eyeRing} opacity="0.65"/>
+              <circle cx="76" cy="103" r="1.5" fill={oc.eyeRing} opacity="0.35"/>
+            </>
+          )}
         </g>
+        {/* Right eye pupil + highlight */}
         <g style={{ transition: 'transform 0.12s ease-out' }}>
-          <ellipse cx="122" cy="78" rx="10" ry={10 * eyeOpenY} fill="#0F1419"/>
-          {!blinking && (<><circle cx="124" cy="74" r="3.5" fill="#F5EDD8"/><circle cx="120" cy="80" r="1.5" fill="#F5EDD8" opacity="0.6"/></>)}
+          <ellipse cx="122" cy="100" rx="10" ry={10 * eyeOpenY} fill={oc.pupil}/>
+          {!blinking && (
+            <>
+              <circle cx="124" cy="96" r="3.5" fill={oc.eyeRing} opacity="0.65"/>
+              <circle cx="120" cy="103" r="1.5" fill={oc.eyeRing} opacity="0.35"/>
+            </>
+          )}
         </g>
-        <g transform={`rotate(${beakTilt} 100 95)`}>
-          <path d="M 100 92 L 92 102 Q 100 108 108 102 Z" fill="#B8924E" stroke="#3A2616" strokeWidth="1.2"/>
+
+        {/* Beak */}
+        <g transform={`rotate(${beakTilt} 100 116)`}>
+          <path d="M 100 113 L 92 124 Q 100 130 108 124 Z" fill={oc.beak} stroke={oc.body} strokeWidth="1.2"/>
         </g>
-        <ellipse cx="68" cy="95" rx="5" ry="3" fill="#D9907F" opacity="0.35"/>
-        <ellipse cx="132" cy="95" rx="5" ry="3" fill="#D9907F" opacity="0.35"/>
-        <g fill="#B8924E" stroke="#3A2616" strokeWidth="1">
-          <path d="M 86 178 L 82 188 M 90 178 L 90 190 M 94 178 L 98 188" strokeLinecap="round"/>
-          <path d="M 106 178 L 102 188 M 110 178 L 110 190 M 114 178 L 118 188" strokeLinecap="round"/>
+
+        {/* Cheek blush */}
+        <ellipse cx="62" cy="116" rx="7" ry="5" fill={oc.cheek} opacity="0.2"/>
+        <ellipse cx="138" cy="116" rx="7" ry="5" fill={oc.cheek} opacity="0.2"/>
+
+        {/* Talons gripping branch */}
+        <g fill="none" stroke={oc.beak} strokeWidth="1.8" strokeLinecap="round" opacity="0.85">
+          <path d="M 82 197 L 78 210 M 87 197 L 86 212 M 92 197 L 96 210"/>
+          <path d="M 108 197 L 104 210 M 113 197 L 113 212 M 118 197 L 122 210"/>
         </g>
       </svg>
+
       {speaking && (
         <span style={{
-          position: 'absolute', bottom: -2, left: '50%', transform: 'translateX(-50%)',
-          width: 8, height: 8, borderRadius: '50%', background: '#8FB89A',
+          position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)',
+          width: 8, height: 8, borderRadius: '50%', background: C.sage,
           animation: 'heed-pulse 1s ease-in-out infinite',
         }}/>
       )}

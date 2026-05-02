@@ -312,6 +312,7 @@ async def stream_response(
     messages.append({"role": "user", "content": user_message})
 
     final_text = ""
+    chips_emitted = False
     max_iterations = 6  # Hard cap to prevent runaway tool loops
 
     # Microsoft Agent Framework's streaming ChatAgent wasn't stable enough at
@@ -407,6 +408,7 @@ async def stream_response(
                         "payload": payload,
                     }
                 elif tc["name"] == "suggest_followups" and args:
+                    chips_emitted = True
                     yield {"type": "chips", "chips": args.get("chips", [])}
 
                 messages.append({
@@ -418,6 +420,25 @@ async def stream_response(
             # Unexpected finish — break to avoid infinite loop
             final_text = current_text
             break
+
+    # If the model never called suggest_followups, force one final chips pass
+    if not chips_emitted and final_text:
+        try:
+            chips_messages = messages + [{"role": "assistant", "content": final_text}]
+            chips_resp = client.chat.completions.create(
+                model=deployment,
+                messages=chips_messages,
+                tools=[t for t in TOOLS if t["function"]["name"] == "suggest_followups"],
+                tool_choice={"type": "function", "function": {"name": "suggest_followups"}},
+                stream=False,
+                max_tokens=200,
+            )
+            if chips_resp.choices[0].finish_reason == "tool_calls":
+                tc = chips_resp.choices[0].message.tool_calls[0]
+                args = json.loads(tc.function.arguments) if tc.function.arguments else {}
+                yield {"type": "chips", "chips": args.get("chips", [])}
+        except Exception:
+            pass
 
     yield {"type": "done", "final_text": final_text}
 

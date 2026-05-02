@@ -791,12 +791,13 @@ function Bubble({ role, content, streaming: isStreaming, actions, chips, onConfi
                 <button key={i}
                   onClick={() => setActivePreviewIndex(i)}
                   style={{
-                    background: isDefer ? '#162230' : C.sageSoft,
-                    border: `1px solid ${isDefer ? '#4a6a8a' : C.sage + '99'}`,
-                    color: isDefer ? '#7aabe0' : C.sage,
-                    padding: '5px 13px', borderRadius: 20, fontSize: 12.5,
+                    background: isDefer ? C.bellySoft : C.sageSoft,
+                    border: `1.5px solid ${isDefer ? C.ochre : C.sage}`,
+                    color: isDefer ? C.ochre : C.sage,
+                    padding: '6px 14px', borderRadius: 20, fontSize: 12.5, fontWeight: 600,
                     cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
                     fontFamily: 'inherit', marginRight: 8, marginBottom: 6, transition: 'all 0.15s',
+                    boxShadow: `0 1px 4px ${isDefer ? C.ochre : C.sage}22`,
                   }}
                 >
                   <span>{action.emoji}</span>{action.label}
@@ -807,17 +808,20 @@ function Bubble({ role, content, streaming: isStreaming, actions, chips, onConfi
         )}
 
         {hasChips && (
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: hasActions ? 6 : 10 }}>
-            {chips.map((chip, i) => (
-              <button key={i}
-                onClick={() => onChipClick && onChipClick(chip.text)}
-                style={{ background: C.cream, border: `1px solid ${C.border}`, color: C.inkMute, padding: '4px 10px', borderRadius: 20, fontSize: 11.5, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 5, transition: 'all 0.15s' }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.inkSoft }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.inkMute }}
-              >
-                <span style={{ fontSize: 12 }}>{chip.emoji}</span>{chip.text}
-              </button>
-            ))}
+          <div style={{ marginTop: hasActions ? 8 : 12, paddingTop: 8, borderTop: `1px solid ${C.hairline}` }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: C.inkMute, letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 6 }}>Follow up</div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {chips.map((chip, i) => (
+                <button key={i}
+                  onClick={() => onChipClick && onChipClick(chip.text)}
+                  style={{ background: C.bellySoft, border: `1.5px solid ${C.warmDark}33`, color: C.warmDark, padding: '5px 12px', borderRadius: 20, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 5, transition: 'all 0.15s', fontWeight: 500 }}
+                  onMouseEnter={e => { e.currentTarget.style.background = C.ochreSoft; e.currentTarget.style.borderColor = C.warmDark + '66' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = C.bellySoft; e.currentTarget.style.borderColor = C.warmDark + '33' }}
+                >
+                  <span style={{ fontSize: 12 }}>{chip.emoji}</span>{chip.text}
+                </button>
+              ))}
+            </div>
           </div>
         )}
       </div>

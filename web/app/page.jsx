@@ -1,24 +1,30 @@
 "use client"
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import './globals.css'
+import { THEMES, OWL_THEMES, themeState, setThemeState, DEFAULT_THEME } from './themes'
 
 // Functions backend URL — baked in at build time via NEXT_PUBLIC_FUNCTIONS_URL
 const FUNCTIONS_URL = process.env.NEXT_PUBLIC_FUNCTIONS_URL || 'http://localhost:7071'
 
-// ── Design tokens ──────────────────────────────────────────────
-const C = {
-  cream: '#0F1419', paper: '#1A2128', paperHi: '#222B33',
-  ink: '#F5EDD8', inkSoft: '#D8CDB1', inkMute: '#8A8270',
-  warm: '#E0B36A', warmDark: '#D4A24C', warmDeep: '#0F1419',
-  belly: '#3A3326', bellySoft: '#2C2820',
-  rust: '#E8714C', rustSoft: '#3A1F18',
-  sage: '#8FB89A', sageSoft: '#1F2D24',
-  ochre: '#D4A24C', ochreSoft: '#2D2618',
-  rose: '#D9907F',
-  border: '#2A3540', hairline: '#1F2730',
-  shadowSoft: '0 2px 12px rgba(0,0,0,0.35)',
-  shadowMed: '0 6px 22px rgba(0,0,0,0.45)',
-}
+// ── Module-level tab definitions (shared by HeedApp and MobileDrawer) ─────
+const APP_TABS = [
+  { id: 'today',    label: 'Today' },
+  { id: 'calendar', label: 'Calendar' },
+  { id: 'ask',      label: 'Ask Heed' },
+  { id: 'tracks',   label: 'Tracks' },
+  { id: 'context',  label: 'Context' },
+]
+
+// ── Design tokens (getter proxy — reads active theme on each access) ──────
+const C = {}
+;['cream','paper','paperHi','border','hairline','ink','inkSoft','inkMute',
+  'warm','warmDark','warmDeep','belly','bellySoft','rust','rustSoft','sage','sageSoft',
+  'ochre','ochreSoft','rose','shadowSoft','shadowMed'].forEach(key => {
+  Object.defineProperty(C, key, {
+    get() { return THEMES[themeState.current][key] },
+    enumerable: true,
+  })
+})
 const CATEGORY = {
   relationships: { color: '#E8714C', bg: '#3A1F18', icon: '✿' },
   finance:       { color: '#E0B36A', bg: '#2D2618', icon: '◈' },
@@ -228,26 +234,122 @@ function useChat() {
   return { messages, input, setInput, thinking, streaming, busy, send }
 }
 
-// ── Button styles ──────────────────────────────────────────────
-const btnPrimary = {
+// ── Button style factories (called each render so C reads current theme) ──
+const getBtnPrimary = () => ({
   background: C.warmDark, color: C.cream, border: 'none',
   padding: '7px 14px', borderRadius: 7, fontSize: 12.5, fontWeight: 600,
   cursor: 'pointer', letterSpacing: 0.2, fontFamily: 'inherit',
   transition: 'all 0.15s', boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
-}
-const btnGhost = {
+})
+const getBtnGhost = () => ({
   background: 'transparent', color: C.inkSoft,
   border: `1px solid ${C.border}`, padding: '7px 12px',
   borderRadius: 7, fontSize: 12.5, fontWeight: 500,
   cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
-}
-const fieldLabel = {
+})
+const getFieldLabel = () => ({
   display: 'block', fontSize: 11, fontWeight: 700, color: C.inkMute,
   letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 6,
+})
+
+// ── ThemeSwitcher ──────────────────────────────────────────────
+const THEME_META = {
+  'parchment-light': { dot: '#8B2E16', label: 'Parchment Light' },
+  'midnight-fern':   { dot: '#6A9E6A', label: 'Midnight Fern' },
+  'inkwash':         { dot: '#A0682A', label: 'Inkwash' },
+}
+function ThemeSwitcher({ theme, onTheme }) {
+  return (
+    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+      {Object.entries(THEME_META).map(([id, { dot, label }]) => (
+        <button
+          key={id}
+          title={label}
+          onClick={() => onTheme(id)}
+          style={{
+            width: 14, height: 14, borderRadius: '50%', background: dot, padding: 0,
+            border: theme === id ? `2px solid ${C.ink}` : '2px solid transparent',
+            outline: theme === id ? `2px solid ${dot}` : 'none',
+            outlineOffset: 2, cursor: 'pointer', transition: 'outline 0.15s',
+          }}
+        />
+      ))}
+    </div>
+  )
+}
+
+// ── MobileDrawer ───────────────────────────────────────────────
+function MobileDrawer({ open, onClose, tab, onTab, theme, onTheme }) {
+  const drawerTabs = APP_TABS
+
+  useEffect(() => {
+    if (!open) return
+    const fn = (e) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', fn)
+    return () => window.removeEventListener('keydown', fn)
+  }, [open, onClose])
+
+  return (
+    <>
+      <div
+        className={`heed-drawer-backdrop${open ? ' visible' : ''}`}
+        onClick={onClose}
+      />
+      <div
+        className={`heed-drawer${open ? ' open' : ''}`}
+        role="dialog"
+        aria-label="Navigation"
+        style={{ background: C.paper, borderLeft: `1px solid ${C.border}`, display: 'flex', flexDirection: 'column' }}
+      >
+        <div style={{ height: 64, borderBottom: `1px solid ${C.hairline}`, display: 'flex', alignItems: 'center', padding: '0 20px', justifyContent: 'space-between' }}>
+          <span style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 18, fontWeight: 700, color: C.warmDark }}>Heed</span>
+          <button onClick={onClose} aria-label="Close navigation" style={{ background: 'none', border: 'none', fontSize: 22, color: C.inkMute, cursor: 'pointer', padding: 4, lineHeight: 1 }}>×</button>
+        </div>
+
+        <div style={{ flex: 1, overflowY: 'auto' }}>
+          {drawerTabs.map(t => (
+            <button
+              key={t.id}
+              onClick={() => { onTab(t.id); onClose() }}
+              style={{
+                width: '100%', background: tab === t.id ? C.paperHi : 'transparent',
+                border: 'none', borderLeft: `3px solid ${tab === t.id ? C.warmDark : 'transparent'}`,
+                color: tab === t.id ? C.ink : C.inkSoft,
+                padding: '16px 24px', fontSize: 15, fontWeight: tab === t.id ? 600 : 400,
+                textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
+              }}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        <div style={{ padding: '20px 24px', borderTop: `1px solid ${C.hairline}` }}>
+          <div style={{ fontSize: 11, color: C.inkMute, letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 10, fontWeight: 700 }}>Theme</div>
+          <div style={{ display: 'flex', gap: 12 }}>
+            {Object.entries(THEME_META).map(([id, { dot, label }]) => (
+              <button
+                key={id}
+                title={label}
+                onClick={() => onTheme(id)}
+                style={{
+                  width: 20, height: 20, borderRadius: '50%', background: dot, padding: 0,
+                  border: theme === id ? `2px solid ${C.ink}` : '2px solid transparent',
+                  outline: theme === id ? `2px solid ${dot}` : 'none',
+                  outlineOffset: 2, cursor: 'pointer', transition: 'outline 0.15s',
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    </>
+  )
 }
 
 // ── MayaOwl ────────────────────────────────────────────────────
 function MayaOwl({ size = 120, mood = 'calm', speaking = false, idle = true }) {
+  const uid = React.useId().replace(/:/g, '')
   const [blinking, setBlinking] = useState(false)
   const [bob, setBob] = useState(0)
   useEffect(() => {
@@ -262,68 +364,111 @@ function MayaOwl({ size = 120, mood = 'calm', speaking = false, idle = true }) {
     const id = setInterval(() => setBob(b => (b + 1) % 360), 60)
     return () => clearInterval(id)
   }, [idle])
+
+  const oc = OWL_THEMES[themeState.current]
   const eyeOpenY = blinking ? 0.05 : (mood === 'thinking' ? 0.7 : 1)
   const beakTilt = mood === 'thinking' ? -3 : (mood === 'happy' ? 4 : 0)
   const bobY = idle ? Math.sin(bob * Math.PI / 180) * 1.5 : 0
+
   return (
     <div style={{ display: 'inline-block', position: 'relative' }}>
-      <svg width={size} height={size} viewBox="0 0 200 200" style={{
+      <svg width={size} height={Math.round(size * 1.25)} viewBox="0 0 200 250" style={{
         transition: 'transform 0.4s cubic-bezier(0.34,1.56,0.64,1)',
         transform: `translateY(${speaking ? -2 + bobY : bobY}px) scale(${speaking ? 1.02 : 1})`,
+        overflow: 'visible',
       }}>
         <defs>
-          <filter id="owlShadow" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
+          <filter id={`${uid}-glow`} x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur in="SourceAlpha" stdDeviation="2.5"/>
             <feOffset dx="0" dy="3" result="offsetblur"/>
-            <feComponentTransfer><feFuncA type="linear" slope="0.35"/></feComponentTransfer>
+            <feComponentTransfer><feFuncA type="linear" slope="0.2"/></feComponentTransfer>
             <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
           </filter>
-          <radialGradient id="bodyGrad" cx="40%" cy="35%">
-            <stop offset="0%" stopColor="#9A7048"/>
-            <stop offset="60%" stopColor="#6E4A30"/>
-            <stop offset="100%" stopColor="#4A301F"/>
-          </radialGradient>
-          <radialGradient id="bellyGrad" cx="50%" cy="40%">
-            <stop offset="0%" stopColor="#C9B68C"/>
-            <stop offset="100%" stopColor="#9C8862"/>
-          </radialGradient>
         </defs>
-        <ellipse cx="100" cy="115" rx="68" ry="72" fill="url(#bodyGrad)" filter="url(#owlShadow)"/>
-        <ellipse cx="100" cy="130" rx="45" ry="52" fill="url(#bellyGrad)"/>
-        <g opacity="0.35" fill="#D4A24C">
-          {[[85,115],[100,110],[115,115],[92,130],[108,130],[85,145],[100,148],[115,145],[92,160],[108,160]].map(([x,y],i)=>(
-            <circle key={i} cx={x} cy={y} r="1.2"/>
+
+        {/* Branch */}
+        <path d="M 15 210 Q 60 205 100 208 Q 140 211 185 208"
+          stroke={oc.beak} strokeWidth="8" fill="none" strokeLinecap="round" opacity="0.65"/>
+        {/* Bark texture on branch */}
+        <path d="M 40 208 Q 60 205 80 208" stroke={oc.beak} strokeWidth="2" fill="none" opacity="0.3" strokeLinecap="round"/>
+        <path d="M 110 208 Q 135 205 155 209" stroke={oc.beak} strokeWidth="2" fill="none" opacity="0.3" strokeLinecap="round"/>
+
+        {/* Branch leaves */}
+        <ellipse cx="28" cy="202" rx="16" ry="6" fill={oc.tuft} opacity="0.7" transform="rotate(-25 28 202)"/>
+        <ellipse cx="50" cy="199" rx="13" ry="5" fill={oc.tuft} opacity="0.5" transform="rotate(10 50 199)"/>
+        <ellipse cx="155" cy="200" rx="15" ry="5.5" fill={oc.tuft} opacity="0.65" transform="rotate(-12 155 200)"/>
+        <ellipse cx="175" cy="203" rx="12" ry="4.5" fill={oc.tuft} opacity="0.5" transform="rotate(18 175 203)"/>
+
+        {/* Body */}
+        <ellipse cx="100" cy="140" rx="58" ry="65" fill={oc.body} filter={`url(#${uid}-glow)`}/>
+
+        {/* Wing left */}
+        <path d="M 44 125 Q 34 155 52 192 Q 60 168 66 138 Z" fill={oc.body} opacity="0.88"/>
+        {/* Wing right */}
+        <path d="M 156 125 Q 166 155 148 192 Q 140 168 134 138 Z" fill={oc.body} opacity="0.88"/>
+
+        {/* Belly patch */}
+        <ellipse cx="100" cy="155" rx="36" ry="46" fill={oc.eyeRing} opacity="0.35"/>
+
+        {/* Belly scallop dots */}
+        <g opacity="0.45" fill={oc.beak}>
+          {[[87,138],[100,132],[113,138],[91,152],[109,152],[87,166],[100,170],[113,166],[91,180],[109,180]].map(([x,y],i) => (
+            <circle key={i} cx={x} cy={y} r="1.3"/>
           ))}
         </g>
-        <path d="M 38 100 Q 30 130 48 165 Q 55 145 60 115 Z" fill="#3A2616" opacity="0.9"/>
-        <path d="M 162 100 Q 170 130 152 165 Q 145 145 140 115 Z" fill="#3A2616" opacity="0.9"/>
-        <path d="M 65 60 Q 60 38 72 30 Q 78 48 78 62 Z" fill="#4A301F"/>
-        <path d="M 135 60 Q 140 38 128 30 Q 122 48 122 62 Z" fill="#4A301F"/>
-        <ellipse cx="100" cy="78" rx="52" ry="48" fill="#9C8862"/>
-        <circle cx="78" cy="78" r="20" fill="#E8DCB8" stroke="#3A2616" strokeWidth="2"/>
-        <circle cx="122" cy="78" r="20" fill="#E8DCB8" stroke="#3A2616" strokeWidth="2"/>
+
+        {/* Ear tufts */}
+        <path d="M 72 82 Q 66 58 79 50 Q 85 68 85 83 Z" fill={oc.tuft}/>
+        <path d="M 128 82 Q 134 58 121 50 Q 115 68 115 83 Z" fill={oc.tuft}/>
+
+        {/* Face disk */}
+        <ellipse cx="100" cy="102" rx="44" ry="42" fill={oc.eyeRing} opacity="0.22"/>
+
+        {/* Eye rings */}
+        <circle cx="78" cy="100" r="20" fill={oc.eyeRing} stroke={oc.body} strokeWidth="2.5"/>
+        <circle cx="122" cy="100" r="20" fill={oc.eyeRing} stroke={oc.body} strokeWidth="2.5"/>
+
+        {/* Left eye pupil + highlight */}
         <g style={{ transition: 'transform 0.12s ease-out' }}>
-          <ellipse cx="78" cy="78" rx="10" ry={10 * eyeOpenY} fill="#0F1419"/>
-          {!blinking && (<><circle cx="80" cy="74" r="3.5" fill="#F5EDD8"/><circle cx="76" cy="80" r="1.5" fill="#F5EDD8" opacity="0.6"/></>)}
+          <ellipse cx="78" cy="100" rx="10" ry={10 * eyeOpenY} fill={oc.pupil}/>
+          {!blinking && (
+            <>
+              <circle cx="80" cy="96" r="3.5" fill={oc.eyeRing} opacity="0.65"/>
+              <circle cx="76" cy="103" r="1.5" fill={oc.eyeRing} opacity="0.35"/>
+            </>
+          )}
         </g>
+        {/* Right eye pupil + highlight */}
         <g style={{ transition: 'transform 0.12s ease-out' }}>
-          <ellipse cx="122" cy="78" rx="10" ry={10 * eyeOpenY} fill="#0F1419"/>
-          {!blinking && (<><circle cx="124" cy="74" r="3.5" fill="#F5EDD8"/><circle cx="120" cy="80" r="1.5" fill="#F5EDD8" opacity="0.6"/></>)}
+          <ellipse cx="122" cy="100" rx="10" ry={10 * eyeOpenY} fill={oc.pupil}/>
+          {!blinking && (
+            <>
+              <circle cx="124" cy="96" r="3.5" fill={oc.eyeRing} opacity="0.65"/>
+              <circle cx="120" cy="103" r="1.5" fill={oc.eyeRing} opacity="0.35"/>
+            </>
+          )}
         </g>
-        <g transform={`rotate(${beakTilt} 100 95)`}>
-          <path d="M 100 92 L 92 102 Q 100 108 108 102 Z" fill="#B8924E" stroke="#3A2616" strokeWidth="1.2"/>
+
+        {/* Beak */}
+        <g transform={`rotate(${beakTilt} 100 116)`}>
+          <path d="M 100 113 L 92 124 Q 100 130 108 124 Z" fill={oc.beak} stroke={oc.body} strokeWidth="1.2"/>
         </g>
-        <ellipse cx="68" cy="95" rx="5" ry="3" fill="#D9907F" opacity="0.35"/>
-        <ellipse cx="132" cy="95" rx="5" ry="3" fill="#D9907F" opacity="0.35"/>
-        <g fill="#B8924E" stroke="#3A2616" strokeWidth="1">
-          <path d="M 86 178 L 82 188 M 90 178 L 90 190 M 94 178 L 98 188" strokeLinecap="round"/>
-          <path d="M 106 178 L 102 188 M 110 178 L 110 190 M 114 178 L 118 188" strokeLinecap="round"/>
+
+        {/* Cheek blush */}
+        <ellipse cx="62" cy="116" rx="7" ry="5" fill={oc.cheek} opacity="0.2"/>
+        <ellipse cx="138" cy="116" rx="7" ry="5" fill={oc.cheek} opacity="0.2"/>
+
+        {/* Talons gripping branch */}
+        <g fill="none" stroke={oc.beak} strokeWidth="1.8" strokeLinecap="round" opacity="0.85">
+          <path d="M 82 197 L 78 210 M 87 197 L 86 212 M 92 197 L 96 210"/>
+          <path d="M 108 197 L 104 210 M 113 197 L 113 212 M 118 197 L 122 210"/>
         </g>
       </svg>
+
       {speaking && (
         <span style={{
-          position: 'absolute', bottom: -2, left: '50%', transform: 'translateX(-50%)',
-          width: 8, height: 8, borderRadius: '50%', background: '#8FB89A',
+          position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)',
+          width: 8, height: 8, borderRadius: '50%', background: C.sage,
           animation: 'heed-pulse 1s ease-in-out infinite',
         }}/>
       )}
@@ -363,9 +508,54 @@ function CategoryBadge({ category }) {
   )
 }
 
-function SectionHeader({ children, count, accent = C.warmDark }) {
+// ── BotanicalDivider ───────────────────────────────────────────
+function BotanicalDivider({ type = 'leaf' }) {
+  const color = C.inkMute
+  if (type === 'stem') {
+    return (
+      <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true" style={{ flexShrink: 0 }}>
+        <line x1="11" y1="2" x2="11" y2="20" stroke={color} strokeWidth="1.3"/>
+        <ellipse cx="5" cy="9" rx="6" ry="2.5" fill={color} opacity="0.55" transform="rotate(-20 5 9)"/>
+        <ellipse cx="17" cy="13" rx="6" ry="2.5" fill={color} opacity="0.45" transform="rotate(20 17 13)"/>
+        <ellipse cx="4" cy="16" rx="5" ry="2" fill={color} opacity="0.35" transform="rotate(-25 4 16)"/>
+      </svg>
+    )
+  }
+  if (type === 'berry') {
+    return (
+      <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true" style={{ flexShrink: 0 }}>
+        <path d="M 2 11 Q 11 7 20 11" stroke={color} strokeWidth="1.3" fill="none"/>
+        {[5, 11, 17].map((x) => {
+          const t = (x - 2) / 18
+          const pathY = Math.pow(1-t,2)*11 + 2*(1-t)*t*7 + Math.pow(t,2)*11
+          return <circle key={x} cx={x} cy={pathY + 3} r="2.2" fill={color} opacity="0.55"/>
+        })}
+      </svg>
+    )
+  }
+  if (type === 'thorn') {
+    return (
+      <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true" style={{ flexShrink: 0 }}>
+        <line x1="2" y1="11" x2="20" y2="11" stroke={color} strokeWidth="1.3"/>
+        <path d="M 7 11 L 5 7" stroke={color} strokeWidth="1.3" strokeLinecap="round"/>
+        <path d="M 15 11 L 17 7" stroke={color} strokeWidth="1.3" strokeLinecap="round"/>
+      </svg>
+    )
+  }
   return (
-    <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 14 }}>
+    <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true" style={{ flexShrink: 0 }}>
+      <path d="M 2 11 Q 11 7 20 11" stroke={color} strokeWidth="1.3" fill="none"/>
+      <ellipse cx="6"  cy="9"  rx="5" ry="2.2" fill={color} opacity="0.5" transform="rotate(-15 6 9)"/>
+      <ellipse cx="11" cy="7"  rx="5" ry="2.2" fill={color} opacity="0.4"/>
+      <ellipse cx="16" cy="9"  rx="5" ry="2.2" fill={color} opacity="0.5" transform="rotate(15 16 9)"/>
+    </svg>
+  )
+}
+
+function SectionHeader({ children, count, accent = C.warmDark, motif }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+      {motif && <BotanicalDivider type={motif}/>}
       <h3 style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 19, fontWeight: 600, color: accent, margin: 0, letterSpacing: -0.3 }}>{children}</h3>
       {count !== undefined && (
         <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, letterSpacing: 0.6, textTransform: 'uppercase' }}>
@@ -441,8 +631,8 @@ function HeroCard({ task, onMarkDone, onSkip }) {
         </div>
       </div>
       <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
-        <button style={btnPrimary} onClick={() => onMarkDone && onMarkDone(task)}>Mark done</button>
-        <button style={btnGhost} onClick={() => onSkip && onSkip(task)}>Skip</button>
+        <button style={getBtnPrimary()} onClick={() => onMarkDone && onMarkDone(task.id)}>Mark done</button>
+        <button style={getBtnGhost()} onClick={() => onSkip && onSkip(task.id)}>Skip</button>
       </div>
     </div>
   )
@@ -493,8 +683,8 @@ function TaskCard({ task, delay = 0, onMarkDone, onSkip }) {
       </div>
       {hover && (
         <div style={{ marginTop: 10, display: 'flex', gap: 6, animation: 'heed-fadeIn 0.2s ease' }}>
-          <button style={btnPrimary} onClick={() => onMarkDone && onMarkDone(task)}>Mark done</button>
-          <button style={btnGhost} onClick={() => onSkip && onSkip(task)}>Skip</button>
+          <button style={getBtnPrimary()} onClick={() => onMarkDone && onMarkDone(task.id)}>Mark done</button>
+          <button style={getBtnGhost()} onClick={() => onSkip && onSkip(task.id)}>Skip</button>
         </div>
       )}
     </div>
@@ -595,9 +785,9 @@ function RoutineCard({ routine, delay = 0, onMarkDone, onLighten, onEdit }) {
         </div>
       )}
       <div style={{ marginTop: 12, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-        <button style={btnPrimary} onClick={() => onMarkDone && onMarkDone(routine.id)}>Mark today done</button>
-        {isAttentionWorthy && <button style={{ ...btnPrimary, background: C.ochre, color: C.warmDeep }} onClick={() => onLighten && onLighten(routine.id)}>Lighten this week</button>}
-        <button style={btnGhost} onClick={() => onEdit && onEdit(routine)}>Edit</button>
+        <button style={getBtnPrimary()} onClick={() => onMarkDone && onMarkDone(routine.id)}>Mark today done</button>
+        {isAttentionWorthy && <button style={{ ...getBtnPrimary(), background: C.ochre, color: C.warmDeep }} onClick={() => onLighten && onLighten(routine.id)}>Lighten this week</button>}
+        <button style={getBtnGhost()} onClick={() => onEdit && onEdit(routine)}>Edit</button>
       </div>
     </div>
   )
@@ -636,7 +826,7 @@ function ContextBanner({ upcomingContexts, onAskHeed }) {
         {ctx.plan && (
           <button
             onClick={() => setPlanExpanded(e => !e)}
-            style={{ ...btnGhost, fontSize: 12, whiteSpace: 'nowrap', color: planExpanded ? C.warmDark : C.inkSoft, borderColor: planExpanded ? `${C.ochre}44` : C.border }}
+            style={{ ...getBtnGhost(), fontSize: 12, whiteSpace: 'nowrap', color: planExpanded ? C.warmDark : C.inkSoft, borderColor: planExpanded ? `${C.ochre}44` : C.border }}
           >
             {planExpanded ? 'Hide plan ↑' : 'See plan →'}
           </button>
@@ -709,23 +899,23 @@ function TodayTab({ tasks, routines, upcomingContexts, onMarkDone, onSkip, onMar
   return (
     <div>
       <ContextBanner upcomingContexts={upcomingContexts} onAskHeed={onAskHeed}/>
-      <SectionHeader>Top of mind</SectionHeader>
+      <SectionHeader motif="leaf">Top of mind</SectionHeader>
       {heroTask ? <HeroCard task={heroTask} onMarkDone={onMarkDone} onSkip={onSkip}/> : (
         <div style={{ fontSize: 13.5, color: C.inkMute, fontStyle: 'italic', padding: '12px 0' }}>Nothing critical right now. Nice.</div>
       )}
       <div style={{ marginTop: 28 }}>
-        <SectionHeader count={routines.length}>Routines</SectionHeader>
+        <SectionHeader motif="stem" count={routines.length}>Routines</SectionHeader>
         {routines.map((r, i) => <RoutineCard key={r.id} routine={r} delay={i * 80} onMarkDone={onMarkRoutineDone} onLighten={onLightenRoutine} onEdit={onEditRoutine}/>)}
       </div>
       {otherOverdue.length > 0 && (
         <div style={{ marginTop: 28 }}>
-          <SectionHeader count={otherOverdue.length}>Also overdue</SectionHeader>
+          <SectionHeader motif="thorn" count={otherOverdue.length}>Also overdue</SectionHeader>
           {otherOverdue.map((t, i) => <TaskCard key={t.id} task={t} delay={i * 50} onMarkDone={onMarkDone} onSkip={onSkip}/>)}
         </div>
       )}
       {upcoming.length > 0 && (
         <div style={{ marginTop: 28 }}>
-          <SectionHeader count={upcoming.length}>Coming up</SectionHeader>
+          <SectionHeader motif="berry" count={upcoming.length}>Coming up</SectionHeader>
           {upcoming.map((t, i) => <TaskCard key={t.id} task={t} delay={i * 50} onMarkDone={onMarkDone} onSkip={onSkip}/>)}
         </div>
       )}
@@ -814,7 +1004,7 @@ function AskTab({ prefill = '' }) {
           onFocus={e => { e.target.style.borderColor = C.warmDark }}
           onBlur={e => { e.target.style.borderColor = C.border }}
         />
-        <button onClick={() => send(input)} disabled={busy || !input.trim()} style={{ ...btnPrimary, padding: '12px 22px', fontSize: 13, opacity: (busy || !input.trim()) ? 0.5 : 1 }}>Send</button>
+        <button onClick={() => send(input)} disabled={busy || !input.trim()} style={{ ...getBtnPrimary(), padding: '12px 22px', fontSize: 13, opacity: (busy || !input.trim()) ? 0.5 : 1 }}>Send</button>
       </div>
     </div>
   )
@@ -889,7 +1079,7 @@ function ContextTab({ upcoming, active, onAddContext }) {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
         <SectionHeader>Context windows</SectionHeader>
-        <button onClick={onAddContext} style={btnPrimary}>+ Add context</button>
+        <button onClick={onAddContext} style={getBtnPrimary()}>+ Add context</button>
       </div>
       <div style={{ background: C.paper, border: `1px solid ${C.border}`, borderRadius: 14, padding: 18, marginBottom: 16, boxShadow: C.shadowSoft }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: C.sage, letterSpacing: 0.8, marginBottom: 12, textTransform: 'uppercase' }}>Upcoming</div>
@@ -966,9 +1156,9 @@ function CalendarTab() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18, gap: 12, flexWrap: 'wrap' }}>
         <SectionHeader>{fmtMonth(weekStart)}</SectionHeader>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <button onClick={() => setWeekOffset(o => o - 1)} style={{ ...btnGhost, padding: '6px 12px', fontSize: 13 }}>‹ Previous</button>
-          <button onClick={() => setWeekOffset(0)} style={{ ...btnGhost, padding: '6px 12px', fontSize: 13, background: weekOffset === 0 ? C.bellySoft : 'transparent', borderColor: weekOffset === 0 ? C.warmDark + '66' : C.border, color: weekOffset === 0 ? C.warmDark : C.inkSoft, fontWeight: weekOffset === 0 ? 600 : 500 }}>This week</button>
-          <button onClick={() => setWeekOffset(o => o + 1)} style={{ ...btnGhost, padding: '6px 12px', fontSize: 13 }}>Next ›</button>
+          <button onClick={() => setWeekOffset(o => o - 1)} style={{ ...getBtnGhost(), padding: '6px 12px', fontSize: 13 }}>‹ Previous</button>
+          <button onClick={() => setWeekOffset(0)} style={{ ...getBtnGhost(), padding: '6px 12px', fontSize: 13, background: weekOffset === 0 ? C.bellySoft : 'transparent', borderColor: weekOffset === 0 ? C.warmDark + '66' : C.border, color: weekOffset === 0 ? C.warmDark : C.inkSoft, fontWeight: weekOffset === 0 ? 600 : 500 }}>This week</button>
+          <button onClick={() => setWeekOffset(o => o + 1)} style={{ ...getBtnGhost(), padding: '6px 12px', fontSize: 13 }}>Next ›</button>
         </div>
       </div>
       <div style={{ background: `linear-gradient(120deg, ${C.bellySoft} 0%, ${C.ochreSoft}88 100%)`, border: `1px solid ${C.border}`, borderRadius: 12, padding: '12px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12, animation: 'heed-fadeUp 0.4s ease' }}>
@@ -1132,7 +1322,7 @@ function AskInlineModal({ open, onClose }) {
               style={{ flex: 1, background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '10px 14px', fontSize: 14, color: C.ink, outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.15s' }}
               onFocus={e => { e.target.style.borderColor = C.warmDark }} onBlur={e => { e.target.style.borderColor = C.border }}
             />
-            <button onClick={() => send(input)} disabled={busy || !input.trim()} style={{ ...btnPrimary, padding: '10px 18px', fontSize: 13, opacity: (busy || !input.trim()) ? 0.5 : 1 }}>Send</button>
+            <button onClick={() => send(input)} disabled={busy || !input.trim()} style={{ ...getBtnPrimary(), padding: '10px 18px', fontSize: 13, opacity: (busy || !input.trim()) ? 0.5 : 1 }}>Send</button>
           </div>
         </div>
       </div>
@@ -1176,14 +1366,14 @@ function AddTaskModal({ open, onClose, onSubmit }) {
             <button onClick={onClose} aria-label="Close" style={{ background: 'transparent', border: 'none', color: C.inkMute, cursor: 'pointer', fontSize: 20, padding: 4, lineHeight: 1, fontFamily: 'inherit' }}>×</button>
           </div>
           <div style={{ marginBottom: 14 }}>
-            <label style={fieldLabel}>Task name</label>
+            <label style={getFieldLabel()}>Task name</label>
             <input ref={inputRef} value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === 'Enter' && submit()} placeholder="e.g. Clean the aircon filter"
               style={{ width: '100%', boxSizing: 'border-box', background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '10px 14px', fontSize: 14, color: C.ink, outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.15s' }}
               onFocus={e => { e.target.style.borderColor = C.warmDark }} onBlur={e => { e.target.style.borderColor = C.border }}
             />
           </div>
           <div style={{ marginBottom: 14 }}>
-            <label style={fieldLabel}>Category</label>
+            <label style={getFieldLabel()}>Category</label>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {Object.keys(CATEGORY).map(cat => (
                 <button key={cat} onClick={() => setCategory(cat)} style={{ background: category === cat ? CATEGORY[cat].bg : C.paper, color: category === cat ? CATEGORY[cat].color : C.inkSoft, border: `1.5px solid ${category === cat ? CATEGORY[cat].color : C.border}`, padding: '6px 12px', borderRadius: 999, fontSize: 12, fontWeight: 600, cursor: 'pointer', textTransform: 'capitalize', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.15s' }}>
@@ -1193,7 +1383,7 @@ function AddTaskModal({ open, onClose, onSubmit }) {
             </div>
           </div>
           <div style={{ marginBottom: 14 }}>
-            <label style={fieldLabel}>How important?</label>
+            <label style={getFieldLabel()}>How important?</label>
             <div style={{ display: 'flex', gap: 6 }}>
               {[{v:'low',label:'Low',tone:C.sage},{v:'medium',label:'Medium',tone:C.ochre},{v:'high',label:'High',tone:C.rust}].map(({v,label,tone}) => (
                 <button key={v} onClick={() => setImportance(v)} style={{ flex: 1, background: importance === v ? tone : C.paper, color: importance === v ? C.cream : C.inkSoft, border: `1.5px solid ${importance === v ? tone : C.border}`, padding: '8px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}>{label}</button>
@@ -1201,7 +1391,7 @@ function AddTaskModal({ open, onClose, onSubmit }) {
             </div>
           </div>
           <div style={{ marginBottom: 18 }}>
-            <label style={fieldLabel}>How often?</label>
+            <label style={getFieldLabel()}>How often?</label>
             <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
               <button onClick={() => setCadenceMode('learn')} style={{ flex: 1, background: cadenceMode === 'learn' ? C.bellySoft : C.paper, color: cadenceMode === 'learn' ? C.warmDark : C.inkSoft, border: `1.5px solid ${cadenceMode === 'learn' ? C.warmDark + '66' : C.border}`, padding: '8px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, transition: 'all 0.15s' }}>
                 <span style={{ color: C.sage }}>✨</span>Let Heed learn it
@@ -1222,8 +1412,8 @@ function AddTaskModal({ open, onClose, onSubmit }) {
             )}
           </div>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            <button onClick={onClose} style={btnGhost}>Cancel</button>
-            <button onClick={submit} disabled={!name.trim()} style={{ ...btnPrimary, padding: '8px 18px', opacity: name.trim() ? 1 : 0.5, cursor: name.trim() ? 'pointer' : 'not-allowed' }}>Add task</button>
+            <button onClick={onClose} style={getBtnGhost()}>Cancel</button>
+            <button onClick={submit} disabled={!name.trim()} style={{ ...getBtnPrimary(), padding: '8px 18px', opacity: name.trim() ? 1 : 0.5, cursor: name.trim() ? 'pointer' : 'not-allowed' }}>Add task</button>
           </div>
         </div>
       </div>
@@ -1275,7 +1465,7 @@ function AddContextModal({ open, onClose, onSubmit }) {
             <button onClick={onClose} aria-label="Close" style={{ background: 'transparent', border: 'none', color: C.inkMute, cursor: 'pointer', fontSize: 20, padding: 4, lineHeight: 1, fontFamily: 'inherit' }}>×</button>
           </div>
           <div style={{ marginBottom: 14 }}>
-            <label style={fieldLabel}>Type</label>
+            <label style={getFieldLabel()}>Type</label>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {typeOptions.map(({v,label,icon,tone}) => (
                 <button key={v} onClick={() => setType(v)} style={{ flex: 1, minWidth: 100, background: type === v ? tone : C.paper, color: type === v ? C.cream : C.inkSoft, border: `1.5px solid ${type === v ? tone : C.border}`, padding: '8px 10px', borderRadius: 8, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'all 0.15s' }}>
@@ -1285,7 +1475,7 @@ function AddContextModal({ open, onClose, onSubmit }) {
             </div>
           </div>
           <div style={{ marginBottom: 14 }}>
-            <label style={fieldLabel}>What's happening?</label>
+            <label style={getFieldLabel()}>What's happening?</label>
             <input ref={descRef} value={description} onChange={e => setDescription(e.target.value)} onKeyDown={e => e.key === 'Enter' && isValid && submit()}
               placeholder={type==='travel'?"e.g. Singapore for DEF CON":type==='illness'?"e.g. Flu, taking it easy":type==='busy'?"e.g. Client deadline week":"e.g. Tita's 60th birthday weekend"}
               style={inputStyle} onFocus={e=>{e.target.style.borderColor=C.warmDark}} onBlur={e=>{e.target.style.borderColor=C.border}}
@@ -1293,17 +1483,17 @@ function AddContextModal({ open, onClose, onSubmit }) {
           </div>
           <div style={{ marginBottom: 18, display: 'flex', gap: 10 }}>
             <div style={{ flex: 1 }}>
-              <label style={fieldLabel}>From</label>
+              <label style={getFieldLabel()}>From</label>
               <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={{ ...inputStyle, colorScheme: 'dark' }}/>
             </div>
             <div style={{ flex: 1 }}>
-              <label style={fieldLabel}>To</label>
+              <label style={getFieldLabel()}>To</label>
               <input type="date" value={endDate} min={startDate || undefined} onChange={e => setEndDate(e.target.value)} style={{ ...inputStyle, colorScheme: 'dark' }}/>
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            <button onClick={onClose} style={btnGhost}>Cancel</button>
-            <button onClick={submit} disabled={!isValid} style={{ ...btnPrimary, padding: '8px 18px', opacity: isValid ? 1 : 0.5, cursor: isValid ? 'pointer' : 'not-allowed' }}>Add context</button>
+            <button onClick={onClose} style={getBtnGhost()}>Cancel</button>
+            <button onClick={submit} disabled={!isValid} style={{ ...getBtnPrimary(), padding: '8px 18px', opacity: isValid ? 1 : 0.5, cursor: isValid ? 'pointer' : 'not-allowed' }}>Add context</button>
           </div>
         </div>
       </div>
@@ -1363,14 +1553,14 @@ function AddRoutineModal({ open, onClose, onSubmit, initialData = null }) {
           </div>
           <div style={{ flex: 1, overflowY: 'auto' }}>
             <div style={{ marginBottom: 14 }}>
-              <label style={fieldLabel}>Routine name</label>
+              <label style={getFieldLabel()}>Routine name</label>
               <input ref={nameRef} value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Morning routine, Sunday reset"
                 style={{ width: '100%', boxSizing: 'border-box', background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '10px 14px', fontSize: 14, color: C.ink, outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.15s' }}
                 onFocus={e=>{e.target.style.borderColor=C.warmDark}} onBlur={e=>{e.target.style.borderColor=C.border}}
               />
             </div>
             <div style={{ marginBottom: 14 }}>
-              <label style={fieldLabel}>Items in this routine</label>
+              <label style={getFieldLabel()}>Items in this routine</label>
               {items.map((item, idx) => (
                 <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
                   <input value={item.name} onChange={e => updateItem(item.id, e.target.value)} placeholder={`Item ${idx+1} (e.g. ${['Stretch 5 min','Vitamins','Read 10 pages'][idx]||'...'})`} style={inputStyle}/>
@@ -1384,8 +1574,8 @@ function AddRoutineModal({ open, onClose, onSubmit, initialData = null }) {
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 12, borderTop: `1px solid ${C.hairline}`, flexShrink: 0 }}>
-            <button onClick={onClose} style={btnGhost}>Cancel</button>
-            <button onClick={submit} disabled={!name.trim()||items.every(i=>!i.name.trim())} style={{ ...btnPrimary, padding: '8px 18px', opacity: (name.trim()&&items.some(i=>i.name.trim())) ? 1 : 0.5, cursor: (name.trim()&&items.some(i=>i.name.trim())) ? 'pointer' : 'not-allowed' }}>{initialData ? 'Save changes' : 'Build routine'}</button>
+            <button onClick={onClose} style={getBtnGhost()}>Cancel</button>
+            <button onClick={submit} disabled={!name.trim()||items.every(i=>!i.name.trim())} style={{ ...getBtnPrimary(), padding: '8px 18px', opacity: (name.trim()&&items.some(i=>i.name.trim())) ? 1 : 0.5, cursor: (name.trim()&&items.some(i=>i.name.trim())) ? 'pointer' : 'not-allowed' }}>{initialData ? 'Save changes' : 'Build routine'}</button>
           </div>
         </div>
       </div>
@@ -1423,8 +1613,19 @@ export default function HeedApp() {
   const [dismissedIds, setDismissedIds] = useState(new Set())
   const [routines, setRoutines] = useState(ROUTINES)
   const [tab, setTab] = useState('today')
+  const [theme, setTheme] = useState(() => {
+    if (typeof window !== 'undefined') return localStorage.getItem('heed-theme') || DEFAULT_THEME
+    return DEFAULT_THEME
+  })
+  // Sync themeState before render so all C.xxx reads get the right palette
+  setThemeState(theme)
+  const handleSetTheme = useCallback((name) => setTheme(name), [])
+  useEffect(() => {
+    if (typeof window !== 'undefined') localStorage.setItem('heed-theme', theme)
+  }, [theme])
   const [toast, setToast] = useState(null)
   const [askPrefill, setAskPrefill] = useState('')
+  const [drawerOpen, setDrawerOpen] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
   const [askOpen, setAskOpen] = useState(false)
   const [routineModalOpen, setRoutineModalOpen] = useState(false)
@@ -1558,7 +1759,6 @@ export default function HeedApp() {
   const handleLightenRoutine = useCallback((routineId) => {
     setRoutines(rs => rs.map(r => {
       if (r.id !== routineId) return r
-      // Keep the first half as core; make the rest optional this week
       const keepCount = Math.ceil(r.items.length / 2)
       return { ...r, suggestion: null, insight: 'Lightened for this week.', lightenedItems: r.items.slice(keepCount) }
     }))
@@ -1570,13 +1770,7 @@ export default function HeedApp() {
     setRoutineModalOpen(true)
   }, [])
 
-  const tabs = [
-    { id: 'today', label: 'Today' },
-    { id: 'calendar', label: 'Calendar' },
-    { id: 'ask', label: 'Ask Heed' },
-    { id: 'tracks', label: 'Tracks' },
-    { id: 'context', label: 'Context' },
-  ]
+  const tabs = APP_TABS
 
   const todayStr = TODAY_DATE.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
 
@@ -1592,26 +1786,34 @@ export default function HeedApp() {
         @keyframes heed-bob { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-2px); } }
         @keyframes heed-slideUp { from { opacity:0; transform:translateY(40px); } to { opacity:1; transform:translateY(0); } }
         @keyframes heed-slideRight { from { opacity:0; transform:translateX(20px); } to { opacity:1; transform:translateX(0); } }
+        @keyframes heed-slideIn { from { transform:translateX(100%); } to { transform:translateX(0); } }
         ::selection { background:${C.warmDark}; color:${C.cream}; }
         * { box-sizing: border-box; }
         body { margin: 0; }
       `}</style>
 
-      <header style={{ borderBottom: `1px solid ${C.hairline}`, padding: '20px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: `linear-gradient(180deg, ${C.paperHi} 0%, ${C.paper} 100%)`, position: 'sticky', top: 0, zIndex: 10, backdropFilter: 'blur(8px)' }}>
+      <header className="heed-header" style={{ borderBottom: `1px solid ${C.hairline}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: `linear-gradient(180deg, ${C.paperHi} 0%, ${C.paper} 100%)`, position: 'sticky', top: 0, zIndex: 10, backdropFilter: 'blur(8px)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <MayaOwl size={48}/>
+          <MayaOwl size={40}/>
           <div>
-            <div style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 26, fontWeight: 700, color: C.warmDark, letterSpacing: -0.7, lineHeight: 1 }}>Heed</div>
-            <div style={{ fontSize: 11.5, color: C.inkMute, fontStyle: 'italic', marginTop: 3, letterSpacing: 0.2 }}>The agent that remembers what you forget.</div>
+            <div style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 24, fontWeight: 700, color: C.warmDark, letterSpacing: -0.7, lineHeight: 1 }}>Heed</div>
+            <div className="heed-header-subtitle" style={{ fontSize: 11.5, color: C.inkMute, fontStyle: 'italic', marginTop: 3, letterSpacing: 0.2 }}>The agent that remembers what you forget.</div>
           </div>
         </div>
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: 13, color: C.inkSoft, fontWeight: 500 }}>{todayStr}</div>
-          <div style={{ fontSize: 11.5, color: C.inkMute, marginTop: 2 }}>Hi, Maya 👋</div>
+        <div className="heed-tab-name" style={{ fontSize: 14, fontWeight: 600, color: C.ink }}>
+          {tabs.find(t => t.id === tab)?.label}
         </div>
+        <div className="heed-header-date" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <ThemeSwitcher theme={theme} onTheme={handleSetTheme}/>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: 13, color: C.inkSoft, fontWeight: 500 }}>{todayStr}</div>
+            <div style={{ fontSize: 11.5, color: C.inkMute, marginTop: 2 }}>Hi, Maya 👋</div>
+          </div>
+        </div>
+        <button className="heed-hamburger" onClick={() => setDrawerOpen(true)} style={{ color: C.ink, fontSize: 22 }}>☰</button>
       </header>
 
-      <nav style={{ display: 'flex', gap: 4, padding: '0 32px', borderBottom: `1px solid ${C.hairline}`, background: C.paper }}>
+      <nav className="heed-nav" style={{ display: 'flex', gap: 4, padding: '0 32px', borderBottom: `1px solid ${C.hairline}`, background: C.paper }}>
         {tabs.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)} style={{ background: 'transparent', border: 'none', padding: '14px 20px', fontSize: 14, fontWeight: tab === t.id ? 700 : 500, color: tab === t.id ? C.warmDark : C.inkMute, cursor: 'pointer', borderBottom: `2px solid ${tab === t.id ? C.warmDark : 'transparent'}`, marginBottom: -1, fontFamily: 'inherit', transition: 'color 0.15s' }}>
             {t.label}
@@ -1619,7 +1821,16 @@ export default function HeedApp() {
         ))}
       </nav>
 
-      <main style={{ maxWidth: 820, margin: '0 auto', padding: '28px 32px 100px 32px', minHeight: 'calc(100vh - 140px)', display: 'flex', flexDirection: 'column' }}>
+      <MobileDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        tab={tab}
+        onTab={setTab}
+        theme={theme}
+        onTheme={handleSetTheme}
+      />
+
+      <main className="heed-main" style={{ maxWidth: 820, margin: '0 auto', padding: '28px 32px 100px 32px', minHeight: 'calc(100vh - 140px)', display: 'flex', flexDirection: 'column' }}>
         {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} upcomingContexts={upcomingContexts} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAskHeed={handleAskHeed}/>}
         {tab === 'calendar' && <CalendarTab/>}
         {tab === 'ask' && <AskTab prefill={askPrefill}/>}

@@ -195,11 +195,41 @@ def _dispatch_tool(name: str, arguments: dict, user_id: str) -> str:
 
 def _today_view_json(user_id: str) -> str:
     """Compose the today view from Cosmos. Used by the get_today_view tool."""
-    # TODO: this is the aggregation logic that pulls from get_active_tasks,
-    # filters by overdue/due-today/upcoming based on next_due_at, and returns
-    # the structured view. Lives here rather than in cosmos_tool because it's
-    # presentation-shaped, not raw data.
-    raise NotImplementedError("Stub — assemble TodayView from get_active_tasks")
+    from datetime import datetime, timezone, timedelta
+    from agents.models import TodayView
+
+    now = datetime.now(timezone.utc)
+    today_end = now.replace(hour=23, minute=59, second=59)
+    week_end = now + timedelta(days=7)
+
+    tasks = cosmos_tool.get_active_tasks(user_id)
+    active_contexts = cosmos_tool.get_active_contexts(user_id)
+    upcoming_contexts = cosmos_tool.get_upcoming_contexts(user_id)
+
+    overdue, due_today, upcoming_this_week = [], [], []
+    for task in tasks:
+        if not task.next_due_at:
+            continue
+        due = task.next_due_at
+        if due < now:
+            overdue.append(task)
+        elif due <= today_end:
+            due_today.append(task)
+        elif due <= week_end:
+            upcoming_this_week.append(task)
+
+    # Sort overdue by most overdue first
+    overdue.sort(key=lambda t: t.next_due_at)
+
+    view = TodayView(
+        date=now.date(),
+        overdue=overdue,
+        due_today=due_today,
+        upcoming_this_week=upcoming_this_week,
+        active_contexts=active_contexts,
+        upcoming_contexts=upcoming_contexts,
+    )
+    return view.model_dump_json()
 
 
 # -----------------------------------------------------------------------------
@@ -244,25 +274,92 @@ async def stream_response(
     final_text = ""
     max_iterations = 6  # Hard cap to prevent runaway tool loops
 
+    # Microsoft Agent Framework's streaming ChatAgent wasn't stable enough at
+    # build time for the async generator pattern we need here. Using a
+    # hand-rolled OpenAI function-calling loop instead — same semantics,
+    # full control over the SSE event shape.
     for iteration in range(max_iterations):
-        # TODO: this is the iterative tool-calling loop. The shape:
-        #   1. Call chat.completions.create with stream=True and tools=TOOLS
-        #   2. While streaming: emit "thinking" / "delta" events
-        #   3. If the model calls a tool: dispatch, append tool result to
-        #      messages, continue the outer loop
-        #   4. If the model produces a final answer: yield "done" and break
-        #
-        # Microsoft Agent Framework has primitives for this loop already;
-        # the actual implementation should use them rather than rolling
-        # the loop by hand. See the framework docs for ChatAgent / streaming.
-        #
-        # Until that's wired up, this stub yields a placeholder so the
-        # frontend can be developed against the contract above.
-        yield {
-            "type": "thinking",
-            "step": f"[stub iteration {iteration}] would call tools and stream here",
-        }
-        break
+        yield {"type": "thinking", "step": f"Reasoning (pass {iteration + 1})..."}
+
+        response = client.chat.completions.create(
+            model=deployment,
+            messages=messages,
+            tools=TOOLS,
+            tool_choice="auto",
+            stream=True,
+        )
+
+        # Accumulate the streamed response
+        current_text = ""
+        tool_calls_acc = {}  # index -> {id, name, arguments}
+        finish_reason = None
+
+        for chunk in response:
+            if not chunk.choices:
+                continue
+            delta = chunk.choices[0].delta
+            finish_reason = chunk.choices[0].finish_reason
+
+            # Stream text deltas to the frontend
+            if delta.content:
+                current_text += delta.content
+                yield {"type": "delta", "text": delta.content}
+
+            # Accumulate tool call fragments
+            if delta.tool_calls:
+                for tc in delta.tool_calls:
+                    idx = tc.index
+                    if idx not in tool_calls_acc:
+                        tool_calls_acc[idx] = {"id": tc.id or "", "name": "", "arguments": ""}
+                    if tc.id:
+                        tool_calls_acc[idx]["id"] = tc.id
+                    if tc.function:
+                        if tc.function.name:
+                            tool_calls_acc[idx]["name"] = tc.function.name
+                        if tc.function.arguments:
+                            tool_calls_acc[idx]["arguments"] += tc.function.arguments
+
+        if finish_reason == "stop" or (finish_reason is None and current_text):
+            final_text = current_text
+            break
+
+        if finish_reason == "tool_calls" and tool_calls_acc:
+            # Append the assistant's tool-call message
+            assistant_msg = {
+                "role": "assistant",
+                "content": None,
+                "tool_calls": [
+                    {
+                        "id": tc["id"],
+                        "type": "function",
+                        "function": {"name": tc["name"], "arguments": tc["arguments"]},
+                    }
+                    for tc in tool_calls_acc.values()
+                ],
+            }
+            messages.append(assistant_msg)
+
+            # Dispatch each tool call and append results
+            for tc in tool_calls_acc.values():
+                try:
+                    args = json.loads(tc["arguments"]) if tc["arguments"] else {}
+                except json.JSONDecodeError:
+                    args = {}
+
+                yield {"type": "tool_call", "name": tc["name"]}
+                result = _dispatch_tool(tc["name"], args, user_id)
+                preview = result[:120] + "..." if len(result) > 120 else result
+                yield {"type": "tool_result", "name": tc["name"], "preview": preview}
+
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tc["id"],
+                    "content": result,
+                })
+        else:
+            # Unexpected finish — break to avoid infinite loop
+            final_text = current_text
+            break
 
     yield {"type": "done", "final_text": final_text}
 
@@ -276,6 +373,13 @@ def respond(user_id: str, user_message: str) -> str:
     Non-streaming version. Useful for unit tests and the eval harness.
     Returns the final response text only.
     """
-    # TODO: same loop as stream_response but without the streaming events,
-    # collect the final text and return it.
-    raise NotImplementedError("Stub — fill in once stream_response works")
+    import asyncio
+
+    async def _collect():
+        text = ""
+        async for event in stream_response(user_id, user_message):
+            if event["type"] == "done":
+                text = event.get("final_text", "")
+        return text
+
+    return asyncio.run(_collect())

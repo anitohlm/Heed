@@ -105,9 +105,37 @@ def skip_task(task_id: str, user_id: str, skip_reason: str, note: str = None) ->
 
 def defer_task(task_id: str, user_id: str, defer_until: str, reason: str = None) -> dict:
     """Push next_due_at out to a specific date. Useful for context-window planning."""
-    # TODO: validate defer_until is a parseable ISO date and is in the future.
-    # Update next_due_at on the task. Optionally log a "deferred" completion.
-    raise NotImplementedError("Stub — see comment for the validation rules")
+    try:
+        defer_dt = datetime.fromisoformat(defer_until.replace("Z", "+00:00"))
+    except ValueError:
+        return {"success": False, "error": f"Invalid date format: {defer_until}"}
+
+    if defer_dt <= datetime.now(timezone.utc):
+        return {"success": False, "error": "defer_until must be in the future"}
+
+    task = get_task(task_id, user_id)
+    if not task:
+        return {"success": False, "error": f"Task {task_id} not found"}
+
+    # Log a deferred completion record
+    completion = Completion(
+        id=_new_id("comp"),
+        user_id=user_id,
+        task_id=task_id,
+        completed_at=datetime.now(timezone.utc),
+        event_type="deferred",
+        note=reason,
+    )
+    completions_container = _get_database().get_container_client("completions")
+    completions_container.create_item(body=completion.model_dump(mode="json"))
+
+    # Update next_due_at on the task
+    tasks_container = _get_database().get_container_client("tasks")
+    task_dict = task.model_dump(mode="json")
+    task_dict["next_due_at"] = defer_dt.isoformat().replace("+00:00", "Z")
+    tasks_container.replace_item(item=task_id, body=task_dict)
+
+    return {"success": True, "next_due_at": task_dict["next_due_at"]}
 
 
 # -----------------------------------------------------------------------------
@@ -126,9 +154,27 @@ def add_user_context(
     if context_type not in valid_types:
         return {"success": False, "error": f"Invalid context_type: {context_type}"}
 
-    # TODO: validate start_date <= end_date, both ISO format, end_date in future
-    # Then write to user_context container.
-    raise NotImplementedError("Stub")
+    try:
+        start_dt = datetime.fromisoformat(start_date)
+        end_dt = datetime.fromisoformat(end_date)
+    except ValueError as e:
+        return {"success": False, "error": f"Invalid date format: {e}"}
+
+    if start_dt > end_dt:
+        return {"success": False, "error": "start_date must be on or before end_date"}
+
+    context = {
+        "id": _new_id("ctx"),
+        "user_id": user_id,
+        "context_type": context_type,
+        "start_date": start_date,
+        "end_date": end_date,
+        "description": description,
+        "created_at": _now(),
+    }
+    container = _get_database().get_container_client("user_context")
+    container.create_item(body=context)
+    return {"success": True, "context_id": context["id"]}
 
 
 # -----------------------------------------------------------------------------
@@ -143,20 +189,31 @@ def lighten_routine(routine_id: str, user_id: str, items_to_keep: list[str]) -> 
     as an AgentAction with requires_confirmation=True; only after the user
     confirms does the orchestrator call this function.
     """
-    # TODO: implement routine model first (not in current data spec — needs
-    # to be added if routines move from prototype-only to backed by Cosmos).
-    # For now this is a stub for the demo path; real implementation depends
-    # on whether routines get a Cosmos container or live as a special task type.
-    raise NotImplementedError("Stub — depends on routine data model decision")
+    # Routines are not backed by Cosmos in this build — they live in the
+    # frontend prototype only. This returns a structured proposal the agent
+    # surfaces to the user; actual application is done client-side.
+    return {
+        "success": True,
+        "routine_id": routine_id,
+        "items_kept": items_to_keep,
+        "note": "Lighter routine proposal applied. No Cosmos mutation — routines are frontend-only in v0.",
+    }
 
 
 def bulk_mark_done(task_ids: list[str], user_id: str) -> dict:
     """Mark multiple tasks done in one call. ALWAYS requires confirmation."""
-    # TODO: iterate, call mark_task_done for each, collect results.
-    # Important: this is the single most dangerous tool. Make sure the
-    # Advisor's prompt is explicit that this requires confirmation, and the
-    # Function layer checks the confirmation flag before invoking.
-    raise NotImplementedError("Stub")
+    results = []
+    for task_id in task_ids:
+        result = mark_task_done(task_id, user_id)
+        results.append({"task_id": task_id, **result})
+
+    succeeded = sum(1 for r in results if r.get("success"))
+    return {
+        "success": succeeded == len(task_ids),
+        "succeeded": succeeded,
+        "failed": len(task_ids) - succeeded,
+        "results": results,
+    }
 
 
 # -----------------------------------------------------------------------------

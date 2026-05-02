@@ -10,8 +10,10 @@ and for grounding in PH cultural context.
 """
 
 import os
+from datetime import datetime, timezone
 from typing import Optional
 from azure.search.documents import SearchClient
+from azure.search.documents.models import VectorizedQuery
 from azure.core.credentials import AzureKeyCredential
 from openai import AzureOpenAI
 
@@ -69,18 +71,37 @@ def search_task_memory(
     client = _search_client("task_memory")
     vector = _embed(query)
 
-    # TODO: build the proper VectorizedQuery + filter expression here.
-    # The pattern is:
-    #   - vector_queries=[VectorizedQuery(vector=vector, k_nearest_neighbors=top_k, fields="content_vector")]
-    #   - filter=f"user_id eq '{user_id}' and status ne 'archived'" + overdue clause
-    # Returns iterator of dicts; convert to list.
-    raise NotImplementedError("Stub — assemble VectorizedQuery and filter")
+    filter_expr = f"user_id eq '{user_id}' and status ne 'archived'"
+    if only_overdue:
+        now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        filter_expr += f" and next_due_at le {now_iso}"
+
+    vector_query = VectorizedQuery(
+        vector=vector,
+        k_nearest_neighbors=top_k,
+        fields="content_vector",
+    )
+
+    results = client.search(
+        search_text=query,
+        vector_queries=[vector_query],
+        filter=filter_expr,
+        top=top_k,
+        select=["id", "user_id", "name", "description", "category",
+                "recent_notes", "last_done_at", "next_due_at", "importance", "status"],
+    )
+    return [dict(r) for r in results]
 
 
 def get_task_memory_by_id(task_id: str, user_id: str) -> Optional[dict]:
     """Direct lookup by document key. Cheap, no embedding."""
-    # TODO: client.get_document(key=task_id) with optional user_id filter
-    raise NotImplementedError("Stub")
+    try:
+        doc = client.get_document(key=task_id)
+        if doc.get("user_id") != user_id:
+            return None
+        return dict(doc)
+    except Exception:
+        return None
 
 
 # -----------------------------------------------------------------------------
@@ -105,10 +126,27 @@ def search_ph_calendar(
     fine if the query is loose.
     """
     client = _search_client("ph_calendar")
-    # TODO: build filter expression from date_from, date_to, event_types.
-    # Example filter: "date ge 2026-04-01 and date le 2026-05-01 and event_type eq 'holiday'"
-    # If query is non-trivial, also pass it as the search text.
-    raise NotImplementedError("Stub")
+
+    filters = []
+    if date_from:
+        filters.append(f"date ge {date_from}T00:00:00Z")
+    if date_to:
+        filters.append(f"date le {date_to}T23:59:59Z")
+    if event_types:
+        type_clauses = " or ".join(f"event_type eq '{t}'" for t in event_types)
+        filters.append(f"({type_clauses})")
+
+    filter_expr = " and ".join(filters) if filters else None
+    search_text = query if query and query != "*" else "*"
+
+    results = client.search(
+        search_text=search_text,
+        filter=filter_expr,
+        top=top_k,
+        select=["id", "event_name", "event_type", "date",
+                "is_recurring_yearly", "description", "affects"],
+    )
+    return [dict(r) for r in results]
 
 
 def get_holidays_in_range(date_from: str, date_to: str) -> list[dict]:

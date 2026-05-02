@@ -9,7 +9,7 @@ from Key Vault via Managed Identity. Never construct connection strings here.
 """
 
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Optional
 from azure.cosmos import CosmosClient, exceptions
 from agents.models import Task, Completion, UserContext, User
@@ -122,14 +122,40 @@ def get_active_contexts(user_id: str, on_date: Optional[datetime] = None) -> lis
 
 def get_upcoming_contexts(user_id: str, days_ahead: int = 30) -> list[UserContext]:
     """Context windows starting in the next N days."""
-    # TODO: query Cosmos with date arithmetic in SQL. Cosmos SQL doesn't
-    # support DATEADD, so the cleanest pattern is to compute the bound here
-    # and pass it as a parameter.
-    raise NotImplementedError("Stub — fill in date math against Cosmos query")
+    now = datetime.now(timezone.utc)
+    today = now.date().isoformat()
+    cutoff = (now + timedelta(days=days_ahead)).date().isoformat()
+
+    container = _get_database().get_container_client("user_context")
+    query = """
+        SELECT * FROM c
+        WHERE c.user_id = @uid
+          AND c.start_date > @today
+          AND c.start_date <= @cutoff
+    """
+    params = [
+        {"name": "@uid", "value": user_id},
+        {"name": "@today", "value": today},
+        {"name": "@cutoff", "value": cutoff},
+    ]
+    items = container.query_items(query=query, parameters=params, partition_key=user_id)
+    return [UserContext(**i) for i in items]
 
 
 def get_recent_completions(user_id: str, days_back: int = 30) -> list[Completion]:
     """All completions across all tasks in the last N days."""
-    # TODO: similar to above — compute the cutoff timestamp here, query with
-    # parameter binding. Used by Memory Keeper for the periodic background pass.
-    raise NotImplementedError("Stub")
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=days_back)).isoformat()
+
+    container = _get_database().get_container_client("completions")
+    query = """
+        SELECT * FROM c
+        WHERE c.user_id = @uid
+          AND c.completed_at >= @cutoff
+        ORDER BY c.completed_at DESC
+    """
+    params = [
+        {"name": "@uid", "value": user_id},
+        {"name": "@cutoff", "value": cutoff},
+    ]
+    items = container.query_items(query=query, parameters=params, partition_key=user_id)
+    return [Completion(**i) for i in items]

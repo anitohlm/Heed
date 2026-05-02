@@ -161,6 +161,8 @@ function useChat() {
 
     let thinkingSteps = []
     let finalText = ''
+    let pendingActions = []
+    let pendingChips = []
 
     try {
       const resp = await fetch(`${FUNCTIONS_URL}/api/advisor_stream`, {
@@ -174,6 +176,11 @@ function useChat() {
         try { return JSON.parse(line) } catch { return null }
       }).filter(Boolean)
       thinkingSteps = events.filter(e => e.type === 'thinking').map(e => e.step)
+      pendingActions = events
+        .filter(e => e.type === 'action')
+        .map(({ type, ...rest }) => rest)
+      const chipsEvent = events.find(e => e.type === 'chips')
+      pendingChips = chipsEvent?.chips || []
       const done = events.find(e => e.type === 'done')
       finalText = done?.final_text || events.filter(e => e.type === 'delta').map(e => e.text).join('') || ''
       if (!finalText) throw new Error('empty')
@@ -196,12 +203,51 @@ function useChat() {
       setStreaming(acc)
       await new Promise(r => setTimeout(r, 16 + Math.random() * 20))
     }
-    setMessages(m => [...m, { role: 'assistant', content: acc }])
+    setMessages(m => [...m, { role: 'assistant', content: acc, actions: pendingActions, chips: pendingChips }])
     setStreaming('')
     setBusy(false)
   }, [busy, messages])
 
-  return { messages, input, setInput, thinking, streaming, busy, send }
+  const executeAction = useCallback(async (messageIndex, actionIndex) => {
+    const msg = messages[messageIndex]
+    if (!msg?.actions?.[actionIndex]) return
+    const action = msg.actions[actionIndex]
+    if (action.confirmed) return
+
+    try {
+      const resp = await fetch(`${FUNCTIONS_URL}/api/execute_action`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action_type: action.action_type,
+          payload: { ...action.payload, task_id: action.task_id, routine_id: action.routine_id },
+        }),
+      })
+      const result = await resp.json()
+      if (!result.ok) throw new Error(result.error || 'Failed')
+      setMessages(msgs => msgs.map((m, i) => {
+        if (i !== messageIndex) return m
+        return {
+          ...m,
+          actions: m.actions.map((a, j) =>
+            j === actionIndex ? { ...a, confirmed: true, summary: result.summary } : a
+          ),
+        }
+      }))
+    } catch (err) {
+      setMessages(msgs => msgs.map((m, i) => {
+        if (i !== messageIndex) return m
+        return {
+          ...m,
+          actions: m.actions.map((a, j) =>
+            j === actionIndex ? { ...a, error: err.message } : a
+          ),
+        }
+      }))
+    }
+  }, [messages])
+
+  return { messages, input, setInput, thinking, streaming, busy, send, executeAction }
 }
 
 // ── Button styles ──────────────────────────────────────────────

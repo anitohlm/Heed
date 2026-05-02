@@ -659,7 +659,7 @@ function ContextBanner({ upcomingContexts, onAskHeed }) {
               )}
             </div>
             <div style={{ flex: 1 }}>
-              {ctx.plan.during.length > 0 && (
+              {ctx.plan.during && ctx.plan.during.length > 0 && (
                 <>
                   <div style={{ fontSize: 9.5, fontWeight: 700, color: C.sage, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 6 }}>While away</div>
                   {ctx.plan.during.map((item, i) => (
@@ -670,9 +670,9 @@ function ContextBanner({ upcomingContexts, onAskHeed }) {
                   ))}
                 </>
               )}
-              {ctx.plan.after.length > 0 && (
+              {ctx.plan.after && ctx.plan.after.length > 0 && (
                 <>
-                  <div style={{ fontSize: 9.5, fontWeight: 700, color: C.inkMute, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 6, marginTop: ctx.plan.during.length > 0 ? 10 : 0 }}>When you're back</div>
+                  <div style={{ fontSize: 9.5, fontWeight: 700, color: C.inkMute, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 6, marginTop: ctx.plan.during && ctx.plan.during.length > 0 ? 10 : 0 }}>When you're back</div>
                   {ctx.plan.after.map((item, i) => (
                     <div key={i} style={{ display: 'flex', gap: 7, alignItems: 'flex-start', fontSize: 12, color: C.inkSoft, marginBottom: 4, lineHeight: 1.4 }}>
                       <span style={{ width: 5, height: 5, borderRadius: '50%', background: C.inkMute, flexShrink: 0, marginTop: 5 }}/>

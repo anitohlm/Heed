@@ -224,6 +224,15 @@ def _dispatch_tool(name: str, arguments: dict, user_id: str) -> str:
         return json.dumps({"error": str(e)})
 
 
+_ACTION_DISPLAY = {
+    "mark_done":       ("Mark done",  "✓"),
+    "skip":            ("Skip this",  "⏭"),
+    "defer":           ("Defer",      "→"),
+    "lighten_routine": ("Lighten it", "🪶"),
+    "add_context":     ("Add context","📍"),
+}
+
+
 def _today_view_json(user_id: str) -> str:
     """Compose the today view from Cosmos. Used by the get_today_view tool."""
     from datetime import datetime, timezone, timedelta
@@ -381,6 +390,24 @@ async def stream_response(
                 result = _dispatch_tool(tc["name"], args, user_id)
                 preview = result[:120] + "..." if len(result) > 120 else result
                 yield {"type": "tool_result", "name": tc["name"], "preview": preview}
+
+                if tc["name"] == "propose_action" and args:
+                    action_type = args.get("action_type", "")
+                    default_label, default_emoji = _ACTION_DISPLAY.get(
+                        action_type, (action_type.replace("_", " ").title(), "")
+                    )
+                    payload = args.get("payload") or {}
+                    yield {
+                        "type": "action",
+                        "action_type": action_type,
+                        "label": payload.get("label", default_label),
+                        "emoji": payload.get("emoji", default_emoji),
+                        "task_id": args.get("task_id"),
+                        "routine_id": args.get("routine_id"),
+                        "payload": payload,
+                    }
+                elif tc["name"] == "suggest_followups" and args:
+                    yield {"type": "chips", "chips": args.get("chips", [])}
 
                 messages.append({
                     "role": "tool",

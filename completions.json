@@ -1,0 +1,3890 @@
+[
+  {
+    "id": "comp_2eb19f994a4a",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_9718f734053e",
+    "completed_at": "2025-11-23T17:01:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_aa4b44739e3a",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_9718f734053e",
+    "completed_at": "2025-11-30T19:15:00Z",
+    "event_type": "done",
+    "note": "chika time",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_51936921db64",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_9718f734053e",
+    "completed_at": "2025-12-07T18:47:00Z",
+    "event_type": "done",
+    "note": "chika time",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_3ecd1a1b703d",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_9718f734053e",
+    "completed_at": "2025-12-14T17:37:00Z",
+    "event_type": "done",
+    "note": "good chat",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_9230918d2554",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_9718f734053e",
+    "completed_at": "2025-12-21T17:01:00Z",
+    "event_type": "done",
+    "note": "chika time",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_a3cb614c4286",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_9718f734053e",
+    "completed_at": "2025-12-28T18:14:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_cda6427ba3ee",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_9718f734053e",
+    "completed_at": "2026-01-04T17:35:00Z",
+    "event_type": "done",
+    "note": "chika time",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_e093cd9f39e4",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_9718f734053e",
+    "completed_at": "2026-01-11T20:14:00Z",
+    "event_type": "done",
+    "note": "good chat",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_8d3af4bea6f2",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_9718f734053e",
+    "completed_at": "2026-01-18T19:51:00Z",
+    "event_type": "done",
+    "note": "chika time",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_d9b45e9d76a2",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_9718f734053e",
+    "completed_at": "2026-01-25T18:44:00Z",
+    "event_type": "done",
+    "note": "good chat",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_c17ab19ae1b6",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_9718f734053e",
+    "completed_at": "2026-02-01T19:17:00Z",
+    "event_type": "done",
+    "note": "chika time",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_5c002dae1493",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_9718f734053e",
+    "completed_at": "2026-02-08T18:48:00Z",
+    "event_type": "done",
+    "note": "good chat",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_96a4f95f7287",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_9718f734053e",
+    "completed_at": "2026-02-15T17:05:00Z",
+    "event_type": "done",
+    "note": "good chat",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_581da7a36cb4",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_9718f734053e",
+    "completed_at": "2026-02-22T17:22:00Z",
+    "event_type": "done",
+    "note": "good chat",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_a474c3cde2b1",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_9718f734053e",
+    "completed_at": "2026-03-01T19:51:00Z",
+    "event_type": "done",
+    "note": "chika time",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_a94fd00d9280",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_9718f734053e",
+    "completed_at": "2026-03-08T20:34:00Z",
+    "event_type": "done",
+    "note": "chika time",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_082ac7d70150",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_9718f734053e",
+    "completed_at": "2026-03-15T20:05:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_d728f9592308",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_9718f734053e",
+    "completed_at": "2026-03-22T19:53:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_fd41e0b444a1",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_9718f734053e",
+    "completed_at": "2026-03-29T19:36:00Z",
+    "event_type": "done",
+    "note": "chika time",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_33cdd48a40f7",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_81bf24a4e946",
+    "completed_at": "2025-03-31T19:04:00Z",
+    "event_type": "done",
+    "note": "matagal na hindi nalilinis",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_e9c7e46cbd62",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_81bf24a4e946",
+    "completed_at": "2025-06-16T11:49:00Z",
+    "event_type": "done",
+    "note": "matagal na hindi nalilinis",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_bd9e5eb01f86",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_81bf24a4e946",
+    "completed_at": "2025-09-08T09:54:00Z",
+    "event_type": "done",
+    "note": "matagal na hindi nalilinis",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_69960d49d766",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_81bf24a4e946",
+    "completed_at": "2025-11-17T09:24:00Z",
+    "event_type": "done",
+    "note": "matagal na hindi nalilinis",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_4e5b6e09f0d6",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_81bf24a4e946",
+    "completed_at": "2026-02-02T18:53:00Z",
+    "event_type": "done",
+    "note": "matagal na hindi nalilinis",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_aba3f99b478d",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ace09159dcd3",
+    "completed_at": "2025-11-15T13:13:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_14a2b4e6edc1",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ace09159dcd3",
+    "completed_at": "2025-12-14T17:40:00Z",
+    "event_type": "done",
+    "note": "pang-payday",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_38989789ac08",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ace09159dcd3",
+    "completed_at": "2026-01-14T10:29:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_862cdc4a0f36",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ace09159dcd3",
+    "completed_at": "2026-02-14T18:20:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_fbb7919b2fee",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ace09159dcd3",
+    "completed_at": "2026-03-14T11:52:00Z",
+    "event_type": "done",
+    "note": "pang-payday",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_329bad871d05",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_5841bf54ffc1",
+    "completed_at": "2025-11-24T08:25:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_62566bdfbe09",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_5841bf54ffc1",
+    "completed_at": "2025-11-27T07:13:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_03ed46f8d315",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_5841bf54ffc1",
+    "completed_at": "2025-11-30T07:41:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_5ad56c0a518e",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_5841bf54ffc1",
+    "completed_at": "2025-12-04T08:56:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_9b986e2caeca",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_5841bf54ffc1",
+    "completed_at": "2025-12-08T07:16:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_7dde90b77047",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_5841bf54ffc1",
+    "completed_at": "2025-12-11T07:47:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_455b248f9ee1",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_5841bf54ffc1",
+    "completed_at": "2025-12-14T09:37:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_3c7207b1323d",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_5841bf54ffc1",
+    "completed_at": "2025-12-18T09:25:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_d25672d413d8",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_5841bf54ffc1",
+    "completed_at": "2025-12-21T13:08:00Z",
+    "event_type": "skipped",
+    "note": "out of town",
+    "skip_reason": "not_applicable"
+  },
+  {
+    "id": "comp_1bb6da1b581f",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_5841bf54ffc1",
+    "completed_at": "2025-12-25T11:48:00Z",
+    "event_type": "skipped",
+    "note": "out of town",
+    "skip_reason": "not_applicable"
+  },
+  {
+    "id": "comp_cb370e86d546",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_5841bf54ffc1",
+    "completed_at": "2025-12-27T07:09:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_74cb0223ffbf",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_5841bf54ffc1",
+    "completed_at": "2025-12-30T09:27:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_315fd6db9a84",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_5841bf54ffc1",
+    "completed_at": "2026-01-01T08:24:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_800b12f541b1",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_5841bf54ffc1",
+    "completed_at": "2026-01-05T09:16:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_256bfe770ad0",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_5841bf54ffc1",
+    "completed_at": "2026-01-07T09:46:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_c2dc19e86b9c",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_5841bf54ffc1",
+    "completed_at": "2026-01-09T09:56:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_72224586df02",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_5841bf54ffc1",
+    "completed_at": "2026-01-12T09:21:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_8f14482616dd",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_5841bf54ffc1",
+    "completed_at": "2026-01-14T08:27:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_33660ce74a53",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_5841bf54ffc1",
+    "completed_at": "2026-01-17T08:00:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_0c3d780c4e00",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_5841bf54ffc1",
+    "completed_at": "2026-01-20T09:48:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_9dc175729c30",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_5841bf54ffc1",
+    "completed_at": "2026-01-23T09:58:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_7dffc7eccf6b",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_5841bf54ffc1",
+    "completed_at": "2026-01-25T09:19:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_60451ac186b9",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_5841bf54ffc1",
+    "completed_at": "2026-01-28T07:23:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_8d448603e96c",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_5841bf54ffc1",
+    "completed_at": "2026-01-31T09:49:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_017706ccc6fb",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_5841bf54ffc1",
+    "completed_at": "2026-02-02T09:20:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_6e1ea4f76a73",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_5841bf54ffc1",
+    "completed_at": "2026-02-06T07:07:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_cedaf66a1655",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_5841bf54ffc1",
+    "completed_at": "2026-02-09T08:15:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_31bac147ff84",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_5841bf54ffc1",
+    "completed_at": "2026-02-11T07:56:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_f862cf30b72f",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_5841bf54ffc1",
+    "completed_at": "2026-02-13T07:46:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_530202ae009d",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_5841bf54ffc1",
+    "completed_at": "2026-02-17T07:48:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_df598c268d75",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_5841bf54ffc1",
+    "completed_at": "2026-02-20T07:42:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_a4c7abeb24d5",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_5841bf54ffc1",
+    "completed_at": "2026-02-24T09:10:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_2b273818323c",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_5841bf54ffc1",
+    "completed_at": "2026-02-27T09:55:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_f3d49f359eb0",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_5841bf54ffc1",
+    "completed_at": "2026-03-03T07:59:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_785674e7691f",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_5841bf54ffc1",
+    "completed_at": "2026-03-06T09:19:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_529911bc7368",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_5841bf54ffc1",
+    "completed_at": "2026-03-10T09:41:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_cbb303560eaa",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_5841bf54ffc1",
+    "completed_at": "2026-03-13T08:57:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_d392ada81a7a",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_5841bf54ffc1",
+    "completed_at": "2026-03-17T07:15:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_37729da027b0",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_5841bf54ffc1",
+    "completed_at": "2026-03-20T07:21:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_bb9829dd67d2",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_5841bf54ffc1",
+    "completed_at": "2026-03-22T09:35:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_dfd1b3f55958",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_5841bf54ffc1",
+    "completed_at": "2026-03-25T09:14:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_7af313da0c11",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_5841bf54ffc1",
+    "completed_at": "2026-03-27T07:45:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_0c4311ac0fbb",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_5841bf54ffc1",
+    "completed_at": "2026-03-29T07:04:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_5592e197dc8b",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_5841bf54ffc1",
+    "completed_at": "2026-03-31T08:04:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_84450879ee4f",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_5841bf54ffc1",
+    "completed_at": "2026-04-03T08:42:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_2e573c765634",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_5841bf54ffc1",
+    "completed_at": "2026-04-07T07:34:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_3d816531752a",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_5841bf54ffc1",
+    "completed_at": "2026-04-10T09:59:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_0e005615cdc7",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_5841bf54ffc1",
+    "completed_at": "2026-04-14T07:50:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_54307bd5f7dc",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_5841bf54ffc1",
+    "completed_at": "2026-04-18T08:12:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_6d0073ff4085",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_d34b2b97e824",
+    "completed_at": "2025-12-17T09:42:00Z",
+    "event_type": "done",
+    "note": "sa wakas napalitan",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_4aedcd66f181",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_a223f76b2080",
+    "completed_at": "2025-11-05T13:27:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_03b9cd3a3860",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_a223f76b2080",
+    "completed_at": "2025-12-05T15:55:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_ce0f204d0c53",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_a223f76b2080",
+    "completed_at": "2026-01-02T18:41:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_507f7fe15db9",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_a223f76b2080",
+    "completed_at": "2026-02-02T08:25:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_f92a96dbf882",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_a223f76b2080",
+    "completed_at": "2026-03-04T20:55:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_02f4f82833fd",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_7b4df6ee6a4c",
+    "completed_at": "2025-11-26T11:12:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_8757e2b713e3",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_7b4df6ee6a4c",
+    "completed_at": "2025-12-26T16:28:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_b9815c164bed",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_7b4df6ee6a4c",
+    "completed_at": "2026-01-26T14:11:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_d1fb0e427cd2",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_7b4df6ee6a4c",
+    "completed_at": "2026-02-27T15:15:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_6774c2b415e4",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_7b4df6ee6a4c",
+    "completed_at": "2026-03-26T15:51:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_423665c4e857",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_eca865564c50",
+    "completed_at": "2025-12-07T21:54:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_672dcfd60571",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_eca865564c50",
+    "completed_at": "2025-12-16T08:41:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_432652283f31",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_eca865564c50",
+    "completed_at": "2025-12-25T09:59:00Z",
+    "event_type": "done",
+    "note": "sariwa",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_43e36efb6e26",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_eca865564c50",
+    "completed_at": "2026-01-04T14:31:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_950b92f928ce",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_eca865564c50",
+    "completed_at": "2026-01-14T21:25:00Z",
+    "event_type": "done",
+    "note": "sariwa",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_c8f97fe6395e",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_eca865564c50",
+    "completed_at": "2026-01-24T14:00:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_456a4f50eb46",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_eca865564c50",
+    "completed_at": "2026-02-03T20:50:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_cc7fcaa02631",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_eca865564c50",
+    "completed_at": "2026-02-13T14:44:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_85e705d68f84",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_eca865564c50",
+    "completed_at": "2026-02-25T18:45:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_564ec2087c30",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_eca865564c50",
+    "completed_at": "2026-03-07T11:18:00Z",
+    "event_type": "done",
+    "note": "sariwa",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_a3c82fa532cd",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_eca865564c50",
+    "completed_at": "2026-03-16T17:47:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_777feb60a38e",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_eca865564c50",
+    "completed_at": "2026-03-25T19:20:00Z",
+    "event_type": "done",
+    "note": "sariwa",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_1cf8918aae5d",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_eca865564c50",
+    "completed_at": "2026-04-03T17:30:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_5aa98ea25338",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_eca865564c50",
+    "completed_at": "2026-04-15T10:03:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_35fc8bcb8a5a",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_631299eccd1c",
+    "completed_at": "2025-11-29T11:04:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_b5ad1bf294b5",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_631299eccd1c",
+    "completed_at": "2025-12-15T10:43:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_45e5e713b167",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_631299eccd1c",
+    "completed_at": "2025-12-29T13:07:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_160694693973",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_631299eccd1c",
+    "completed_at": "2026-01-14T11:37:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_33fb3e9a92e4",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_631299eccd1c",
+    "completed_at": "2026-01-30T10:39:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_5d2f7ad476b1",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_631299eccd1c",
+    "completed_at": "2026-02-12T13:42:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_33dfb064a071",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_631299eccd1c",
+    "completed_at": "2026-02-28T14:33:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_76713d537ec7",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_631299eccd1c",
+    "completed_at": "2026-03-14T12:13:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_71886b6f0287",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_631299eccd1c",
+    "completed_at": "2026-03-28T11:16:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_4589cd69e18f",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_631299eccd1c",
+    "completed_at": "2026-04-12T11:42:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_a1004ac56def",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2025-11-23T21:20:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_510151bed6c6",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2025-11-24T07:29:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_afaad0956e12",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2025-11-27T10:04:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_87f33810ac86",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2025-11-30T13:32:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_18274b210450",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2025-12-02T11:59:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_4df5be52b8a7",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2025-12-04T09:56:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_7bef37831675",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2025-12-06T18:18:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_54cea795d825",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2025-12-08T21:53:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_95ef1e58b3b6",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2025-12-11T16:39:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_75ed64a0d756",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2025-12-14T07:42:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_739f28769314",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2025-12-17T16:59:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_853de6f948a7",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2025-12-18T11:16:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_54c2c8f869e5",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2025-12-19T10:47:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_694c5e094798",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2025-12-22T11:17:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_03af3e44d982",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2025-12-24T13:45:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_d0c71f457048",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2025-12-26T13:43:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_092f55285a2a",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2025-12-28T22:16:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_932a0c6e0643",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2025-12-29T09:40:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_b06438d288b9",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2025-12-31T15:02:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_39979e3db702",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-01-01T17:49:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_ba6ae367c419",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-01-03T15:10:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_238f069b2505",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-01-05T20:35:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_b986adb61529",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-01-06T10:04:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_30cdaed1a6ea",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-01-08T08:53:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_43520cba0f76",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-01-10T11:27:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_be29a5ada1a6",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-01-12T08:19:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_57e5bcf1c3b2",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-01-14T08:57:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_2bb5173d0586",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-01-16T13:43:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_72052837f752",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-01-18T10:22:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_a2358848018f",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-01-21T20:39:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_1f19f489959a",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-01-23T14:55:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_8a74246f4644",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-01-25T12:56:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_7b1f6a288f39",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-01-27T07:11:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_09d703a8d3cc",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-01-29T20:51:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_1fca0d118845",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-01-31T15:10:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_cc337150f970",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-02-01T19:55:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_20ea40d371e9",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-02-02T22:14:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_ab2a59a07802",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-02-04T21:22:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_de821484b6e8",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-02-06T14:14:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_533bbddf6d93",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-02-07T13:25:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_3df172d7afe0",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-02-09T15:55:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_55d645ac3a9b",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-02-10T15:22:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_aa5b80caf4a2",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-02-13T19:43:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_88d4caf46e65",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-02-16T17:01:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_808766fd54a2",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-02-17T15:11:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_da8918e75c67",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-02-20T15:02:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_23d92c41b850",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-02-21T20:22:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_9ec7937f96e6",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-02-23T20:38:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_e1d1cd5aa53e",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-02-26T10:24:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_c4210f0ae845",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-03-01T13:16:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_7660ec5b7353",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-03-02T20:00:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_332e59d2826b",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-03-05T13:23:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_2eb047d1188f",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-03-07T09:42:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_d7fedece9f76",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-03-09T17:42:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_81d4e61fcbde",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-03-10T16:32:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_67b2fa0a68a3",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-03-12T20:20:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_4e1c1031883c",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-03-14T16:35:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_27504e6bc65b",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-03-16T13:26:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_5451c59060a2",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-03-18T12:39:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_fcf52d3b9155",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-03-21T16:25:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_7ee19200e56c",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-03-24T07:19:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_00f614d4b062",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-03-26T13:27:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_232c3b22db7b",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-03-29T17:29:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_4996018d2db0",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-03-31T21:43:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_7d069350e141",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-04-02T22:50:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_75359bcf9137",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-04-04T09:18:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_775d5781c7d4",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-04-07T17:05:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_19760c754f94",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-04-09T16:14:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_0c6e80be1be1",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-04-11T11:01:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_fb7bd3f964b7",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-04-12T14:30:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_c2522bfca022",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-04-15T09:29:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_707234069f1c",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-04-17T13:45:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_5d1972fb3599",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_583d2a2a0480",
+    "completed_at": "2026-04-19T22:25:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_e036fe0cb26b",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2025-11-22T07:57:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_c34455af696e",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2025-11-24T10:14:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_7a9ba1462beb",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2025-11-25T10:03:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_6e811aa409da",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2025-11-26T07:29:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_729e4eabd33e",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2025-11-27T10:42:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_7920e85a7cbe",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2025-11-28T09:48:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_61409a68bdfa",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2025-12-03T09:48:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_497e52083763",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2025-12-04T09:49:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_585777ea9e2a",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2025-12-06T10:04:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_b42d36c4f044",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2025-12-07T09:20:00Z",
+    "event_type": "skipped",
+    "note": "ay shet",
+    "skip_reason": "forgot"
+  },
+  {
+    "id": "comp_7650ff381503",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2025-12-08T08:14:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_2b3164911933",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2025-12-09T08:45:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_5f6344600d41",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2025-12-10T10:26:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_1f1d6df01a82",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2025-12-11T10:26:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_545d8c3c3df9",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2025-12-12T10:24:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_f593ad362056",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2025-12-14T10:30:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_027d1fe89265",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2025-12-15T09:19:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_0efd2d962672",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2025-12-19T08:31:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_9095556731b6",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2025-12-20T10:31:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_8a9cc1f0ccba",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2025-12-21T09:42:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_8dd321e0763c",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2025-12-22T10:46:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_c55cc416e7a5",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2025-12-23T10:58:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_64c90704f5ac",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2025-12-24T07:58:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_d6f6ec38ea15",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2025-12-25T07:05:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_9ca1eef6e60e",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2025-12-26T08:55:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_1b464cdf45ee",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2025-12-27T07:16:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_c3ce27836174",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2025-12-28T08:29:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_79e7760fb352",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2025-12-29T10:17:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_28f25cdcb0bc",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2025-12-31T07:30:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_e6f5014a7f60",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-01-01T07:22:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_0d443d6ea3a6",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-01-02T07:49:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_271bd38b92f0",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-01-03T08:15:00Z",
+    "event_type": "skipped",
+    "note": "nakalimutan ko",
+    "skip_reason": "forgot"
+  },
+  {
+    "id": "comp_1dc9d84a4582",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-01-05T10:42:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_dd3547b5ff09",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-01-06T08:29:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_408b95c66450",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-01-07T09:10:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_46c66fcbe141",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-01-08T07:49:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_57641324e5db",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-01-10T07:59:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_c8b88c1b1c46",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-01-11T10:25:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_7588639b4c3c",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-01-12T08:06:00Z",
+    "event_type": "skipped",
+    "note": "ay shet",
+    "skip_reason": "forgot"
+  },
+  {
+    "id": "comp_bdd8f9a9e022",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-01-14T07:50:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_cae20d267db9",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-01-16T10:42:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_be064ad79cea",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-01-17T09:00:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_46e66add45b2",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-01-19T09:40:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_a335e8765171",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-01-21T08:46:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_3e47235a198a",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-01-22T09:39:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_ed38510175b3",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-01-24T10:52:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_565bccad9ab0",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-01-25T08:53:00Z",
+    "event_type": "skipped",
+    "note": "nakalimutan ko",
+    "skip_reason": "forgot"
+  },
+  {
+    "id": "comp_17f987952a1a",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-01-26T10:15:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_fd18a99737b8",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-01-28T09:01:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_0d6ed5987ebd",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-01-29T09:11:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_a5f535c40baf",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-01-30T09:51:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_4354d3841b39",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-01-31T09:56:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_25a4ce8fd31a",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-02-01T09:35:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_828a4930b26e",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-02-02T08:05:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_055659ff86e2",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-02-03T10:31:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_840eca7861f2",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-02-04T08:44:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_b453181ca922",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-02-05T10:28:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_e26297fcfe10",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-02-06T08:25:00Z",
+    "event_type": "skipped",
+    "note": "ay shet",
+    "skip_reason": "forgot"
+  },
+  {
+    "id": "comp_24bf8de48be9",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-02-07T09:30:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_07fe2a1c67a0",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-02-08T09:27:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_4f84d9f8b0c9",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-02-10T10:17:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_e4e685b12d0d",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-02-11T08:07:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_974e90057a18",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-02-14T08:13:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_e8f1047d82a6",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-02-15T09:06:00Z",
+    "event_type": "skipped",
+    "note": "nakalimutan ko",
+    "skip_reason": "forgot"
+  },
+  {
+    "id": "comp_fec84614d173",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-02-16T09:11:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_ca9d25e0cd5f",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-02-17T08:17:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_d29ad8cf41cc",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-02-18T07:35:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_c00e4d2b2a42",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-02-19T08:40:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_165fc5afda22",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-02-22T10:21:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_7253de421fc6",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-02-23T07:16:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_0c30f2bd1af7",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-02-26T07:09:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_c3247593dddc",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-02-27T09:05:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_01b567a5834f",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-02-28T09:38:00Z",
+    "event_type": "skipped",
+    "note": "ay shet",
+    "skip_reason": "forgot"
+  },
+  {
+    "id": "comp_825ececaa4a7",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-03-01T09:28:00Z",
+    "event_type": "skipped",
+    "note": "forgot completely",
+    "skip_reason": "forgot"
+  },
+  {
+    "id": "comp_80691d7f80f2",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-03-02T10:19:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_18a107653270",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-03-03T07:39:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_0029f0f2dfee",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-03-04T08:40:00Z",
+    "event_type": "skipped",
+    "note": "nakalimutan ko",
+    "skip_reason": "forgot"
+  },
+  {
+    "id": "comp_8c2d150b3055",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-03-05T07:10:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_5845a6f21c3f",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-03-06T07:10:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_269e19901aee",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-03-07T10:44:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_1d7a9098caf5",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-03-08T09:02:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_3079c4faf4c7",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-03-09T09:44:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_9468a3c9540a",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-03-10T08:59:00Z",
+    "event_type": "skipped",
+    "note": "forgot completely",
+    "skip_reason": "forgot"
+  },
+  {
+    "id": "comp_30a6dbcf24ef",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-03-12T08:27:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_12cd51ae1055",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-03-13T08:41:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_367c2c136f6b",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-03-14T09:52:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_fda06c26cf4d",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-03-15T07:10:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_8303b61ef25f",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-03-18T10:44:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_535f7ab409a6",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-03-19T10:17:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_dbb4354fadb2",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-03-20T10:28:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_11cb275e83f1",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-03-21T07:56:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_fd6b82af1e05",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-03-22T09:38:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_df9b60db4621",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-03-23T07:14:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_5ce6364228da",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-03-25T07:48:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_a9357ec69303",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-03-26T09:36:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_d8e43742debf",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-03-27T08:30:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_c3c56fafbe13",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-03-28T10:58:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_fdfafc1890aa",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-03-29T10:40:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_a8cb6e3f663a",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-03-31T10:21:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_7ae4782ac59a",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-04-01T07:54:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_a60b676625ac",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-04-02T10:44:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_85e864429b6f",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-04-03T10:52:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_c50add6d63ec",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-04-04T08:20:00Z",
+    "event_type": "skipped",
+    "note": "forgot completely",
+    "skip_reason": "forgot"
+  },
+  {
+    "id": "comp_b4d683e7d548",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-04-05T10:55:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_8fc461316c2c",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-04-06T07:42:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_2a436817224f",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-04-08T09:39:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_049d1e6fa4ee",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-04-10T08:59:00Z",
+    "event_type": "skipped",
+    "note": "forgot completely",
+    "skip_reason": "forgot"
+  },
+  {
+    "id": "comp_e273a56d99fd",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-04-11T10:07:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_9805ac66d46d",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-04-12T08:45:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_0b21fdd47541",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-04-13T07:35:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_e752d88aa500",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-04-14T08:53:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_daa47b5dada5",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-04-16T08:31:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_1fad77919cb3",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-04-17T09:26:00Z",
+    "event_type": "skipped",
+    "note": "forgot completely",
+    "skip_reason": "forgot"
+  },
+  {
+    "id": "comp_41637acb3656",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_ef3a89766800",
+    "completed_at": "2026-04-18T08:24:00Z",
+    "event_type": "skipped",
+    "note": "nakalimutan ko",
+    "skip_reason": "forgot"
+  },
+  {
+    "id": "comp_fe3daa79c858",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2025-11-24T08:17:00Z",
+    "event_type": "done",
+    "note": "brisk walk",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_17e3f39698ae",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2025-11-25T07:46:00Z",
+    "event_type": "done",
+    "note": "yoga",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_74b920b60eef",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2025-11-28T08:37:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_0e69f6376e61",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2025-12-02T07:21:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_30255d4e2263",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2025-12-03T07:59:00Z",
+    "event_type": "done",
+    "note": "yoga",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_16fd568208cd",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2025-12-05T06:44:00Z",
+    "event_type": "done",
+    "note": "home workout",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_78dc69aab4a7",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2025-12-06T07:47:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_c1f0f4ac1609",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2025-12-07T08:58:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_8b633c97c98a",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2025-12-09T07:42:00Z",
+    "event_type": "done",
+    "note": "home workout",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_0442ed4c2964",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2025-12-12T07:02:00Z",
+    "event_type": "done",
+    "note": "home workout",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_314fb4c82ec1",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2025-12-13T06:33:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_4b4409675c14",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2025-12-15T06:46:00Z",
+    "event_type": "done",
+    "note": "home workout",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_4201c933e5d5",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2025-12-16T07:55:00Z",
+    "event_type": "done",
+    "note": "home workout",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_9563e0af5543",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2025-12-17T06:30:00Z",
+    "event_type": "done",
+    "note": "yoga",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_9574f2bbe194",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2025-12-23T08:05:00Z",
+    "event_type": "done",
+    "note": "yoga",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_cb9e8222a140",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2025-12-24T08:54:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_fe649de4cd51",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2025-12-25T07:40:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_08bfcae67c65",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2025-12-27T08:43:00Z",
+    "event_type": "done",
+    "note": "yoga",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_8df3103fb237",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2025-12-28T06:47:00Z",
+    "event_type": "done",
+    "note": "brisk walk",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_eba963da3851",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2025-12-31T07:06:00Z",
+    "event_type": "done",
+    "note": "brisk walk",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_f23b0debf46c",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-01-02T07:10:00Z",
+    "event_type": "done",
+    "note": "yoga",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_08b4094f7c05",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-01-03T07:22:00Z",
+    "event_type": "done",
+    "note": "yoga",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_30e688524e30",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-01-05T07:09:00Z",
+    "event_type": "done",
+    "note": "home workout",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_cb8518fc21d8",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-01-09T08:26:00Z",
+    "event_type": "done",
+    "note": "home workout",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_0ad76739bac8",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-01-10T07:39:00Z",
+    "event_type": "done",
+    "note": "home workout",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_b4f7aad7213c",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-01-11T07:58:00Z",
+    "event_type": "done",
+    "note": "home workout",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_7b9c9484e43d",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-01-14T06:29:00Z",
+    "event_type": "done",
+    "note": "yoga",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_1618c7101d3f",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-01-17T07:57:00Z",
+    "event_type": "done",
+    "note": "yoga",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_e8205f41f1f5",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-01-19T08:34:00Z",
+    "event_type": "done",
+    "note": "home workout",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_e34be76cc56c",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-01-22T06:28:00Z",
+    "event_type": "done",
+    "note": "yoga",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_e33bb024064b",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-01-26T07:54:00Z",
+    "event_type": "done",
+    "note": "yoga",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_5d9a8d739dd3",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-01-27T06:24:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_069baabcb2ab",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-01-29T06:15:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_85a1ba330d1d",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-01-30T08:22:00Z",
+    "event_type": "done",
+    "note": "yoga",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_c3be9ec1b32b",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-01-31T06:36:00Z",
+    "event_type": "done",
+    "note": "brisk walk",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_f3903918bc6f",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-02-02T08:47:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_4073699c5c97",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-02-03T07:49:00Z",
+    "event_type": "done",
+    "note": "home workout",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_2903b86b7a2b",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-02-06T08:51:00Z",
+    "event_type": "done",
+    "note": "yoga",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_23d67d54446e",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-02-08T07:43:00Z",
+    "event_type": "done",
+    "note": "home workout",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_34bd5c428749",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-02-11T08:06:00Z",
+    "event_type": "done",
+    "note": "brisk walk",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_6568820a61c5",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-02-12T07:50:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_93af14b7e03e",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-02-15T06:58:00Z",
+    "event_type": "done",
+    "note": "yoga",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_4975dfbcce1d",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-02-16T07:47:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_a88165029968",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-02-18T06:12:00Z",
+    "event_type": "done",
+    "note": "home workout",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_403adf1e7144",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-02-23T06:16:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_83b688f5285f",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-02-25T07:47:00Z",
+    "event_type": "done",
+    "note": "yoga",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_2676b735b1c1",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-02-26T06:29:00Z",
+    "event_type": "done",
+    "note": "brisk walk",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_c6ca6b085be1",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-02-27T06:48:00Z",
+    "event_type": "done",
+    "note": "home workout",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_23a81da7f91b",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-03-02T06:50:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_c750fa0996c5",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-03-03T06:16:00Z",
+    "event_type": "done",
+    "note": "brisk walk",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_2314f4b47dfe",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-03-05T07:23:00Z",
+    "event_type": "done",
+    "note": "yoga",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_acc57a32b720",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-03-06T08:24:00Z",
+    "event_type": "done",
+    "note": "yoga",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_6f76cf398182",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-03-08T06:39:00Z",
+    "event_type": "done",
+    "note": "yoga",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_e583b9eadb6e",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-03-10T08:14:00Z",
+    "event_type": "done",
+    "note": "brisk walk",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_06e2ca0c66b2",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-03-12T08:52:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_8a5cece1193b",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-03-14T06:02:00Z",
+    "event_type": "done",
+    "note": "brisk walk",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_e0b00319da2a",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-03-16T07:31:00Z",
+    "event_type": "done",
+    "note": "brisk walk",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_7fbddf577b4d",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-03-17T06:15:00Z",
+    "event_type": "done",
+    "note": "home workout",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_f4fd7c2142de",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-03-19T07:29:00Z",
+    "event_type": "done",
+    "note": "yoga",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_574483a9d125",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-03-24T08:47:00Z",
+    "event_type": "done",
+    "note": "home workout",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_b0c7ef91c0af",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-03-25T07:41:00Z",
+    "event_type": "done",
+    "note": "brisk walk",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_98d8d78bd298",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-03-26T07:39:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_3c2adea8195e",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-03-27T07:02:00Z",
+    "event_type": "done",
+    "note": "yoga",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_202ed6530a10",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-03-29T07:06:00Z",
+    "event_type": "done",
+    "note": "yoga",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_45d748d0b50e",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-03-31T08:57:00Z",
+    "event_type": "done",
+    "note": "yoga",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_384d90977f79",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-04-03T06:25:00Z",
+    "event_type": "done",
+    "note": "yoga",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_81eadb1215e2",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-04-04T08:13:00Z",
+    "event_type": "done",
+    "note": "brisk walk",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_c8dbe8c38c0d",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-04-07T06:50:00Z",
+    "event_type": "done",
+    "note": "yoga",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_7872169f31bf",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-04-10T06:08:00Z",
+    "event_type": "done",
+    "note": "home workout",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_a2e017d304f4",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-04-12T08:13:00Z",
+    "event_type": "done",
+    "note": "home workout",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_8a77dfc3a2e6",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-04-15T07:49:00Z",
+    "event_type": "done",
+    "note": "home workout",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_b1279ec2ab8a",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-04-17T08:00:00Z",
+    "event_type": "done",
+    "note": "yoga",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_49af2f150237",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-04-19T06:07:00Z",
+    "event_type": "done",
+    "note": "brisk walk",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_f2a67e414f67",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_10ca35c0f2ed",
+    "completed_at": "2026-04-20T06:00:00Z",
+    "event_type": "done",
+    "note": "yoga",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_f16b5a6e586e",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_7a8720cd5705",
+    "completed_at": "2025-11-22T11:37:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_8d0cbf683fb9",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_7a8720cd5705",
+    "completed_at": "2025-11-29T11:16:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_2c15ab4d08c6",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_7a8720cd5705",
+    "completed_at": "2025-12-06T15:26:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_cee6097a9b14",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_7a8720cd5705",
+    "completed_at": "2025-12-13T15:04:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_0085bdb2cf30",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_7a8720cd5705",
+    "completed_at": "2025-12-20T12:32:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_e1fb2270fb3c",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_7a8720cd5705",
+    "completed_at": "2025-12-27T13:32:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_62f01ccc7ae2",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_7a8720cd5705",
+    "completed_at": "2026-01-03T14:02:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_2ee4ff243268",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_7a8720cd5705",
+    "completed_at": "2026-01-10T15:33:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_78aa9dde4300",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_7a8720cd5705",
+    "completed_at": "2026-01-17T15:01:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_f32db9cba9e1",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_7a8720cd5705",
+    "completed_at": "2026-01-24T13:54:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_57f966f64cf1",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_7a8720cd5705",
+    "completed_at": "2026-01-31T15:06:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_4edb8d5dc362",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_7a8720cd5705",
+    "completed_at": "2026-02-07T13:04:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_e92d509f55d3",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_7a8720cd5705",
+    "completed_at": "2026-02-14T12:38:00Z",
+    "event_type": "skipped",
+    "note": "meeting all day",
+    "skip_reason": "too_busy"
+  },
+  {
+    "id": "comp_aa3b1d8e548d",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_7a8720cd5705",
+    "completed_at": "2026-02-21T12:39:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_68c223643c3f",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_7a8720cd5705",
+    "completed_at": "2026-02-28T14:45:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_f2124161e5e3",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_7a8720cd5705",
+    "completed_at": "2026-03-07T14:33:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_698e0349ba65",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_7a8720cd5705",
+    "completed_at": "2026-03-14T14:38:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_054bb4884b3f",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_7a8720cd5705",
+    "completed_at": "2026-03-21T15:07:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_6829f616e523",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_7a8720cd5705",
+    "completed_at": "2026-03-28T15:56:00Z",
+    "event_type": "skipped",
+    "note": "meeting all day",
+    "skip_reason": "too_busy"
+  },
+  {
+    "id": "comp_193018d269f2",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_7a8720cd5705",
+    "completed_at": "2026-04-04T11:26:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_e4f1971ecc05",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_7a8720cd5705",
+    "completed_at": "2026-04-11T13:25:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_0971b4a6ee8c",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_772ba7b1447f",
+    "completed_at": "2025-11-28T18:46:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_a38a74c75792",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_772ba7b1447f",
+    "completed_at": "2025-12-05T15:20:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_4006117bbb3e",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_772ba7b1447f",
+    "completed_at": "2025-12-12T18:20:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_8a0d97469292",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_772ba7b1447f",
+    "completed_at": "2025-12-19T17:23:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_93bb3e1e4806",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_772ba7b1447f",
+    "completed_at": "2025-12-26T16:43:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_1111ed325094",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_772ba7b1447f",
+    "completed_at": "2026-01-02T18:04:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_1c2a3fb1256e",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_772ba7b1447f",
+    "completed_at": "2026-01-09T15:53:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_5009e4e24e63",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_772ba7b1447f",
+    "completed_at": "2026-01-16T15:05:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_a77e2bd1c743",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_772ba7b1447f",
+    "completed_at": "2026-01-23T18:06:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_dc425226c345",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_772ba7b1447f",
+    "completed_at": "2026-01-30T17:51:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_3322ea01b2e2",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_772ba7b1447f",
+    "completed_at": "2026-02-06T16:35:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_d49fadc2a289",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_772ba7b1447f",
+    "completed_at": "2026-02-13T15:37:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_d07973bb116d",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_772ba7b1447f",
+    "completed_at": "2026-02-20T17:42:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_2267432d2587",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_772ba7b1447f",
+    "completed_at": "2026-02-27T15:26:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_44ba3d542649",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_772ba7b1447f",
+    "completed_at": "2026-03-06T17:55:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_05c2020335d3",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_772ba7b1447f",
+    "completed_at": "2026-03-13T18:55:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_6a50a017de29",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_772ba7b1447f",
+    "completed_at": "2026-03-20T15:18:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_ce611faaf7a4",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_772ba7b1447f",
+    "completed_at": "2026-03-27T17:22:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_acaa88b7b317",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_772ba7b1447f",
+    "completed_at": "2026-04-03T15:36:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_efcf49366a98",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_772ba7b1447f",
+    "completed_at": "2026-04-10T16:09:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_d391575fdd32",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_772ba7b1447f",
+    "completed_at": "2026-04-17T18:14:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_19e9ccd696b1",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_323c2e30183c",
+    "completed_at": "2025-11-08T21:54:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_117867b805f7",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_323c2e30183c",
+    "completed_at": "2025-12-15T21:07:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_6013b30bc371",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_323c2e30183c",
+    "completed_at": "2026-01-10T22:14:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_7b9cdce9fc3a",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_323c2e30183c",
+    "completed_at": "2026-02-11T22:49:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_2f4696bb4f81",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_323c2e30183c",
+    "completed_at": "2026-03-16T22:43:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_bf9e46534c21",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_a615f9687f03",
+    "completed_at": "2025-09-18T18:35:00Z",
+    "event_type": "done",
+    "note": "cleaning tapos",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_747252133758",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_7c5f2c4daeba",
+    "completed_at": "2025-03-22T08:38:00Z",
+    "event_type": "done",
+    "note": "okay pa hanggang 2027",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_2203bde6c6e6",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_9c89e6c85e32",
+    "completed_at": "2025-12-02T20:01:00Z",
+    "event_type": "done",
+    "note": "good catchup",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_c01016b437e5",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_9c89e6c85e32",
+    "completed_at": "2025-12-18T20:58:00Z",
+    "event_type": "done",
+    "note": "short talk lang",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_49320c687d5e",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_9c89e6c85e32",
+    "completed_at": "2026-01-03T18:11:00Z",
+    "event_type": "done",
+    "note": "good catchup",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_34065a005515",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_9c89e6c85e32",
+    "completed_at": "2026-01-24T21:04:00Z",
+    "event_type": "done",
+    "note": "good catchup",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_9e0b407b4e77",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_9c89e6c85e32",
+    "completed_at": "2026-02-05T18:47:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  },
+  {
+    "id": "comp_8cfc75852c72",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_9c89e6c85e32",
+    "completed_at": "2026-02-19T21:26:00Z",
+    "event_type": "done",
+    "note": "short talk lang",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_03182f3e1b00",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_9c89e6c85e32",
+    "completed_at": "2026-03-07T19:23:00Z",
+    "event_type": "done",
+    "note": "short talk lang",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_aae07ffb4b71",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_9c89e6c85e32",
+    "completed_at": "2026-03-23T18:56:00Z",
+    "event_type": "done",
+    "note": "good catchup",
+    "skip_reason": null
+  },
+  {
+    "id": "comp_c31dfd87182c",
+    "user_id": "usr_heed_demo_001",
+    "task_id": "task_9c89e6c85e32",
+    "completed_at": "2026-04-06T19:48:00Z",
+    "event_type": "done",
+    "note": null,
+    "skip_reason": null
+  }
+]

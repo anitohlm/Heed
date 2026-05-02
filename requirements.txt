@@ -1,0 +1,24 @@
+# Azure Functions runtime
+azure-functions==1.21.3
+
+# Azure SDK
+azure-cosmos==4.7.0
+azure-search-documents==11.5.2
+azure-identity==1.19.0
+
+# OpenAI / agent runtime
+openai==1.54.4
+
+# Microsoft Agent Framework (uncomment when building the real agent loop)
+# microsoft-agent-framework==<latest>
+# TODO: confirm package name and pinned version. As of late 2025 the framework
+# unified Semantic Kernel + AutoGen — verify the install package on PyPI.
+
+# Data validation
+pydantic==2.9.2
+
+# HTTP for Bing
+requests==2.32.3
+
+# Dev only
+pytest==8.3.4

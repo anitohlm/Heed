@@ -1,0 +1,272 @@
+[
+  {
+    "event_name": "New Year's Day",
+    "event_type": "holiday",
+    "date": "2026-01-01",
+    "is_recurring_yearly": true,
+    "description": "Regular holiday nationwide",
+    "affects": "everything closed, family gatherings",
+    "id": "phcal_000"
+  },
+  {
+    "event_name": "Chinese New Year",
+    "event_type": "holiday",
+    "date": "2026-02-17",
+    "is_recurring_yearly": true,
+    "description": "Special non-working holiday",
+    "affects": "some businesses closed, family celebrations",
+    "id": "phcal_001"
+  },
+  {
+    "event_name": "EDSA People Power Anniversary",
+    "event_type": "holiday",
+    "date": "2026-02-25",
+    "is_recurring_yearly": true,
+    "description": "Special non-working holiday",
+    "affects": "government offices closed",
+    "id": "phcal_002"
+  },
+  {
+    "event_name": "Maundy Thursday",
+    "event_type": "holiday",
+    "date": "2026-04-02",
+    "is_recurring_yearly": false,
+    "description": "Holy Week — regular holiday",
+    "affects": "nearly everything closed, travel heavy",
+    "id": "phcal_003"
+  },
+  {
+    "event_name": "Good Friday",
+    "event_type": "holiday",
+    "date": "2026-04-03",
+    "is_recurring_yearly": false,
+    "description": "Holy Week — regular holiday",
+    "affects": "nearly everything closed, quiet day",
+    "id": "phcal_004"
+  },
+  {
+    "event_name": "Araw ng Kagitingan",
+    "event_type": "holiday",
+    "date": "2026-04-09",
+    "is_recurring_yearly": true,
+    "description": "Day of Valor — regular holiday",
+    "affects": "government offices closed",
+    "id": "phcal_005"
+  },
+  {
+    "event_name": "Labor Day",
+    "event_type": "holiday",
+    "date": "2026-05-01",
+    "is_recurring_yearly": true,
+    "description": "Regular holiday",
+    "affects": "most businesses closed",
+    "id": "phcal_006"
+  },
+  {
+    "event_name": "Independence Day",
+    "event_type": "holiday",
+    "date": "2026-06-12",
+    "is_recurring_yearly": true,
+    "description": "Regular holiday",
+    "affects": "government and many businesses closed",
+    "id": "phcal_007"
+  },
+  {
+    "event_name": "Ninoy Aquino Day",
+    "event_type": "holiday",
+    "date": "2026-08-21",
+    "is_recurring_yearly": true,
+    "description": "Special non-working holiday",
+    "affects": "government offices closed",
+    "id": "phcal_008"
+  },
+  {
+    "event_name": "National Heroes Day",
+    "event_type": "holiday",
+    "date": "2026-08-31",
+    "is_recurring_yearly": true,
+    "description": "Last Monday of August — regular holiday",
+    "affects": "most businesses closed",
+    "id": "phcal_009"
+  },
+  {
+    "event_name": "All Saints' Day",
+    "event_type": "holiday",
+    "date": "2026-11-01",
+    "is_recurring_yearly": true,
+    "description": "Special non-working holiday",
+    "affects": "cemetery visits, family gatherings, travel heavy",
+    "id": "phcal_010"
+  },
+  {
+    "event_name": "All Souls' Day",
+    "event_type": "holiday",
+    "date": "2026-11-02",
+    "is_recurring_yearly": true,
+    "description": "Special non-working holiday",
+    "affects": "cemetery visits continue",
+    "id": "phcal_011"
+  },
+  {
+    "event_name": "Bonifacio Day",
+    "event_type": "holiday",
+    "date": "2026-11-30",
+    "is_recurring_yearly": true,
+    "description": "Regular holiday",
+    "affects": "government offices closed",
+    "id": "phcal_012"
+  },
+  {
+    "event_name": "Feast of the Immaculate Conception",
+    "event_type": "holiday",
+    "date": "2026-12-08",
+    "is_recurring_yearly": true,
+    "description": "Special non-working holiday",
+    "affects": "many businesses closed",
+    "id": "phcal_013"
+  },
+  {
+    "event_name": "Christmas Eve",
+    "event_type": "holiday",
+    "date": "2026-12-24",
+    "is_recurring_yearly": true,
+    "description": "Special non-working holiday; Noche Buena preparations",
+    "affects": "family gatherings, grocery heavy, traffic",
+    "id": "phcal_014"
+  },
+  {
+    "event_name": "Christmas Day",
+    "event_type": "holiday",
+    "date": "2026-12-25",
+    "is_recurring_yearly": true,
+    "description": "Regular holiday",
+    "affects": "everything closed, family day",
+    "id": "phcal_015"
+  },
+  {
+    "event_name": "Rizal Day",
+    "event_type": "holiday",
+    "date": "2026-12-30",
+    "is_recurring_yearly": true,
+    "description": "Regular holiday",
+    "affects": "government offices closed",
+    "id": "phcal_016"
+  },
+  {
+    "event_name": "New Year's Eve",
+    "event_type": "holiday",
+    "date": "2026-12-31",
+    "is_recurring_yearly": true,
+    "description": "Special non-working holiday; Media Noche",
+    "affects": "family gatherings, grocery heavy, fireworks",
+    "id": "phcal_017"
+  },
+  {
+    "event_name": "Holy Week",
+    "event_type": "observance",
+    "date": "2026-03-29",
+    "is_recurring_yearly": false,
+    "description": "Palm Sunday to Easter — widely observed quiet week",
+    "affects": "travel out of cities, businesses wind down",
+    "id": "phcal_018"
+  },
+  {
+    "event_name": "Undas",
+    "event_type": "observance",
+    "date": "2026-10-30",
+    "is_recurring_yearly": true,
+    "description": "Extended All Saints/All Souls period",
+    "affects": "cemetery visits, travel to provinces",
+    "id": "phcal_019"
+  },
+  {
+    "event_name": "Christmas season (ber months start)",
+    "event_type": "observance",
+    "date": "2026-09-01",
+    "is_recurring_yearly": true,
+    "description": "Filipino Christmas season informally begins",
+    "affects": "festive mood, shopping increases",
+    "id": "phcal_020"
+  },
+  {
+    "event_name": "Simbang Gabi starts",
+    "event_type": "observance",
+    "date": "2026-12-16",
+    "is_recurring_yearly": true,
+    "description": "9 dawn masses leading to Christmas",
+    "affects": "early morning schedules, bibingka stalls",
+    "id": "phcal_021"
+  },
+  {
+    "event_name": "Mid-month payday",
+    "event_type": "payday",
+    "date": "2026-04-15",
+    "is_recurring_yearly": false,
+    "description": "Typical 15th-of-month private sector payday",
+    "affects": "bill payments, transfers, groceries",
+    "id": "phcal_022"
+  },
+  {
+    "event_name": "End-month payday",
+    "event_type": "payday",
+    "date": "2026-04-30",
+    "is_recurring_yearly": false,
+    "description": "Typical end-of-month private sector payday",
+    "affects": "bill payments, transfers, groceries",
+    "id": "phcal_023"
+  },
+  {
+    "event_name": "Mid-month payday (May)",
+    "event_type": "payday",
+    "date": "2026-05-15",
+    "is_recurring_yearly": false,
+    "description": "Typical 15th-of-month payday",
+    "affects": "bill payments, transfers",
+    "id": "phcal_024"
+  },
+  {
+    "event_name": "End-month payday (May)",
+    "event_type": "payday",
+    "date": "2026-05-30",
+    "is_recurring_yearly": false,
+    "description": "Typical end-of-month payday",
+    "affects": "bill payments, transfers",
+    "id": "phcal_025"
+  },
+  {
+    "event_name": "Meralco billing cycle typical cutoff",
+    "event_type": "bill_cycle",
+    "date": "2026-04-14",
+    "is_recurring_yearly": false,
+    "description": "Typical mid-month Meralco due date",
+    "affects": "electricity disconnection risk if missed",
+    "id": "phcal_026"
+  },
+  {
+    "event_name": "Maynilad/Manila Water typical cutoff",
+    "event_type": "bill_cycle",
+    "date": "2026-04-10",
+    "is_recurring_yearly": false,
+    "description": "Typical early-month water bill due",
+    "affects": "water service disconnection risk if missed",
+    "id": "phcal_027"
+  },
+  {
+    "event_name": "PLDT/Globe/Converge typical cutoff",
+    "event_type": "bill_cycle",
+    "date": "2026-04-28",
+    "is_recurring_yearly": false,
+    "description": "Typical end-of-month internet due",
+    "affects": "internet disconnection risk if missed",
+    "id": "phcal_028"
+  },
+  {
+    "event_name": "Rainy season begins",
+    "event_type": "season",
+    "date": "2026-06-01",
+    "is_recurring_yearly": true,
+    "description": "Habagat / southwest monsoon",
+    "affects": "mold in aircons, flooding, stock water",
+    "id": "phcal_029"
+  }
+]

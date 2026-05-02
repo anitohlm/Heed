@@ -1,0 +1,13 @@
+[
+  {
+    "id": "usr_heed_demo_001",
+    "display_name": "Maya",
+    "timezone": "Asia/Manila",
+    "language_preference": "english",
+    "notification_quiet_hours": {
+      "start": "22:00",
+      "end": "07:00"
+    },
+    "created_at": "2025-10-23T10:00:00Z"
+  }
+]

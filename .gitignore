@@ -1,0 +1,13 @@
+node_modules/
+.next/
+dist/
+__pycache__/
+*.pyc
+.venv/
+local.settings.json
+.env
+.env.local
+.azure/
+*.log
+.DS_Store
+*.tmp

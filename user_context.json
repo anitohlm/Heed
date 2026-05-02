@@ -1,0 +1,38 @@
+[
+  {
+    "id": "ctx_4a8344b10ccb",
+    "user_id": "usr_heed_demo_001",
+    "context_type": "travel",
+    "start_date": "2025-12-20",
+    "end_date": "2025-12-27",
+    "description": "Christmas trip to Baguio with family",
+    "created_at": "2025-12-18T10:00:00Z"
+  },
+  {
+    "id": "ctx_6b540a9af3b6",
+    "user_id": "usr_heed_demo_001",
+    "context_type": "illness",
+    "start_date": "2026-02-10",
+    "end_date": "2026-02-14",
+    "description": "Flu — bed rest, skip non-essentials",
+    "created_at": "2026-02-10T08:00:00Z"
+  },
+  {
+    "id": "ctx_788da2d70856",
+    "user_id": "usr_heed_demo_001",
+    "context_type": "busy",
+    "start_date": "2026-03-16",
+    "end_date": "2026-03-22",
+    "description": "Client deadline week — back-to-back shoots",
+    "created_at": "2026-03-15T20:00:00Z"
+  },
+  {
+    "id": "ctx_7eab20de5234",
+    "user_id": "usr_heed_demo_001",
+    "context_type": "travel",
+    "start_date": "2026-04-28",
+    "end_date": "2026-05-02",
+    "description": "Trip to Singapore for DEF CON",
+    "created_at": "2026-04-16T10:00:00Z"
+  }
+]

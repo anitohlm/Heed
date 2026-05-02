@@ -1,0 +1,135 @@
+"""
+Cosmos DB tool layer.
+
+Provides read access to Cosmos containers for the agents. Writes go through
+the action_tools module so they can be validated.
+
+This module reads connection info from environment, which Functions wires up
+from Key Vault via Managed Identity. Never construct connection strings here.
+"""
+
+import os
+from datetime import datetime, timezone
+from typing import Optional
+from azure.cosmos import CosmosClient, exceptions
+from agents.models import Task, Completion, UserContext, User
+
+
+# -----------------------------------------------------------------------------
+# Client setup
+# -----------------------------------------------------------------------------
+
+def _get_client() -> CosmosClient:
+    """Lazy-init Cosmos client. Connection string from env (Key Vault-backed)."""
+    conn_str = os.environ.get("COSMOS_CONNECTION_STRING")
+    if not conn_str:
+        # TODO: in Functions, this comes from Key Vault via @Microsoft.KeyVault
+        # reference in app settings. For local dev, set in local.settings.json.
+        raise RuntimeError("COSMOS_CONNECTION_STRING not set")
+    return CosmosClient.from_connection_string(conn_str)
+
+
+def _get_database():
+    """Returns the heed database client."""
+    db_name = os.environ.get("COSMOS_DATABASE", "heed")
+    return _get_client().get_database_client(db_name)
+
+
+# -----------------------------------------------------------------------------
+# Read operations — used by both Advisor and Memory Keeper agents
+# -----------------------------------------------------------------------------
+
+def get_user(user_id: str) -> Optional[User]:
+    """Fetch the user record."""
+    container = _get_database().get_container_client("users")
+    try:
+        item = container.read_item(item=user_id, partition_key=user_id)
+        return User(**item)
+    except exceptions.CosmosResourceNotFoundError:
+        return None
+
+
+def get_active_tasks(user_id: str) -> list[Task]:
+    """All tasks with status=active for this user."""
+    container = _get_database().get_container_client("tasks")
+    query = "SELECT * FROM c WHERE c.user_id = @uid AND c.status = 'active'"
+    params = [{"name": "@uid", "value": user_id}]
+    items = container.query_items(
+        query=query,
+        parameters=params,
+        partition_key=user_id,
+    )
+    return [Task(**i) for i in items]
+
+
+def get_task(task_id: str, user_id: str) -> Optional[Task]:
+    """Fetch a single task by ID."""
+    container = _get_database().get_container_client("tasks")
+    try:
+        item = container.read_item(item=task_id, partition_key=user_id)
+        return Task(**item)
+    except exceptions.CosmosResourceNotFoundError:
+        return None
+
+
+def get_completions(task_id: str, user_id: str) -> list[Completion]:
+    """All completions for a given task, ordered by completed_at ascending."""
+    container = _get_database().get_container_client("completions")
+    query = """
+        SELECT * FROM c
+        WHERE c.user_id = @uid AND c.task_id = @tid
+        ORDER BY c.completed_at ASC
+    """
+    params = [
+        {"name": "@uid", "value": user_id},
+        {"name": "@tid", "value": task_id},
+    ]
+    items = container.query_items(
+        query=query,
+        parameters=params,
+        partition_key=user_id,
+    )
+    return [Completion(**i) for i in items]
+
+
+def get_active_contexts(user_id: str, on_date: Optional[datetime] = None) -> list[UserContext]:
+    """
+    Context windows that are active on the given date (default: now).
+    Active = today >= start_date AND today <= end_date.
+    """
+    if on_date is None:
+        on_date = datetime.now(timezone.utc)
+    iso_date = on_date.date().isoformat()
+
+    container = _get_database().get_container_client("user_context")
+    query = """
+        SELECT * FROM c
+        WHERE c.user_id = @uid
+          AND c.start_date <= @d
+          AND c.end_date >= @d
+    """
+    params = [
+        {"name": "@uid", "value": user_id},
+        {"name": "@d", "value": iso_date},
+    ]
+    items = container.query_items(
+        query=query,
+        parameters=params,
+        partition_key=user_id,
+    )
+    return [UserContext(**i) for i in items]
+
+
+def get_upcoming_contexts(user_id: str, days_ahead: int = 30) -> list[UserContext]:
+    """Context windows starting in the next N days."""
+    # TODO: query Cosmos with date arithmetic in SQL. Cosmos SQL doesn't
+    # support DATEADD, so the cleanest pattern is to compute the bound here
+    # and pass it as a parameter.
+    raise NotImplementedError("Stub — fill in date math against Cosmos query")
+
+
+def get_recent_completions(user_id: str, days_back: int = 30) -> list[Completion]:
+    """All completions across all tasks in the last N days."""
+    # TODO: similar to above — compute the cutoff timestamp here, query with
+    # parameter binding. Used by Memory Keeper for the periodic background pass.
+    raise NotImplementedError("Stub")

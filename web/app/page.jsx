@@ -361,72 +361,73 @@ function ThemeSwitcher({ theme, onTheme }) {
   )
 }
 
-// ── MobileDrawer ───────────────────────────────────────────────
-function MobileDrawer({ open, onClose, tab, onTab, theme, onTheme }) {
-  const drawerTabs = APP_TABS
-
-  useEffect(() => {
-    if (!open) return
-    const fn = (e) => { if (e.key === 'Escape') onClose() }
-    window.addEventListener('keydown', fn)
-    return () => window.removeEventListener('keydown', fn)
-  }, [open, onClose])
-
+// ── MobileBottomNav ────────────────────────────────────────────
+function MobileBottomNav({ tab, onTab }) {
   return (
-    <>
-      <div
-        className={`heed-drawer-backdrop${open ? ' visible' : ''}`}
-        onClick={onClose}
-      />
-      <div
-        className={`heed-drawer${open ? ' open' : ''}`}
-        role="dialog"
-        aria-label="Navigation"
-        style={{ background: C.paper, borderLeft: `1px solid ${C.border}`, display: 'flex', flexDirection: 'column' }}
-      >
-        <div style={{ height: 64, borderBottom: `1px solid ${C.hairline}`, display: 'flex', alignItems: 'center', padding: '0 20px', justifyContent: 'space-between' }}>
-          <span style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 18, fontWeight: 700, color: C.warmDark }}>Heed</span>
-          <button onClick={onClose} aria-label="Close navigation" style={{ background: 'none', border: 'none', fontSize: 22, color: C.inkMute, cursor: 'pointer', padding: 4, lineHeight: 1 }}>×</button>
-        </div>
-
-        <div style={{ flex: 1, overflowY: 'auto' }}>
-          {drawerTabs.map(t => (
-            <button
-              key={t.id}
-              onClick={() => { onTab(t.id); onClose() }}
-              style={{
-                width: '100%', background: tab === t.id ? C.paperHi : 'transparent',
-                border: 'none', borderLeft: `3px solid ${tab === t.id ? C.warmDark : 'transparent'}`,
-                color: tab === t.id ? C.ink : C.inkSoft,
-                padding: '16px 24px', fontSize: 15, fontWeight: tab === t.id ? 600 : 400,
-                textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
-              }}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-
-        <div style={{ padding: '20px 24px', borderTop: `1px solid ${C.hairline}` }}>
-          <div style={{ fontSize: 11, color: C.inkMute, letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 10, fontWeight: 700 }}>Theme</div>
-          <div style={{ display: 'flex', gap: 12 }}>
-            {Object.entries(THEME_META).map(([id, { dot, label }]) => (
-              <button
-                key={id}
-                title={label}
-                onClick={() => onTheme(id)}
-                style={{
-                  width: 20, height: 20, borderRadius: '50%', background: dot, padding: 0,
-                  border: theme === id ? `2px solid ${C.ink}` : '2px solid transparent',
-                  outline: theme === id ? `2px solid ${dot}` : 'none',
-                  outlineOffset: 2, cursor: 'pointer', transition: 'outline 0.15s',
-                }}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-    </>
+    <nav
+      className="heed-bottom-nav"
+      aria-label="Main navigation"
+      style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0,
+        background: C.paper,
+        borderTop: `1px solid ${C.border}`,
+        zIndex: 50,
+        paddingBottom: 'env(safe-area-inset-bottom)',
+        boxShadow: '0 -2px 16px rgba(0,0,0,0.12)',
+      }}
+    >
+      {APP_TABS.map(t => {
+        const active = tab === t.id
+        const isAsk = t.id === 'ask'
+        return (
+          <button
+            key={t.id}
+            onClick={() => onTab(t.id)}
+            aria-label={t.label}
+            aria-current={active ? 'page' : undefined}
+            style={{
+              flex: 1,
+              background: 'none',
+              border: 'none',
+              borderTop: `2px solid ${active ? C.warmDark : 'transparent'}`,
+              padding: isAsk ? '4px 0 6px' : '10px 4px 8px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              minWidth: 0,
+            }}
+          >
+            {isAsk ? (
+              <div style={{
+                opacity: active ? 1 : 0.4,
+                transform: active ? 'scale(1.1)' : 'scale(1)',
+                transformOrigin: 'center bottom',
+                transition: 'all 0.15s',
+              }}>
+                <MayaOwl size={28} idle={false}/>
+              </div>
+            ) : (
+              <span style={{
+                fontSize: 11,
+                fontWeight: active ? 700 : 500,
+                color: active ? C.warmDark : C.inkMute,
+                letterSpacing: 0.1,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                maxWidth: '100%',
+                padding: '0 2px',
+                transition: 'color 0.15s',
+              }}>
+                {t.label}
+              </span>
+            )}
+          </button>
+        )
+      })}
+    </nav>
   )
 }
 
@@ -1997,7 +1998,6 @@ export default function HeedApp() {
   }, [theme])
   const [toast, setToast] = useState(null)
   const [askPrefill, setAskPrefill] = useState('')
-  const [drawerOpen, setDrawerOpen] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
   const [askOpen, setAskOpen] = useState(false)
   const [routineModalOpen, setRoutineModalOpen] = useState(false)
@@ -2188,7 +2188,9 @@ export default function HeedApp() {
             <div style={{ fontSize: 11.5, color: C.inkMute, marginTop: 2 }}>Hi, Maya 👋</div>
           </div>
         </div>
-        <button className="heed-hamburger" onClick={() => setDrawerOpen(true)} style={{ color: C.ink, fontSize: 22 }}>☰</button>
+        <div className="heed-theme-mobile" style={{ alignItems: 'center' }}>
+          <ThemeSwitcher theme={theme} onTheme={handleSetTheme}/>
+        </div>
       </header>
 
       <nav className="heed-nav" style={{ display: 'flex', gap: 4, padding: '0 32px', borderBottom: `1px solid ${C.hairline}`, background: C.paper }}>
@@ -2199,14 +2201,7 @@ export default function HeedApp() {
         ))}
       </nav>
 
-      <MobileDrawer
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        tab={tab}
-        onTab={setTab}
-        theme={theme}
-        onTheme={handleSetTheme}
-      />
+      <MobileBottomNav tab={tab} onTab={setTab}/>
 
       <main className="heed-main" style={{ maxWidth: 820, margin: '0 auto', padding: '28px 32px 100px 32px', minHeight: 'calc(100vh - 140px)', display: 'flex', flexDirection: 'column' }}>
         {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} upcomingContexts={upcomingContexts} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAskHeed={handleAskHeed}/>}

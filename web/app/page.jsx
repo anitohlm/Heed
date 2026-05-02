@@ -478,7 +478,7 @@ function TaskCard({ task, delay = 0, onMarkDone, onSkip }) {
 }
 
 // ── RoutineCard ────────────────────────────────────────────────
-function RoutineCard({ routine, delay = 0 }) {
+function RoutineCard({ routine, delay = 0, onMarkDone, onLighten, onEdit }) {
   const [hover, setHover] = useState(false)
   const completionRate = routine.completion14d.filter(Boolean).length / routine.completion14d.length
   const isAttentionWorthy = routine.suggestion !== null
@@ -541,9 +541,9 @@ function RoutineCard({ routine, delay = 0 }) {
         </div>
       </div>
       <div style={{ marginTop: 12, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-        <button style={btnPrimary}>Mark today done</button>
-        {isAttentionWorthy && <button style={{ ...btnPrimary, background: C.ochre, color: C.warmDeep }}>Lighten this week</button>}
-        <button style={btnGhost}>Edit</button>
+        <button style={btnPrimary} onClick={() => onMarkDone && onMarkDone(routine.id)}>Mark today done</button>
+        {isAttentionWorthy && <button style={{ ...btnPrimary, background: C.ochre, color: C.warmDeep }} onClick={() => onLighten && onLighten(routine.id)}>Lighten this week</button>}
+        <button style={btnGhost} onClick={() => onEdit && onEdit(routine)}>Edit</button>
       </div>
     </div>
   )
@@ -584,7 +584,7 @@ function ContextBanner({ upcomingContexts }) {
 }
 
 // ── TodayTab ───────────────────────────────────────────────────
-function TodayTab({ tasks, routines, upcomingContexts, onMarkDone, onSkip }) {
+function TodayTab({ tasks, routines, upcomingContexts, onMarkDone, onSkip, onMarkRoutineDone, onLightenRoutine, onEditRoutine }) {
   const overdue = tasks.filter(t => t.overdue != null).sort((a, b) => b.overdue - a.overdue)
   const heroTask = overdue[0]
   const otherOverdue = overdue.slice(1)
@@ -598,7 +598,7 @@ function TodayTab({ tasks, routines, upcomingContexts, onMarkDone, onSkip }) {
       )}
       <div style={{ marginTop: 28 }}>
         <SectionHeader count={routines.length}>Routines</SectionHeader>
-        {routines.map((r, i) => <RoutineCard key={r.id} routine={r} delay={i * 80}/>)}
+        {routines.map((r, i) => <RoutineCard key={r.id} routine={r} delay={i * 80} onMarkDone={onMarkRoutineDone} onLighten={onLightenRoutine} onEdit={onEditRoutine}/>)}
       </div>
       {otherOverdue.length > 0 && (
         <div style={{ marginTop: 28 }}>
@@ -710,7 +710,7 @@ function SegmentButton({ active, onClick, label, count, accent }) {
   )
 }
 
-function TracksTab({ tasks, routines, onMarkDone, onSkip }) {
+function TracksTab({ tasks, routines, onMarkDone, onSkip, onMarkRoutineDone, onLightenRoutine, onEditRoutine }) {
   const [subtab, setSubtab] = useState('routines')
   const [filter, setFilter] = useState('all')
   const filteredTasks = filter === 'all' ? tasks : tasks.filter(t => t.category === filter)
@@ -726,7 +726,7 @@ function TracksTab({ tasks, routines, onMarkDone, onSkip }) {
       </div>
       {subtab === 'routines' && (
         <div style={{ animation: 'heed-fadeIn 0.2s ease' }}>
-          {routines.map((r, i) => <RoutineCard key={r.id} routine={r} delay={i * 50}/>)}
+          {routines.map((r, i) => <RoutineCard key={r.id} routine={r} delay={i * 50} onMarkDone={onMarkRoutineDone} onLighten={onLightenRoutine} onEdit={onEditRoutine}/>)}
         </div>
       )}
       {subtab === 'tasks' && (
@@ -1192,11 +1192,20 @@ function AddContextModal({ open, onClose, onSubmit }) {
 }
 
 // ── AddRoutineModal (simplified) ───────────────────────────────
-function AddRoutineModal({ open, onClose, onSubmit }) {
+function AddRoutineModal({ open, onClose, onSubmit, initialData = null }) {
   const [name, setName] = useState('')
   const [items, setItems] = useState([{ id: 1, name: '' }])
   const nameRef = useRef(null)
-  useEffect(() => { if (open && nameRef.current) setTimeout(() => nameRef.current?.focus(), 50) }, [open])
+  useEffect(() => {
+    if (!open) return
+    if (initialData) {
+      setName(initialData.name || '')
+      setItems(initialData.items?.map((item, i) => ({ id: i + 1, name: item })) || [{ id: 1, name: '' }])
+    } else {
+      setName(''); setItems([{ id: 1, name: '' }])
+    }
+    setTimeout(() => nameRef.current?.focus(), 50)
+  }, [open])
   useEffect(() => {
     if (!open) return
     const fn = (e) => { if (e.key === 'Escape') onClose() }
@@ -1210,8 +1219,12 @@ function AddRoutineModal({ open, onClose, onSubmit }) {
     if (!name.trim()) return
     const validItems = items.filter(i => i.name.trim())
     if (!validItems.length) return
-    onSubmit({ id: `custom_${Date.now()}`, name: name.trim(), schedule: 'Custom', items: validItems.map(i => i.name.trim()), completion14d: Array(14).fill(false), insight: 'Just added — building up history.', suggestion: null, weekRate: 'no data yet' })
-    setName(''); setItems([{ id: 1, name: '' }]); onClose()
+    if (initialData) {
+      onSubmit({ ...initialData, name: name.trim(), items: validItems.map(i => i.name.trim()) })
+    } else {
+      onSubmit({ id: `custom_${Date.now()}`, name: name.trim(), schedule: 'Custom', items: validItems.map(i => i.name.trim()), completion14d: Array(14).fill(false), insight: 'Just added — building up history.', suggestion: null, weekRate: 'no data yet' })
+    }
+    onClose()
   }
   if (!open) return null
   const inputStyle = { flex: 1, minWidth: 0, background: C.paper, border: `1px solid ${C.border}`, borderRadius: 6, padding: '7px 10px', fontSize: 13, color: C.ink, outline: 'none', fontFamily: 'inherit' }
@@ -1223,8 +1236,8 @@ function AddRoutineModal({ open, onClose, onSubmit }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18, flexShrink: 0 }}>
             <div style={{ width: 40, height: 40, borderRadius: '50%', background: C.bellySoft, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><MayaOwl size={28} idle={false}/></div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 19, fontWeight: 600, color: C.warmDark, letterSpacing: -0.3, lineHeight: 1.1, marginBottom: 2 }}>Build a routine</div>
-              <div style={{ fontSize: 12, color: C.inkMute, fontStyle: 'italic' }}>A cluster of things that happen together.</div>
+              <div style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 19, fontWeight: 600, color: C.warmDark, letterSpacing: -0.3, lineHeight: 1.1, marginBottom: 2 }}>{initialData ? 'Edit routine' : 'Build a routine'}</div>
+              <div style={{ fontSize: 12, color: C.inkMute, fontStyle: 'italic' }}>{initialData ? 'Update name or items.' : 'A cluster of things that happen together.'}</div>
             </div>
             <button onClick={onClose} aria-label="Close" style={{ background: 'transparent', border: 'none', color: C.inkMute, cursor: 'pointer', fontSize: 20, padding: 4, lineHeight: 1, fontFamily: 'inherit' }}>×</button>
           </div>
@@ -1252,7 +1265,7 @@ function AddRoutineModal({ open, onClose, onSubmit }) {
           </div>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 12, borderTop: `1px solid ${C.hairline}`, flexShrink: 0 }}>
             <button onClick={onClose} style={btnGhost}>Cancel</button>
-            <button onClick={submit} disabled={!name.trim()||items.every(i=>!i.name.trim())} style={{ ...btnPrimary, padding: '8px 18px', opacity: (name.trim()&&items.some(i=>i.name.trim())) ? 1 : 0.5, cursor: (name.trim()&&items.some(i=>i.name.trim())) ? 'pointer' : 'not-allowed' }}>Build routine</button>
+            <button onClick={submit} disabled={!name.trim()||items.every(i=>!i.name.trim())} style={{ ...btnPrimary, padding: '8px 18px', opacity: (name.trim()&&items.some(i=>i.name.trim())) ? 1 : 0.5, cursor: (name.trim()&&items.some(i=>i.name.trim())) ? 'pointer' : 'not-allowed' }}>{initialData ? 'Save changes' : 'Build routine'}</button>
           </div>
         </div>
       </div>
@@ -1304,6 +1317,7 @@ export default function HeedApp() {
   const [modalOpen, setModalOpen] = useState(false)
   const [askOpen, setAskOpen] = useState(false)
   const [routineModalOpen, setRoutineModalOpen] = useState(false)
+  const [editingRoutine, setEditingRoutine] = useState(null)
   const [contextModalOpen, setContextModalOpen] = useState(false)
 
   useEffect(() => {
@@ -1367,9 +1381,9 @@ export default function HeedApp() {
         const newTask = await resp.json()
         setApiTasks(t => [...t, newTask])
         setToast({ message: 'Task added' })
+        setTab('today')
       }
     } catch {}
-    setTab('today')
   }, [FUNCTIONS_URL])
 
   const handleAddContext = useCallback(async (data) => {
@@ -1385,14 +1399,41 @@ export default function HeedApp() {
           .then(r => r.json())
           .then(d => d && setApiContexts(d))
           .catch(() => {})
+        setToast({ message: 'Context added' })
       }
     } catch {}
   }, [FUNCTIONS_URL])
 
   const handleAddRoutine = useCallback((routineData) => {
-    setRoutines(r => [...r, routineData])
-    setToast({ message: 'Routine added' })
+    const isEdit = !routineData.id.startsWith('custom_')
+    setRoutines(rs =>
+      isEdit
+        ? rs.map(r => r.id === routineData.id ? { ...r, name: routineData.name, items: routineData.items } : r)
+        : [...rs, routineData]
+    )
+    setToast({ message: isEdit ? 'Routine updated' : 'Routine added' })
+    setEditingRoutine(null)
     setTab('today')
+  }, [])
+
+  const handleMarkRoutineDone = useCallback((routineId) => {
+    setRoutines(rs => rs.map(r => {
+      if (r.id !== routineId) return r
+      const updated = [...r.completion14d]
+      updated[updated.length - 1] = true
+      return { ...r, completion14d: updated }
+    }))
+    setToast({ message: 'Routine marked done for today' })
+  }, [])
+
+  const handleLightenRoutine = useCallback((routineId) => {
+    setRoutines(rs => rs.map(r => r.id === routineId ? { ...r, suggestion: null, insight: 'Lightened for this week.' } : r))
+    setToast({ message: 'Routine lightened for this week' })
+  }, [])
+
+  const handleEditRoutine = useCallback((routine) => {
+    setEditingRoutine(routine)
+    setRoutineModalOpen(true)
   }, [])
 
   const tabs = [
@@ -1445,10 +1486,10 @@ export default function HeedApp() {
       </nav>
 
       <main style={{ maxWidth: 820, margin: '0 auto', padding: '28px 32px 100px 32px', minHeight: 'calc(100vh - 140px)', display: 'flex', flexDirection: 'column' }}>
-        {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} upcomingContexts={upcomingContexts} onMarkDone={handleMarkDone} onSkip={handleSkip}/>}
+        {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} upcomingContexts={upcomingContexts} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine}/>}
         {tab === 'calendar' && <CalendarTab/>}
         {tab === 'ask' && <AskTab/>}
-        {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} onMarkDone={handleMarkDone} onSkip={handleSkip}/>}
+        {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine}/>}
         {tab === 'context' && <ContextTab upcoming={apiContexts.upcoming} active={apiContexts.active} onAddContext={() => setContextModalOpen(true)}/>}
       </main>
 
@@ -1457,7 +1498,7 @@ export default function HeedApp() {
       </footer>
 
       <AddTaskModal open={modalOpen} onClose={() => setModalOpen(false)} onSubmit={handleAddTask}/>
-      <AddRoutineModal open={routineModalOpen} onClose={() => setRoutineModalOpen(false)} onSubmit={handleAddRoutine}/>
+      <AddRoutineModal open={routineModalOpen} onClose={() => { setRoutineModalOpen(false); setEditingRoutine(null) }} onSubmit={handleAddRoutine} initialData={editingRoutine}/>
       <AddContextModal open={contextModalOpen} onClose={() => setContextModalOpen(false)} onSubmit={handleAddContext}/>
       <AskInlineModal open={askOpen} onClose={() => setAskOpen(false)}/>
       {toast && <Toast message={toast.message} onView={handleToastView} onDismiss={() => setToast(null)} />}

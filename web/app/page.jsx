@@ -650,6 +650,54 @@ function SectionHeader({ children, count, accent = C.warmDark, motif }) {
   )
 }
 
+function parseInline(text) {
+  const parts = text.split(/(\*\*[^*]+\*\*)/)
+  return parts.map((part, i) =>
+    part.startsWith('**') && part.endsWith('**')
+      ? <strong key={i} style={{ color: C.warmDark, fontWeight: 700 }}>{part.slice(2, -2)}</strong>
+      : part
+  )
+}
+
+function renderMarkdown(text) {
+  if (!text) return null
+  const blocks = text.split(/\n\n+/)
+  return blocks.map((block, bi) => {
+    const lines = block.split('\n')
+    const bullets = lines.filter(l => l.startsWith('• ') || l.startsWith('- '))
+    if (bullets.length > 0 && bullets.length === lines.length) {
+      return (
+        <div key={bi} style={{ marginBottom: 6 }}>
+          {lines.map((line, li) => (
+            <div key={li} style={{ display: 'flex', gap: 7, marginBottom: 4, paddingLeft: 2, lineHeight: 1.5 }}>
+              <span style={{ color: C.sage, fontWeight: 700, flexShrink: 0, marginTop: 1, fontSize: 13 }}>·</span>
+              <span style={{ flex: 1 }}>{parseInline(line.slice(2))}</span>
+            </div>
+          ))}
+        </div>
+      )
+    }
+    if (bullets.length > 0) {
+      return (
+        <div key={bi} style={{ marginBottom: 6 }}>
+          {lines.map((line, li) => {
+            if (line.startsWith('• ') || line.startsWith('- ')) {
+              return (
+                <div key={li} style={{ display: 'flex', gap: 7, marginBottom: 4, paddingLeft: 2, lineHeight: 1.5 }}>
+                  <span style={{ color: C.sage, fontWeight: 700, flexShrink: 0, marginTop: 1, fontSize: 13 }}>·</span>
+                  <span style={{ flex: 1 }}>{parseInline(line.slice(2))}</span>
+                </div>
+              )
+            }
+            return <div key={li} style={{ marginBottom: 2, lineHeight: 1.55 }}>{parseInline(line)}</div>
+          })}
+        </div>
+      )
+    }
+    return <div key={bi} style={{ marginBottom: 6, lineHeight: 1.55 }}>{parseInline(block)}</div>
+  })
+}
+
 function Bubble({ role, content, streaming: isStreaming, actions, chips, onConfirm, onChipClick }) {
   const [activePreviewIndex, setActivePreviewIndex] = useState(null)
   const isUser = role === 'user'
@@ -665,10 +713,11 @@ function Bubble({ role, content, streaming: isStreaming, actions, chips, onConfi
         padding: '12px 16px',
         borderRadius: isUser ? '14px 14px 3px 14px' : '14px 14px 14px 3px',
         border: isUser ? 'none' : `1px solid ${C.border}`,
-        fontSize: 14, lineHeight: 1.55, whiteSpace: 'pre-wrap',
+        fontSize: 14, lineHeight: 1.55,
+        whiteSpace: isStreaming ? 'pre-wrap' : 'normal',
         boxShadow: isUser ? C.shadowSoft : 'none', fontFamily: 'inherit',
       }}>
-        {content}
+        {isUser || isStreaming ? content : renderMarkdown(content)}
         {isStreaming && <span style={{ opacity: 0.5, animation: 'heed-blink 1s infinite' }}>▍</span>}
 
         {hasActions && (
@@ -776,51 +825,116 @@ function Bubble({ role, content, streaming: isStreaming, actions, chips, onConfi
   )
 }
 
+// ── useSwipe ────────────────────────────────────────────────────
+function useSwipe(onRight, onLeft, threshold = 80) {
+  const [offset, setOffset] = useState(0)
+  const s = useRef({ startX: null, active: false, onRight, onLeft })
+  s.current.onRight = onRight
+  s.current.onLeft = onLeft
+
+  const onPointerDown = (e) => {
+    s.current.startX = e.clientX
+    s.current.active = false
+  }
+  const onPointerMove = (e) => {
+    if (s.current.startX === null) return
+    const dx = e.clientX - s.current.startX
+    if (!s.current.active && Math.abs(dx) > 8) {
+      s.current.active = true
+      try { e.currentTarget.setPointerCapture(e.pointerId) } catch (_) {}
+    }
+    if (s.current.active) setOffset(Math.max(-130, Math.min(130, dx)))
+  }
+  const onPointerUp = (e) => {
+    if (!s.current.active) { s.current.startX = null; return }
+    const dx = e.clientX - s.current.startX
+    s.current.startX = null
+    s.current.active = false
+    setOffset(0)
+    if (dx > threshold) s.current.onRight?.()
+    else if (dx < -threshold) s.current.onLeft?.()
+  }
+  const onPointerCancel = () => {
+    s.current.startX = null
+    s.current.active = false
+    setOffset(0)
+  }
+  return { offset, onPointerDown, onPointerMove, onPointerUp, onPointerCancel }
+}
+
 // ── HeroCard ───────────────────────────────────────────────────
 function HeroCard({ task, onMarkDone, onSkip }) {
   const [hover, setHover] = useState(false)
+  const { offset, onPointerDown, onPointerMove, onPointerUp, onPointerCancel } = useSwipe(
+    () => onMarkDone?.(task),
+    () => onSkip?.(task),
+  )
   const c = CATEGORY[task.category] || CATEGORY.admin
   const isCritical = task.overdue >= 7
+  const isSwiping = offset !== 0
+  const swipeRight = offset > 0
+  const swipeLeft = offset < 0
+  const progress = Math.min(Math.abs(offset) / 80, 1)
   return (
-    <div
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      style={{
-        background: `linear-gradient(135deg, ${C.paperHi} 0%, ${C.paper} 100%)`,
-        border: `1.5px solid ${isCritical ? C.rust + '66' : C.border}`,
-        borderRadius: 16, padding: '22px 24px',
-        boxShadow: hover ? C.shadowMed : C.shadowSoft,
-        transform: hover ? 'translateY(-2px)' : 'none',
-        transition: 'all 0.25s ease', position: 'relative', overflow: 'hidden',
-        animation: 'heed-fadeUp 0.5s ease both',
-      }}
-    >
-      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: isCritical ? C.rust : c.color }}/>
-      <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
-        <CategoryBadge category={task.category}/>
-        <div style={{ flex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
-            <span style={{ fontFamily: 'Lora, serif', fontSize: 22, fontWeight: 600, color: C.ink, letterSpacing: -0.3 }}>{task.name}</span>
-            {task.learned && <Pill tone="sage">✨ learned</Pill>}
-            {task.importance === 'high' && <Pill tone="danger">high</Pill>}
-          </div>
-          <div style={{ fontSize: 13, color: C.inkMute, marginBottom: task.note ? 10 : 0 }}>
-            {task.cadence} · last done {task.lastDone}
-          </div>
-          {task.note && (
-            <div style={{ fontSize: 13, color: C.inkSoft, fontStyle: 'italic', borderLeft: `3px solid ${C.border}`, paddingLeft: 12, marginTop: 10 }}>
-              {task.note}
-            </div>
-          )}
-        </div>
-        <div style={{ textAlign: 'right', flexShrink: 0 }}>
-          <div style={{ fontFamily: 'Lora, serif', fontSize: 36, fontWeight: 700, color: isCritical ? C.rust : C.ochre, lineHeight: 1 }}>{task.overdue}d</div>
-          <div style={{ fontSize: 11, color: C.inkMute, fontWeight: 700, letterSpacing: 0.6, textTransform: 'uppercase', marginTop: 2 }}>overdue</div>
-        </div>
+    <div style={{ position: 'relative', marginBottom: 2 }}>
+      <div style={{
+        position: 'absolute', inset: 0, borderRadius: 16,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px',
+        pointerEvents: 'none',
+      }}>
+        <span style={{ fontSize: 22, color: C.sage, opacity: swipeRight ? progress : 0 }}>✓</span>
+        <span style={{ fontSize: 22, color: C.ochre, opacity: swipeLeft ? progress : 0 }}>↷</span>
       </div>
-      <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
-        <button style={getBtnPrimary()} onClick={() => onMarkDone && onMarkDone(task.id)}>Mark done</button>
-        <button style={getBtnGhost()} onClick={() => onSkip && onSkip(task.id)}>Skip</button>
+      <div
+        onMouseEnter={() => !isSwiping && setHover(true)}
+        onMouseLeave={() => setHover(false)}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerCancel}
+        style={{
+          background: `linear-gradient(135deg, ${C.paperHi} 0%, ${C.paper} 100%)`,
+          border: `1.5px solid ${swipeRight ? C.sage + '88' : swipeLeft ? C.ochre + '66' : isCritical ? C.rust + '66' : C.border}`,
+          borderRadius: 16, padding: '22px 24px',
+          boxShadow: swipeRight ? `0 6px 24px ${C.sage}30` : swipeLeft ? `0 6px 24px ${C.ochre}22` : hover ? C.shadowMed : C.shadowSoft,
+          transform: `translateX(${offset}px)${!isSwiping && hover ? ' translateY(-2px)' : ''}`,
+          transition: isSwiping ? 'none' : 'all 0.25s ease',
+          position: 'relative', overflow: 'hidden',
+          animation: 'heed-fadeUp 0.5s ease both',
+          userSelect: 'none', touchAction: 'pan-y',
+        }}
+      >
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: swipeRight ? C.sage : swipeLeft ? C.ochre : isCritical ? C.rust : c.color }}/>
+        {swipeRight && <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(120deg, ${C.sage}18 0%, transparent 55%)`, pointerEvents: 'none', opacity: progress }}/>}
+        {swipeLeft && <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(300deg, ${C.ochre}18 0%, transparent 55%)`, pointerEvents: 'none', opacity: progress }}/>}
+        <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+          <CategoryBadge category={task.category}/>
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
+              <span style={{ fontFamily: 'Lora, serif', fontSize: 22, fontWeight: 600, color: swipeRight ? C.sage : swipeLeft ? C.ochre : C.ink, letterSpacing: -0.3 }}>{task.name}</span>
+              {task.learned && <Pill tone="sage">✨ learned</Pill>}
+              {task.importance === 'high' && <Pill tone="danger">high</Pill>}
+            </div>
+            <div style={{ fontSize: 13, color: C.inkMute, marginBottom: task.note ? 10 : 0 }}>
+              {task.cadence} · last done {task.lastDone}
+            </div>
+            {task.note && (
+              <div style={{ fontSize: 13, color: C.inkSoft, fontStyle: 'italic', borderLeft: `3px solid ${C.border}`, paddingLeft: 12, marginTop: 10 }}>
+                {task.note}
+              </div>
+            )}
+          </div>
+          <div style={{ textAlign: 'right', flexShrink: 0 }}>
+            <div style={{ fontFamily: 'Lora, serif', fontSize: 36, fontWeight: 700, color: swipeRight ? C.sage : swipeLeft ? C.ochre : isCritical ? C.rust : C.ochre, lineHeight: 1 }}>
+              {swipeRight ? '✓' : swipeLeft ? '↷' : `${task.overdue}d`}
+            </div>
+            {!swipeRight && !swipeLeft && <div style={{ fontSize: 11, color: C.inkMute, fontWeight: 700, letterSpacing: 0.6, textTransform: 'uppercase', marginTop: 2 }}>overdue</div>}
+          </div>
+        </div>
+        <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
+          <button style={getBtnPrimary()} onClick={() => onMarkDone?.(task)}>Mark done</button>
+          <button style={getBtnGhost()} onClick={() => onSkip?.(task)}>Skip</button>
+        </div>
       </div>
     </div>
   )
@@ -829,52 +943,78 @@ function HeroCard({ task, onMarkDone, onSkip }) {
 // ── TaskCard ───────────────────────────────────────────────────
 function TaskCard({ task, delay = 0, onMarkDone, onSkip }) {
   const [hover, setHover] = useState(false)
+  const { offset, onPointerDown, onPointerMove, onPointerUp, onPointerCancel } = useSwipe(
+    () => onMarkDone?.(task),
+    () => onSkip?.(task),
+  )
   const c = CATEGORY[task.category] || CATEGORY.admin
   const isOverdue = task.overdue != null
   const isCritical = isOverdue && task.overdue >= 7
+  const isSwiping = offset !== 0
+  const swipeRight = offset > 0
+  const swipeLeft = offset < 0
+  const progress = Math.min(Math.abs(offset) / 80, 1)
   return (
-    <div
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      style={{
-        background: `linear-gradient(180deg, ${C.paperHi} 0%, ${C.paper} 100%)`,
-        border: `1.5px solid ${isCritical ? C.rust + '44' : C.border}`,
-        borderRadius: 12, padding: '14px 16px 14px 20px',
-        marginBottom: 10,
-        boxShadow: hover ? C.shadowMed : C.shadowSoft,
-        transform: hover ? 'translateY(-2px)' : 'none',
-        transition: 'all 0.25s ease',
-        position: 'relative',
-        animation: 'heed-fadeUp 0.5s ease both',
-        animationDelay: `${delay}ms`,
-      }}
-    >
-      <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: isCritical ? C.rust : c.color, borderRadius: '3px 0 0 3px' }}/>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 14 }}>
-        <CategoryBadge category={task.category}/>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
-            <span style={{ fontWeight: 600, fontSize: 15, color: C.ink, letterSpacing: -0.1 }}>{task.name}</span>
-            {task.learned && <Pill tone="sage">✨ learned</Pill>}
-            {task.importance === 'high' && <Pill tone="danger">high</Pill>}
-          </div>
-          <div style={{ fontSize: 12.5, color: C.inkMute }}>{task.cadence} · last done {task.lastDone}</div>
-        </div>
-        <div style={{ textAlign: 'right', flexShrink: 0, minWidth: 64 }}>
-          {isOverdue && (<>
-            <div style={{ fontFamily: 'Lora, serif', fontSize: 22, fontWeight: 600, color: isCritical ? C.rust : C.ochre, lineHeight: 1 }}>{task.overdue}d</div>
-            <div style={{ fontSize: 10, color: C.inkMute, fontWeight: 600, letterSpacing: 0.4, textTransform: 'uppercase', marginTop: 2 }}>overdue</div>
-          </>)}
-          {task.dueIn === 0 && <Pill tone="sage">today</Pill>}
-          {task.dueIn > 0 && <div style={{ fontSize: 12.5, color: C.inkMute }}>in {task.dueIn}d</div>}
-        </div>
+    <div style={{ position: 'relative', marginBottom: 10 }}>
+      <div style={{
+        position: 'absolute', inset: 0, borderRadius: 12,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 18px',
+        pointerEvents: 'none',
+      }}>
+        <span style={{ fontSize: 18, color: C.sage, opacity: swipeRight ? progress : 0 }}>✓</span>
+        <span style={{ fontSize: 18, color: C.ochre, opacity: swipeLeft ? progress : 0 }}>↷</span>
       </div>
-      {hover && (
-        <div style={{ marginTop: 10, display: 'flex', gap: 6, animation: 'heed-fadeIn 0.2s ease' }}>
-          <button style={getBtnPrimary()} onClick={() => onMarkDone && onMarkDone(task.id)}>Mark done</button>
-          <button style={getBtnGhost()} onClick={() => onSkip && onSkip(task.id)}>Skip</button>
+      <div
+        onMouseEnter={() => !isSwiping && setHover(true)}
+        onMouseLeave={() => setHover(false)}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerCancel}
+        style={{
+          background: `linear-gradient(180deg, ${C.paperHi} 0%, ${C.paper} 100%)`,
+          border: `1.5px solid ${swipeRight ? C.sage + '77' : swipeLeft ? C.ochre + '55' : isCritical ? C.rust + '44' : C.border}`,
+          borderRadius: 12, padding: '14px 16px 14px 20px',
+          boxShadow: swipeRight ? `0 4px 18px ${C.sage}28` : swipeLeft ? `0 4px 18px ${C.ochre}20` : hover ? C.shadowMed : C.shadowSoft,
+          transform: `translateX(${offset}px)${!isSwiping && hover ? ' translateY(-2px)' : ''}`,
+          transition: isSwiping ? 'none' : 'all 0.25s ease',
+          position: 'relative',
+          animation: 'heed-fadeUp 0.5s ease both',
+          animationDelay: `${delay}ms`,
+          userSelect: 'none', touchAction: 'pan-y',
+        }}
+      >
+        <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: swipeRight ? C.sage : swipeLeft ? C.ochre : isCritical ? C.rust : c.color, borderRadius: '3px 0 0 3px' }}/>
+        {swipeRight && <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(120deg, ${C.sage}15 0%, transparent 55%)`, pointerEvents: 'none', opacity: progress }}/>}
+        {swipeLeft && <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(300deg, ${C.ochre}15 0%, transparent 55%)`, pointerEvents: 'none', opacity: progress }}/>}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 14 }}>
+          <CategoryBadge category={task.category}/>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
+              <span style={{ fontWeight: 600, fontSize: 15, color: swipeRight ? C.sage : swipeLeft ? C.ochre : C.ink, letterSpacing: -0.1 }}>{task.name}</span>
+              {task.learned && <Pill tone="sage">✨ learned</Pill>}
+              {task.importance === 'high' && <Pill tone="danger">high</Pill>}
+            </div>
+            <div style={{ fontSize: 12.5, color: C.inkMute }}>{task.cadence} · last done {task.lastDone}</div>
+          </div>
+          <div style={{ textAlign: 'right', flexShrink: 0, minWidth: 64 }}>
+            {isOverdue && !swipeRight && !swipeLeft && (<>
+              <div style={{ fontFamily: 'Lora, serif', fontSize: 22, fontWeight: 600, color: isCritical ? C.rust : C.ochre, lineHeight: 1 }}>{task.overdue}d</div>
+              <div style={{ fontSize: 10, color: C.inkMute, fontWeight: 600, letterSpacing: 0.4, textTransform: 'uppercase', marginTop: 2 }}>overdue</div>
+            </>)}
+            {swipeRight && <div style={{ fontFamily: 'Lora, serif', fontSize: 22, fontWeight: 600, color: C.sage, lineHeight: 1 }}>✓</div>}
+            {swipeLeft && <div style={{ fontFamily: 'Lora, serif', fontSize: 22, fontWeight: 600, color: C.ochre, lineHeight: 1 }}>↷</div>}
+            {!swipeRight && !swipeLeft && task.dueIn === 0 && <Pill tone="sage">today</Pill>}
+            {!swipeRight && !swipeLeft && task.dueIn > 0 && <div style={{ fontSize: 12.5, color: C.inkMute }}>in {task.dueIn}d</div>}
+          </div>
         </div>
-      )}
+        {(hover && !isSwiping) && (
+          <div style={{ marginTop: 10, display: 'flex', gap: 6, animation: 'heed-fadeIn 0.2s ease' }}>
+            <button style={getBtnPrimary()} onClick={() => onMarkDone?.(task)}>Mark done</button>
+            <button style={getBtnGhost()} onClick={() => onSkip?.(task)}>Skip</button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

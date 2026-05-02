@@ -11,7 +11,14 @@ parse those dicts into these models before passing to agents.
 
 from datetime import datetime, date
 from typing import Optional, Literal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+
+def _clean_dt(v):
+    """Strip trailing Z when a numeric timezone offset (+00:00) is already present."""
+    if isinstance(v, str) and v.endswith("Z") and ("+" in v[:-1] or v[:-1].count("-") >= 3):
+        return v[:-1]
+    return v
 
 # -----------------------------------------------------------------------------
 # Cosmos models
@@ -48,6 +55,11 @@ class Task(BaseModel):
     status: TaskStatus = "active"
     importance: Importance = "medium"
 
+    @field_validator("created_at", "last_done_at", "next_due_at", mode="before")
+    @classmethod
+    def fix_tz(cls, v):
+        return _clean_dt(v)
+
 
 class Completion(BaseModel):
     id: str
@@ -58,6 +70,11 @@ class Completion(BaseModel):
     note: Optional[str] = None
     skip_reason: Optional[SkipReason] = None
 
+    @field_validator("completed_at", mode="before")
+    @classmethod
+    def fix_tz(cls, v):
+        return _clean_dt(v)
+
 
 class UserContext(BaseModel):
     id: str
@@ -67,6 +84,11 @@ class UserContext(BaseModel):
     end_date: date
     description: str
     created_at: datetime
+
+    @field_validator("created_at", mode="before")
+    @classmethod
+    def fix_tz(cls, v):
+        return _clean_dt(v)
 
 
 class User(BaseModel):

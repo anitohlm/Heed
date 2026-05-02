@@ -62,12 +62,12 @@ def mark_task_done(task_id: str, user_id: str, note: str = None) -> dict:
     # recomputed by Memory Keeper on its next pass.
     tasks_container = _get_database().get_container_client("tasks")
     task_dict = task.model_dump(mode="json")
-    task_dict["last_done_at"] = completion.completed_at.isoformat() + "Z"
+    task_dict["last_done_at"] = completion.completed_at.isoformat().replace("+00:00", "Z")
 
     cadence = task.explicit_cadence_days or task.learned_cadence_days
     if cadence:
         next_due = completion.completed_at + timedelta(days=cadence)
-        task_dict["next_due_at"] = next_due.isoformat() + "Z"
+        task_dict["next_due_at"] = next_due.isoformat().replace("+00:00", "Z")
 
     tasks_container.replace_item(item=task_id, body=task_dict)
 

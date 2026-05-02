@@ -1820,7 +1820,12 @@ export default function HeedApp() {
     ...(apiContexts.upcoming || []).map(c => ({ ...mapApiContext(c), _startDate: c.start_date ? new Date(c.start_date) : null })),
     ...(apiContexts.active || []).map(c => ({ ...mapApiContext(c), _startDate: c.start_date ? new Date(c.start_date) : null })),
   ]
-  const upcomingContexts = apiUpcoming.length > 0 ? apiUpcoming : CONTEXTS_UPCOMING_DEMO
+  const enrichedUpcoming = apiUpcoming.map(c => {
+    if (c.plan) return c
+    const demo = CONTEXTS_UPCOMING_DEMO.find(d => d.desc === c.desc)
+    return demo ? { ...c, plan: demo.plan, askQuery: demo.askQuery } : c
+  })
+  const upcomingContexts = enrichedUpcoming.length > 0 ? enrichedUpcoming : CONTEXTS_UPCOMING_DEMO
 
   const handleMarkDone = useCallback(async (task) => {
     const taskId = typeof task === 'string' ? task : task.id

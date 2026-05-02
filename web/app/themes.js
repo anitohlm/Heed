@@ -108,11 +108,15 @@ export const OWL_THEMES = {
 
 export const DEFAULT_THEME = 'midnight-fern'
 
+const _VALID_THEMES = new Set(Object.keys(THEMES))
+
 // Mutable state object shared with page.jsx's C getter proxy.
 // setThemeState() is called synchronously at the top of HeedApp render.
 export const themeState = {
   current: typeof window !== 'undefined'
-    ? (localStorage.getItem('heed-theme') || DEFAULT_THEME)
+    ? (_VALID_THEMES.has(localStorage.getItem('heed-theme') || '')
+        ? localStorage.getItem('heed-theme')
+        : DEFAULT_THEME)
     : DEFAULT_THEME,
 }
 

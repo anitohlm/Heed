@@ -139,6 +139,32 @@ TOOLS = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "suggest_followups",
+            "description": "Suggest 2-3 contextual follow-up chips to show the user after your response. Always call this at the end of every response. Chips must be specific to what you just said — 'What about my gym routine?' beats 'Tell me more.'",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "chips": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "emoji": {"type": "string"},
+                                "text": {"type": "string"},
+                            },
+                            "required": ["emoji", "text"],
+                        },
+                        "minItems": 2,
+                        "maxItems": 3,
+                    },
+                },
+                "required": ["chips"],
+            },
+        },
+    },
 ]
 
 
@@ -187,10 +213,24 @@ def _dispatch_tool(name: str, arguments: dict, user_id: str) -> str:
                 "action": action.model_dump(mode="json"),
                 "validation": {"allowed_immediately": allowed, "reason": reason},
             })
+        elif name == "suggest_followups":
+            return json.dumps({
+                "ok": True,
+                "chips_count": len(arguments.get("chips", [])),
+            })
         else:
             return json.dumps({"error": f"Unknown tool: {name}"})
     except Exception as e:
         return json.dumps({"error": str(e)})
+
+
+_ACTION_DISPLAY = {
+    "mark_done":       ("Mark done",  "✓"),
+    "skip":            ("Skip this",  "⏭"),
+    "defer":           ("Defer",      "→"),
+    "lighten_routine": ("Lighten it", "🪶"),
+    "add_context":     ("Add context","📍"),
+}
 
 
 def _today_view_json(user_id: str) -> str:
@@ -350,6 +390,24 @@ async def stream_response(
                 result = _dispatch_tool(tc["name"], args, user_id)
                 preview = result[:120] + "..." if len(result) > 120 else result
                 yield {"type": "tool_result", "name": tc["name"], "preview": preview}
+
+                if tc["name"] == "propose_action" and args:
+                    action_type = args.get("action_type", "")
+                    default_label, default_emoji = _ACTION_DISPLAY.get(
+                        action_type, (action_type.replace("_", " ").title(), "")
+                    )
+                    payload = args.get("payload") or {}
+                    yield {
+                        "type": "action",
+                        "action_type": action_type,
+                        "label": payload.get("label", default_label),
+                        "emoji": payload.get("emoji", default_emoji),
+                        "task_id": args.get("task_id"),
+                        "routine_id": args.get("routine_id"),
+                        "payload": payload,
+                    }
+                elif tc["name"] == "suggest_followups" and args:
+                    yield {"type": "chips", "chips": args.get("chips", [])}
 
                 messages.append({
                     "role": "tool",

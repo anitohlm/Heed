@@ -191,6 +191,8 @@ function useChat() {
 
     let thinkingSteps = []
     let finalText = ''
+    let pendingActions = []
+    let pendingChips = []
 
     try {
       const resp = await fetch(`${FUNCTIONS_URL}/api/advisor_stream`, {
@@ -204,6 +206,11 @@ function useChat() {
         try { return JSON.parse(line) } catch { return null }
       }).filter(Boolean)
       thinkingSteps = events.filter(e => e.type === 'thinking').map(e => e.step)
+      pendingActions = events
+        .filter(e => e.type === 'action')
+        .map(({ type, ...rest }) => rest)
+      const chipsEvent = events.find(e => e.type === 'chips')
+      pendingChips = chipsEvent?.chips || []
       const done = events.find(e => e.type === 'done')
       finalText = done?.final_text || events.filter(e => e.type === 'delta').map(e => e.text).join('') || ''
       if (!finalText) throw new Error('empty')
@@ -226,12 +233,51 @@ function useChat() {
       setStreaming(acc)
       await new Promise(r => setTimeout(r, 16 + Math.random() * 20))
     }
-    setMessages(m => [...m, { role: 'assistant', content: acc }])
+    setMessages(m => [...m, { role: 'assistant', content: acc, actions: pendingActions, chips: pendingChips }])
     setStreaming('')
     setBusy(false)
   }, [busy, messages])
 
-  return { messages, input, setInput, thinking, streaming, busy, send }
+  const executeAction = useCallback(async (messageIndex, actionIndex) => {
+    const msg = messages[messageIndex]
+    if (!msg?.actions?.[actionIndex]) return
+    const action = msg.actions[actionIndex]
+    if (action.confirmed) return
+
+    try {
+      const resp = await fetch(`${FUNCTIONS_URL}/api/execute_action`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action_type: action.action_type,
+          payload: { ...action.payload, task_id: action.task_id, routine_id: action.routine_id },
+        }),
+      })
+      const result = await resp.json()
+      if (!result.ok) throw new Error(result.error || 'Failed')
+      setMessages(msgs => msgs.map((m, i) => {
+        if (i !== messageIndex) return m
+        return {
+          ...m,
+          actions: m.actions.map((a, j) =>
+            j === actionIndex ? { ...a, confirmed: true, summary: result.summary } : a
+          ),
+        }
+      }))
+    } catch (err) {
+      setMessages(msgs => msgs.map((m, i) => {
+        if (i !== messageIndex) return m
+        return {
+          ...m,
+          actions: m.actions.map((a, j) =>
+            j === actionIndex ? { ...a, error: err.message } : a
+          ),
+        }
+      }))
+    }
+  }, [messages])
+
+  return { messages, input, setInput, thinking, streaming, busy, send, executeAction }
 }
 
 // ── Button style factories (called each render so C reads current theme) ──
@@ -567,8 +613,12 @@ function SectionHeader({ children, count, accent = C.warmDark, motif }) {
   )
 }
 
-function Bubble({ role, content, streaming: isStreaming }) {
+function Bubble({ role, content, streaming: isStreaming, actions, chips, onConfirm, onChipClick }) {
+  const [activePreviewIndex, setActivePreviewIndex] = useState(null)
   const isUser = role === 'user'
+  const hasActions = !isUser && actions?.length > 0
+  const hasChips = !isUser && chips?.length > 0
+
   return (
     <div style={{ display: 'flex', justifyContent: isUser ? 'flex-end' : 'flex-start', marginBottom: 12, animation: 'heed-fadeUp 0.3s ease' }}>
       <div style={{
@@ -583,6 +633,107 @@ function Bubble({ role, content, streaming: isStreaming }) {
       }}>
         {content}
         {isStreaming && <span style={{ opacity: 0.5, animation: 'heed-blink 1s infinite' }}>▍</span>}
+
+        {hasActions && (
+          <div style={{ borderTop: `1px solid ${C.hairline}`, marginTop: 12, paddingTop: 10 }}>
+            {actions.map((action, i) => {
+              if (action.confirmed) {
+                return (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: C.sageSoft, borderRadius: 8, marginBottom: 6, animation: 'heed-fadeIn 0.3s ease' }}>
+                    <span style={{ color: C.sage, fontSize: 15, flexShrink: 0 }}>✓</span>
+                    <div>
+                      <div style={{ fontSize: 12.5, color: C.sage, fontWeight: 600 }}>{action.label}</div>
+                      {action.summary && <div style={{ fontSize: 11.5, color: C.inkMute, marginTop: 1 }}>{action.summary}</div>}
+                    </div>
+                  </div>
+                )
+              }
+              if (activePreviewIndex === i) {
+                const preview = action.payload?.preview || {}
+                return (
+                  <div key={i} style={{ background: C.sageSoft, border: `1px solid ${C.sage}55`, borderRadius: 10, padding: '12px 14px', marginBottom: 8, animation: 'heed-fadeIn 0.2s ease' }}>
+                    <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.sage, fontWeight: 700, marginBottom: 8 }}>Preview — {action.label}</div>
+                    {preview.remove?.length > 0 ? (
+                      <>
+                        <div style={{ fontSize: 12, color: C.inkMute, marginBottom: 6 }}>Remove for {action.payload?.duration_days || 7} days:</div>
+                        {preview.remove.map((item, j) => (
+                          <div key={j} style={{ fontSize: 12.5, color: C.ink, marginBottom: 3 }}>
+                            ✕&nbsp;{typeof item === 'object' ? item.name : item}
+                            {item?.duration_min ? <span style={{ color: C.inkMute }}>&nbsp;{item.duration_min} min</span> : null}
+                          </div>
+                        ))}
+                        {preview.keep?.length > 0 && (
+                          <>
+                            <div style={{ fontSize: 12, color: C.inkMute, marginBottom: 4, marginTop: 10 }}>Keeping:</div>
+                            {preview.keep.map((item, j) => (
+                              <div key={j} style={{ fontSize: 12.5, color: C.inkMute, marginBottom: 2 }}>· {item}</div>
+                            ))}
+                          </>
+                        )}
+                      </>
+                    ) : (
+                      <div style={{ fontSize: 12.5, color: C.inkSoft, marginBottom: 8 }}>
+                        {action.action_type === 'mark_done' && 'Mark this task as completed.'}
+                        {action.action_type === 'skip' && 'Skip this task for now.'}
+                        {action.action_type === 'defer' && `Defer to ${action.payload?.defer_until?.slice(0, 10) || 'later'}.`}
+                        {action.action_type === 'add_context' && 'Add this context window to your timeline.'}
+                        {action.action_type === 'lighten_routine' && 'Reduce your routine for the next week.'}
+                      </div>
+                    )}
+                    {action.error && (
+                      <div style={{ fontSize: 12, color: C.rust, marginBottom: 8 }}>{action.error} — try again</div>
+                    )}
+                    <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                      <button
+                        onClick={() => { onConfirm && onConfirm(i, action); setActivePreviewIndex(null) }}
+                        style={{ flex: 1, background: C.sageSoft, border: `1px solid ${C.sage}`, color: C.sage, padding: '7px 0', borderRadius: 20, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}
+                      >
+                        Confirm
+                      </button>
+                      <button
+                        onClick={() => setActivePreviewIndex(null)}
+                        style={{ background: 'transparent', border: `1px solid ${C.border}`, color: C.inkMute, padding: '7px 16px', borderRadius: 20, fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )
+              }
+              const isDefer = action.action_type === 'defer'
+              return (
+                <button key={i}
+                  onClick={() => setActivePreviewIndex(i)}
+                  style={{
+                    background: isDefer ? '#162230' : C.sageSoft,
+                    border: `1px solid ${isDefer ? '#4a6a8a' : C.sage + '99'}`,
+                    color: isDefer ? '#7aabe0' : C.sage,
+                    padding: '5px 13px', borderRadius: 20, fontSize: 12.5,
+                    cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
+                    fontFamily: 'inherit', marginRight: 8, marginBottom: 6, transition: 'all 0.15s',
+                  }}
+                >
+                  <span>{action.emoji}</span>{action.label}
+                </button>
+              )
+            })}
+          </div>
+        )}
+
+        {hasChips && (
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: hasActions ? 6 : 10 }}>
+            {chips.map((chip, i) => (
+              <button key={i}
+                onClick={() => onChipClick && onChipClick(chip.text)}
+                style={{ background: C.cream, border: `1px solid ${C.border}`, color: C.inkMute, padding: '4px 10px', borderRadius: 20, fontSize: 11.5, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 5, transition: 'all 0.15s' }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.inkSoft }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.inkMute }}
+              >
+                <span style={{ fontSize: 12 }}>{chip.emoji}</span>{chip.text}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )
@@ -959,7 +1110,7 @@ function ThinkingBubble({ steps }) {
 }
 
 function AskTab({ prefill = '' }) {
-  const { messages, input, setInput, thinking, streaming, busy, send } = useChat()
+  const { messages, input, setInput, thinking, streaming, busy, send, executeAction } = useChat()
   const scrollRef = useRef(null)
   useEffect(() => {
     if (prefill) setInput(prefill)
@@ -990,7 +1141,13 @@ function AskTab({ prefill = '' }) {
       {messages.length > 0 && (
         <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '12px 4px', marginBottom: 12 }}>
           <div style={{ textAlign: 'center', marginBottom: 18 }}><MayaOwl size={72} mood={owlMood} speaking={busy}/></div>
-          {messages.map((m, i) => <Bubble key={i} role={m.role} content={m.content}/>)}
+          {messages.map((m, i) => (
+            <Bubble key={i} role={m.role} content={m.content}
+              actions={m.actions} chips={m.chips}
+              onConfirm={(actionIndex) => executeAction(i, actionIndex)}
+              onChipClick={(text) => send(text)}
+            />
+          ))}
           {thinking && thinking.length > 0 && <ThinkingBubble steps={thinking}/>}
           {streaming && <Bubble role="assistant" content={streaming} streaming/>}
         </div>
@@ -1271,7 +1428,7 @@ function HeedFAB({ onAddTask, onAskHeed, onAddRoutine }) {
 
 // ── AskInlineModal ─────────────────────────────────────────────
 function AskInlineModal({ open, onClose }) {
-  const { messages, input, setInput, thinking, streaming, busy, send } = useChat()
+  const { messages, input, setInput, thinking, streaming, busy, send, executeAction } = useChat()
   const scrollRef = useRef(null)
   const inputRef = useRef(null)
   useEffect(() => { if (open && inputRef.current) setTimeout(() => inputRef.current?.focus(), 100) }, [open])
@@ -1313,7 +1470,13 @@ function AskInlineModal({ open, onClose }) {
                 ))}
               </div>
             )}
-            {messages.map((m, i) => <Bubble key={i} role={m.role} content={m.content}/>)}
+            {messages.map((m, i) => (
+              <Bubble key={i} role={m.role} content={m.content}
+                actions={m.actions} chips={m.chips}
+                onConfirm={(actionIndex) => executeAction(i, actionIndex)}
+                onChipClick={(text) => send(text)}
+              />
+            ))}
             {thinking && thinking.length > 0 && <ThinkingBubble steps={thinking}/>}
             {streaming && <Bubble role="assistant" content={streaming} streaming/>}
           </div>

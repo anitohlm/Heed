@@ -346,6 +346,102 @@ def today_view(req: func.HttpRequest) -> func.HttpResponse:
         return _error(str(e), 500)
 
 
+# ── execute_action ─────────────────────────────────────────────────────────────
+
+@app.route(route="execute_action", methods=["POST", "OPTIONS"])
+def execute_action(req: func.HttpRequest) -> func.HttpResponse:
+    """
+    POST /api/execute_action
+    Body: {"action_type": "...", "payload": {...}}
+    Executes a confirmed action proposed by the Advisor agent.
+    """
+    if req.method == "OPTIONS":
+        return func.HttpResponse(status_code=204, headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type",
+        })
+
+    try:
+        body = req.get_json()
+    except ValueError:
+        return _error("Invalid JSON body")
+
+    action_type = body.get("action_type")
+    payload = body.get("payload") or {}
+
+    if not action_type:
+        return _error("action_type is required")
+
+    if action_type == "mark_done":
+        task_id = payload.get("task_id")
+        if not task_id:
+            return _error("task_id required for mark_done")
+        result = action_tools.mark_task_done(task_id, USER_ID, note=payload.get("note"))
+        if result.get("success"):
+            return _json_response({"ok": True, "summary": "Task marked done"})
+        return _json_response({"ok": False, "error": result.get("error", "Failed")}, 400)
+
+    elif action_type == "skip":
+        task_id = payload.get("task_id")
+        if not task_id:
+            return _error("task_id required for skip")
+        result = action_tools.skip_task(
+            task_id, USER_ID,
+            skip_reason=payload.get("skip_reason", "other"),
+            note=payload.get("note"),
+        )
+        if result.get("success"):
+            return _json_response({"ok": True, "summary": "Task skipped"})
+        return _json_response({"ok": False, "error": result.get("error", "Failed")}, 400)
+
+    elif action_type == "defer":
+        task_id = payload.get("task_id")
+        defer_until = payload.get("defer_until")
+        if not task_id:
+            return _error("task_id required for defer")
+        if not defer_until:
+            return _error("defer_until required for defer")
+        result = action_tools.defer_task(
+            task_id, USER_ID,
+            defer_until=defer_until,
+            reason=payload.get("note"),
+        )
+        if result.get("success"):
+            return _json_response({"ok": True, "summary": f"Task deferred to {defer_until[:10]}"})
+        return _json_response({"ok": False, "error": result.get("error", "Failed")}, 400)
+
+    elif action_type == "lighten_routine":
+        routine_id = payload.get("routine_id")
+        if not routine_id:
+            return _error("routine_id required for lighten_routine")
+        result = action_tools.lighten_routine(
+            routine_id, USER_ID,
+            items_to_keep=payload.get("keep", []),
+        )
+        if result.get("success"):
+            removed = payload.get("preview", {}).get("remove", [])
+            names = ", ".join(i["name"] if isinstance(i, dict) else i for i in removed)
+            summary = f"Routine lightened" + (f" — removed: {names}" if names else "")
+            return _json_response({"ok": True, "summary": summary})
+        return _json_response({"ok": False, "error": result.get("error", "Failed")}, 400)
+
+    elif action_type == "add_context":
+        result = action_tools.add_user_context(
+            user_id=USER_ID,
+            context_type=payload.get("context_type", "other"),
+            start_date=payload.get("start_date", ""),
+            end_date=payload.get("end_date", ""),
+            description=payload.get("description", ""),
+        )
+        if result.get("success"):
+            return _json_response({"ok": True, "summary": "Context added"})
+        return _json_response({"ok": False, "error": result.get("error", "Failed")}, 400)
+
+    else:
+        return _error(f"Unknown action_type: {action_type}", 400)
+
+
 # ── memory_keeper_timer ────────────────────────────────────────────────────────
 
 @app.timer_trigger(

@@ -638,14 +638,14 @@ function ContextBanner({ upcomingContexts }) {
 }
 
 // ── TodayTab ───────────────────────────────────────────────────
-function TodayTab({ tasks, routines, upcomingContexts, onMarkDone, onSkip, onMarkRoutineDone, onLightenRoutine, onEditRoutine }) {
+function TodayTab({ tasks, routines, upcomingContexts, onMarkDone, onSkip, onMarkRoutineDone, onLightenRoutine, onEditRoutine, onAskHeed }) {
   const overdue = tasks.filter(t => t.overdue != null).sort((a, b) => b.overdue - a.overdue)
   const heroTask = overdue[0]
   const otherOverdue = overdue.slice(1)
   const upcoming = tasks.filter(t => t.dueIn !== undefined)
   return (
     <div>
-      <ContextBanner upcomingContexts={upcomingContexts}/>
+      <ContextBanner upcomingContexts={upcomingContexts} onAskHeed={onAskHeed}/>
       <SectionHeader>Top of mind</SectionHeader>
       {heroTask ? <HeroCard task={heroTask} onMarkDone={onMarkDone} onSkip={onSkip}/> : (
         <div style={{ fontSize: 13.5, color: C.inkMute, fontStyle: 'italic', padding: '12px 0' }}>Nothing critical right now. Nice.</div>
@@ -705,9 +705,12 @@ function ThinkingBubble({ steps }) {
   )
 }
 
-function AskTab() {
+function AskTab({ prefill = '' }) {
   const { messages, input, setInput, thinking, streaming, busy, send } = useChat()
   const scrollRef = useRef(null)
+  useEffect(() => {
+    if (prefill) setInput(prefill)
+  }, [prefill])
   const owlMood = busy ? 'thinking' : 'calm'
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight
@@ -1358,6 +1361,7 @@ export default function HeedApp() {
   const [routines, setRoutines] = useState(ROUTINES)
   const [tab, setTab] = useState('today')
   const [toast, setToast] = useState(null)
+  const [askPrefill, setAskPrefill] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
   const [askOpen, setAskOpen] = useState(false)
   const [routineModalOpen, setRoutineModalOpen] = useState(false)
@@ -1420,6 +1424,11 @@ export default function HeedApp() {
       body: JSON.stringify({ task_id: taskId, event_type: 'skipped', skip_reason: 'other' }),
     }).catch(() => {})
   }, [FUNCTIONS_URL])
+
+  const handleAskHeed = useCallback((query) => {
+    setAskPrefill(query)
+    setTab('ask')
+  }, [])
 
   const handleToastView = useCallback(() => {
     setToast(null)
@@ -1548,9 +1557,9 @@ export default function HeedApp() {
       </nav>
 
       <main style={{ maxWidth: 820, margin: '0 auto', padding: '28px 32px 100px 32px', minHeight: 'calc(100vh - 140px)', display: 'flex', flexDirection: 'column' }}>
-        {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} upcomingContexts={upcomingContexts} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine}/>}
+        {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} upcomingContexts={upcomingContexts} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAskHeed={handleAskHeed}/>}
         {tab === 'calendar' && <CalendarTab/>}
-        {tab === 'ask' && <AskTab/>}
+        {tab === 'ask' && <AskTab prefill={askPrefill}/>}
         {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine}/>}
         {tab === 'context' && <ContextTab upcoming={apiContexts.upcoming} active={apiContexts.active} onAddContext={() => setContextModalOpen(true)}/>}
       </main>

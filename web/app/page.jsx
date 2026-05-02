@@ -97,7 +97,15 @@ const SCRIPTED_RESPONSES = {
       "Checking if any context windows explain the misses...",
       "Filtering out things you intentionally skipped...",
     ],
-    answer: `Here's what you're forgetting, sorted by what matters most:\n\n**🔴 Disconnection risk:**\n• **Maynilad bill** — 19 days overdue. You usually pay this early in the month.\n• **Meralco bill** — 9 days overdue. Mid-month pattern, payday-aligned.\n\n**🟡 Personal:**\n• **Call Mom** — 17 days overdue. You called her every Sunday for 19 weeks straight, then three Sundays got skipped. Your pattern broke.\n\n**🟢 Easier wins:**\n• **Clean aircon filter** — 78 days since last clean. Still inside your usual ~11-week range.\n• **Change toothbrush** — last logged 4 months ago.\n\nWant me to plan these around your Singapore trip next week?`
+    answer: `Here's what you're forgetting, sorted by what matters most:\n\n**🔴 Disconnection risk:**\n• **Maynilad bill** — 19 days overdue. You usually pay this early in the month.\n• **Meralco bill** — 9 days overdue. Mid-month pattern, payday-aligned.\n\n**🟡 Personal:**\n• **Call Mom** — 17 days overdue. You called her every Sunday for 19 weeks straight, then three Sundays got skipped. Your pattern broke.\n\n**🟢 Easier wins:**\n• **Clean aircon filter** — 78 days since last clean. Still inside your usual ~11-week range.\n• **Change toothbrush** — last logged 4 months ago.\n\nWant me to plan these around your Singapore trip next week?`,
+    actions: [
+      { action_type: 'defer', emoji: '→', label: 'Defer Maynilad bill', payload: { defer_until: '2026-05-10' } },
+    ],
+    chips: [
+      { emoji: '✈️', text: 'Plan around my Singapore trip' },
+      { emoji: '📞', text: 'Why did I skip calling Mom?' },
+      { emoji: '✓', text: 'I already paid the bills' },
+    ],
   },
   "Plan around my Singapore trip": {
     thinking: [
@@ -106,7 +114,12 @@ const SCRIPTED_RESPONSES = {
       "Categorizing by what truly can't wait...",
       "Drafting a pre-trip and after-trip plan...",
     ],
-    answer: `Got it — **Singapore trip Apr 28 – May 2** is locked in.\n\n**Before you leave (next 6 days):**\n• Pay Maynilad and Meralco — handle these this week.\n• Submit timesheet (Friday).\n• Refill water dispenser the day before you fly.\n\n**While you're away:**\n• I'll pause your morning and evening routines automatically.\n\n**When you're back (May 3–5):**\n• I'll resume your routines on May 3 with a soft start — just the essentials.\n• Aircon cleaning can wait until that weekend.`
+    answer: `Got it — **Singapore trip Apr 28 – May 2** is locked in.\n\n**Before you leave (next 6 days):**\n• Pay Maynilad and Meralco — handle these this week.\n• Submit timesheet (Friday).\n• Refill water dispenser the day before you fly.\n\n**While you're away:**\n• I'll pause your morning and evening routines automatically.\n\n**When you're back (May 3–5):**\n• I'll resume your routines on May 3 with a soft start — just the essentials.\n• Aircon cleaning can wait until that weekend.`,
+    chips: [
+      { emoji: '🌿', text: 'Lighten my routine while away' },
+      { emoji: '📋', text: 'What am I forgetting before I leave?' },
+      { emoji: '👍', text: 'Looks good, thanks' },
+    ],
   },
   "I have a busy week — lighten my routine": {
     thinking: [
@@ -114,19 +127,41 @@ const SCRIPTED_RESPONSES = {
       "Looking at your morning routine: 4 items...",
       "Checking which items you tend to keep even on busy days...",
     ],
-    answer: `Acknowledged — I'm marking this week as busy.\n\n**Your morning routine, lightened:**\nLooking at your skip patterns from the last three busy weeks, you almost always keep:\n• Vitamins (you keep these 90% of the time, even when stressed)\n• Coffee (you wouldn't skip this if the building was on fire)\n\n**My suggestion:** This week, your morning routine is just **vitamins + coffee.** I won't ping you about stretch or journal. We'll bring them back once your week clears up.`
+    answer: `Acknowledged — I'm marking this week as busy.\n\n**Your morning routine, lightened:**\nLooking at your skip patterns from the last three busy weeks, you almost always keep:\n• Vitamins (you keep these 90% of the time, even when stressed)\n• Coffee (you wouldn't skip this if the building was on fire)\n\n**My suggestion:** This week, your morning routine is just **vitamins + coffee.** I won't ping you about stretch or journal. We'll bring them back once your week clears up.`,
+    actions: [
+      { action_type: 'lighten_routine', emoji: '🪶', label: 'Lighten Morning Routine', payload: { duration_days: 7, preview: { remove: [{ name: 'Stretching', duration_min: 5 }, { name: 'Morning journal', duration_min: 10 }], keep: ['Vitamins', 'Coffee'] } } },
+    ],
+    chips: [
+      { emoji: '📅', text: 'How long until things calm down?' },
+      { emoji: '🌙', text: 'Lighten my evening routine too' },
+      { emoji: '✓', text: "Sounds right, let's do it" },
+    ],
   },
   "Why did I skip my morning routine this week?": {
     thinking: [
       "Looking at your morning routine completion history...",
       "Cross-referencing skip days with your calendar context...",
     ],
-    answer: `You skipped Monday and Tuesday this week.\n\n**Pattern across both days:**\n• Both days you woke up later than usual (after 8 AM based on first task logs).\n• You marked the skip as "too busy" both times.\n\n**The bigger picture:**\nYour morning routine completion drops sharply when your bedtime goes past 11 PM. When sleep slips, your morning slips with it.\n\nWant me to send a quiet "wind down" nudge at 10:30 PM on nights when you've been up late?`
+    answer: `You skipped Monday and Tuesday this week.\n\n**Pattern across both days:**\n• Both days you woke up later than usual (after 8 AM based on first task logs).\n• You marked the skip as "too busy" both times.\n\n**The bigger picture:**\nYour morning routine completion drops sharply when your bedtime goes past 11 PM. When sleep slips, your morning slips with it.\n\nWant me to send a quiet "wind down" nudge at 10:30 PM on nights when you've been up late?`,
+    actions: [
+      { action_type: 'lighten_routine', emoji: '🪶', label: 'Lighten it this week', payload: { duration_days: 5, preview: { remove: [{ name: 'Stretching', duration_min: 5 }, { name: 'Morning journal', duration_min: 10 }], keep: ['Vitamins', 'Coffee'] } } },
+      { action_type: 'skip', emoji: '⏭', label: 'Skip this week entirely', payload: {} },
+    ],
+    chips: [
+      { emoji: '📊', text: 'Show me the full skip history' },
+      { emoji: '🌿', text: 'Lighten the routine permanently' },
+      { emoji: '👍', text: 'Thanks, I just needed to know' },
+    ],
   },
 }
 const FALLBACK_RESPONSE = {
   thinking: ["Searching your task memory...", "Cross-referencing context...", "Drafting a response..."],
-  answer: `I'm reaching out to your personal agent now. If I seem slow, I'm probably thinking hard.\n\nIn this prototype, a few scripted responses are pre-wired — try one of the suggestion chips above to see the full experience. The live agent uses Azure OpenAI + AI Search to answer anything about your tasks and patterns.`
+  answer: `I'm reaching out to your personal agent now. If I seem slow, I'm probably thinking hard.\n\nIn this prototype, a few scripted responses are pre-wired — try one of the suggestion chips above to see the full experience. The live agent uses Azure OpenAI + AI Search to answer anything about your tasks and patterns.`,
+  chips: [
+    { emoji: '🤔', text: 'What am I forgetting?' },
+    { emoji: '✈️', text: 'Plan around my Singapore trip' },
+    { emoji: '🌿', text: 'I have a busy week — lighten my routine' },
+  ],
 }
 
 // ── Helpers ────────────────────────────────────────────────────
@@ -218,6 +253,8 @@ function useChat() {
       const scripted = SCRIPTED_RESPONSES[trimmed] || FALLBACK_RESPONSE
       thinkingSteps = scripted.thinking
       finalText = scripted.answer
+      pendingActions = scripted.actions || []
+      pendingChips = scripted.chips || []
     }
 
     for (let i = 0; i < thinkingSteps.length; i++) {
@@ -948,9 +985,12 @@ function RoutineCard({ routine, delay = 0, onMarkDone, onLighten, onEdit }) {
 function ContextBanner({ upcomingContexts, onAskHeed }) {
   const [hover, setHover] = useState(false)
   const [planExpanded, setPlanExpanded] = useState(false)
+  const [daysAway, setDaysAway] = useState(null)
+  const ctx = upcomingContexts?.[0]
+  useEffect(() => {
+    if (ctx?._startDate) setDaysAway(Math.ceil((ctx._startDate - new Date()) / 86400000))
+  }, [ctx?._startDate])
   if (!upcomingContexts || upcomingContexts.length === 0) return null
-  const ctx = upcomingContexts[0]
-  const daysAway = ctx._startDate ? Math.ceil((ctx._startDate - new Date()) / 86400000) : null
   return (
     <div
       onMouseEnter={() => setHover(true)}
@@ -1823,6 +1863,7 @@ export default function HeedApp() {
   const enrichedUpcoming = apiUpcoming.map(c => {
     if (c.plan) return c
     const demo = CONTEXTS_UPCOMING_DEMO.find(d => d.desc === c.desc)
+      || CONTEXTS_UPCOMING_DEMO.find(d => d.type === c.type)
     return demo ? { ...c, plan: demo.plan, askQuery: demo.askQuery } : c
   })
   const upcomingContexts = enrichedUpcoming.length > 0 ? enrichedUpcoming : CONTEXTS_UPCOMING_DEMO

@@ -942,8 +942,8 @@ function RoutineCard({ routine, delay = 0, onMarkDone, onLighten, onEdit }) {
           {routine.completion14d.map((done, i) => (
             <svg key={i} width="16" height="18" viewBox="0 0 16 18" fill="none" aria-hidden="true">
               <path d="M8 1 C8 1, 15 5, 15 10 C15 14, 12 17, 8 17 C4 17, 1 14, 1 10 C1 5, 8 1, 8 1 Z"
-                fill={done ? C.accentAlt : 'transparent'}
-                stroke={done ? 'none' : C.border}
+                fill={done ? C.sage : 'transparent'}
+                stroke={done ? C.sage : C.border}
                 strokeWidth="1.5"
                 strokeDasharray={done ? 'none' : '2 2'}
               />

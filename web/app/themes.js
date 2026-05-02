@@ -112,13 +112,7 @@ const _VALID_THEMES = new Set(Object.keys(THEMES))
 
 // Mutable state object shared with page.jsx's C getter proxy.
 // setThemeState() is called synchronously at the top of HeedApp render.
-export const themeState = {
-  current: typeof window !== 'undefined'
-    ? (_VALID_THEMES.has(localStorage.getItem('heed-theme') || '')
-        ? localStorage.getItem('heed-theme')
-        : DEFAULT_THEME)
-    : DEFAULT_THEME,
-}
+export const themeState = { current: DEFAULT_THEME }
 
 export function setThemeState(name) {
   themeState.current = name

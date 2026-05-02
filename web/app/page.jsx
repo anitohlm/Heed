@@ -1973,15 +1973,15 @@ export default function HeedApp() {
   const [dismissedIds, setDismissedIds] = useState(new Set())
   const [routines, setRoutines] = useState(ROUTINES)
   const [tab, setTab] = useState('today')
-  const [theme, setTheme] = useState(() => {
-    if (typeof window !== 'undefined') return localStorage.getItem('heed-theme') || DEFAULT_THEME
-    return DEFAULT_THEME
-  })
-  // Sync themeState before render so all C.xxx reads get the right palette
+  const [theme, setTheme] = useState(DEFAULT_THEME)
   setThemeState(theme)
   const handleSetTheme = useCallback((name) => setTheme(name), [])
   useEffect(() => {
-    if (typeof window !== 'undefined') localStorage.setItem('heed-theme', theme)
+    const saved = localStorage.getItem('heed-theme')
+    if (saved && THEMES[saved]) setTheme(saved)
+  }, [])
+  useEffect(() => {
+    localStorage.setItem('heed-theme', theme)
   }, [theme])
   const [toast, setToast] = useState(null)
   const [askPrefill, setAskPrefill] = useState('')

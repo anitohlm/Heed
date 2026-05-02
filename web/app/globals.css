@@ -35,6 +35,12 @@ input, select, textarea {
   .heed-bottom-nav  { display: flex !important; }
   .heed-theme-mobile { display: flex !important; }
 
+  /* Hide desktop FAB on mobile — center nav button replaces it */
+  .heed-fab-btn { display: none !important; }
+
+  /* Speed dial panel sits just above the bottom nav */
+  .heed-mobile-fab-menu { bottom: calc(62px + env(safe-area-inset-bottom)); }
+
   /* iOS auto-zoom prevention: any input smaller than 16px gets bumped */
   input, select, textarea { font-size: 16px !important; }
 }

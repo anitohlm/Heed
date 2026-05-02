@@ -1522,11 +1522,11 @@ function buildSchedule(weekStart) {
   return [
     push(0, 'Pay Maynilad', C.rust, { priority: 'high' }),
     push(0, 'Pay Meralco', C.rust, { priority: 'high' }),
-    push(0, 'Call Mom', C.warmDark, { priority: 'high' }),
+    push(0, 'Call Mom', C.ochre, { priority: 'high' }),
     push(1, 'Refill water dispenser', C.sage),
     push(1, 'Vitamin D', C.ochre),
-    push(2, 'Cat litter box', C.warmDark, { priority: 'high' }),
-    push(3, 'Submit timesheet', C.warmDark, { priority: 'high' }),
+    push(2, 'Cat litter box', C.ochre, { priority: 'high' }),
+    push(3, 'Submit timesheet', C.ochre, { priority: 'high' }),
     push(4, 'Update expense tracker', C.ochre),
     push(4, 'Wash bedsheets', C.sage),
     push(5, 'Clean aircon filter', C.sage),
@@ -1534,7 +1534,7 @@ function buildSchedule(weekStart) {
 }
 
 const ROUTINE_TRACKS = [
-  { id: 'morning', label: 'Morning routine', color: C.warmDark, days: [0,1,2,3,4] },
+  { id: 'morning', label: 'Morning routine', color: C.ochre, days: [0,1,2,3,4] },
   { id: 'evening', label: 'Evening wind-down', color: C.sage, days: [0,1,2,3,4,5,6] },
 ]
 
@@ -1610,23 +1610,21 @@ function CalendarTab() {
           })}
         </div>
       </div>
-      <div style={{ marginTop: 16, padding: '14px 18px', background: C.paper, border: `1px solid ${C.border}`, borderRadius: 10, boxShadow: C.shadowSoft }}>
-        <div style={{ fontSize: 10.5, fontWeight: 700, color: C.inkMute, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 10 }}>Key</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: '8px 24px' }}>
+      <div style={{ marginTop: 16, padding: '12px 16px', background: C.paper, border: `1px solid ${C.border}`, borderRadius: 10, boxShadow: C.shadowSoft }}>
+        <div style={{ fontSize: 10.5, fontWeight: 700, color: C.inkMute, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 10 }}>Legend</div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {[
-            { color: C.rust,     label: 'Critical / overdue', shape: 'circle'  },
-            { color: C.warmDark, label: 'High importance',     shape: 'diamond' },
-            { color: C.ochre,    label: 'Medium priority',     shape: 'square'  },
-            { color: C.sage,     label: 'Routine / easy',      shape: 'ring'    },
-          ].map(({ color, label, shape }) => (
-            <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" style={{ flexShrink: 0 }}>
-                {shape === 'circle'  && <circle cx="6" cy="6" r="5" fill={color}/>}
-                {shape === 'diamond' && <polygon points="6,1 11,6 6,11 1,6" fill={color}/>}
-                {shape === 'square'  && <rect x="1.5" y="1.5" width="9" height="9" rx="1.5" fill={color}/>}
-                {shape === 'ring'    && <circle cx="6" cy="6" r="4" fill="none" stroke={color} strokeWidth="2"/>}
+            { color: C.rust,  bg: C.rustSoft,  label: 'Urgent',    shape: 'circle'  },
+            { color: C.ochre, bg: C.ochreSoft, label: 'Important',  shape: 'diamond' },
+            { color: C.sage,  bg: C.sageSoft,  label: 'Routine',    shape: 'ring'    },
+          ].map(({ color, bg, label, shape }) => (
+            <div key={label} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, borderRadius: 6, background: bg, border: `1.5px solid ${color}66`, padding: '5px 11px' }}>
+              <svg width="13" height="13" viewBox="0 0 13 13" aria-hidden="true" style={{ flexShrink: 0 }}>
+                {shape === 'circle'  && <circle cx="6.5" cy="6.5" r="5" fill={color}/>}
+                {shape === 'diamond' && <polygon points="6.5,1.5 11.5,6.5 6.5,11.5 1.5,6.5" fill={color}/>}
+                {shape === 'ring'    && <circle cx="6.5" cy="6.5" r="4" fill="none" stroke={color} strokeWidth="2.5"/>}
               </svg>
-              <span style={{ fontSize: 12, color: C.ink, fontWeight: 500 }}>{label}</span>
+              <span style={{ fontSize: 12, color, fontWeight: 600 }}>{label}</span>
             </div>
           ))}
         </div>

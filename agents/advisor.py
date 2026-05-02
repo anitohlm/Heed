@@ -215,7 +215,7 @@ def _dispatch_tool(name: str, arguments: dict, user_id: str) -> str:
             })
         elif name == "suggest_followups":
             return json.dumps({
-                "proposed": True,
+                "ok": True,
                 "chips_count": len(arguments.get("chips", [])),
             })
         else:

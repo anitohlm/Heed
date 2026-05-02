@@ -245,6 +245,71 @@ function ThemeSwitcher({ theme, onTheme }) {
   )
 }
 
+// ── MobileDrawer ───────────────────────────────────────────────
+function MobileDrawer({ open, onClose, tab, onTab, theme, onTheme }) {
+  const drawerTabs = [
+    { id: 'today',    label: 'Today' },
+    { id: 'calendar', label: 'Calendar' },
+    { id: 'ask',      label: 'Ask Heed' },
+    { id: 'tracks',   label: 'Tracks' },
+    { id: 'context',  label: 'Context' },
+  ]
+  return (
+    <>
+      <div
+        className={`heed-drawer-backdrop${open ? ' visible' : ''}`}
+        onClick={onClose}
+      />
+      <div
+        className={`heed-drawer${open ? ' open' : ''}`}
+        style={{ background: C.paper, borderLeft: `1px solid ${C.border}`, display: 'flex', flexDirection: 'column' }}
+      >
+        <div style={{ height: 64, borderBottom: `1px solid ${C.hairline}`, display: 'flex', alignItems: 'center', padding: '0 20px', justifyContent: 'space-between' }}>
+          <span style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 18, fontWeight: 700, color: C.warmDark }}>Heed</span>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 22, color: C.inkMute, cursor: 'pointer', padding: 4, lineHeight: 1 }}>×</button>
+        </div>
+
+        <div style={{ flex: 1, overflowY: 'auto' }}>
+          {drawerTabs.map(t => (
+            <button
+              key={t.id}
+              onClick={() => { onTab(t.id); onClose() }}
+              style={{
+                width: '100%', background: tab === t.id ? C.paperHi : 'transparent',
+                border: 'none', borderLeft: `3px solid ${tab === t.id ? C.warmDark : 'transparent'}`,
+                color: tab === t.id ? C.ink : C.inkSoft,
+                padding: '16px 24px', fontSize: 15, fontWeight: tab === t.id ? 600 : 400,
+                textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
+              }}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        <div style={{ padding: '20px 24px', borderTop: `1px solid ${C.hairline}` }}>
+          <div style={{ fontSize: 11, color: C.inkMute, letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 10, fontWeight: 700 }}>Theme</div>
+          <div style={{ display: 'flex', gap: 12 }}>
+            {Object.entries(THEME_META).map(([id, { dot, label }]) => (
+              <button
+                key={id}
+                title={label}
+                onClick={() => onTheme(id)}
+                style={{
+                  width: 20, height: 20, borderRadius: '50%', background: dot, padding: 0,
+                  border: theme === id ? `2px solid ${C.ink}` : '2px solid transparent',
+                  outline: theme === id ? `2px solid ${dot}` : 'none',
+                  outlineOffset: 2, cursor: 'pointer', transition: 'outline 0.15s',
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    </>
+  )
+}
+
 // ── MayaOwl ────────────────────────────────────────────────────
 function MayaOwl({ size = 120, mood = 'calm', speaking = false, idle = true }) {
   const [blinking, setBlinking] = useState(false)
@@ -1485,6 +1550,15 @@ export default function HeedApp() {
           </button>
         ))}
       </nav>
+
+      <MobileDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        tab={tab}
+        onTab={setTab}
+        theme={theme}
+        onTheme={handleSetTheme}
+      />
 
       <main className="heed-main" style={{ maxWidth: 820, margin: '0 auto', padding: '28px 32px 100px 32px', minHeight: 'calc(100vh - 140px)', display: 'flex', flexDirection: 'column' }}>
         {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} upcomingContexts={upcomingContexts} onMarkDone={handleMarkDone} onSkip={handleSkip}/>}

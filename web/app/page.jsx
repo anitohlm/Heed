@@ -1450,6 +1450,7 @@ export default function HeedApp() {
         @keyframes heed-bob { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-2px); } }
         @keyframes heed-slideUp { from { opacity:0; transform:translateY(40px); } to { opacity:1; transform:translateY(0); } }
         @keyframes heed-slideRight { from { opacity:0; transform:translateX(20px); } to { opacity:1; transform:translateX(0); } }
+        @keyframes heed-slideIn { from { transform:translateX(100%); } to { transform:translateX(0); } }
         ::selection { background:${C.warmDark}; color:${C.cream}; }
         * { box-sizing: border-box; }
         body { margin: 0; }

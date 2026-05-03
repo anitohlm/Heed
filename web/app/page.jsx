@@ -374,8 +374,8 @@ function MobileBottomNav({ tab, onTab, onAddTask, onAddRoutine, onAskHeed }) {
 
   const fanItems = [
     { label: 'Add task',  icon: '+',                               bg: C.ochre,     fg: C.warmDeep, angle: 30,  delay: 0,   onClick: onAddTask    },
-    { label: 'Routine',   icon: '◆',                              bg: C.sage,      fg: C.cream,    angle: 90,  delay: 55,  onClick: onAddRoutine },
-    { label: 'Ask Heed',  icon: <MayaOwl size={20} idle={false}/>, bg: C.bellySoft, fg: C.warmDark, angle: 150, delay: 110, onClick: onAskHeed   },
+    { label: 'Ask Heed',  icon: null, naked: true,                                                  angle: 90,  delay: 55,  onClick: onAskHeed   },
+    { label: 'Routine',   icon: '◆',                              bg: C.sage,      fg: C.cream,    angle: 150, delay: 110, onClick: onAddRoutine },
   ]
   const FAN_R = 92
 
@@ -387,7 +387,7 @@ function MobileBottomNav({ tab, onTab, onAddTask, onAddRoutine, onAskHeed }) {
 
       {/* Speed-dial fan — zero-size anchor at the FAB button centre */}
       <div style={{ position: 'fixed', left: '50%', bottom: 'calc(52px + env(safe-area-inset-bottom))', width: 0, height: 0, zIndex: 51, pointerEvents: 'none' }}>
-        {fanItems.map(({ label, icon, bg, fg, angle, delay, onClick }) => {
+        {fanItems.map(({ label, icon, bg, fg, angle, delay, naked, onClick }) => {
           const rad = angle * Math.PI / 180
           const tx = Math.cos(rad) * FAN_R
           const ty = Math.sin(rad) * FAN_R
@@ -401,8 +401,13 @@ function MobileBottomNav({ tab, onTab, onAddTask, onAddRoutine, onAskHeed }) {
               pointerEvents: fabOpen ? 'auto' : 'none',
             }}>
               <button onClick={() => { setFabOpen(false); onClick() }} aria-label={label}
-                style={{ width: 48, height: 48, borderRadius: '50%', background: bg, border: `2.5px solid ${C.cream}`, color: fg, fontSize: 22, cursor: 'pointer', boxShadow: '0 4px 18px rgba(124,83,51,0.30)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, fontFamily: 'inherit' }}>
-                {icon}
+                style={{ width: 48, height: 48, borderRadius: '50%', background: naked ? 'transparent' : bg, border: naked ? 'none' : `2.5px solid ${C.cream}`, color: fg, fontSize: 22, cursor: 'pointer', boxShadow: naked ? 'none' : '0 4px 18px rgba(124,83,51,0.30)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, fontFamily: 'inherit', position: 'relative' }}>
+                {naked ? (
+                  <>
+                    <MayaOwl size={40} idle={false}/>
+                    <span style={{ position: 'absolute', top: 2, right: 2, fontSize: 13, lineHeight: 1 }}>💡</span>
+                  </>
+                ) : icon}
               </button>
               <div style={{ position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', marginTop: 5, background: C.paperHi, border: `1px solid ${C.border}`, borderRadius: 999, padding: '2px 9px', fontSize: 10.5, fontWeight: 600, color: C.warmDark, whiteSpace: 'nowrap', boxShadow: '0 2px 8px rgba(124,83,51,0.12)', fontFamily: 'Lora, serif', pointerEvents: 'none', letterSpacing: 0.1 }}>
                 {label}
@@ -1051,7 +1056,7 @@ function HeroCard({ task, onMarkDone, onSkip }) {
           border: `1.5px solid ${swipeRight ? C.sage + '88' : swipeLeft ? C.ochre + '66' : isCritical ? C.rust + '66' : C.border}`,
           borderRadius: 16, padding: '22px 24px',
           boxShadow: swipeRight ? `0 6px 24px ${C.sage}30` : swipeLeft ? `0 6px 24px ${C.ochre}22` : hover ? C.shadowMed : C.shadowSoft,
-          transform: `translateX(${offset}px) rotate(${offset * 0.15}deg) scale(${isSwiping ? 1.03 : 1})${!isSwiping && hover ? ' translateY(-2px)' : ''}`,
+          transform: `translateX(${offset}px) rotate(${offset * 0.06}deg) scale(${isSwiping ? 1.03 : 1})${!isSwiping && hover ? ' translateY(-2px)' : ''}`,
           transformOrigin: 'center bottom',
           transition: isSwiping ? 'none' : 'all 0.35s cubic-bezier(0.34,1.56,0.64,1)',
           position: 'relative', overflow: 'hidden',
@@ -1131,7 +1136,7 @@ function TaskCard({ task, delay = 0, onMarkDone, onSkip }) {
           border: `1.5px solid ${swipeRight ? C.sage + '77' : swipeLeft ? C.ochre + '55' : isCritical ? C.rust + '44' : C.border}`,
           borderRadius: 12, padding: '14px 16px 14px 20px',
           boxShadow: swipeRight ? `0 4px 18px ${C.sage}28` : swipeLeft ? `0 4px 18px ${C.ochre}20` : hover ? C.shadowMed : C.shadowSoft,
-          transform: `translateX(${offset}px) rotate(${offset * 0.12}deg) scale(${isSwiping ? 1.02 : 1})${!isSwiping && hover ? ' translateY(-2px)' : ''}`,
+          transform: `translateX(${offset}px) rotate(${offset * 0.06}deg) scale(${isSwiping ? 1.02 : 1})${!isSwiping && hover ? ' translateY(-2px)' : ''}`,
           transformOrigin: 'center bottom',
           transition: isSwiping ? 'none' : 'all 0.35s cubic-bezier(0.34,1.56,0.64,1)',
           position: 'relative',

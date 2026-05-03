@@ -2233,7 +2233,11 @@ function usePlans(initialPlans) {
     setPlans(prev => [plan, ...prev])
   }, [])
 
-  return { plans, checkTask, renameTask, addTask, deleteTask, reorderTasks, addPlan }
+  const updatePlan = useCallback((planId, updates) => {
+    setPlans(prev => prev.map(p => p.id !== planId ? p : { ...p, ...updates }))
+  }, [])
+
+  return { plans, checkTask, renameTask, addTask, deleteTask, reorderTasks, addPlan, updatePlan }
 }
 
 // ── PlanCard ────────────────────────────────────────────────────
@@ -2591,7 +2595,7 @@ function AddPlanSheet({ onClose, onAdd }) {
 }
 
 // ── PlansPanel ───────────────────────────────────────────────────
-function PlansPanel({ plans, checkTask, renameTask, addTask, deleteTask, reorderTasks, addPlan }) {
+function PlansPanel({ plans, checkTask, renameTask, addTask, deleteTask, reorderTasks, addPlan, updatePlan }) {
   const [addOpen, setAddOpen] = useState(false)
   const [selectedPlanId, setSelectedPlanId] = useState(null)
 
@@ -2607,6 +2611,7 @@ function PlansPanel({ plans, checkTask, renameTask, addTask, deleteTask, reorder
         onAddTask={addTask}
         onDeleteTask={deleteTask}
         onReorder={reorderTasks}
+        onUpdatePlan={updatePlan}
       />
     )
   }

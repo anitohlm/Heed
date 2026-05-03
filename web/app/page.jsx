@@ -265,7 +265,7 @@ function useChat() {
 
     for (let i = 0; i < thinkingSteps.length; i++) {
       setThinking(thinkingSteps.slice(0, i + 1))
-      await new Promise(r => setTimeout(r, 600 + Math.random() * 400))
+      await new Promise(r => setTimeout(r, 120 + Math.random() * 80))
     }
     setThinking(null)
 
@@ -274,7 +274,7 @@ function useChat() {
     for (let i = 0; i < words.length; i++) {
       acc += (i > 0 ? ' ' : '') + words[i]
       setStreaming(acc)
-      await new Promise(r => setTimeout(r, 16 + Math.random() * 20))
+      await new Promise(r => setTimeout(r, 8 + Math.random() * 8))
     }
     setMessages(m => [...m, { role: 'assistant', content: acc, actions: pendingActions, chips: pendingChips }])
     setStreaming('')

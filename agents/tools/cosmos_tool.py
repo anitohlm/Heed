@@ -19,12 +19,18 @@ from agents.models import Task, Completion, UserContext, User
 # Client setup
 # -----------------------------------------------------------------------------
 
+_CLIENT: CosmosClient | None = None
+_DATABASE = None
+
+
 def _get_client() -> CosmosClient:
-    """Lazy-init Cosmos client. Connection string from env (Key Vault-backed)."""
-    conn_str = os.environ.get("COSMOS_CONNECTION_STRING")
-    if not conn_str:
-        raise RuntimeError("COSMOS_CONNECTION_STRING not set")
-    return CosmosClient.from_connection_string(conn_str)
+    global _CLIENT
+    if _CLIENT is None:
+        conn_str = os.environ.get("COSMOS_CONNECTION_STRING")
+        if not conn_str:
+            raise RuntimeError("COSMOS_CONNECTION_STRING not set")
+        _CLIENT = CosmosClient.from_connection_string(conn_str)
+    return _CLIENT
 
 
 _DT_FIELDS = {"created_at", "last_done_at", "next_due_at", "completed_at", "start_date", "end_date"}
@@ -41,9 +47,11 @@ def _fix_item(item: dict) -> dict:
 
 
 def _get_database():
-    """Returns the heed database client."""
-    db_name = os.environ.get("COSMOS_DATABASE", "heed")
-    return _get_client().get_database_client(db_name)
+    global _DATABASE
+    if _DATABASE is None:
+        db_name = os.environ.get("COSMOS_DATABASE", "heed")
+        _DATABASE = _get_client().get_database_client(db_name)
+    return _DATABASE
 
 
 # -----------------------------------------------------------------------------

@@ -242,9 +242,14 @@ def _today_view_json(user_id: str) -> str:
     today_end = now.replace(hour=23, minute=59, second=59)
     week_end = now + timedelta(days=7)
 
-    tasks = cosmos_tool.get_active_tasks(user_id)
-    active_contexts = cosmos_tool.get_active_contexts(user_id)
-    upcoming_contexts = cosmos_tool.get_upcoming_contexts(user_id)
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        f_tasks = executor.submit(cosmos_tool.get_active_tasks, user_id)
+        f_active = executor.submit(cosmos_tool.get_active_contexts, user_id)
+        f_upcoming = executor.submit(cosmos_tool.get_upcoming_contexts, user_id)
+        tasks = f_tasks.result()
+        active_contexts = f_active.result()
+        upcoming_contexts = f_upcoming.result()
 
     overdue, due_today, upcoming_this_week = [], [], []
     for task in tasks:
@@ -276,12 +281,18 @@ def _today_view_json(user_id: str) -> str:
 # The streaming agent loop
 # -----------------------------------------------------------------------------
 
+_OPENAI_CLIENT: AzureOpenAI | None = None
+
+
 def _client() -> AzureOpenAI:
-    return AzureOpenAI(
-        azure_endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],
-        api_key=os.environ["AZURE_OPENAI_KEY"],
-        api_version="2024-08-01-preview",
-    )
+    global _OPENAI_CLIENT
+    if _OPENAI_CLIENT is None:
+        _OPENAI_CLIENT = AzureOpenAI(
+            azure_endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],
+            api_key=os.environ["AZURE_OPENAI_KEY"],
+            api_version="2024-08-01-preview",
+        )
+    return _OPENAI_CLIENT
 
 
 async def stream_response(
@@ -308,7 +319,8 @@ async def stream_response(
 
     messages = [{"role": "system", "content": SYSTEM_PROMPT}]
     if conversation_history:
-        messages.extend(conversation_history)
+        trimmed = conversation_history[-10:] if len(conversation_history) > 10 else conversation_history
+        messages.extend(trimmed)
     messages.append({"role": "user", "content": user_message})
 
     final_text = ""
@@ -420,25 +432,6 @@ async def stream_response(
             # Unexpected finish — break to avoid infinite loop
             final_text = current_text
             break
-
-    # If the model never called suggest_followups, force one final chips pass
-    if not chips_emitted and final_text:
-        try:
-            chips_messages = messages + [{"role": "assistant", "content": final_text}]
-            chips_resp = client.chat.completions.create(
-                model=deployment,
-                messages=chips_messages,
-                tools=[t for t in TOOLS if t["function"]["name"] == "suggest_followups"],
-                tool_choice={"type": "function", "function": {"name": "suggest_followups"}},
-                stream=False,
-                max_tokens=200,
-            )
-            if chips_resp.choices[0].finish_reason == "tool_calls":
-                tc = chips_resp.choices[0].message.tool_calls[0]
-                args = json.loads(tc.function.arguments) if tc.function.arguments else {}
-                yield {"type": "chips", "chips": args.get("chips", [])}
-        except Exception:
-            pass
 
     yield {"type": "done", "final_text": final_text}
 

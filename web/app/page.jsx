@@ -527,20 +527,6 @@ function MobileBottomNav({ tab, onTab, onAddTask, onAddRoutine, onAskHeed }) {
               <div style={{ transition: 'opacity 0.15s', opacity: active ? 1 : 0.7 }}>
                 {navIcon}
               </div>
-              <span style={{
-                fontSize: 10,
-                fontWeight: active ? 700 : 500,
-                color: ic,
-                letterSpacing: 0.1,
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                maxWidth: '100%',
-                padding: '0 2px',
-                transition: 'color 0.15s',
-              }}>
-                {t.label}
-              </span>
             </button>
           )
         })}
@@ -1769,7 +1755,7 @@ function MonthStrip({ tasks, monthOffset, selectedWeekStart, onWeekSelect, onMon
   )
 }
 
-function WeekDetail({ tasks, weekStart, onTaskTap, onTaskDrop, onWeekOffsetChange }) {
+function WeekDetail({ tasks, weekStart, onTaskTap, onTaskDrop, onWeekOffsetChange, onAddTask }) {
   const today = new Date()
   const impColor = { high: C.rust, medium: C.ochre, low: C.sage }
   const impIcon  = { high: '●', medium: '◆', low: '○' }
@@ -1808,7 +1794,7 @@ function WeekDetail({ tasks, weekStart, onTaskTap, onTaskDrop, onWeekOffsetChang
     const idx = colRefs.current.findIndex(el => {
       if (!el) return false
       const r = el.getBoundingClientRect()
-      return e.clientX >= r.left && e.clientX <= r.right
+      return e.clientY >= r.top && e.clientY <= r.bottom
     })
     setDropCol(idx >= 0 ? idx : null)
   }
@@ -1842,24 +1828,23 @@ function WeekDetail({ tasks, weekStart, onTaskTap, onTaskDrop, onWeekOffsetChang
       <div style={{ fontSize: 10, fontWeight: 700, color: C.inkMute, letterSpacing: 0.7, textTransform: 'uppercase', marginBottom: 10 }}>
         Week of {startLabel} – {endLabel}
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 4 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         {[0,1,2,3,4,5,6].map(i => {
-          const date      = addDays(weekStart, i)
-          const isToday   = sameDay(date, today)
-          const isTarget  = dropCol === i && dragTask != null
-          const dayTasks  = tasks.filter(t => { const d = parseDue(t.next_due_at); return d && sameDay(d, date) })
+          const date     = addDays(weekStart, i)
+          const isToday  = sameDay(date, today)
+          const isTarget = dropCol === i && dragTask != null
+          const dayTasks = tasks.filter(t => { const d = parseDue(t.next_due_at); return d && sameDay(d, date) })
+          const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
           return (
             <div key={i} ref={el => colRefs.current[i] = el}
-              style={{ background: isTarget ? C.sageSoft : isToday ? C.bellySoft + '80' : 'transparent', borderRadius: 6, padding: '6px 4px', minHeight: 80, minWidth: 0, overflow: 'hidden' }}>
-              <div style={{ textAlign: 'center', marginBottom: 6 }}>
-                <div style={{ fontSize: 9, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase' }}>
-                  {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][i]}
-                </div>
-                <div style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: isToday ? C.cream : C.warmDark, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: '50%', background: isToday ? C.warmDark : 'transparent', marginTop: 2 }}>
+              style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '8px 10px', borderRadius: 8, background: isTarget ? C.sageSoft : isToday ? C.bellySoft + '80' : 'transparent', minHeight: 40 }}>
+              <div style={{ flexShrink: 0, width: 44, display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 2 }}>
+                <div style={{ fontSize: 9, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: 0.5 }}>{dayNames[i]}</div>
+                <div style={{ fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600, color: isToday ? C.cream : C.warmDark, width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: isToday ? C.warmDark : 'transparent', marginTop: 2 }}>
                   {date.getDate()}
                 </div>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
+              <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center', paddingTop: 6 }}>
                 {dayTasks.map(task => {
                   const imp  = task.importance || 'medium'
                   const bg   = impColor[imp] || C.ochre
@@ -1868,11 +1853,17 @@ function WeekDetail({ tasks, weekStart, onTaskTap, onTaskDrop, onWeekOffsetChang
                     <div key={task.id}
                       onPointerDown={e => handlePointerDown(e, task)}
                       onClick={() => { if (!didDragRef.current) onTaskTap(task) }}
-                      style={{ background: bg, borderRadius: 4, padding: '3px 5px', fontSize: 9.5, color: C.cream, fontWeight: 600, cursor: 'pointer', userSelect: 'none', opacity: dragTask?.id === task.id ? 0.4 : 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', touchAction: 'none' }}>
+                      style={{ background: bg, borderRadius: 20, padding: '4px 10px', fontSize: 11, color: C.cream, fontWeight: 600, cursor: 'pointer', userSelect: 'none', opacity: dragTask?.id === task.id ? 0.4 : 1, touchAction: 'none', whiteSpace: 'nowrap' }}>
                       {icon} {task.name}
                     </div>
                   )
                 })}
+                {dayTasks.length === 0 && (
+                  <button onClick={() => onAddTask(date)}
+                    style={{ background: 'none', border: `1px dashed ${C.border}`, color: C.inkMute, padding: '3px 10px', borderRadius: 20, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit', opacity: 0.6 }}>
+                    + Add task
+                  </button>
+                )}
               </div>
             </div>
           )
@@ -2006,7 +1997,7 @@ function TaskDetailSheet({ task, onClose, onMarkDone, onSkip, onReschedule }) {
   )
 }
 
-function CalendarTab({ tasks, onReschedule, onMarkDone, onSkip }) {
+function CalendarTab({ tasks, onReschedule, onMarkDone, onSkip, onAddTask }) {
   const [monthOffset, setMonthOffset] = useState(0)
   const [weekStart, setWeekStart]     = useState(startOfWeek(TODAY_DATE))
   const [detailTask, setDetailTask]   = useState(null)
@@ -2038,6 +2029,7 @@ function CalendarTab({ tasks, onReschedule, onMarkDone, onSkip }) {
           onTaskTap={setDetailTask}
           onTaskDrop={(task, newDate) => onReschedule(task.id, newDate)}
           onWeekOffsetChange={handleWeekOffsetChange}
+          onAddTask={onAddTask}
         />
       </div>
       <div style={{ padding: '12px 16px', background: C.paper, border: `1px solid ${C.border}`, borderRadius: 10, boxShadow: C.shadowSoft }}>
@@ -2568,6 +2560,36 @@ function AddToRoutineSheet({ task, routines, onClose, onSelect }) {
   )
 }
 
+// ── QuickContextSheet ──────────────────────────────────────────
+function QuickContextSheet({ type, onClose, onActivate }) {
+  const DURATIONS = [1, 2, 3, 5, 7]
+  const LABELS = { 1: '1 day', 2: '2 days', 3: '3 days', 5: '5 days', 7: '1 week' }
+  const cfg = type ? QUICK_CONTEXT_CONFIG[type] : null
+  const [selected, setSelected] = useState(cfg?.defaultDays ?? 2)
+  useEffect(() => { if (cfg) setSelected(cfg.defaultDays) }, [type])
+  if (!type) return null
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 200 }} onClick={onClose}>
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(2px)' }}/>
+      <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: C.paper, borderRadius: '20px 20px 0 0', padding: `24px 24px calc(24px + env(safe-area-inset-bottom)) 24px`, animation: 'heed-slideUp 0.28s cubic-bezier(0.32,0.72,0,1)', boxShadow: '0 -8px 32px rgba(0,0,0,0.12)' }}>
+        <div style={{ width: 40, height: 4, borderRadius: 2, background: C.border, margin: '0 auto 20px' }}/>
+        <div style={{ fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 600, color: C.ink, marginBottom: 4 }}>{cfg.icon} {cfg.question}</div>
+        <div style={{ fontSize: 12, color: C.inkMute, marginBottom: 16 }}>Heed will hold your tasks until then</div>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+          {DURATIONS.map(d => (
+            <button key={d} onClick={() => setSelected(d)} style={{ flex: 1, background: selected === d ? C.warmDark : C.bellySoft, color: selected === d ? C.cream : C.ink, border: 'none', borderRadius: 10, padding: '10px 4px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}>
+              {LABELS[d]}
+            </button>
+          ))}
+        </div>
+        <button onClick={() => { onActivate(type, selected); onClose() }} style={{ ...getBtnPrimary(), width: '100%', padding: 12, fontSize: 14, fontWeight: 700, borderRadius: 10 }}>
+          {cfg.activateLabel}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ── Main App ───────────────────────────────────────────────────
 export default function HeedApp() {
   const [apiTasks, setApiTasks] = useState([])
@@ -2833,7 +2855,7 @@ export default function HeedApp() {
 
       <main className="heed-main" style={{ maxWidth: 820, margin: '0 auto', padding: '28px 32px 100px 32px', minHeight: 'calc(100vh - 140px)', display: 'flex', flexDirection: 'column' }}>
         {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} upcomingContexts={upcomingContexts} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAskHeed={handleAskHeed} onMoreOptions={handleMoreOptions}/>}
-        {tab === 'calendar' && <CalendarTab tasks={apiTasks} onReschedule={handleReschedule} onMarkDone={handleMarkDone} onSkip={handleSkip}/>}
+        {tab === 'calendar' && <CalendarTab tasks={apiTasks} onReschedule={handleReschedule} onMarkDone={handleMarkDone} onSkip={handleSkip} onAddTask={() => setModalOpen(true)}/>}
         {tab === 'ask' && <AskTab prefill={askPrefill}/>}
         {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onMoreOptions={handleMoreOptions}/>}
         {tab === 'context' && <ContextTab upcoming={apiContexts.upcoming} active={apiContexts.active} onAddContext={() => setContextModalOpen(true)}/>}

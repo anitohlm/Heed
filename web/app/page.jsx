@@ -2559,8 +2559,26 @@ function AddPlanSheet({ onClose, onAdd }) {
 
 // ── PlansPanel ───────────────────────────────────────────────────
 function PlansPanel() {
-  const [plans, setPlans] = useState(DEMO_PLANS)
+  const { plans, checkTask, renameTask, addTask, deleteTask, reorderTasks, addPlan } = usePlans(DEMO_PLANS)
   const [addOpen, setAddOpen] = useState(false)
+  const [selectedPlanId, setSelectedPlanId] = useState(null)
+
+  const selectedPlan = plans.find(p => p.id === selectedPlanId) ?? null
+
+  if (selectedPlan) {
+    return (
+      <PlanDetailScreen
+        plan={selectedPlan}
+        onBack={() => setSelectedPlanId(null)}
+        onCheck={checkTask}
+        onRename={renameTask}
+        onAddTask={addTask}
+        onDeleteTask={deleteTask}
+        onReorder={reorderTasks}
+      />
+    )
+  }
+
   return (
     <div style={{ animation: 'heed-fadeIn 0.2s ease' }}>
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
@@ -2571,8 +2589,15 @@ function PlansPanel() {
           No plans yet. Tap "+ Add plan" to create a goal, project, or event.
         </div>
       )}
-      {plans.map((p, i) => <PlanCard key={p.id} plan={p} delay={i * 50}/>)}
-      {addOpen && <AddPlanSheet onClose={() => setAddOpen(false)} onAdd={p => { setPlans(ps => [p, ...ps]); setAddOpen(false) }}/>}
+      {plans.map((p, i) => (
+        <PlanCard
+          key={p.id}
+          plan={p}
+          delay={i * 50}
+          onSelectPlan={(p.type === 'project' || p.type === 'event') ? setSelectedPlanId : undefined}
+        />
+      ))}
+      {addOpen && <AddPlanSheet onClose={() => setAddOpen(false)} onAdd={p => { addPlan(p); setAddOpen(false) }}/>}
     </div>
   )
 }
@@ -2852,6 +2877,83 @@ function computeRetrospective(period, { tasks = [], routines = [], contexts = []
     headline = `Quiet ${monthName}. Most tasks slipped a cycle or two.`
   }
 
+  // ── Patterns (rule-based) ───────────────────────────────
+  // Aggregate weekday vs weekend completion across all routines, only counting
+  // days the routine was actually scheduled. completion14d is indexed
+  // 0=oldest..N-1=today, so daysAgo = (length-1) - i.
+  const patterns = []
+  let wdDue = 0, wdDone = 0, weDue = 0, weDone = 0
+  for (const r of routines) {
+    const days = routineDays(r)
+    const completion = r.completion14d || []
+    for (let i = 0; i < completion.length; i++) {
+      const daysAgo = completion.length - 1 - i
+      const date = new Date(now); date.setDate(date.getDate() - daysAgo)
+      const wd = (date.getDay() + 6) % 7  // Mon=0..Sun=6
+      if (!days.includes(wd)) continue
+      if (wd >= 5) { weDue++; if (completion[i]) weDone++ }
+      else         { wdDue++; if (completion[i]) wdDone++ }
+    }
+  }
+  if (wdDue >= 4 && weDue >= 2) {
+    const wdRate = wdDone / wdDue
+    const weRate = weDone / weDue
+    if (wdRate - weRate > 0.3) {
+      patterns.push({
+        kind: 'weekend_slip',
+        label: 'Weekday person',
+        detail: `Mon–Fri ${Math.round(wdRate * 100)}%, weekends ${Math.round(weRate * 100)}%.`,
+      })
+    } else if (weRate - wdRate > 0.3) {
+      patterns.push({
+        kind: 'weekday_slip',
+        label: 'Weekend person',
+        detail: `Sat–Sun ${Math.round(weRate * 100)}%, weekdays ${Math.round(wdRate * 100)}%.`,
+      })
+    }
+  }
+
+  // Morning vs evening routine comparison (when we can identify both by name)
+  const morningR = routines.find(r => /morning/i.test(r.name))
+  const eveningR = routines.find(r => /evening|wind[- ]?down|night/i.test(r.name))
+  if (morningR && eveningR) {
+    const mc = morningR.completion14d || []
+    const ec = eveningR.completion14d || []
+    const mRate = mc.length ? mc.filter(Boolean).length / mc.length : 0
+    const eRate = ec.length ? ec.filter(Boolean).length / ec.length : 0
+    if (mRate - eRate > 0.25) {
+      patterns.push({
+        kind: 'morning_strong',
+        label: 'Mornings carried this month',
+        detail: `${Math.round(mRate * 100)}% mornings vs ${Math.round(eRate * 100)}% evenings.`,
+      })
+    } else if (eRate - mRate > 0.25) {
+      patterns.push({
+        kind: 'evening_slip',
+        label: 'Evenings drift',
+        detail: `Wind-down completed ${Math.round(eRate * 100)}%, ~${Math.round((mRate - eRate) * -100)}% lower than mornings.`,
+      })
+    }
+  }
+
+  // ── Suggestions (actionable follow-ups) ─────────────────
+  // Only adjust_cadence is wired through in this phase; lighten/lower_importance
+  // remain as future work since they need richer payload composition.
+  const suggestions = []
+  for (const a of needsAttention) {
+    if (a.suggested_action === 'adjust_cadence' && a.suggested_payload?.new_cadence_days) {
+      suggestions.push({
+        id: `adjust-${a.task_id}`,
+        text: `Push ${a.task_name} cadence to every ${a.suggested_payload.new_cadence_days}d?`,
+        action_type: 'adjust_cadence',
+        target_id: a.task_id,
+        target_name: a.task_name,
+        payload: a.suggested_payload,
+        cta_label: `Push to ${a.suggested_payload.new_cadence_days}d`,
+      })
+    }
+  }
+
   return {
     period: `${period.year}-${String(period.monthIndex + 1).padStart(2, '0')}`,
     period_label: periodLabel,
@@ -2864,8 +2966,8 @@ function computeRetrospective(period, { tasks = [], routines = [], contexts = []
     cadence_changes: cadenceChanges,
     needs_attention: needsAttention,
     contexts: contextImpacts,
-    patterns: [], // Phase 2
-    suggestions: [], // Phase 2
+    patterns,
+    suggestions,
   }
 }
 

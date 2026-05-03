@@ -1156,6 +1156,7 @@ function useSwipe(onRight, onLeft, threshold = 80) {
 
     const beginDrag = (clientX, clientY) => {
       st.startX = clientX; st.startY = clientY; st.active = false
+      el.style.animation = 'none'  // cancel fill-mode freeze so JS transform takes over
       el.style.transition = 'none'
     }
 

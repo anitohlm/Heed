@@ -490,6 +490,7 @@ function ThemeSwitcher({ theme, onTheme }) {
 
 // ── MobileBottomNav ────────────────────────────────────────────
 function MobileBottomNav({ tab, onTab }) {
+  const askActive = tab === 'ask'
   return (
     <>
       <nav
@@ -502,10 +503,43 @@ function MobileBottomNav({ tab, onTab }) {
           zIndex: 50,
           paddingBottom: 'env(safe-area-inset-bottom)',
           boxShadow: '0 -2px 16px rgba(0,0,0,0.12)',
+          overflow: 'visible',
         }}
       >
+        {/* Owl circle — overlaps the top edge of the nav bar */}
+        <button
+          onClick={() => onTab('ask')}
+          aria-label="Ask Heed"
+          aria-current={askActive ? 'page' : undefined}
+          style={{
+            position: 'absolute',
+            top: -30,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: 68,
+            height: 68,
+            borderRadius: '50%',
+            background: C.paper,
+            border: `2.5px solid ${askActive ? C.warmDark : `${C.warmDark}99`}`,
+            boxShadow: askActive
+              ? `0 0 0 3px ${C.paper}, 0 0 0 6px ${C.warmDark}55, 0 -6px 24px rgba(0,0,0,0.28)`
+              : `0 0 0 3px ${C.paper}, 0 0 0 5px ${C.border}, 0 -4px 20px rgba(0,0,0,0.22)`,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 0,
+            zIndex: 52,
+            transition: 'box-shadow 0.2s ease, border-color 0.2s ease',
+          }}
+        >
+          <MayaOwl size={50} idle={false}/>
+        </button>
+
         {APP_TABS.map(t => {
           const active = tab === t.id
+          const isAsk = t.id === 'ask'
+          if (isAsk) return <div key="ask" style={{ flex: 1 }} />
           const ic = active ? C.warmDark : C.inkMute
           const navIcon = {
             today: (
@@ -525,7 +559,6 @@ function MobileBottomNav({ tab, onTab }) {
                 <circle cx="11.5" cy="12" r="1" fill={ic}/>
               </svg>
             ),
-            ask: <MayaOwl size={22} idle={false}/>,
             tracks: (
               <svg width="17" height="17" viewBox="0 0 17 17" fill="none">
                 <path d="M8.5 15.5V6.5" stroke={ic} strokeWidth="1.4" strokeLinecap="round"/>

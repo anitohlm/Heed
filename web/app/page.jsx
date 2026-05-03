@@ -985,81 +985,70 @@ function Bubble({ role, content, streaming: isStreaming, actions, chips, onConfi
 }
 
 // ── useSwipe ────────────────────────────────────────────────────
-// Uses direct DOM listeners (not React synthetic events) so touch events
-// can be non-passive and the browser won't steal the gesture for scroll.
 function useSwipe(onRight, onLeft, threshold = 80) {
   const [offset, setOffset] = useState(0)
-  const ref = useRef(null)
-  const cb = useRef({ onRight, onLeft, threshold })
-  cb.current.onRight = onRight
-  cb.current.onLeft = onLeft
-  cb.current.threshold = threshold
+  const s = useRef({ startX: null, active: false, onRight, onLeft, threshold })
+  s.current.onRight = onRight
+  s.current.onLeft = onLeft
+  s.current.threshold = threshold
 
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-    const st = { startX: null, active: false }
+  const onTouchStart = useCallback((e) => {
+    const t = e.touches[0]; if (!t) return
+    s.current.startX = t.clientX; s.current.active = false
+  }, [])
 
-    const finish = (clientX) => {
-      if (!st.active) { st.startX = null; return }
-      const dx = clientX - st.startX
-      st.startX = null; st.active = false
+  const onTouchMove = useCallback((e) => {
+    const t = e.touches[0]
+    if (!t || s.current.startX === null) return
+    const dx = t.clientX - s.current.startX
+    if (!s.current.active && Math.abs(dx) > 8) s.current.active = true
+    if (s.current.active) setOffset(Math.max(-130, Math.min(130, dx)))
+  }, [])
+
+  const onTouchEnd = useCallback((e) => {
+    if (!s.current.active) { s.current.startX = null; return }
+    const t = e.changedTouches[0]
+    const dx = t ? t.clientX - s.current.startX : 0
+    s.current.startX = null; s.current.active = false
+    setOffset(0)
+    if (dx > s.current.threshold) s.current.onRight?.()
+    else if (dx < -s.current.threshold) s.current.onLeft?.()
+  }, [])
+
+  const onTouchCancel = useCallback(() => {
+    s.current.startX = null; s.current.active = false; setOffset(0)
+  }, [])
+
+  const onMouseDown = useCallback((e) => {
+    if (e.button !== 0) return
+    s.current.startX = e.clientX; s.current.active = false
+    const onMove = (ev) => {
+      if (s.current.startX === null) return
+      const dx = ev.clientX - s.current.startX
+      if (!s.current.active && Math.abs(dx) > 8) s.current.active = true
+      if (s.current.active) setOffset(Math.max(-130, Math.min(130, dx)))
+    }
+    const onUp = (ev) => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+      if (!s.current.active) { s.current.startX = null; return }
+      const dx = ev.clientX - s.current.startX
+      s.current.startX = null; s.current.active = false
       setOffset(0)
-      if (dx > cb.current.threshold) cb.current.onRight?.()
-      else if (dx < -cb.current.threshold) cb.current.onLeft?.()
+      if (dx > s.current.threshold) s.current.onRight?.()
+      else if (dx < -s.current.threshold) s.current.onLeft?.()
     }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+  }, [])
 
-    const onTouchStart = (e) => { st.startX = e.touches[0].clientX; st.active = false }
-    const onTouchMove = (e) => {
-      if (st.startX === null) return
-      const dx = e.touches[0].clientX - st.startX
-      if (!st.active && Math.abs(dx) > 8) st.active = true
-      if (!st.active) return
-      if (e.cancelable) e.preventDefault()
-      setOffset(Math.max(-130, Math.min(130, dx)))
-    }
-    const onTouchEnd = (e) => finish(e.changedTouches[0].clientX)
-    const onTouchCancel = () => { st.startX = null; st.active = false; setOffset(0) }
-
-    const onMouseDown = (e) => {
-      if (e.button !== 0) return
-      st.startX = e.clientX; st.active = false
-      const onMouseMove = (ev) => {
-        if (st.startX === null) return
-        const dx = ev.clientX - st.startX
-        if (!st.active && Math.abs(dx) > 8) st.active = true
-        if (st.active) setOffset(Math.max(-130, Math.min(130, dx)))
-      }
-      const onMouseUp = (ev) => {
-        window.removeEventListener('mousemove', onMouseMove)
-        window.removeEventListener('mouseup', onMouseUp)
-        finish(ev.clientX)
-      }
-      window.addEventListener('mousemove', onMouseMove)
-      window.addEventListener('mouseup', onMouseUp)
-    }
-
-    el.addEventListener('touchstart', onTouchStart, { passive: true })
-    el.addEventListener('touchmove', onTouchMove, { passive: false })
-    el.addEventListener('touchend', onTouchEnd)
-    el.addEventListener('touchcancel', onTouchCancel)
-    el.addEventListener('mousedown', onMouseDown)
-    return () => {
-      el.removeEventListener('touchstart', onTouchStart)
-      el.removeEventListener('touchmove', onTouchMove)
-      el.removeEventListener('touchend', onTouchEnd)
-      el.removeEventListener('touchcancel', onTouchCancel)
-      el.removeEventListener('mousedown', onMouseDown)
-    }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  return { offset, ref }
+  return { offset, onTouchStart, onTouchMove, onTouchEnd, onTouchCancel, onMouseDown }
 }
 
 // ── HeroCard ───────────────────────────────────────────────────
-function HeroCard({ task, onMarkDone, onSkip }) {
+function HeroCard({ task, onMarkDone, onSkip, onMoreOptions }) {
   const [hover, setHover] = useState(false)
-  const { offset, ref: swipeRef } = useSwipe(
+  const { offset, onTouchStart, onTouchMove, onTouchEnd, onTouchCancel, onMouseDown } = useSwipe(
     () => onMarkDone?.(task),
     () => onSkip?.(task),
   )
@@ -1080,7 +1069,11 @@ function HeroCard({ task, onMarkDone, onSkip }) {
         <span style={{ fontSize: 22, color: C.ochre, opacity: swipeLeft ? progress : 0 }}>↷</span>
       </div>
       <div
-        ref={swipeRef}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        onTouchCancel={onTouchCancel}
+        onMouseDown={onMouseDown}
         onMouseEnter={() => !isSwiping && setHover(true)}
         onMouseLeave={() => setHover(false)}
         style={{
@@ -1123,9 +1116,12 @@ function HeroCard({ task, onMarkDone, onSkip }) {
             {!swipeRight && !swipeLeft && <div style={{ fontSize: 11, color: C.inkMute, fontWeight: 700, letterSpacing: 0.6, textTransform: 'uppercase', marginTop: 2 }}>overdue</div>}
           </div>
         </div>
-        <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
+        <div style={{ marginTop: 16, display: 'flex', gap: 8, alignItems: 'center' }}>
           <button style={getBtnPrimary()} onClick={() => onMarkDone?.(task)}>Mark done</button>
           <button style={getBtnGhost()} onClick={() => onSkip?.(task)}>Skip</button>
+          <button aria-label="More options" style={{ ...getBtnGhost(), marginLeft: 'auto', width: 36, height: 36, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, flexShrink: 0 }} onClick={() => onMoreOptions?.(task)}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="5" cy="12" r="1.5" fill="currentColor"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/><circle cx="19" cy="12" r="1.5" fill="currentColor"/></svg>
+          </button>
         </div>
       </div>
     </div>
@@ -1133,9 +1129,9 @@ function HeroCard({ task, onMarkDone, onSkip }) {
 }
 
 // ── TaskCard ───────────────────────────────────────────────────
-function TaskCard({ task, delay = 0, onMarkDone, onSkip }) {
+function TaskCard({ task, delay = 0, onMarkDone, onSkip, onMoreOptions }) {
   const [hover, setHover] = useState(false)
-  const { offset, ref: swipeRef } = useSwipe(
+  const { offset, onTouchStart, onTouchMove, onTouchEnd, onTouchCancel, onMouseDown } = useSwipe(
     () => onMarkDone?.(task),
     () => onSkip?.(task),
   )
@@ -1157,9 +1153,13 @@ function TaskCard({ task, delay = 0, onMarkDone, onSkip }) {
         <span style={{ fontSize: 18, color: C.ochre, opacity: swipeLeft ? progress : 0 }}>↷</span>
       </div>
       <div
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        onTouchCancel={onTouchCancel}
+        onMouseDown={onMouseDown}
         onMouseEnter={() => !isSwiping && setHover(true)}
         onMouseLeave={() => setHover(false)}
-        ref={swipeRef}
         style={{
           background: `linear-gradient(180deg, ${C.paperHi} 0%, ${C.paper} 100%)`,
           border: `1.5px solid ${swipeRight ? C.sage + '77' : swipeLeft ? C.ochre + '55' : isCritical ? C.rust + '44' : C.border}`,
@@ -1199,9 +1199,12 @@ function TaskCard({ task, delay = 0, onMarkDone, onSkip }) {
           </div>
         </div>
         {(hover && !isSwiping) && (
-          <div style={{ marginTop: 10, display: 'flex', gap: 6, animation: 'heed-fadeIn 0.2s ease' }}>
+          <div style={{ marginTop: 10, display: 'flex', gap: 6, alignItems: 'center', animation: 'heed-fadeIn 0.2s ease' }}>
             <button style={getBtnPrimary()} onClick={() => onMarkDone?.(task)}>Mark done</button>
             <button style={getBtnGhost()} onClick={() => onSkip?.(task)}>Skip</button>
+            <button aria-label="More options" style={{ ...getBtnGhost(), marginLeft: 'auto', width: 32, height: 32, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 7, flexShrink: 0 }} onClick={() => onMoreOptions?.(task)}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="5" cy="12" r="1.5" fill="currentColor"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/><circle cx="19" cy="12" r="1.5" fill="currentColor"/></svg>
+            </button>
           </div>
         )}
       </div>
@@ -1419,7 +1422,7 @@ function ContextBanner({ upcomingContexts, onAskHeed }) {
 }
 
 // ── TodayTab ───────────────────────────────────────────────────
-function TodayTab({ tasks, routines, upcomingContexts, onMarkDone, onSkip, onMarkRoutineDone, onLightenRoutine, onEditRoutine, onAskHeed }) {
+function TodayTab({ tasks, routines, upcomingContexts, onMarkDone, onSkip, onMarkRoutineDone, onLightenRoutine, onEditRoutine, onAskHeed, onMoreOptions }) {
   const overdue = tasks.filter(t => t.overdue != null).sort((a, b) => b.overdue - a.overdue)
   const heroTask = overdue[0]
   const otherOverdue = overdue.slice(1)
@@ -1428,7 +1431,7 @@ function TodayTab({ tasks, routines, upcomingContexts, onMarkDone, onSkip, onMar
     <div>
       <ContextBanner upcomingContexts={upcomingContexts} onAskHeed={onAskHeed}/>
       <SectionHeader motif="leaf">Top of mind</SectionHeader>
-      {heroTask ? <HeroCard task={heroTask} onMarkDone={onMarkDone} onSkip={onSkip}/> : (
+      {heroTask ? <HeroCard task={heroTask} onMarkDone={onMarkDone} onSkip={onSkip} onMoreOptions={onMoreOptions}/> : (
         <div style={{ fontSize: 13.5, color: C.inkMute, fontStyle: 'italic', padding: '12px 0' }}>Nothing critical right now. Nice.</div>
       )}
       <div style={{ marginTop: 28 }}>
@@ -1438,13 +1441,13 @@ function TodayTab({ tasks, routines, upcomingContexts, onMarkDone, onSkip, onMar
       {otherOverdue.length > 0 && (
         <div style={{ marginTop: 28 }}>
           <SectionHeader motif="thorn" count={otherOverdue.length}>Also overdue</SectionHeader>
-          {otherOverdue.map((t, i) => <TaskCard key={t.id} task={t} delay={i * 50} onMarkDone={onMarkDone} onSkip={onSkip}/>)}
+          {otherOverdue.map((t, i) => <TaskCard key={t.id} task={t} delay={i * 50} onMarkDone={onMarkDone} onSkip={onSkip} onMoreOptions={onMoreOptions}/>)}
         </div>
       )}
       {upcoming.length > 0 && (
         <div style={{ marginTop: 28 }}>
           <SectionHeader motif="berry" count={upcoming.length}>Coming up</SectionHeader>
-          {upcoming.map((t, i) => <TaskCard key={t.id} task={t} delay={i * 50} onMarkDone={onMarkDone} onSkip={onSkip}/>)}
+          {upcoming.map((t, i) => <TaskCard key={t.id} task={t} delay={i * 50} onMarkDone={onMarkDone} onSkip={onSkip} onMoreOptions={onMoreOptions}/>)}
         </div>
       )}
     </div>
@@ -1554,7 +1557,7 @@ function SegmentButton({ active, onClick, label, count, accent }) {
   )
 }
 
-function TracksTab({ tasks, routines, onMarkDone, onSkip, onMarkRoutineDone, onLightenRoutine, onEditRoutine, onAddTask, onAddRoutine }) {
+function TracksTab({ tasks, routines, onMarkDone, onSkip, onMarkRoutineDone, onLightenRoutine, onEditRoutine, onAddTask, onAddRoutine, onMoreOptions }) {
   const [subtab, setSubtab] = useState('routines')
   const [filter, setFilter] = useState('all')
   const filteredTasks = filter === 'all' ? tasks : tasks.filter(t => t.category === filter)
@@ -1587,7 +1590,7 @@ function TracksTab({ tasks, routines, onMarkDone, onSkip, onMarkRoutineDone, onL
             <button onClick={onAddTask} style={getBtnPrimary()}>+ Add task</button>
           </div>
           <div>
-            {filteredTasks.map((t, i) => <TaskCard key={t.id} task={t} delay={i * 30} onMarkDone={onMarkDone} onSkip={onSkip}/>)}
+            {filteredTasks.map((t, i) => <TaskCard key={t.id} task={t} delay={i * 30} onMarkDone={onMarkDone} onSkip={onSkip} onMoreOptions={onMoreOptions}/>)}
           </div>
           <div style={{ marginTop: 18, fontSize: 12.5, color: C.inkMute, fontStyle: 'italic', textAlign: 'center' }}>✨ = cadence learned by the agent from your behavior</div>
         </div>
@@ -2081,7 +2084,7 @@ function AddContextModal({ open, onClose, onSubmit }) {
 }
 
 // ── AddRoutineModal (simplified) ───────────────────────────────
-function AddRoutineModal({ open, onClose, onSubmit, initialData = null }) {
+function AddRoutineModal({ open, onClose, onSubmit, initialData = null, seedTask = null }) {
   const [name, setName] = useState('')
   const [items, setItems] = useState([{ id: 1, name: '' }])
   const nameRef = useRef(null)
@@ -2090,6 +2093,9 @@ function AddRoutineModal({ open, onClose, onSubmit, initialData = null }) {
     if (initialData) {
       setName(initialData.name || '')
       setItems(initialData.items?.map((item, i) => ({ id: i + 1, name: item })) || [{ id: 1, name: '' }])
+    } else if (seedTask) {
+      setName('')
+      setItems([{ id: 1, name: seedTask.name }, { id: 2, name: '' }])
     } else {
       setName(''); setItems([{ id: 1, name: '' }])
     }
@@ -2185,6 +2191,85 @@ function Toast({ message, onView, onUndo, onDismiss }) {
   )
 }
 
+// ── TaskOptionsSheet ───────────────────────────────────────────
+function TaskOptionsSheet({ task, onClose, onAddToRoutine, onBuildRoutine }) {
+  if (!task) return null
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 200 }} onClick={onClose}>
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(2px)' }}/>
+      <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: C.paper, borderRadius: '20px 20px 0 0', padding: `24px 24px calc(24px + env(safe-area-inset-bottom)) 24px`, animation: 'heed-slideUp 0.28s cubic-bezier(0.32,0.72,0,1)', boxShadow: '0 -8px 32px rgba(0,0,0,0.12)' }}>
+        <div style={{ width: 40, height: 4, borderRadius: 2, background: C.border, margin: '0 auto 20px' }}/>
+        <div style={{ fontFamily: 'Lora, serif', fontSize: 17, fontWeight: 600, color: C.ink, marginBottom: 3 }}>{task.name}</div>
+        <div style={{ fontSize: 12.5, color: C.inkMute, marginBottom: 20 }}>{task.cadence}</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <button onClick={() => { onAddToRoutine(task); onClose() }}
+            style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', background: C.bellySoft, border: `1.5px solid ${C.border}`, borderRadius: 12, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', transition: 'all 0.15s' }}
+            onMouseEnter={e => e.currentTarget.style.borderColor = C.sage + '88'}
+            onMouseLeave={e => e.currentTarget.style.borderColor = C.border}
+          >
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: C.sage + '22', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="3" stroke={C.sage} strokeWidth="1.8"/><path d="M12 8v8M8 12h8" stroke={C.sage} strokeWidth="1.8" strokeLinecap="round"/></svg>
+            </div>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: C.ink, marginBottom: 2 }}>Add to a routine</div>
+              <div style={{ fontSize: 12, color: C.inkMute }}>Pick an existing routine to add this to</div>
+            </div>
+          </button>
+          <button onClick={() => { onBuildRoutine(task); onClose() }}
+            style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', background: C.bellySoft, border: `1.5px solid ${C.border}`, borderRadius: 12, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', transition: 'all 0.15s' }}
+            onMouseEnter={e => e.currentTarget.style.borderColor = C.ochre + '88'}
+            onMouseLeave={e => e.currentTarget.style.borderColor = C.border}
+          >
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: C.ochre + '22', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M17 2l4 4-4 4" stroke={C.ochre} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M3 11V9a4 4 0 0 1 4-4h14" stroke={C.ochre} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M7 22l-4-4 4-4" stroke={C.ochre} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M21 13v2a4 4 0 0 1-4 4H3" stroke={C.ochre} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </div>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: C.ink, marginBottom: 2 }}>Build a routine from this</div>
+              <div style={{ fontSize: 12, color: C.inkMute }}>Start a new routine using this task</div>
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── AddToRoutineSheet ──────────────────────────────────────────
+function AddToRoutineSheet({ task, routines, onClose, onSelect }) {
+  if (!task) return null
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 200 }} onClick={onClose}>
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(2px)' }}/>
+      <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: C.paper, borderRadius: '20px 20px 0 0', padding: `24px 24px calc(24px + env(safe-area-inset-bottom)) 24px`, animation: 'heed-slideUp 0.28s cubic-bezier(0.32,0.72,0,1)', boxShadow: '0 -8px 32px rgba(0,0,0,0.12)', maxHeight: '70vh', overflowY: 'auto' }}>
+        <div style={{ width: 40, height: 4, borderRadius: 2, background: C.border, margin: '0 auto 20px' }}/>
+        <div style={{ fontFamily: 'Lora, serif', fontSize: 17, fontWeight: 600, color: C.ink, marginBottom: 3 }}>Add to a routine</div>
+        <div style={{ fontSize: 12.5, color: C.inkMute, marginBottom: 20 }}>Choose a routine to add "{task.name}" to</div>
+        {routines.length === 0 ? (
+          <div style={{ fontSize: 13, color: C.inkMute, fontStyle: 'italic', textAlign: 'center', padding: '16px 0' }}>No routines yet. Build one first.</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {routines.map(r => (
+              <button key={r.id} onClick={() => { onSelect(task, r.id); onClose() }}
+                style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', background: C.bellySoft, border: `1.5px solid ${C.border}`, borderRadius: 12, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', transition: 'all 0.15s' }}
+                onMouseEnter={e => e.currentTarget.style.borderColor = C.sage + '88'}
+                onMouseLeave={e => e.currentTarget.style.borderColor = C.border}
+              >
+                <div style={{ width: 36, height: 36, borderRadius: 8, background: C.sage + '22', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" stroke={C.sage} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                </div>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: C.ink }}>{r.name}</div>
+                  <div style={{ fontSize: 12, color: C.inkMute, marginTop: 2 }}>{r.items.length} items · {r.schedule}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── Main App ───────────────────────────────────────────────────
 export default function HeedApp() {
   const [apiTasks, setApiTasks] = useState([])
@@ -2209,6 +2294,9 @@ export default function HeedApp() {
   const [routineModalOpen, setRoutineModalOpen] = useState(false)
   const [editingRoutine, setEditingRoutine] = useState(null)
   const [contextModalOpen, setContextModalOpen] = useState(false)
+  const [taskOptionsTask, setTaskOptionsTask] = useState(null)
+  const [addToRoutineTask, setAddToRoutineTask] = useState(null)
+  const [buildRoutineTask, setBuildRoutineTask] = useState(null)
 
   useEffect(() => {
     fetch(`${FUNCTIONS_URL}/api/tasks`)
@@ -2354,6 +2442,19 @@ export default function HeedApp() {
     setRoutineModalOpen(true)
   }, [])
 
+  const handleMoreOptions = useCallback((task) => {
+    setTaskOptionsTask(task)
+  }, [])
+
+  const handleAddTaskToRoutine = useCallback((task, routineId) => {
+    setRoutines(rs => rs.map(r => {
+      if (r.id !== routineId) return r
+      if (r.items.includes(task.name)) return r
+      return { ...r, items: [...r.items, task.name] }
+    }))
+    setToast({ message: `"${task.name}" added to routine` })
+  }, [])
+
   const tabs = APP_TABS
 
   const [todayStr, setTodayStr] = useState('')
@@ -2413,10 +2514,10 @@ export default function HeedApp() {
       <MobileBottomNav tab={tab} onTab={setTab} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onAskHeed={() => setAskOpen(true)}/>
 
       <main className="heed-main" style={{ maxWidth: 820, margin: '0 auto', padding: '28px 32px 100px 32px', minHeight: 'calc(100vh - 140px)', display: 'flex', flexDirection: 'column' }}>
-        {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} upcomingContexts={upcomingContexts} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAskHeed={handleAskHeed}/>}
+        {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} upcomingContexts={upcomingContexts} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAskHeed={handleAskHeed} onMoreOptions={handleMoreOptions}/>}
         {tab === 'calendar' && <CalendarTab/>}
         {tab === 'ask' && <AskTab prefill={askPrefill}/>}
-        {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)}/>}
+        {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onMoreOptions={handleMoreOptions}/>}
         {tab === 'context' && <ContextTab upcoming={apiContexts.upcoming} active={apiContexts.active} onAddContext={() => setContextModalOpen(true)}/>}
       </main>
 
@@ -2425,9 +2526,11 @@ export default function HeedApp() {
       </footer>
 
       <AddTaskModal open={modalOpen} onClose={() => setModalOpen(false)} onSubmit={handleAddTask}/>
-      <AddRoutineModal open={routineModalOpen} onClose={() => { setRoutineModalOpen(false); setEditingRoutine(null) }} onSubmit={handleAddRoutine} initialData={editingRoutine}/>
+      <AddRoutineModal open={routineModalOpen} onClose={() => { setRoutineModalOpen(false); setEditingRoutine(null); setBuildRoutineTask(null) }} onSubmit={handleAddRoutine} initialData={editingRoutine} seedTask={buildRoutineTask}/>
       <AddContextModal open={contextModalOpen} onClose={() => setContextModalOpen(false)} onSubmit={handleAddContext}/>
       <AskInlineModal open={askOpen} onClose={() => setAskOpen(false)}/>
+      <TaskOptionsSheet task={taskOptionsTask} onClose={() => setTaskOptionsTask(null)} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }}/>
+      <AddToRoutineSheet task={addToRoutineTask} routines={routines} onClose={() => setAddToRoutineTask(null)} onSelect={handleAddTaskToRoutine}/>
       {toast && <Toast message={toast.message} onView={toast.showView ? handleToastView : undefined} onUndo={toast.onUndo} onDismiss={() => setToast(null)} />}
       <HeedFAB onAddTask={() => setModalOpen(true)} onAskHeed={() => setAskOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)}/>
     </div>

@@ -489,60 +489,9 @@ function ThemeSwitcher({ theme, onTheme }) {
 }
 
 // ── MobileBottomNav ────────────────────────────────────────────
-function MobileBottomNav({ tab, onTab, onAddTask, onAddRoutine, onAskHeed }) {
-  const [fabOpen, setFabOpen] = useState(false)
-
-  useEffect(() => {
-    if (!fabOpen) return
-    const fn = (e) => { if (e.key === 'Escape') setFabOpen(false) }
-    window.addEventListener('keydown', fn)
-    return () => window.removeEventListener('keydown', fn)
-  }, [fabOpen])
-
-  const fanItems = [
-    { label: 'Add task',  icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="3.5" stroke="currentColor" strokeWidth="1.9"/><path d="M12 8v8M8 12h8" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"/></svg>, bg: C.ochre, fg: C.warmDeep, angle: 30,  delay: 0,   onClick: onAddTask    },
-    { label: 'Ask Heed',  icon: null, naked: true,                                                                                                                                                                                                                                                           angle: 90,  delay: 55,  onClick: onAskHeed   },
-    { label: 'Build a Routine', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M17 2l4 4-4 4" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"/><path d="M3 11V9a4 4 0 0 1 4-4h14" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"/><path d="M7 22l-4-4 4-4" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"/><path d="M21 13v2a4 4 0 0 1-4 4H3" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"/></svg>, bg: C.sage, fg: C.cream, angle: 150, delay: 110, onClick: onAddRoutine },
-  ]
-  const FAN_R = 92
-
+function MobileBottomNav({ tab, onTab }) {
   return (
     <>
-      {fabOpen && (
-        <div onClick={() => setFabOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 49, background: 'rgba(0,0,0,0.28)', animation: 'heed-fadeIn 0.18s ease' }}/>
-      )}
-
-      {/* Speed-dial fan — zero-size anchor at the FAB button centre */}
-      <div style={{ position: 'fixed', left: '50%', bottom: 'calc(52px + env(safe-area-inset-bottom))', width: 0, height: 0, zIndex: 51, pointerEvents: 'none' }}>
-        {fanItems.map(({ label, icon, bg, fg, angle, delay, naked, onClick }) => {
-          const rad = angle * Math.PI / 180
-          const tx = Math.cos(rad) * FAN_R
-          const ty = Math.sin(rad) * FAN_R
-          return (
-            <div key={label} style={{
-              position: 'absolute',
-              width: 48, height: 48,
-              transform: fabOpen ? `translate(${tx - 24}px, ${-ty - 24}px)` : 'translate(-24px, -24px)',
-              opacity: fabOpen ? 1 : 0,
-              transition: `transform 0.34s cubic-bezier(0.34,1.56,0.64,1) ${delay}ms, opacity 0.2s ease ${delay}ms`,
-              pointerEvents: fabOpen ? 'auto' : 'none',
-            }}>
-              <button onClick={() => { setFabOpen(false); onClick() }} aria-label={label}
-                style={{ width: 48, height: 48, borderRadius: '50%', background: naked ? 'transparent' : bg, border: naked ? 'none' : `2.5px solid ${C.cream}`, color: fg, fontSize: 22, cursor: 'pointer', boxShadow: naked ? 'none' : '0 4px 18px rgba(124,83,51,0.30)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, fontFamily: 'inherit', position: 'relative' }}>
-                {naked ? (
-                  <>
-                    <MayaOwl size={40} idle={false}/>
-                    <span style={{ position: 'absolute', top: 2, right: 2, fontSize: 13, lineHeight: 1 }}>💡</span>
-                  </>
-                ) : icon}
-              </button>
-              <div style={{ position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', marginTop: 5, background: C.paperHi, border: `1px solid ${C.border}`, borderRadius: 999, padding: '2px 9px', fontSize: 10.5, fontWeight: 600, color: C.warmDark, whiteSpace: 'nowrap', boxShadow: '0 2px 8px rgba(124,83,51,0.12)', fontFamily: 'Lora, serif', pointerEvents: 'none', letterSpacing: 0.1 }}>
-                {label}
-              </div>
-            </div>
-          )
-        })}
-      </div>
       <nav
         className="heed-bottom-nav"
         aria-label="Main navigation"
@@ -553,47 +502,10 @@ function MobileBottomNav({ tab, onTab, onAddTask, onAddRoutine, onAskHeed }) {
           zIndex: 50,
           paddingBottom: 'env(safe-area-inset-bottom)',
           boxShadow: '0 -2px 16px rgba(0,0,0,0.12)',
-          overflow: 'visible',
         }}
       >
-        {/* Owl FAB — floats above the nav bar */}
-        <button
-          onClick={() => setFabOpen(o => !o)}
-          aria-label="Open Heed menu"
-          aria-expanded={fabOpen}
-          style={{
-            position: 'absolute',
-            top: -30,
-            left: '50%',
-            transform: fabOpen
-              ? 'translateX(-50%) rotate(15deg) scale(1.1)'
-              : 'translateX(-50%) scale(1)',
-            transformOrigin: '50% 80%',
-            width: 68,
-            height: 68,
-            borderRadius: '50%',
-            background: C.paper,
-            border: `2.5px solid ${C.warmDark}99`,
-            boxShadow: fabOpen
-              ? `0 0 0 3px ${C.paper}, 0 0 0 6px ${C.warmDark}55, 0 0 18px 4px ${C.warmDark}30, 0 -6px 24px rgba(0,0,0,0.28)`
-              : `0 0 0 3px ${C.paper}, 0 0 0 5px ${C.border}, 0 -4px 20px rgba(0,0,0,0.22)`,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: 0,
-            zIndex: 52,
-            transition: 'transform 0.2s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.25s ease, opacity 0.2s',
-            opacity: fabOpen ? 1 : 0.92,
-          }}
-        >
-          <MayaOwl size={50} idle={false}/>
-        </button>
-
         {APP_TABS.map(t => {
           const active = tab === t.id
-          const isAsk = t.id === 'ask'
-          if (isAsk) return <div key="ask" style={{ flex: 1 }} />
           const ic = active ? C.warmDark : C.inkMute
           const navIcon = {
             today: (
@@ -611,6 +523,14 @@ function MobileBottomNav({ tab, onTab, onAddTask, onAddRoutine, onAskHeed }) {
                 <circle cx="5.5" cy="12" r="1" fill={ic}/>
                 <circle cx="8.5" cy="12" r="1" fill={ic}/>
                 <circle cx="11.5" cy="12" r="1" fill={ic}/>
+              </svg>
+            ),
+            ask: (
+              <svg width="17" height="17" viewBox="0 0 17 17" fill="none">
+                <path d="M2 3.5A1.5 1.5 0 0 1 3.5 2h10A1.5 1.5 0 0 1 15 3.5v7A1.5 1.5 0 0 1 13.5 12H10l-3 2.5V12H3.5A1.5 1.5 0 0 1 2 10.5v-7z" stroke={ic} strokeWidth="1.4" strokeLinejoin="round"/>
+                <circle cx="5.5" cy="7" r="0.9" fill={ic}/>
+                <circle cx="8.5" cy="7" r="0.9" fill={ic}/>
+                <circle cx="11.5" cy="7" r="0.9" fill={ic}/>
               </svg>
             ),
             tracks: (
@@ -3925,7 +3845,7 @@ export default function HeedApp() {
         ))}
       </nav>
 
-      <MobileBottomNav tab={tab} onTab={setTab} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onAskHeed={() => setAskOpen(true)}/>
+      <MobileBottomNav tab={tab} onTab={setTab}/>
 
       <main className="heed-main" style={{ maxWidth: 820, margin: '0 auto', padding: '28px 32px 100px 32px', minHeight: 'calc(100vh - 140px)', display: 'flex', flexDirection: 'column' }}>
         {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} upcomingContexts={upcomingContexts} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAskHeed={handleAskHeed} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen}/>}

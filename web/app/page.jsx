@@ -2379,6 +2379,19 @@ export default function HeedApp() {
     }).catch(() => {})
   }, [FUNCTIONS_URL])
 
+  const handleReschedule = useCallback(async (taskId, newDate) => {
+    const iso = new Date(newDate).toISOString()
+    await fetch(`${FUNCTIONS_URL}/api/tasks/${taskId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ next_due_at: iso }),
+    }).catch(() => {})
+    fetch(`${FUNCTIONS_URL}/api/tasks`)
+      .then(r => r.json())
+      .then(data => Array.isArray(data) && setApiTasks(data))
+      .catch(() => {})
+  }, [FUNCTIONS_URL])
+
   const handleAskHeed = useCallback((query) => {
     setAskPrefill(query)
     setTab('ask')
@@ -2533,7 +2546,7 @@ export default function HeedApp() {
 
       <main className="heed-main" style={{ maxWidth: 820, margin: '0 auto', padding: '28px 32px 100px 32px', minHeight: 'calc(100vh - 140px)', display: 'flex', flexDirection: 'column' }}>
         {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} upcomingContexts={upcomingContexts} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAskHeed={handleAskHeed} onMoreOptions={handleMoreOptions}/>}
-        {tab === 'calendar' && <CalendarTab/>}
+        {tab === 'calendar' && <CalendarTab tasks={apiTasks} onReschedule={handleReschedule} onMarkDone={handleMarkDone} onSkip={handleSkip}/>}
         {tab === 'ask' && <AskTab prefill={askPrefill}/>}
         {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onMoreOptions={handleMoreOptions}/>}
         {tab === 'context' && <ContextTab upcoming={apiContexts.upcoming} active={apiContexts.active} onAddContext={() => setContextModalOpen(true)}/>}

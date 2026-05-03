@@ -372,43 +372,45 @@ function MobileBottomNav({ tab, onTab, onAddTask, onAddRoutine, onAskHeed }) {
     return () => window.removeEventListener('keydown', fn)
   }, [fabOpen])
 
-  const fabItems = [
-    { label: 'Add a task',      sublabel: 'Track something new',          icon: '+',                              iconBg: C.ochre,    iconFg: C.warmDeep, onClick: onAddTask    },
-    { label: 'Build a routine', sublabel: 'A cluster of things together', icon: '◆',                             iconBg: C.sage,     iconFg: C.cream,    onClick: onAddRoutine },
-    { label: 'Ask Heed',        sublabel: 'Chat with your agent',         icon: <MayaOwl size={18} idle={false}/>, iconBg: C.bellySoft, iconFg: C.warmDark, onClick: onAskHeed   },
+  const fanItems = [
+    { label: 'Add task',  icon: '+',                               bg: C.ochre,     fg: C.warmDeep, angle: 30,  delay: 0,   onClick: onAddTask    },
+    { label: 'Routine',   icon: '◆',                              bg: C.sage,      fg: C.cream,    angle: 90,  delay: 55,  onClick: onAddRoutine },
+    { label: 'Ask Heed',  icon: <MayaOwl size={20} idle={false}/>, bg: C.bellySoft, fg: C.warmDark, angle: 150, delay: 110, onClick: onAskHeed   },
   ]
+  const FAN_R = 92
 
   return (
     <>
       {fabOpen && (
-        <div onClick={() => setFabOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 49, background: 'rgba(0,0,0,0.35)', animation: 'heed-fadeIn 0.18s ease' }}/>
+        <div onClick={() => setFabOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 49, background: 'rgba(0,0,0,0.28)', animation: 'heed-fadeIn 0.18s ease' }}/>
       )}
-      {fabOpen && (
-        <div className="heed-mobile-fab-menu" style={{ position: 'fixed', left: '50%', transform: 'translateX(-50%)', zIndex: 51, display: 'flex', flexDirection: 'column', gap: 8, minWidth: 240, width: 'calc(100vw - 48px)', maxWidth: 320 }}>
-          {fabItems.map(({ label, sublabel, icon, iconBg, iconFg, onClick }, i) => (
-            <button
-              key={label}
-              onClick={() => { setFabOpen(false); onClick() }}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 14,
-                background: C.paperHi, border: `1px solid ${C.border}`, borderRadius: 14,
-                padding: '12px 16px', cursor: 'pointer', fontFamily: 'inherit', width: '100%',
-                boxShadow: C.shadowMed, textAlign: 'left',
-                animation: 'heed-fadeUp 0.22s cubic-bezier(0.34,1.56,0.64,1) both',
-                animationDelay: `${i * 40}ms`,
-              }}
-            >
-              <div style={{ width: 38, height: 38, borderRadius: '50%', background: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, color: iconFg, flexShrink: 0, fontWeight: 700 }}>
+
+      {/* Speed-dial fan — zero-size anchor at the FAB button centre */}
+      <div style={{ position: 'fixed', left: '50%', bottom: 'calc(52px + env(safe-area-inset-bottom))', width: 0, height: 0, zIndex: 51, pointerEvents: 'none' }}>
+        {fanItems.map(({ label, icon, bg, fg, angle, delay, onClick }) => {
+          const rad = angle * Math.PI / 180
+          const tx = Math.cos(rad) * FAN_R
+          const ty = Math.sin(rad) * FAN_R
+          return (
+            <div key={label} style={{
+              position: 'absolute',
+              width: 48, height: 48,
+              transform: fabOpen ? `translate(${tx - 24}px, ${-ty - 24}px)` : 'translate(-24px, -24px)',
+              opacity: fabOpen ? 1 : 0,
+              transition: `transform 0.34s cubic-bezier(0.34,1.56,0.64,1) ${delay}ms, opacity 0.2s ease ${delay}ms`,
+              pointerEvents: fabOpen ? 'auto' : 'none',
+            }}>
+              <button onClick={() => { setFabOpen(false); onClick() }} aria-label={label}
+                style={{ width: 48, height: 48, borderRadius: '50%', background: bg, border: `2.5px solid ${C.cream}`, color: fg, fontSize: 22, cursor: 'pointer', boxShadow: '0 4px 18px rgba(124,83,51,0.30)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, fontFamily: 'inherit' }}>
                 {icon}
+              </button>
+              <div style={{ position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', marginTop: 5, background: C.paperHi, border: `1px solid ${C.border}`, borderRadius: 999, padding: '2px 9px', fontSize: 10.5, fontWeight: 600, color: C.warmDark, whiteSpace: 'nowrap', boxShadow: '0 2px 8px rgba(124,83,51,0.12)', fontFamily: 'Lora, serif', pointerEvents: 'none', letterSpacing: 0.1 }}>
+                {label}
               </div>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: C.ink, fontFamily: 'Lora, serif', lineHeight: 1.1 }}>{label}</div>
-                <div style={{ fontSize: 11, color: C.inkMute, marginTop: 3 }}>{sublabel}</div>
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
+            </div>
+          )
+        })}
+      </div>
       <nav
         className="heed-bottom-nav"
         aria-label="Main navigation"
@@ -1049,9 +1051,9 @@ function HeroCard({ task, onMarkDone, onSkip }) {
           border: `1.5px solid ${swipeRight ? C.sage + '88' : swipeLeft ? C.ochre + '66' : isCritical ? C.rust + '66' : C.border}`,
           borderRadius: 16, padding: '22px 24px',
           boxShadow: swipeRight ? `0 6px 24px ${C.sage}30` : swipeLeft ? `0 6px 24px ${C.ochre}22` : hover ? C.shadowMed : C.shadowSoft,
-          transform: `translateX(${offset}px) rotate(${offset * 0.07}deg)${!isSwiping && hover ? ' translateY(-2px)' : ''}`,
-          transformOrigin: '50% 85%',
-          transition: isSwiping ? 'none' : 'all 0.3s cubic-bezier(0.34,1.56,0.64,1)',
+          transform: `translateX(${offset}px) rotate(${offset * 0.15}deg) scale(${isSwiping ? 1.03 : 1})${!isSwiping && hover ? ' translateY(-2px)' : ''}`,
+          transformOrigin: 'center bottom',
+          transition: isSwiping ? 'none' : 'all 0.35s cubic-bezier(0.34,1.56,0.64,1)',
           position: 'relative', overflow: 'hidden',
           animation: 'heed-fadeUp 0.5s ease both',
           userSelect: 'none', touchAction: 'pan-y',
@@ -1129,9 +1131,9 @@ function TaskCard({ task, delay = 0, onMarkDone, onSkip }) {
           border: `1.5px solid ${swipeRight ? C.sage + '77' : swipeLeft ? C.ochre + '55' : isCritical ? C.rust + '44' : C.border}`,
           borderRadius: 12, padding: '14px 16px 14px 20px',
           boxShadow: swipeRight ? `0 4px 18px ${C.sage}28` : swipeLeft ? `0 4px 18px ${C.ochre}20` : hover ? C.shadowMed : C.shadowSoft,
-          transform: `translateX(${offset}px) rotate(${offset * 0.06}deg)${!isSwiping && hover ? ' translateY(-2px)' : ''}`,
-          transformOrigin: '50% 85%',
-          transition: isSwiping ? 'none' : 'all 0.3s cubic-bezier(0.34,1.56,0.64,1)',
+          transform: `translateX(${offset}px) rotate(${offset * 0.12}deg) scale(${isSwiping ? 1.02 : 1})${!isSwiping && hover ? ' translateY(-2px)' : ''}`,
+          transformOrigin: 'center bottom',
+          transition: isSwiping ? 'none' : 'all 0.35s cubic-bezier(0.34,1.56,0.64,1)',
           position: 'relative',
           animation: 'heed-fadeUp 0.5s ease both',
           animationDelay: `${delay}ms`,
@@ -1715,20 +1717,9 @@ function CalendarTab() {
       <div style={{ marginTop: 16, padding: '12px 16px', background: C.paper, border: `1px solid ${C.border}`, borderRadius: 10, boxShadow: C.shadowSoft }}>
         <div style={{ fontSize: 10.5, fontWeight: 700, color: C.inkMute, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 10 }}>Legend</div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {[
-            { color: C.rust,  bg: C.rustSoft,  label: 'Urgent',    shape: 'circle'  },
-            { color: C.ochre, bg: C.ochreSoft, label: 'Important',  shape: 'diamond' },
-            { color: C.sage,  bg: C.sageSoft,  label: 'Routine',    shape: 'ring'    },
-          ].map(({ color, bg, label, shape }) => (
-            <div key={label} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, borderRadius: 6, background: bg, border: `1.5px solid ${color}66`, padding: '5px 11px' }}>
-              <svg width="13" height="13" viewBox="0 0 13 13" aria-hidden="true" style={{ flexShrink: 0 }}>
-                {shape === 'circle'  && <circle cx="6.5" cy="6.5" r="5" fill={color}/>}
-                {shape === 'diamond' && <polygon points="6.5,1.5 11.5,6.5 6.5,11.5 1.5,6.5" fill={color}/>}
-                {shape === 'ring'    && <circle cx="6.5" cy="6.5" r="4" fill="none" stroke={color} strokeWidth="2.5"/>}
-              </svg>
-              <span style={{ fontSize: 12, color, fontWeight: 600 }}>{label}</span>
-            </div>
-          ))}
+          <ImportanceBadge importance="low"/>
+          <ImportanceBadge importance="medium"/>
+          <ImportanceBadge importance="high"/>
         </div>
       </div>
     </div>

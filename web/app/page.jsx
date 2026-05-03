@@ -1676,6 +1676,8 @@ function fmtMonth(d) { return d.toLocaleDateString('en-US', { month: 'long', yea
 function sameDay(a, b) { return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate() }
 
 function MonthStrip({ tasks, monthOffset, selectedWeekStart, onWeekSelect, onMonthChange }) {
+  const touchRef = useRef(null)
+
   const today = new Date()
   const base = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1)
   const monthYear = base.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
@@ -1691,8 +1693,6 @@ function MonthStrip({ tasks, monthOffset, selectedWeekStart, onWeekSelect, onMon
   }
 
   const dotColor = { high: C.rust, medium: C.ochre, low: C.sage }
-
-  const touchRef = useRef(null)
   function handleTouchStart(e) {
     touchRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
   }
@@ -1705,6 +1705,8 @@ function MonthStrip({ tasks, monthOffset, selectedWeekStart, onWeekSelect, onMon
   }
 
   const selKey = selectedWeekStart.toDateString()
+
+  const parseDue = val => { if (!val) return null; const d = new Date(val); return isNaN(d) ? null : d }
 
   return (
     <div onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
@@ -1721,13 +1723,13 @@ function MonthStrip({ tasks, monthOffset, selectedWeekStart, onWeekSelect, onMon
       {weeks.map((weekMon, wi) => {
         const isSelected = weekMon.toDateString() === selKey
         return (
-          <div key={wi} onClick={() => onWeekSelect(weekMon)}
+          <div key={weekMon.toDateString()} onClick={() => onWeekSelect(weekMon)}
             style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 2, background: isSelected ? C.bellySoft : 'transparent', borderRadius: 6, padding: '3px 0', marginBottom: 2, cursor: 'pointer' }}>
             {[0,1,2,3,4,5,6].map(di => {
               const date = addDays(weekMon, di)
               const inMonth = date.getMonth() === base.getMonth()
               const isToday = sameDay(date, today)
-              const dayTasks = tasks.filter(t => t.next_due_at && sameDay(new Date(t.next_due_at), date))
+              const dayTasks = tasks.filter(t => { const d = parseDue(t.next_due_at); return d && sameDay(d, date) })
               const levels = [...new Set(dayTasks.map(t => t.importance).filter(Boolean))]
               return (
                 <div key={di} style={{ textAlign: 'center', padding: '3px 0' }}>

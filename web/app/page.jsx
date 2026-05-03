@@ -2460,6 +2460,7 @@ export default function HeedApp() {
 
   const handleQuickContext = useCallback((type, days) => {
     const cfg = QUICK_CONTEXT_CONFIG[type]
+    if (!cfg) return
     const startDate = new Date()
     const endDate = new Date()
     endDate.setDate(endDate.getDate() + days - 1)

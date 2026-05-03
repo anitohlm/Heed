@@ -2266,13 +2266,6 @@ function PlanCard({ plan, delay = 0, onSelectPlan }) {
   )
 }
 
-// ── AddPlanSheet ─────────────────────────────────────────────────
-const PLAN_TYPES = [
-  { type: 'project', icon: '📦', label: 'Project',  desc: 'A goal with a checklist of steps' },
-  { type: 'goal',    icon: '🎯', label: 'Goal',     desc: 'Something to work toward with a measurable target' },
-  { type: 'event',   icon: '📅', label: 'Event',    desc: 'A date you\'re preparing for' },
-]
-
 // ── PlanDetailScreen ───────────────────────────────────────────
 function PlanDetailScreen({ plan, onBack, onCheck, onRename, onAddTask, onDeleteTask, onReorder }) {
   const [editingIndex, setEditingIndex] = useState(null)
@@ -2448,6 +2441,13 @@ function PlanDetailScreen({ plan, onBack, onCheck, onRename, onAddTask, onDelete
     </div>
   )
 }
+
+// ── AddPlanSheet ─────────────────────────────────────────────────
+const PLAN_TYPES = [
+  { type: 'project', icon: '📦', label: 'Project',  desc: 'A goal with a checklist of steps' },
+  { type: 'goal',    icon: '🎯', label: 'Goal',     desc: 'Something to work toward with a measurable target' },
+  { type: 'event',   icon: '📅', label: 'Event',    desc: 'A date you\'re preparing for' },
+]
 
 function AddPlanSheet({ onClose, onAdd }) {
   const [step, setStep]   = useState('pick')   // 'pick' | 'form'

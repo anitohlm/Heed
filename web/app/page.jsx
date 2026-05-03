@@ -1813,6 +1813,113 @@ function PlanCard({ plan, delay = 0 }) {
   )
 }
 
+// ── AddPlanSheet ─────────────────────────────────────────────────
+const PLAN_TYPES = [
+  { type: 'project', icon: '📦', label: 'Project',  desc: 'A goal with a checklist of steps' },
+  { type: 'goal',    icon: '🎯', label: 'Goal',     desc: 'Something to work toward with a measurable target' },
+  { type: 'event',   icon: '📅', label: 'Event',    desc: 'A date you\'re preparing for' },
+]
+
+function AddPlanSheet({ onClose, onAdd }) {
+  const [step, setStep]   = useState('pick')   // 'pick' | 'form'
+  const [type, setType]   = useState(null)
+  const [title, setTitle] = useState('')
+  const [dueDate, setDueDate]         = useState('')
+  const [tasksText, setTasksText]     = useState('')
+  const [targetAmt, setTargetAmt]     = useState('')
+  const [unit, setUnit]               = useState('₱')
+  const [targetDate, setTargetDate]   = useState('')
+  const [eventDate, setEventDate]     = useState('')
+
+  const inputStyle = { width: '100%', background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '9px 12px', fontSize: 14, color: C.ink, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box', marginTop: 4 }
+  const labelStyle = { fontSize: 12, fontWeight: 600, color: C.inkMute, display: 'block', marginTop: 12 }
+
+  const handleSubmit = () => {
+    if (!title.trim()) return
+    const parsedTasks = tasksText.split('\n').map(s => s.trim()).filter(Boolean).map(label => ({ label, done: false }))
+    const plan = { id: `plan-${Date.now()}`, type, icon: PLAN_TYPES.find(p => p.type === type).icon, title: title.trim() }
+    if (type === 'project') { plan.dueDate = dueDate || 'No due date'; plan.tasks = parsedTasks }
+    if (type === 'goal')    { plan.current = 0; plan.target = parseFloat(targetAmt) || 0; plan.unit = unit || ''; plan.targetDate = targetDate || 'No target date' }
+    if (type === 'event')   { plan.eventDate = eventDate ? new Date(eventDate) : null; plan.tasks = parsedTasks }
+    onAdd(plan)
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 200 }} onClick={onClose}>
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(2px)' }}/>
+      <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: C.paper, borderRadius: '20px 20px 0 0', padding: `22px 22px calc(22px + env(safe-area-inset-bottom)) 22px`, animation: 'heed-slideUp 0.28s cubic-bezier(0.32,0.72,0,1)', boxShadow: '0 -8px 32px rgba(0,0,0,0.12)', maxHeight: '80vh', overflowY: 'auto' }}>
+        <div style={{ width: 40, height: 4, borderRadius: 2, background: C.border, margin: '0 auto 18px' }}/>
+
+        {step === 'pick' && (
+          <>
+            <div style={{ fontFamily: 'Lora, serif', fontSize: 17, fontWeight: 600, color: C.warmDark, marginBottom: 4 }}>What kind of plan?</div>
+            <div style={{ fontSize: 12.5, color: C.inkMute, marginBottom: 18 }}>Choose a type to get started</div>
+            {PLAN_TYPES.map(pt => (
+              <button key={pt.type} onClick={() => { setType(pt.type); setStep('form') }}
+                style={{ display: 'flex', alignItems: 'center', gap: 14, width: '100%', background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 12, padding: '12px 14px', marginBottom: 10, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
+                <div style={{ width: 38, height: 38, borderRadius: 9, background: PLAN_ICON_BG[pt.type], display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>{pt.icon}</div>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: C.ink }}>{pt.label}</div>
+                  <div style={{ fontSize: 12, color: C.inkMute, marginTop: 2 }}>{pt.desc}</div>
+                </div>
+              </button>
+            ))}
+            <button onClick={onClose} style={{ width: '100%', background: 'transparent', border: 'none', color: C.inkMute, fontSize: 13, cursor: 'pointer', padding: '10px 0', fontFamily: 'inherit' }}>Cancel</button>
+          </>
+        )}
+
+        {step === 'form' && type && (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+              <button onClick={() => setStep('pick')} style={{ background: 'none', border: 'none', color: C.inkMute, fontSize: 13, cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>← Back</button>
+              <div style={{ fontFamily: 'Lora, serif', fontSize: 17, fontWeight: 600, color: C.warmDark }}>
+                {PLAN_TYPES.find(p => p.type === type).icon} New {PLAN_TYPES.find(p => p.type === type).label}
+              </div>
+            </div>
+
+            <label style={labelStyle}>Name *</label>
+            <input style={inputStyle} placeholder="e.g. Move apartments" value={title} onChange={e => setTitle(e.target.value)} autoFocus/>
+
+            {type === 'project' && (
+              <>
+                <label style={labelStyle}>Due date (optional)</label>
+                <input type="date" style={inputStyle} value={dueDate} onChange={e => setDueDate(e.target.value)}/>
+                <label style={labelStyle}>Tasks (one per line, optional)</label>
+                <textarea style={{ ...inputStyle, minHeight: 80, resize: 'vertical' }} placeholder={"Book moving truck\nPack bedroom\nNotify landlord"} value={tasksText} onChange={e => setTasksText(e.target.value)}/>
+              </>
+            )}
+
+            {type === 'goal' && (
+              <>
+                <label style={labelStyle}>Target amount *</label>
+                <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                  <input style={{ ...inputStyle, width: 64, marginTop: 0 }} placeholder="₱" value={unit} onChange={e => setUnit(e.target.value)}/>
+                  <input type="number" style={{ ...inputStyle, flex: 1, marginTop: 0 }} placeholder="50000" value={targetAmt} onChange={e => setTargetAmt(e.target.value)}/>
+                </div>
+                <label style={labelStyle}>Target date (optional)</label>
+                <input style={inputStyle} placeholder="e.g. Aug 2026" value={targetDate} onChange={e => setTargetDate(e.target.value)}/>
+              </>
+            )}
+
+            {type === 'event' && (
+              <>
+                <label style={labelStyle}>Event date *</label>
+                <input type="date" style={inputStyle} value={eventDate} onChange={e => setEventDate(e.target.value)}/>
+                <label style={labelStyle}>Prep tasks (one per line, optional)</label>
+                <textarea style={{ ...inputStyle, minHeight: 80, resize: 'vertical' }} placeholder={"Research the company\nIron outfit"} value={tasksText} onChange={e => setTasksText(e.target.value)}/>
+              </>
+            )}
+
+            <button onClick={handleSubmit} style={{ ...getBtnPrimary(), width: '100%', marginTop: 18, padding: '11px 0', fontSize: 14, borderRadius: 10 }}>
+              Create plan
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function ContextTab({ upcoming, active, activeContext, onAddContext, onQuickContext, onImBetter, onExtend, onDetailOpen }) {
   const allUpcoming = [...(active || []).map(mapApiContext), ...(upcoming || []).map(mapApiContext)]
   return (

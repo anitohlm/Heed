@@ -2464,6 +2464,14 @@ function RecoverySummarySheet({ open, context, heldTasks, onClose, onResumeAll, 
   )
 }
 
+// ── Standalone sheet components ────────────────────────────────
+function SheetSectionCard({ children, style }) {
+  return <div style={{ background: C.bellySoft, border: `1px solid ${C.border}`, borderRadius: 10, padding: '12px 14px', ...style }}>{children}</div>
+}
+function SheetSectionLabel({ children }) {
+  return <div style={{ fontSize: 10, fontWeight: 700, color: C.inkMute, letterSpacing: 0.7, textTransform: 'uppercase', marginBottom: 6 }}>{children}</div>
+}
+
 // ── ContextDetailSheet ─────────────────────────────────────────
 function ContextDetailSheet({ open, ctx, heldTasks, onClose, onImBetter, onExtend }) {
   if (!open || !ctx) return null
@@ -2497,17 +2505,6 @@ function ContextDetailSheet({ open, ctx, heldTasks, onClose, onImBetter, onExten
   const icon = ctx.icon || icons[ctx.type] || '📌'
   const bgForIcon = ctx._status === 'active' ? C.ochreSoft : ctx._status === 'upcoming' ? C.ochreSoft : C.bellySoft
 
-  const SectionCard = ({ children, style }) => (
-    <div style={{ background: C.bellySoft, border: `1px solid ${C.border}`, borderRadius: 10, padding: '12px 14px', ...style }}>
-      {children}
-    </div>
-  )
-  const SectionLabel = ({ children }) => (
-    <div style={{ fontSize: 10, fontWeight: 700, color: C.inkMute, letterSpacing: 0.7, textTransform: 'uppercase', marginBottom: 6 }}>
-      {children}
-    </div>
-  )
-
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 200 }} onClick={onClose}>
       <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(2px)' }}/>
@@ -2531,26 +2528,26 @@ function ContextDetailSheet({ open, ctx, heldTasks, onClose, onImBetter, onExten
           return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
               {tasksBefore.length > 0 && (
-                <SectionCard>
-                  <SectionLabel>Before you go</SectionLabel>
+                <SheetSectionCard>
+                  <SheetSectionLabel>Before you go</SheetSectionLabel>
                   {tasksBefore.slice(0, 5).map((t, i) => (
                     <div key={i} style={{ fontSize: 13, color: C.ink, padding: '2px 0' }}>• {t}</div>
                   ))}
-                </SectionCard>
+                </SheetSectionCard>
               )}
               {(whileAway || comingBack) && (
                 <div style={{ display: 'flex', gap: 8 }}>
                   {whileAway && (
-                    <SectionCard style={{ flex: 1 }}>
-                      <SectionLabel>While away</SectionLabel>
+                    <SheetSectionCard style={{ flex: 1 }}>
+                      <SheetSectionLabel>While away</SheetSectionLabel>
                       <div style={{ fontSize: 12.5, color: C.inkSoft }}>{whileAway}</div>
-                    </SectionCard>
+                    </SheetSectionCard>
                   )}
                   {comingBack && (
-                    <SectionCard style={{ flex: 1 }}>
-                      <SectionLabel>Coming back</SectionLabel>
+                    <SheetSectionCard style={{ flex: 1 }}>
+                      <SheetSectionLabel>Coming back</SheetSectionLabel>
                       <div style={{ fontSize: 12.5, color: C.inkSoft }}>{comingBack}</div>
-                    </SectionCard>
+                    </SheetSectionCard>
                   )}
                 </div>
               )}
@@ -2566,7 +2563,7 @@ function ContextDetailSheet({ open, ctx, heldTasks, onClose, onImBetter, onExten
           const extraCount = Math.max(0, (heldTasks || []).length - 3)
           return (
             <div style={{ marginBottom: 16 }}>
-              <SectionCard style={{ marginBottom: 12 }}>
+              <SheetSectionCard style={{ marginBottom: 12 }}>
                 {top3.length === 0 ? (
                   <div style={{ fontSize: 13, color: C.inkMute }}>Heed is holding your tasks while {ctx.label} is active.</div>
                 ) : (
@@ -2581,7 +2578,7 @@ function ContextDetailSheet({ open, ctx, heldTasks, onClose, onImBetter, onExten
                     )}
                   </>
                 )}
-              </SectionCard>
+              </SheetSectionCard>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button onClick={onImBetter} style={{ ...getBtnPrimary(), flex: 1, background: C.sage, padding: '10px 14px' }}>I'm better now</button>
                 <button onClick={onExtend} style={{ ...getBtnGhost(), padding: '10px 14px' }}>Extend 2 days</button>
@@ -2595,7 +2592,7 @@ function ContextDetailSheet({ open, ctx, heldTasks, onClose, onImBetter, onExten
           const top3 = tasks.slice(0, 3)
           const extraCount = Math.max(0, tasks.length - 3)
           return (
-            <SectionCard style={{ marginBottom: 16 }}>
+            <SheetSectionCard style={{ marginBottom: 16 }}>
               {tasks.length === 0 ? (
                 <div style={{ fontSize: 13, color: C.inkMute }}>No tasks were held during this period.</div>
               ) : (
@@ -2620,7 +2617,7 @@ function ContextDetailSheet({ open, ctx, heldTasks, onClose, onImBetter, onExten
                   )}
                 </>
               )}
-            </SectionCard>
+            </SheetSectionCard>
           )
         })()}
       </div>

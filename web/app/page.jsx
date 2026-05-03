@@ -351,16 +351,21 @@ function useChat({ onLightenRoutine } = {}) {
       })
       const result = await resp.json()
       if (!result.ok) throw new Error(result.error || 'Failed')
-      if (action.action_type === 'lighten_routine' && onLightenRoutine) {
+      let displaySummary = result.summary
+      if (action.action_type === 'lighten_routine') {
         const itemsToStrike = (action.payload?.preview?.remove || []).map(x => typeof x === 'object' ? x.name : x)
-        onLightenRoutine(action.routine_id, itemsToStrike.length > 0 ? itemsToStrike : null)
+        const keep = action.payload?.preview?.keep || []
+        if (itemsToStrike.length > 0) {
+          displaySummary = `Removed: ${itemsToStrike.join(', ')}${keep.length > 0 ? ` · Kept: ${keep.join(', ')}` : ''}`
+        }
+        onLightenRoutine?.(action.routine_id, itemsToStrike.length > 0 ? itemsToStrike : null)
       }
       setMessages(msgs => msgs.map((m, i) => {
         if (i !== messageIndex) return m
         return {
           ...m,
           actions: m.actions.map((a, j) =>
-            j === actionIndex ? { ...a, confirmed: true, summary: result.summary } : a
+            j === actionIndex ? { ...a, confirmed: true, summary: displaySummary } : a
           ),
         }
       }))
@@ -942,18 +947,12 @@ function Bubble({ role, content, streaming: isStreaming, actions, chips, onConfi
           <div style={{ borderTop: `1px solid ${C.hairline}`, marginTop: 12, paddingTop: 10 }}>
             {actions.map((action, i) => {
               if (action.confirmed) {
-                const prevRemove = action.payload?.preview?.remove || []
-                const prevKeep = action.payload?.preview?.keep || []
-                const removeNames = prevRemove.map(x => typeof x === 'object' ? x.name : x)
-                const detailLine = removeNames.length > 0
-                  ? `Removed: ${removeNames.join(', ')}${prevKeep.length > 0 ? ` · Kept: ${prevKeep.join(', ')}` : ''}`
-                  : action.summary
                 return (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: C.sageSoft, borderRadius: 8, marginBottom: 6, animation: 'heed-fadeIn 0.3s ease' }}>
                     <span style={{ color: C.sage, fontSize: 15, flexShrink: 0 }}>✓</span>
                     <div>
                       <div style={{ fontSize: 12.5, color: C.sage, fontWeight: 600 }}>{action.label}</div>
-                      {detailLine && <div style={{ fontSize: 11.5, color: C.inkMute, marginTop: 1 }}>{detailLine}</div>}
+                      {action.summary && <div style={{ fontSize: 11.5, color: C.inkMute, marginTop: 1 }}>{action.summary}</div>}
                     </div>
                   </div>
                 )

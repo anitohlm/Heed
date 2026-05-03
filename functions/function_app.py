@@ -32,6 +32,7 @@ if _repo_root not in sys.path:
 import json
 import logging
 import asyncio
+from datetime import datetime
 import azure.functions as func
 
 from agents.advisor import stream_response
@@ -224,6 +225,12 @@ def task_by_id(req: func.HttpRequest) -> func.HttpResponse:
         for field in allowed_fields:
             if field in body:
                 task_dict[field] = body[field]
+
+        if "next_due_at" in body and body["next_due_at"] is not None:
+            try:
+                datetime.fromisoformat(str(body["next_due_at"]).replace("Z", "+00:00"))
+            except (ValueError, AttributeError):
+                return _error("next_due_at must be a valid ISO 8601 datetime string")
 
         cosmos_tool._get_database().get_container_client("tasks").replace_item(
             item=task_id, body=task_dict

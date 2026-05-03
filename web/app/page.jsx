@@ -606,7 +606,7 @@ function MobileBottomNav({ tab, onTab, onMicAsk }) {
             padding: 0,
             zIndex: 52,
             transition: 'box-shadow 0.2s ease, border-color 0.2s ease, transform 0.15s ease',
-            animation: micListening ? 'heed-breathe 1.2s ease-in-out infinite' : 'none',
+            animation: micListening ? 'heed-mic-pulse 1.2s ease-in-out infinite' : 'none',
             userSelect: 'none',
             WebkitUserSelect: 'none',
           }}
@@ -2282,6 +2282,10 @@ function PlanDetailScreen({ plan, onBack, onCheck, onRename, onAddTask, onDelete
   const totalCount = plan.tasks.length
   const pct = totalCount > 0 ? Math.round(doneCount / totalCount * 100) : 0
 
+  useEffect(() => {
+    rowRefs.current = rowRefs.current.slice(0, plan.tasks.length)
+  }, [plan.tasks.length])
+
   function startEdit(i, label) {
     setSwipedIndex(null)
     setEditingIndex(i)
@@ -2326,6 +2330,8 @@ function PlanDetailScreen({ plan, onBack, onCheck, onRename, onAddTask, onDelete
     dragRef.current = { dragIndex: null, dropIndex: null }
     setDragIndex(null)
     setDropIndex(null)
+    setEditingIndex(null)
+    setEditValue('')
   }
 
   return (
@@ -2432,7 +2438,7 @@ function PlanDetailScreen({ plan, onBack, onCheck, onRename, onAddTask, onDelete
             placeholder="Add a task…"
             value={newTaskLabel}
             onChange={e => setNewTaskLabel(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') handleAddTask() }}
+            onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
             onBlur={handleAddTask}
             style={{ flex: 1, border: 'none', borderBottom: `1px solid ${C.hairline}`, outline: 'none', fontSize: 13, color: C.ink, background: 'transparent', padding: '2px 0', fontFamily: 'inherit' }}
           />
@@ -2672,6 +2678,195 @@ function routineDays(routine) {
   if (s.includes('weekend')) return [5,6]
   if (s.includes('daily'))   return [0,1,2,3,4,5,6]
   return [0,1,2,3,4,5,6] // 'Custom' / unknown — treat as daily until we have structured day data
+}
+
+// ── Monthly retrospective ─────────────────────────────────────────
+// Builds a Retrospective object client-side from current state. Phase 1:
+// approximations in places where we don't yet have backend completion
+// history (noted inline). Backend endpoint will replace this in Phase 1b
+// keeping the same shape, so the UI doesn't change.
+function computeRetrospective(period, { tasks = [], routines = [], contexts = [] } = {}) {
+  // period: { year, monthIndex } where monthIndex is 0-based
+  const periodStart = new Date(period.year, period.monthIndex, 1)
+  const periodEnd   = new Date(period.year, period.monthIndex + 1, 0, 23, 59, 59)
+  const now = new Date()
+  const isPartial = now <= periodEnd  // "April so far" if month not yet over
+  const daysInPeriod = Math.min(
+    Math.floor((Math.min(periodEnd, now) - periodStart) / 86400000) + 1,
+    new Date(period.year, period.monthIndex + 1, 0).getDate(),
+  )
+  const periodLabel = periodStart.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+
+  // ── Routine summaries ──────────────────────────────────
+  // Approximation: completion14d covers the last 14 days, indexed 0=oldest..13=today.
+  // For a past month we don't have full history — extrapolate from recent rate.
+  const routineSummaries = routines.map(r => {
+    const completion = r.completion14d || []
+    const recentDone = completion.filter(Boolean).length
+    const recentRate = completion.length ? recentDone / completion.length : 0
+    const days = routineDays(r)
+    // How many days the routine was *due* in this period
+    const daysDue = (() => {
+      let count = 0
+      for (let i = 0; i < daysInPeriod; i++) {
+        const d = new Date(periodStart); d.setDate(d.getDate() + i)
+        const wd = (d.getDay() + 6) % 7  // Sun=6 → 6, Mon=0
+        if (days.includes(wd)) count++
+      }
+      return count
+    })()
+    const daysCompleted = Math.round(daysDue * recentRate)
+    // Best streak in completion14d as a stand-in
+    let bestStreak = 0, cur = 0
+    for (const d of completion) { if (d) { cur++; bestStreak = Math.max(bestStreak, cur) } else cur = 0 }
+    let note = null
+    if (daysDue > 0) {
+      const rate = daysCompleted / daysDue
+      if (rate >= 0.85 && bestStreak >= 7) note = `Strong this month. Best run: ${bestStreak} days.`
+      else if (rate >= 0.85) note = `Solid pattern. Slipped ${daysDue - daysCompleted} day${daysDue - daysCompleted === 1 ? '' : 's'}.`
+      else if (rate >= 0.5)  note = `${daysCompleted}/${daysDue}. Some slips clustered around weekends.`
+      else                   note = `Off-pattern this month — ${daysCompleted}/${daysDue}.`
+    } else {
+      note = 'Just started — building up history.'
+    }
+    return {
+      routine_id: r.id,
+      name: r.name,
+      days_due: daysDue,
+      days_completed: daysCompleted,
+      completion_rate: daysDue > 0 ? daysCompleted / daysDue : 0,
+      best_streak: bestStreak,
+      note,
+    }
+  })
+
+  // ── Top-line stats ──────────────────────────────────────
+  // Approximation: tasks with last_done_at inside the period count as 1 completion each.
+  // (Backend will give us multi-completion accuracy later.)
+  const taskCompletions = tasks.filter(t => {
+    const d = parseDue(t.last_done_at)
+    return d && d >= periodStart && d <= periodEnd
+  }).length
+  const routineCompletions = routineSummaries.reduce((s, r) => s + r.days_completed, 0)
+  const routineSkips = routineSummaries.reduce((s, r) => s + (r.days_due - r.days_completed), 0)
+  const completions = taskCompletions + routineCompletions
+  const skips = routineSkips // Task skips not tracked in current frontend state.
+  const totalDue = completions + skips
+  const completionRate = totalDue > 0 ? completions / totalDue : 0
+
+  // ── Cadence changes ────────────────────────────────────
+  // We don't yet have a history of what cadence WAS — only the current learned/explicit value.
+  // For Phase 1, surface tasks with a learned_cadence_days that differs from explicit_cadence_days
+  // (Heed has adjusted) OR newly learned (no prior explicit).
+  const cadenceChanges = tasks
+    .filter(t => t.learned_cadence_days && t.learned_cadence_days > 0)
+    .map(t => {
+      const before = t.explicit_cadence_days
+      const after = Math.round(t.learned_cadence_days * 10) / 10
+      // Approximation: cycles_observed = floor(daysSinceCreated / cadence). Without created_at,
+      // assume "enough" if last_done_at is set and rate is steady. Use a heuristic.
+      const cycles = before
+        ? Math.max(2, Math.round(Math.abs(after - before) > 1 ? 4 : 6))
+        : 2
+      const confidence = cycles >= 6 ? 'high' : cycles >= 3 ? 'medium' : 'low'
+      return {
+        task_id: t.id,
+        task_name: t.name,
+        before_days: before || null,
+        after_days: after,
+        cycles_observed: cycles,
+        confidence,
+      }
+    })
+    .slice(0, 6)
+
+  // ── Worth attention ─────────────────────────────────────
+  // Tasks where next_due_at has been overdue more than ~1.5x the cadence — signals slipping.
+  const needsAttention = tasks
+    .map(t => {
+      const due = parseDue(t.next_due_at)
+      if (!due) return null
+      const cad = t.learned_cadence_days || t.explicit_cadence_days
+      if (!cad) return null
+      const overdueDays = Math.max(0, Math.floor((now - due) / 86400000))
+      if (overdueDays < cad * 0.5) return null
+      const overdueCycles = Math.floor(overdueDays / cad) + (overdueDays % cad > 0 ? 1 : 0)
+      if (overdueCycles < 2) return null
+      const suggested = Math.round(cad * 1.25)
+      return {
+        task_id: t.id,
+        task_name: t.name,
+        issue: 'overdue_repeat',
+        detail: `Overdue ${overdueCycles} cycles. Cadence may be too tight at ${cad}d.`,
+        suggested_action: 'adjust_cadence',
+        suggested_payload: { new_cadence_days: suggested },
+        suggested_label: `Push to ${suggested} d`,
+      }
+    })
+    .filter(Boolean)
+    .slice(0, 4)
+
+  // ── Context impact ──────────────────────────────────────
+  const contextImpacts = (contexts || [])
+    .filter(c => {
+      const start = parseDue(c.start_date || c.start)
+      const end = parseDue(c.end_date || c.end) || start
+      return start && start <= periodEnd && (end || start) >= periodStart
+    })
+    .map(c => {
+      const start = parseDue(c.start_date || c.start)
+      const end = parseDue(c.end_date || c.end) || start
+      const days = Math.max(1, Math.floor((end - start) / 86400000) + 1)
+      const heldTasks = (c.heldTasks || []).length || c.skipped || 0
+      const recoveryDays = (c.heldTasks || []).reduce((m, t) => Math.max(m, t.overdueDays || 0), 0)
+      let recovery
+      if (recoveryDays === 0) recovery = 'Back on rhythm right after.'
+      else if (recoveryDays <= 3) recovery = `Back on rhythm in ${recoveryDays} day${recoveryDays === 1 ? '' : 's'}.`
+      else recovery = `Took ${recoveryDays} days to settle back.`
+      return {
+        context_id: c.id || `${c.type}-${c.start_date || c.start}`,
+        type: c.context_type || c.type || 'busy',
+        description: c.description || c.desc || '',
+        start: c.start_date || c.start,
+        end: c.end_date || c.end || c.start_date || c.start,
+        days,
+        paused_routines: c.routinesPaused || 0,
+        held_tasks: heldTasks,
+        recovery,
+      }
+    })
+
+  // ── Headline (rule-based, see spec §4.1) ───────────────
+  const strongestRoutine = routineSummaries.slice().sort((a, b) => b.completion_rate - a.completion_rate)[0]
+  const monthName = periodStart.toLocaleDateString('en-US', { month: 'long' })
+  let headline
+  if (isPartial && daysInPeriod < 21) {
+    headline = `Here's the partial picture for ${monthName} — too early to call patterns.`
+  } else if (completionRate >= 0.85) {
+    headline = `Steady ${monthName}. ${strongestRoutine?.name || 'Your routines'} carried this month.`
+  } else if (completionRate >= 0.60) {
+    headline = `Mixed ${monthName}. ${strongestRoutine?.name || 'Routines'} held, ad-hoc tasks slipped.`
+  } else if (contextImpacts.length > 0) {
+    headline = `${monthName} was light — your ${contextImpacts[0].type} window covers most of it.`
+  } else {
+    headline = `Quiet ${monthName}. Most tasks slipped a cycle or two.`
+  }
+
+  return {
+    period: `${period.year}-${String(period.monthIndex + 1).padStart(2, '0')}`,
+    period_label: periodLabel,
+    headline,
+    is_partial: isPartial,
+    completions,
+    skips,
+    completion_rate: completionRate,
+    routines: routineSummaries,
+    cadence_changes: cadenceChanges,
+    needs_attention: needsAttention,
+    contexts: contextImpacts,
+    patterns: [], // Phase 2
+    suggestions: [], // Phase 2
+  }
 }
 
 function MonthStrip({ tasks, monthOffset, selectedWeekStart, onWeekSelect, onMonthChange }) {
@@ -4350,6 +4545,7 @@ export default function HeedApp() {
         @keyframes heed-fadeIn { from { opacity:0; } to { opacity:1; } }
         @keyframes heed-pulse { 0%,100% { opacity:0.4; transform:translateX(-50%) scale(1); } 50% { opacity:1; transform:translateX(-50%) scale(1.4); } }
         @keyframes heed-breathe { 0%,100% { opacity:0.5; transform:scale(1); } 50% { opacity:0.85; transform:scale(1.05); } }
+        @keyframes heed-mic-pulse { 0%,100% { box-shadow: 0 0 0 3px #fff3f3, 0 0 0 6px rgba(229,62,62,0.2), 0 -4px 20px rgba(229,62,62,0.2); } 50% { box-shadow: 0 0 0 3px #fff3f3, 0 0 0 11px rgba(229,62,62,0.45), 0 -4px 24px rgba(229,62,62,0.35); } }
         @keyframes heed-blink { 0%,50%,100% { opacity:1; } 25%,75% { opacity:0.3; } }
         @keyframes heed-bob { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-2px); } }
         @keyframes heed-slideUp { from { opacity:0; transform:translateY(40px); } to { opacity:1; transform:translateY(0); } }

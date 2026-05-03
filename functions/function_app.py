@@ -222,15 +222,16 @@ def task_by_id(req: func.HttpRequest) -> func.HttpResponse:
         allowed_fields = {"name", "description", "category", "importance",
                           "status", "explicit_cadence_days", "next_due_at"}
         task_dict = task.model_dump(mode="json")
-        for field in allowed_fields:
-            if field in body:
-                task_dict[field] = body[field]
 
         if "next_due_at" in body and body["next_due_at"] is not None:
             try:
                 datetime.fromisoformat(str(body["next_due_at"]).replace("Z", "+00:00"))
             except (ValueError, AttributeError):
                 return _error("next_due_at must be a valid ISO 8601 datetime string")
+
+        for field in allowed_fields:
+            if field in body:
+                task_dict[field] = body[field]
 
         cosmos_tool._get_database().get_container_client("tasks").replace_item(
             item=task_id, body=task_dict

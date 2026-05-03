@@ -283,6 +283,39 @@ const FALLBACK_RESPONSE = {
 }
 
 // ── Helpers ────────────────────────────────────────────────────
+// Heuristic cadence suggestion based on task name. Returns { days, reason }
+// for known patterns, or null. Pre-fills the Add Task cadence picker so common
+// life-admin tasks land at sensible defaults without the user thinking.
+function suggestCadence(name) {
+  if (!name) return null
+  const s = name.toLowerCase().trim()
+  const rules = [
+    { re: /\bpay\b.*\b(bill|maynilad|meralco|rent|electric|water|internet|pldt|globe|mortgage)\b/, days: 30, reason: 'looks like a monthly bill' },
+    { re: /\b(maynilad|meralco|pldt|globe|electric|water bill|water dispenser refill)\b/, days: 30, reason: 'looks like a monthly bill' },
+    { re: /\b(rent|mortgage|insurance|subscription)\b/, days: 30, reason: 'looks monthly' },
+    { re: /\bsubmit (timesheet|report)\b/, days: 7, reason: 'usually weekly' },
+    { re: /\b(call|text)\s+(mom|dad|mother|father|family|grandma|grandpa|sister|brother)\b/, days: 7, reason: 'weekly check-in' },
+    { re: /\b(water|refill)\b.*\b(plant|water dispenser|filter)\b/, days: 7, reason: 'usually weekly' },
+    { re: /\b(water|water the)\s+plants?\b/, days: 7, reason: 'usually weekly' },
+    { re: /\b(wash|change)\b.*\b(bedsheet|sheet|laundry|clothes)\b/, days: 14, reason: 'every two weeks works for most' },
+    { re: /\b(clean)\b.*\b(aircon|filter|fridge|oven)\b/, days: 28, reason: 'roughly monthly' },
+    { re: /\b(aircon filter)\b/, days: 56, reason: 'every ~8 weeks is typical' },
+    { re: /\b(cat|litter|cat litter)\b/, days: 3, reason: 'every few days' },
+    { re: /\b(trash|garbage|bin)\b/, days: 7, reason: 'usually weekly' },
+    { re: /\b(exercise|gym|workout|run|jog|walk)\b/, days: 3, reason: 'every few days keeps the streak' },
+    { re: /\b(vitamin|supplement|meds|medication|take.*pill)\b/, days: 1, reason: 'daily' },
+    { re: /\b(journal|stretch|meditate|read|reading)\b/, days: 1, reason: 'daily habit' },
+    { re: /\b(grocery|groceries|shopping|market)\b/, days: 7, reason: 'usually weekly' },
+    { re: /\b(haircut)\b/, days: 42, reason: 'every ~6 weeks for most' },
+    { re: /\b(dentist|dental)\b/, days: 180, reason: 'every six months' },
+    { re: /\b(doctor|checkup|annual)\b/, days: 365, reason: 'yearly' },
+  ]
+  for (const r of rules) {
+    if (r.re.test(s)) return { days: r.days, reason: r.reason }
+  }
+  return null
+}
+
 // Render a cadence in days into something a human reads as natural prose.
 // "33.6 days" reads like a sensor log; "~5 weeks" reads like a friend.
 function formatCadence(days, { learned } = {}) {
@@ -2234,7 +2267,8 @@ function usePlans(initialPlans) {
   }, [])
 
   const updatePlan = useCallback((planId, updates) => {
-    setPlans(prev => prev.map(p => p.id !== planId ? p : { ...p, ...updates }))
+    const { tasks: _t, ...safeUpdates } = updates
+    setPlans(prev => prev.map(p => p.id !== planId ? p : { ...p, ...safeUpdates }))
   }, [])
 
   return { plans, checkTask, renameTask, addTask, deleteTask, reorderTasks, addPlan, updatePlan }
@@ -3538,6 +3572,7 @@ function AddTaskModal({ open, onClose, onSubmit, onDelete, initialData = null })
   const [importance, setImportance] = useState('medium')
   const [cadenceMode, setCadenceMode] = useState('learn')
   const [cadenceDays, setCadenceDays] = useState(7)
+  const [cadenceTouched, setCadenceTouched] = useState(false)
   const [dueDate, setDueDate] = useState('')
   const [dueTime, setDueTime] = useState('')
   const inputRef = useRef(null)
@@ -3550,13 +3585,24 @@ function AddTaskModal({ open, onClose, onSubmit, onDelete, initialData = null })
       const explicit = initialData.explicit_cadence_days
       setCadenceMode(explicit ? 'set' : 'learn')
       setCadenceDays(explicit || 7)
+      setCadenceTouched(true)  // existing task — don't override
       setDueDate(initialData.dueDate || '')
       setDueTime(initialData.dueTime || '')
     } else {
       setName(''); setCategory('home'); setImportance('medium'); setCadenceMode('learn'); setCadenceDays(7); setDueDate(''); setDueTime('')
+      setCadenceTouched(false)
     }
     if (inputRef.current) setTimeout(() => inputRef.current?.focus(), 50)
   }, [open, initialData])
+  // Auto-suggest cadence from the task name as the user types — only when
+  // they haven't already touched the cadence picker. New tasks only.
+  const cadenceSuggestion = !isEdit ? suggestCadence(name) : null
+  useEffect(() => {
+    if (isEdit || cadenceTouched || !cadenceSuggestion) return
+    setCadenceMode('set')
+    setCadenceDays(cadenceSuggestion.days)
+  }, [cadenceSuggestion?.days, isEdit, cadenceTouched])
+  const markCadenceTouched = () => setCadenceTouched(true)
   useEffect(() => {
     if (!open) return
     const fn = (e) => { if (e.key === 'Escape') onClose() }
@@ -3653,20 +3699,25 @@ function AddTaskModal({ open, onClose, onSubmit, onDelete, initialData = null })
           <div style={{ marginBottom: 18 }}>
             <label style={getFieldLabel()}>How often?</label>
             <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-              <button onClick={() => setCadenceMode('learn')} style={{ flex: 1, background: cadenceMode === 'learn' ? C.bellySoft : C.paper, color: cadenceMode === 'learn' ? C.warmDark : C.inkSoft, border: `1.5px solid ${cadenceMode === 'learn' ? C.warmDark + '66' : C.border}`, padding: '8px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, transition: 'all 0.15s' }}>
+              <button onClick={() => { setCadenceMode('learn'); markCadenceTouched() }} style={{ flex: 1, background: cadenceMode === 'learn' ? C.bellySoft : C.paper, color: cadenceMode === 'learn' ? C.warmDark : C.inkSoft, border: `1.5px solid ${cadenceMode === 'learn' ? C.warmDark + '66' : C.border}`, padding: '8px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, transition: 'all 0.15s' }}>
                 <span style={{ color: C.sage }}>✨</span>Let Heed learn it
               </button>
-              <button onClick={() => setCadenceMode('set')} style={{ flex: 1, background: cadenceMode === 'set' ? C.bellySoft : C.paper, color: cadenceMode === 'set' ? C.warmDark : C.inkSoft, border: `1.5px solid ${cadenceMode === 'set' ? C.warmDark + '66' : C.border}`, padding: '8px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}>I'll set it</button>
+              <button onClick={() => { setCadenceMode('set'); markCadenceTouched() }} style={{ flex: 1, background: cadenceMode === 'set' ? C.bellySoft : C.paper, color: cadenceMode === 'set' ? C.warmDark : C.inkSoft, border: `1.5px solid ${cadenceMode === 'set' ? C.warmDark + '66' : C.border}`, padding: '8px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}>I'll set it</button>
             </div>
+            {!cadenceTouched && cadenceSuggestion && cadenceMode === 'set' && (
+              <div style={{ fontSize: 11, color: C.inkSoft, fontStyle: 'italic', marginBottom: 8, paddingLeft: 2 }}>
+                ✨ Suggested {formatCadence(cadenceSuggestion.days)} — {cadenceSuggestion.reason}.
+              </div>
+            )}
             {cadenceMode === 'set' && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: C.bellySoft, padding: '10px 14px', borderRadius: 8, animation: 'heed-fadeIn 0.2s ease' }}>
                 <span style={{ fontSize: 13, color: C.warmDark }}>Every</span>
-                <input type="number" min="1" max="365" value={cadenceDays} onChange={e => setCadenceDays(Math.max(1, Number(e.target.value)||1))}
+                <input type="number" min="1" max="365" value={cadenceDays} onChange={e => { setCadenceDays(Math.max(1, Number(e.target.value)||1)); markCadenceTouched() }}
                   style={{ width: 60, padding: '5px 10px', border: `1px solid ${C.border}`, borderRadius: 6, fontSize: 14, textAlign: 'center', fontFamily: 'inherit', color: C.ink, background: C.paper }}
                 />
                 <span style={{ fontSize: 13, color: C.warmDark }}>day{cadenceDays===1?'':'s'}</span>
                 <div style={{ flex: 1, fontSize: 11, color: C.inkMute, fontStyle: 'italic', textAlign: 'right' }}>
-                  {[1,7,14,30].map(n => <button key={n} onClick={() => setCadenceDays(n)} style={{ background: 'transparent', border: 'none', color: C.warmDark, fontWeight: 600, cursor: 'pointer', padding: '0 4px', fontFamily: 'inherit', fontSize: 11 }}>{n}d</button>)}
+                  {[1,7,14,30].map(n => <button key={n} onClick={() => { setCadenceDays(n); markCadenceTouched() }} style={{ background: 'transparent', border: 'none', color: C.warmDark, fontWeight: 600, cursor: 'pointer', padding: '0 4px', fontFamily: 'inherit', fontSize: 11 }}>{n}d</button>)}
                 </div>
               </div>
             )}

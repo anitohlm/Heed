@@ -991,11 +991,11 @@ function Bubble({ role, content, streaming: isStreaming, actions, chips, onConfi
 }
 
 // ── useSwipe ────────────────────────────────────────────────────
-// Pure DOM manipulation via Pointer Events + setPointerCapture.
-// No React state in the drag path — transform is applied directly to the
-// DOM element so it updates every frame without waiting for a React render.
-// touch-action:pan-y is in .heed-card (globals.css) so the browser handles
-// vertical scroll and delivers horizontal pointer events to JS.
+// Touch + mouse events with explicit preventDefault on touchmove —
+// matches the swipe-prototype "A — Subtle" pattern (rot mult 0.06).
+// Pointer events were unreliable on some Android Chrome builds where
+// the gesture system would intercept horizontal moves despite
+// touch-action: pan-y. Touchmove preventDefault is more declarative.
 function useSwipe(onRight, onLeft, threshold = 80) {
   const ref = useRef(null)
   const cb = useRef({ onRight, onLeft, threshold })
@@ -1007,7 +1007,7 @@ function useSwipe(onRight, onLeft, threshold = 80) {
     const el = ref.current
     if (!el) return
     const wrap = el.parentElement
-    const st = { startX: null, startY: null, decided: null, pid: null }
+    const st = { startX: null, startY: null, decided: null }
 
     const getBadges = () => ({
       done: wrap?.querySelector('[data-badge="done"]'),
@@ -1031,7 +1031,6 @@ function useSwipe(onRight, onLeft, threshold = 80) {
       el.style.transition = 'transform 0.35s cubic-bezier(0.34,1.56,0.64,1)'
       el.style.transform = 'translateX(0) rotate(0deg) scale(1)'
       el.addEventListener('transitionend', () => { el.style.transform = ''; el.style.transition = '' }, { once: true })
-      st.startX = null; st.startY = null; st.decided = null; st.pid = null
     }
 
     const flyOff = (dx) => {
@@ -1048,49 +1047,58 @@ function useSwipe(onRight, onLeft, threshold = 80) {
       }, 290)
     }
 
-    const onDown = (e) => {
-      if (e.button > 0 || st.pid !== null) return
-      st.startX = e.clientX; st.startY = e.clientY; st.decided = null; st.pid = e.pointerId
+    const beginDrag = (clientX, clientY) => {
+      st.startX = clientX; st.startY = clientY; st.decided = null
       el.style.transition = 'none'
-      try { el.setPointerCapture(e.pointerId) } catch (_) {}
     }
 
-    const onMove = (e) => {
-      if (e.pointerId !== st.pid || st.startX === null) return
-      const dx = e.clientX - st.startX
-      const dy = e.clientY - st.startY
+    const moveDrag = (clientX, clientY, evt) => {
+      if (st.startX === null) return
+      const dx = clientX - st.startX
+      const dy = clientY - st.startY
       if (!st.decided) {
         if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return
         st.decided = Math.abs(dx) >= Math.abs(dy) ? 'h' : 'v'
       }
       if (st.decided === 'v') return
+      if (evt && evt.cancelable) evt.preventDefault()
       applyDrag(dx)
     }
 
-    const onUp = (e) => {
-      if (e.pointerId !== st.pid) return
-      const finalDx = e.clientX - (st.startX ?? e.clientX)
-      const wasHorizontal = st.decided === 'h'
-      st.startX = null; st.startY = null; st.decided = null; st.pid = null
-      if (!wasHorizontal) { snapBack(); return }
-      if (Math.abs(finalDx) >= cb.current.threshold) flyOff(finalDx)
+    const endDrag = (clientX) => {
+      if (st.startX === null) { st.decided = null; return }
+      const dx = clientX - st.startX
+      const wasH = st.decided === 'h'
+      st.startX = null; st.startY = null; st.decided = null
+      if (!wasH) { snapBack(); return }
+      if (Math.abs(dx) >= cb.current.threshold) flyOff(dx)
       else snapBack()
     }
 
-    const onCancel = (e) => {
-      if (e.pointerId !== st.pid) return
-      snapBack()
-    }
+    const ts = (e) => beginDrag(e.touches[0].clientX, e.touches[0].clientY)
+    const tm = (e) => moveDrag(e.touches[0].clientX, e.touches[0].clientY, e)
+    const te = (e) => endDrag(e.changedTouches[0].clientX)
+    const tc = () => { st.startX = null; st.startY = null; st.decided = null; snapBack() }
+    const md = (e) => { if (e.button === 0) beginDrag(e.clientX, e.clientY) }
+    const mm = (e) => moveDrag(e.clientX, e.clientY, e)
+    const mu = (e) => endDrag(e.clientX)
 
-    el.addEventListener('pointerdown', onDown)
-    el.addEventListener('pointermove', onMove)
-    el.addEventListener('pointerup', onUp)
-    el.addEventListener('pointercancel', onCancel)
+    el.addEventListener('touchstart', ts, { passive: true })
+    el.addEventListener('touchmove', tm, { passive: false })
+    el.addEventListener('touchend', te)
+    el.addEventListener('touchcancel', tc)
+    el.addEventListener('mousedown', md)
+    window.addEventListener('mousemove', mm)
+    window.addEventListener('mouseup', mu)
+
     return () => {
-      el.removeEventListener('pointerdown', onDown)
-      el.removeEventListener('pointermove', onMove)
-      el.removeEventListener('pointerup', onUp)
-      el.removeEventListener('pointercancel', onCancel)
+      el.removeEventListener('touchstart', ts)
+      el.removeEventListener('touchmove', tm)
+      el.removeEventListener('touchend', te)
+      el.removeEventListener('touchcancel', tc)
+      el.removeEventListener('mousedown', md)
+      window.removeEventListener('mousemove', mm)
+      window.removeEventListener('mouseup', mu)
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 

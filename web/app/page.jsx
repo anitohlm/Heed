@@ -1836,12 +1836,14 @@ function AddPlanSheet({ onClose, onAdd }) {
 
   const handleSubmit = () => {
     if (!title.trim()) return
+    if (type === 'goal' && (parseFloat(targetAmt) || 0) <= 0) return
     const parsedTasks = tasksText.split('\n').map(s => s.trim()).filter(Boolean).map(label => ({ label, done: false }))
     const plan = { id: `plan-${Date.now()}`, type, icon: PLAN_TYPES.find(p => p.type === type).icon, title: title.trim() }
     if (type === 'project') { plan.dueDate = dueDate || 'No due date'; plan.tasks = parsedTasks }
     if (type === 'goal')    { plan.current = 0; plan.target = parseFloat(targetAmt) || 0; plan.unit = unit || ''; plan.targetDate = targetDate || 'No target date' }
     if (type === 'event')   { plan.eventDate = eventDate ? new Date(eventDate) : null; plan.tasks = parsedTasks }
     onAdd(plan)
+    setStep('pick'); setType(null); setTitle(''); setDueDate(''); setTasksText(''); setTargetAmt(''); setUnit('₱'); setTargetDate(''); setEventDate('')
   }
 
   return (

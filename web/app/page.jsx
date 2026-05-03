@@ -1085,7 +1085,7 @@ function HeroCard({ task, onMarkDone, onSkip, onMoreOptions }) {
   const swipeLeft = offset < 0
   const progress = Math.min(Math.abs(offset) / 80, 1)
   return (
-    <div style={{ position: 'relative', marginBottom: 2, touchAction: 'pan-y', userSelect: 'none' }}>
+    <div style={{ position: 'relative', marginBottom: 2 }}>
       <div style={{
         position: 'absolute', inset: 0, borderRadius: 16,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px',
@@ -1108,6 +1108,7 @@ function HeroCard({ task, onMarkDone, onSkip, onMoreOptions }) {
           transition: isSwiping ? 'none' : 'all 0.35s cubic-bezier(0.34,1.56,0.64,1)',
           position: 'relative', overflow: 'hidden',
           animation: 'heed-fadeUp 0.5s ease both',
+          userSelect: 'none', touchAction: 'pan-y',
         }}
       >
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: swipeRight ? C.sage : swipeLeft ? C.ochre : isCritical ? C.rust : c.color }}/>
@@ -1164,7 +1165,7 @@ function TaskCard({ task, delay = 0, onMarkDone, onSkip, onMoreOptions }) {
   const swipeLeft = offset < 0
   const progress = Math.min(Math.abs(offset) / 80, 1)
   return (
-    <div style={{ position: 'relative', marginBottom: 10, touchAction: 'pan-y', userSelect: 'none' }}>
+    <div style={{ position: 'relative', marginBottom: 10 }}>
       <div style={{
         position: 'absolute', inset: 0, borderRadius: 12,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 18px',
@@ -1188,6 +1189,7 @@ function TaskCard({ task, delay = 0, onMarkDone, onSkip, onMoreOptions }) {
           position: 'relative',
           animation: 'heed-fadeUp 0.5s ease both',
           animationDelay: `${delay}ms`,
+          userSelect: 'none', touchAction: 'pan-y',
         }}
       >
         <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: swipeRight ? C.sage : swipeLeft ? C.ochre : isCritical ? C.rust : c.color, borderRadius: '3px 0 0 3px' }}/>
@@ -1447,18 +1449,19 @@ function TodayTab({ tasks, routines, upcomingContexts, onMarkDone, onSkip, onMar
     <div>
       <ContextBanner upcomingContexts={upcomingContexts} onAskHeed={onAskHeed}/>
       <SectionHeader motif="leaf">Top of mind</SectionHeader>
-      {heroTask ? (
-        <>
-          <HeroCard task={heroTask} onMarkDone={onMarkDone} onSkip={onSkip} onMoreOptions={onMoreOptions}/>
-          {otherOverdue.map((t, i) => <TaskCard key={t.id} task={t} delay={(i + 1) * 50} onMarkDone={onMarkDone} onSkip={onSkip} onMoreOptions={onMoreOptions}/>)}
-        </>
-      ) : (
+      {heroTask ? <HeroCard task={heroTask} onMarkDone={onMarkDone} onSkip={onSkip} onMoreOptions={onMoreOptions}/> : (
         <div style={{ fontSize: 13.5, color: C.inkMute, fontStyle: 'italic', padding: '12px 0' }}>Nothing critical right now. Nice.</div>
       )}
       <div style={{ marginTop: 28 }}>
         <SectionHeader motif="stem" count={routines.length}>Routines</SectionHeader>
         {routines.map((r, i) => <RoutineCard key={r.id} routine={r} delay={i * 80} onMarkDone={onMarkRoutineDone} onLighten={onLightenRoutine} onEdit={onEditRoutine}/>)}
       </div>
+      {otherOverdue.length > 0 && (
+        <div style={{ marginTop: 28 }}>
+          <SectionHeader motif="thorn" count={otherOverdue.length}>Also overdue</SectionHeader>
+          {otherOverdue.map((t, i) => <TaskCard key={t.id} task={t} delay={i * 50} onMarkDone={onMarkDone} onSkip={onSkip} onMoreOptions={onMoreOptions}/>)}
+        </div>
+      )}
       {upcoming.length > 0 && (
         <div style={{ marginTop: 28 }}>
           <SectionHeader motif="berry" count={upcoming.length}>Coming up</SectionHeader>

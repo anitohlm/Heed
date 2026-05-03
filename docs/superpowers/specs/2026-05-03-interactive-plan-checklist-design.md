@@ -40,11 +40,16 @@ function usePlans(initialPlans) {
     localStorage.setItem('heed_plans', JSON.stringify(plans))
   }, [plans])
 
-  function checkTask(planId, taskIndex) { ... }
-  function renameTask(planId, taskIndex, newLabel) { ... }
-  function addTask(planId, label) { ... }
-  function deleteTask(planId, taskIndex) { ... }
-  function reorderTasks(planId, fromIndex, toIndex) { ... }
+  // toggle tasks[taskIndex].done
+  function checkTask(planId, taskIndex) { setPlans(prev => prev.map(p => p.id !== planId ? p : { ...p, tasks: p.tasks.map((t, i) => i === taskIndex ? { ...t, done: !t.done } : t) })) }
+  // update tasks[taskIndex].label
+  function renameTask(planId, taskIndex, newLabel) { setPlans(prev => prev.map(p => p.id !== planId ? p : { ...p, tasks: p.tasks.map((t, i) => i === taskIndex ? { ...t, label: newLabel } : t) })) }
+  // append { label, done: false }
+  function addTask(planId, label) { setPlans(prev => prev.map(p => p.id !== planId ? p : { ...p, tasks: [...p.tasks, { label, done: false }] })) }
+  // remove tasks[taskIndex]
+  function deleteTask(planId, taskIndex) { setPlans(prev => prev.map(p => p.id !== planId ? p : { ...p, tasks: p.tasks.filter((_, i) => i !== taskIndex) })) }
+  // splice fromIndex out, insert at toIndex
+  function reorderTasks(planId, fromIndex, toIndex) { setPlans(prev => prev.map(p => { if (p.id !== planId) return p; const t = [...p.tasks]; const [moved] = t.splice(fromIndex, 1); t.splice(toIndex, 0, moved); return { ...p, tasks: t } })) }
 
   return { plans, checkTask, renameTask, addTask, deleteTask, reorderTasks }
 }
@@ -82,7 +87,7 @@ Props: `plan`, `onBack`, `onCheck`, `onRename`, `onAddTask`, `onDeleteTask`, `on
 - Tapping `Delete` calls `onDeleteTask`
 - Swiping back (rightward) or tapping elsewhere cancels the swipe
 
-**Done tasks** are shown at the top of the list (checked, struck-through, muted). Undone tasks follow. Order within each group respects the stored `tasks` array order — drag reorder applies to the full array.
+Tasks render in their stored array order — no automatic sorting by `done` status. Done tasks are visually differentiated (strikethrough, `color: C.inkMute`) but stay wherever they are in the list. Drag can freely move any task to any position.
 
 **Add task row:**
 - `+` icon in `C.accent` colour
@@ -97,6 +102,7 @@ Native pointer events, no library.
 State in `PlanDetailScreen`:
 - `dragIndex` (number | null) — which task is being dragged
 - `dropIndex` (number | null) — current insertion point
+- `swipedIndex` (number | null) — which task row is currently swiped open (only one at a time; opening a new row closes the previous)
 
 On `pointerdown` of a `≡` handle:
 - Set `dragIndex`; call `el.setPointerCapture(e.pointerId)`
@@ -136,11 +142,11 @@ function PlansPanel({ ... }) {
     />
   }
 
-  return <PlansGrid plans={plans} onSelectPlan={setSelectedPlanId} onAdd={...} />
+  return <PlansGrid plans={plans} onSelectPlan={setSelectedPlanId} onAdd={handleAddPlan} />
 }
 ```
 
-The existing plan card grid rendering moves into a `PlansGrid` sub-component (or stays inline — both are fine).
+The existing plan card grid rendering moves into a `PlansGrid` sub-component. `handleAddPlan` is the existing callback that appends a new plan to the `plans` array.
 
 ---
 
@@ -167,5 +173,5 @@ Remove the task preview rows (`preview.map(...)`) and the `+ N more tasks` line.
 ## 8. What doesn't change
 
 - `AddPlanSheet` — unchanged; new plans are still added via the existing sheet
-- Goal-type plans (`plan.type === 'goal'`) have no `tasks` array — `PlanDetailScreen` will never be opened for them (or can show an empty state if navigated to directly)
+- Goal-type plans (`plan.type === 'goal'`) have no `tasks` array — goal cards have no `onClick` handler and are not tappable. Only `project` and `event` cards navigate to `PlanDetailScreen`.
 - Existing plan card visual style (colours, fonts, shadows) — unchanged except removal of task rows

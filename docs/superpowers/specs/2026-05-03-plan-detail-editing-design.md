@@ -115,16 +115,22 @@ Return value expanded to include `updatePlan`.
 
 ## 6. `PlansPanel` wiring
 
-`PlansPanel` destructures `updatePlan` from `usePlans` and passes it to `PlanDetailScreen`:
+Three changes:
 
-```jsx
-<PlanDetailScreen
-  ...existing props...
-  onUpdatePlan={updatePlan}
-/>
-```
+1. Add `updatePlan` to `PlansPanel`'s destructured props signature:
+   ```js
+   function PlansPanel({ plans, checkTask, renameTask, addTask, deleteTask, reorderTasks, addPlan, updatePlan }) {
+   ```
 
-`LifeTab` passes `{ ...plansHook }` to `PlansPanel` — since `PlansPanel` now accepts `updatePlan` as a prop, no changes needed in `LifeTab` as long as `usePlans` returns `updatePlan` (spread takes care of it).
+2. Pass it to `PlanDetailScreen`:
+   ```jsx
+   <PlanDetailScreen
+     ...existing props...
+     onUpdatePlan={updatePlan}
+   />
+   ```
+
+3. `LifeTab` passes `{ ...plansHook }` to `PlansPanel` — no changes needed in `LifeTab` because `usePlans` now returns `updatePlan` and the spread already forwards it.
 
 ---
 

@@ -3188,6 +3188,7 @@ function CalendarTab({ tasks, contexts, routines, onReschedule, onMarkDone, onSk
   const [monthOffset, setMonthOffset] = useState(0)
   const [weekStart, setWeekStart]     = useState(startOfWeek(TODAY_DATE))
   const [detailTask, setDetailTask]   = useState(null)
+  const [retroOpen, setRetroOpen]     = useState(false)
 
   useEffect(() => {
     const target = (weekStart.getFullYear() - TODAY_DATE.getFullYear()) * 12
@@ -3199,6 +3200,15 @@ function CalendarTab({ tasks, contexts, routines, onReschedule, onMarkDone, onSk
     setWeekStart(ws => addDays(ws, delta * 7))
   }
 
+  // Month being viewed in the strip — used for the retrospective pill below.
+  const viewedMonthBase = new Date(TODAY_DATE.getFullYear(), TODAY_DATE.getMonth() + monthOffset, 1)
+  const viewedPeriod = { year: viewedMonthBase.getFullYear(), monthIndex: viewedMonthBase.getMonth() }
+  const viewedMonthLabel = viewedMonthBase.toLocaleDateString('en-US', { month: 'long' })
+  const isPastMonth = monthOffset < 0
+  const isCurrentMonth = monthOffset === 0
+  const showRetroPill = isPastMonth || isCurrentMonth  // Hide for future months.
+  const retrospective = retroOpen ? computeRetrospective(viewedPeriod, { tasks, routines, contexts }) : null
+
   return (
     <div>
       <div style={{ background: C.paper, border: `1px solid ${C.border}`, borderRadius: 14, padding: '14px 16px', marginBottom: 16, boxShadow: C.shadowSoft }}>
@@ -3209,6 +3219,23 @@ function CalendarTab({ tasks, contexts, routines, onReschedule, onMarkDone, onSk
           onWeekSelect={setWeekStart}
           onMonthChange={delta => setMonthOffset(o => o + delta)}
         />
+        {showRetroPill && (
+          <div style={{ display: 'flex', justifyContent: 'center', marginTop: 10 }}>
+            <button onClick={() => setRetroOpen(true)}
+              style={{
+                background: isPastMonth ? C.bellySoft : 'transparent',
+                border: `1px solid ${isPastMonth ? C.warmDark + '55' : C.border}`,
+                color: isPastMonth ? C.warmDark : C.inkMute,
+                padding: '6px 14px', borderRadius: 999, fontSize: 12,
+                fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                transition: 'all 0.15s',
+              }}>
+              <span aria-hidden="true">📊</span>
+              {isPastMonth ? `${viewedMonthLabel} retrospective →` : `${viewedMonthLabel} so far →`}
+            </button>
+          </div>
+        )}
         <div style={{ borderTop: `1px solid ${C.hairline}`, margin: '12px 0' }}/>
         <WeekDetail
           tasks={tasks}
@@ -3238,6 +3265,9 @@ function CalendarTab({ tasks, contexts, routines, onReschedule, onMarkDone, onSk
           onSkip={onSkip}
           onReschedule={onReschedule}
         />
+      )}
+      {retroOpen && (
+        <RetrospectiveSheet retrospective={retrospective} onClose={() => setRetroOpen(false)}/>
       )}
     </div>
   )
@@ -3734,6 +3764,158 @@ function Toast({ message, onView, onUndo, onDismiss }) {
         <button onClick={onView} style={{ marginLeft: onUndo ? 4 : 8, background: 'transparent', border: `1px solid ${C.sage}`, color: C.sage, padding: '4px 10px', borderRadius: 6, fontSize: 11, cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>View Tracks</button>
       )}
       <button onClick={onDismiss} aria-label="Dismiss" style={{ marginLeft: 4, background: 'none', border: 'none', color: C.inkMute, fontSize: 18, cursor: 'pointer', lineHeight: 1, padding: 0 }}>×</button>
+    </div>
+  )
+}
+
+// ── RetrospectiveSheet ─────────────────────────────────────────
+// Phase 1: client-side computed retrospective. See computeRetrospective().
+function RetrospectiveSheet({ retrospective, onClose }) {
+  const [translateY, setTranslateY] = useState(100)
+  const touchRef = useRef(null)
+  useEffect(() => {
+    const id = requestAnimationFrame(() =>
+      requestAnimationFrame(() => setTranslateY(0))
+    )
+    return () => cancelAnimationFrame(id)
+  }, [])
+  function handleTouchStart(e) { touchRef.current = e.touches[0].clientY }
+  function handleTouchMove(e) {
+    if (touchRef.current == null) return
+    const dy = e.touches[0].clientY - touchRef.current
+    if (dy > 0) setTranslateY(dy)
+  }
+  function handleTouchEnd(e) {
+    if (touchRef.current == null) return
+    const dy = e.changedTouches[0].clientY - touchRef.current
+    touchRef.current = null
+    if (dy > 80) { onClose(); return }
+    setTranslateY(0)
+  }
+  if (!retrospective) return null
+  const r = retrospective
+  const ratePct = Math.round(r.completion_rate * 100)
+  const sectionLabel = (text) => (
+    <div style={{ fontSize: 10.5, fontWeight: 700, color: C.inkMute, letterSpacing: 0.8, textTransform: 'uppercase', margin: '20px 0 10px' }}>{text}</div>
+  )
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 200 }}>
+      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: `${C.ink}66` }}/>
+      <div
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: C.paper, borderRadius: '16px 16px 0 0', padding: '12px 20px calc(32px + env(safe-area-inset-bottom))', boxShadow: `0 -4px 24px ${C.ink}22`, transform: `translateY(${translateY}px)`, transition: translateY === 0 ? 'transform 0.3s ease-out' : 'none', maxHeight: '88vh', overflowY: 'auto' }}
+      >
+        <div style={{ width: 36, height: 4, background: C.border, borderRadius: 2, margin: '0 auto 16px' }}/>
+        <div style={{ fontSize: 10.5, fontWeight: 700, color: C.inkMute, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 6 }}>
+          {r.period_label}{r.is_partial ? ' · so far' : ''}
+        </div>
+        <div style={{ fontFamily: 'Lora, serif', fontSize: 22, fontWeight: 600, color: C.warmDark, lineHeight: 1.25, marginBottom: 16 }}>
+          {r.headline}
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+          {[
+            { label: 'complete', value: `${ratePct}%`, tone: ratePct >= 80 ? C.sage : ratePct >= 50 ? C.ochre : C.rust },
+            { label: 'done',     value: r.completions, tone: C.warmDark },
+            { label: 'skipped',  value: r.skips,       tone: C.inkSoft },
+          ].map(t => (
+            <div key={t.label} style={{ background: C.bellySoft, borderRadius: 10, padding: '12px 10px', textAlign: 'center' }}>
+              <div style={{ fontFamily: 'Lora, serif', fontSize: 22, fontWeight: 700, color: t.tone, lineHeight: 1.1 }}>{t.value}</div>
+              <div style={{ fontSize: 10, color: C.inkMute, fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase', marginTop: 4 }}>{t.label}</div>
+            </div>
+          ))}
+        </div>
+        {r.routines.length > 0 && (
+          <>
+            {sectionLabel('Routines')}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {r.routines.map(rt => {
+                const pct = Math.round(rt.completion_rate * 100)
+                return (
+                  <div key={rt.routine_id} style={{ background: C.sage + '14', border: `1px solid ${C.sage}22`, borderRadius: 10, padding: '12px 14px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
+                      <div style={{ fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600, color: C.ink }}>{rt.name}</div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: pct >= 80 ? C.sage : pct >= 50 ? C.ochre : C.rust }}>
+                        {rt.days_completed}/{rt.days_due} · {pct}%
+                      </div>
+                    </div>
+                    {rt.note && <div style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.4 }}>{rt.note}</div>}
+                    {rt.best_streak > 0 && (
+                      <div style={{ fontSize: 11, color: C.inkMute, marginTop: 4 }}>Best streak: {rt.best_streak} days</div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </>
+        )}
+        {r.cadence_changes.length > 0 && (
+          <>
+            {sectionLabel('What I learned')}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {r.cadence_changes.map(c => {
+                let line
+                if (c.before_days == null) {
+                  line = <>— every <strong>~{c.after_days}d</strong>. {c.cycles_observed} cycle{c.cycles_observed === 1 ? '' : 's'}, {c.confidence} confidence.</>
+                } else if (c.after_days > c.before_days) {
+                  line = <>— stretched from ~{c.before_days}d to <strong>~{c.after_days}d</strong>.</>
+                } else if (c.after_days < c.before_days) {
+                  line = <>— tightened from ~{c.before_days}d to <strong>~{c.after_days}d</strong>.</>
+                } else {
+                  line = <>— stable at <strong>~{c.after_days}d</strong>.</>
+                }
+                return (
+                  <div key={c.task_id} style={{ fontSize: 13, color: C.ink, lineHeight: 1.5 }}>
+                    <span style={{ fontWeight: 600 }}>{c.task_name}</span> {line}
+                  </div>
+                )
+              })}
+            </div>
+          </>
+        )}
+        {r.needs_attention.length > 0 && (
+          <>
+            {sectionLabel('Worth attention')}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {r.needs_attention.map(a => (
+                <div key={a.task_id} style={{ background: C.ochreSoft, border: `1px solid ${C.ochre}44`, borderRadius: 10, padding: '12px 14px' }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: C.ink, marginBottom: 3 }}>{a.task_name}</div>
+                  <div style={{ fontSize: 12.5, color: C.inkSoft, marginBottom: 8 }}>{a.detail}</div>
+                  {a.suggested_label && (
+                    <div style={{ fontSize: 11, color: C.warmDark, fontWeight: 600 }}>Suggested: {a.suggested_label}</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+        {r.contexts.length > 0 && (
+          <>
+            {sectionLabel('Contexts')}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {r.contexts.map(c => {
+                const emoji = { travel: '🗺️', illness: '🌿', busy: '🌾', celebration: '🌸' }[c.type] || '📅'
+                return (
+                  <div key={c.context_id} style={{ background: C.bellySoft, borderRadius: 10, padding: '12px 14px' }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, color: C.ink, marginBottom: 4 }}>
+                      {emoji} {c.description || c.type}
+                    </div>
+                    <div style={{ fontSize: 12, color: C.inkSoft, lineHeight: 1.5 }}>
+                      Held {c.held_tasks} task{c.held_tasks === 1 ? '' : 's'}
+                      {c.paused_routines > 0 && `, paused ${c.paused_routines} routine${c.paused_routines === 1 ? '' : 's'}`}.
+                      {' '}{c.recovery}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </>
+        )}
+        <div style={{ fontSize: 10.5, color: C.inkMute, marginTop: 24, textAlign: 'center', fontStyle: 'italic' }}>
+          {r.is_partial ? 'Partial — month still in progress.' : 'Generated from your activity this month.'}
+        </div>
+      </div>
     </div>
   )
 }

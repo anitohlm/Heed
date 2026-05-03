@@ -23,10 +23,21 @@ def _get_client() -> CosmosClient:
     """Lazy-init Cosmos client. Connection string from env (Key Vault-backed)."""
     conn_str = os.environ.get("COSMOS_CONNECTION_STRING")
     if not conn_str:
-        # TODO: in Functions, this comes from Key Vault via @Microsoft.KeyVault
-        # reference in app settings. For local dev, set in local.settings.json.
         raise RuntimeError("COSMOS_CONNECTION_STRING not set")
     return CosmosClient.from_connection_string(conn_str)
+
+
+_DT_FIELDS = {"created_at", "last_done_at", "next_due_at", "completed_at", "start_date", "end_date"}
+
+def _fix_item(item: dict) -> dict:
+    """Strip the malformed +00:00Z suffix (both offset and Z) from datetime strings."""
+    out = {}
+    for k, v in item.items():
+        if k in _DT_FIELDS and isinstance(v, str) and v.endswith("+00:00Z"):
+            out[k] = v[:-1]  # drop trailing Z; +00:00 is already a valid UTC offset
+        else:
+            out[k] = v
+    return out
 
 
 def _get_database():
@@ -59,7 +70,7 @@ def get_active_tasks(user_id: str) -> list[Task]:
         parameters=params,
         partition_key=user_id,
     )
-    return [Task(**i) for i in items]
+    return [Task(**_fix_item(i)) for i in items]
 
 
 def get_task(task_id: str, user_id: str) -> Optional[Task]:
@@ -67,7 +78,7 @@ def get_task(task_id: str, user_id: str) -> Optional[Task]:
     container = _get_database().get_container_client("tasks")
     try:
         item = container.read_item(item=task_id, partition_key=user_id)
-        return Task(**item)
+        return Task(**_fix_item(item))
     except exceptions.CosmosResourceNotFoundError:
         return None
 
@@ -89,7 +100,7 @@ def get_completions(task_id: str, user_id: str) -> list[Completion]:
         parameters=params,
         partition_key=user_id,
     )
-    return [Completion(**i) for i in items]
+    return [Completion(**_fix_item(i)) for i in items]
 
 
 def get_active_contexts(user_id: str, on_date: Optional[datetime] = None) -> list[UserContext]:
@@ -117,7 +128,7 @@ def get_active_contexts(user_id: str, on_date: Optional[datetime] = None) -> lis
         parameters=params,
         partition_key=user_id,
     )
-    return [UserContext(**i) for i in items]
+    return [UserContext(**_fix_item(i)) for i in items]
 
 
 def get_upcoming_contexts(user_id: str, days_ahead: int = 30) -> list[UserContext]:
@@ -139,7 +150,7 @@ def get_upcoming_contexts(user_id: str, days_ahead: int = 30) -> list[UserContex
         {"name": "@cutoff", "value": cutoff},
     ]
     items = container.query_items(query=query, parameters=params, partition_key=user_id)
-    return [UserContext(**i) for i in items]
+    return [UserContext(**_fix_item(i)) for i in items]
 
 
 def get_recent_completions(user_id: str, days_back: int = 30) -> list[Completion]:

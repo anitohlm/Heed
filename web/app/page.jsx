@@ -2279,6 +2279,36 @@ function AddToRoutineSheet({ task, routines, onClose, onSelect }) {
   )
 }
 
+// ── QuickContextSheet ──────────────────────────────────────────
+function QuickContextSheet({ type, onClose, onActivate }) {
+  const DURATIONS = [1, 2, 3, 5, 7]
+  const LABELS = { 1: '1 day', 2: '2 days', 3: '3 days', 5: '5 days', 7: '1 week' }
+  const cfg = type ? QUICK_CONTEXT_CONFIG[type] : null
+  const [selected, setSelected] = useState(cfg?.defaultDays ?? 2)
+  useEffect(() => { if (cfg) setSelected(cfg.defaultDays) }, [type])
+  if (!type) return null
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 200 }} onClick={onClose}>
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(2px)' }}/>
+      <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: C.paper, borderRadius: '20px 20px 0 0', padding: `24px 24px calc(24px + env(safe-area-inset-bottom)) 24px`, animation: 'heed-slideUp 0.28s cubic-bezier(0.32,0.72,0,1)', boxShadow: '0 -8px 32px rgba(0,0,0,0.12)' }}>
+        <div style={{ width: 40, height: 4, borderRadius: 2, background: C.border, margin: '0 auto 20px' }}/>
+        <div style={{ fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 600, color: C.ink, marginBottom: 4 }}>{cfg.icon} {cfg.question}</div>
+        <div style={{ fontSize: 12, color: C.inkMute, marginBottom: 16 }}>Heed will hold your tasks until then</div>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+          {DURATIONS.map(d => (
+            <button key={d} onClick={() => setSelected(d)} style={{ flex: 1, background: selected === d ? C.warmDark : C.bellySoft, color: selected === d ? C.cream : C.ink, border: 'none', borderRadius: 10, padding: '10px 4px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}>
+              {LABELS[d]}
+            </button>
+          ))}
+        </div>
+        <button onClick={() => { onActivate(type, selected); onClose() }} style={{ ...getBtnPrimary(), width: '100%', padding: 12, fontSize: 14, fontWeight: 700, borderRadius: 10 }}>
+          {cfg.activateLabel}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ── Main App ───────────────────────────────────────────────────
 export default function HeedApp() {
   const [apiTasks, setApiTasks] = useState([])

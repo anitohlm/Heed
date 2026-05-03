@@ -2994,17 +2994,22 @@ function AddContextModal({ open, onClose, onSubmit }) {
 function AddRoutineModal({ open, onClose, onSubmit, initialData = null, seedTask = null }) {
   const [name, setName] = useState('')
   const [items, setItems] = useState([{ id: 1, name: '' }])
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
   const nameRef = useRef(null)
   useEffect(() => {
     if (!open) return
     if (initialData) {
       setName(initialData.name || '')
       setItems(initialData.items?.map((item, i) => ({ id: i + 1, name: item })) || [{ id: 1, name: '' }])
+      setStartDate(initialData.startDate || '')
+      setEndDate(initialData.endDate || '')
     } else if (seedTask) {
       setName('')
       setItems([{ id: 1, name: seedTask.name }, { id: 2, name: '' }])
+      setStartDate(''); setEndDate('')
     } else {
-      setName(''); setItems([{ id: 1, name: '' }])
+      setName(''); setItems([{ id: 1, name: '' }]); setStartDate(''); setEndDate('')
     }
     setTimeout(() => nameRef.current?.focus(), 50)
   }, [open])
@@ -3021,10 +3026,11 @@ function AddRoutineModal({ open, onClose, onSubmit, initialData = null, seedTask
     if (!name.trim()) return
     const validItems = items.filter(i => i.name.trim())
     if (!validItems.length) return
+    const dateRange = { startDate: startDate || null, endDate: endDate || null }
     if (initialData) {
-      onSubmit({ ...initialData, name: name.trim(), items: validItems.map(i => i.name.trim()) })
+      onSubmit({ ...initialData, name: name.trim(), items: validItems.map(i => i.name.trim()), ...dateRange })
     } else {
-      onSubmit({ id: `custom_${Date.now()}`, name: name.trim(), schedule: 'Custom', items: validItems.map(i => i.name.trim()), completion14d: Array(14).fill(false), insight: 'Just added — building up history.', suggestion: null, weekRate: 'no data yet' })
+      onSubmit({ id: `custom_${Date.now()}`, name: name.trim(), schedule: 'Custom', items: validItems.map(i => i.name.trim()), completion14d: Array(14).fill(false), insight: 'Just added — building up history.', suggestion: null, weekRate: 'no data yet', ...dateRange })
     }
     onClose()
   }
@@ -3063,6 +3069,23 @@ function AddRoutineModal({ open, onClose, onSubmit, initialData = null, seedTask
                 onMouseEnter={e=>{e.currentTarget.style.borderColor=C.warmDark;e.currentTarget.style.background=C.bellySoft}}
                 onMouseLeave={e=>{e.currentTarget.style.borderColor=C.border;e.currentTarget.style.background='transparent'}}
               >+ Add another item</button>
+            </div>
+            <div style={{ marginBottom: 6 }}>
+              <label style={getFieldLabel()}>Date range <span style={{ fontWeight: 400, color: C.inkMute, fontStyle: 'italic' }}>(optional)</span></label>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
+                  style={{ flex: 1, background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '9px 12px', fontSize: 13, color: startDate ? C.ink : C.inkMute, outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.15s' }}
+                  onFocus={e=>{e.target.style.borderColor=C.warmDark}} onBlur={e=>{e.target.style.borderColor=C.border}}
+                />
+                <span style={{ color: C.inkMute, fontSize: 12, flexShrink: 0 }}>to</span>
+                <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} min={startDate || undefined}
+                  style={{ flex: 1, background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '9px 12px', fontSize: 13, color: endDate ? C.ink : C.inkMute, outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.15s' }}
+                  onFocus={e=>{e.target.style.borderColor=C.warmDark}} onBlur={e=>{e.target.style.borderColor=C.border}}
+                />
+              </div>
+              {(startDate || endDate) && (
+                <button onClick={() => { setStartDate(''); setEndDate('') }} style={{ background: 'none', border: 'none', color: C.inkMute, fontSize: 11.5, cursor: 'pointer', padding: '4px 0', fontFamily: 'inherit' }}>Clear dates</button>
+              )}
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 12, borderTop: `1px solid ${C.hairline}`, flexShrink: 0 }}>

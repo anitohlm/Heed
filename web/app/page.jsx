@@ -1634,16 +1634,37 @@ function TracksTab({ tasks, routines, onMarkDone, onSkip, onMarkRoutineDone, onL
 }
 
 // ── ContextTab ─────────────────────────────────────────────────
-function ContextRow({ ctx, highlight }) {
+function ContextRow({ ctx, highlight, onDetailOpen }) {
   const icons = { travel: '🗺️', illness: '🌿', busy: '🌾', celebration: '🌸' }
+  const tasksBeforeCount = ctx.plan?.before?.length || 0
+  const routinesPaused = ctx.routinesPaused || 0
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 0', borderTop: `1px solid ${C.hairline}` }}>
-      <div style={{ width: 38, height: 38, borderRadius: '50%', background: highlight ? C.ochreSoft : C.bellySoft, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
+    <div
+      onClick={() => onDetailOpen?.(ctx)}
+      style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '12px 0', borderTop: `1px solid ${C.hairline}`, cursor: onDetailOpen ? 'pointer' : 'default' }}
+    >
+      <div style={{ width: 38, height: 38, borderRadius: '50%', background: highlight ? C.ochreSoft : C.bellySoft, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0, marginTop: 2 }}>
         {icons[ctx.type] || '📌'}
       </div>
       <div style={{ flex: 1 }}>
         <div style={{ fontSize: 14, color: C.ink, fontWeight: 500, marginBottom: 2 }}>{ctx.desc}</div>
-        <div style={{ fontSize: 12, color: C.inkMute }}>{ctx.start} → {ctx.end}</div>
+        <div style={{ fontSize: 12, color: C.inkMute, marginBottom: highlight && (tasksBeforeCount > 0 || routinesPaused > 0) ? 8 : 0 }}>
+          {ctx.start} → {ctx.end}
+        </div>
+        {highlight && (tasksBeforeCount > 0 || routinesPaused > 0) && (
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {tasksBeforeCount > 0 && (
+              <span style={{ background: C.bellySoft, border: `1px solid ${C.border}`, borderRadius: 6, padding: '3px 8px', fontSize: 10.5, color: C.inkSoft }}>
+                📋 {tasksBeforeCount} task{tasksBeforeCount !== 1 ? 's' : ''} before you go
+              </span>
+            )}
+            {routinesPaused > 0 && (
+              <span style={{ background: C.bellySoft, border: `1px solid ${C.border}`, borderRadius: 6, padding: '3px 8px', fontSize: 10.5, color: C.inkSoft }}>
+                ⏸ {routinesPaused} routine{routinesPaused !== 1 ? 's' : ''} paused
+              </span>
+            )}
+          </div>
+        )}
       </div>
       {highlight && <Pill tone="warn" glow>soon</Pill>}
       {!highlight && ctx.skipped != null && (
@@ -1663,8 +1684,7 @@ const CONTEXT_CHIPS = [
   { type: 'celebration', label: '🌸 Celebration' },
 ]
 
-function ContextTab({ upcoming, active, activeContext, onAddContext, onQuickContext, onImBetter, onExtend }) {
-  const allUpcoming = [...(active || []).map(mapApiContext), ...(upcoming || []).map(mapApiContext)]
+function ContextTab({ allUpcoming, activeContext, onAddContext, onQuickContext, onImBetter, onExtend, onDetailOpen }) {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
@@ -1680,16 +1700,27 @@ function ContextTab({ upcoming, active, activeContext, onAddContext, onQuickCont
           >{c.label}</button>
         ))}
       </div>
-      {activeContext && <ActiveContextCard context={activeContext} onImBetter={onImBetter} onExtend={onExtend}/>}
+      {activeContext && (
+        <ActiveContextCard
+          context={activeContext}
+          onImBetter={onImBetter}
+          onExtend={onExtend}
+          onClick={() => onDetailOpen?.(activeContext, 'active')}
+        />
+      )}
       <div style={{ background: C.paper, border: `1px solid ${C.border}`, borderRadius: 14, padding: 18, marginBottom: 16, boxShadow: C.shadowSoft }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: C.sage, letterSpacing: 0.8, marginBottom: 12, textTransform: 'uppercase' }}>Upcoming</div>
-        {allUpcoming.length === 0 ? (
+        {(allUpcoming || []).length === 0 ? (
           <div style={{ fontSize: 12.5, color: C.inkMute, fontStyle: 'italic', padding: '8px 0' }}>Nothing on the horizon. Tap "+ Add context" if you have a trip, illness, or busy week coming up.</div>
-        ) : allUpcoming.map((c, i) => <ContextRow key={`u-${i}`} ctx={c} highlight/>)}
+        ) : (allUpcoming || []).map((c, i) => (
+          <ContextRow key={`u-${i}`} ctx={c} highlight onDetailOpen={ctx => onDetailOpen?.(ctx, 'upcoming')}/>
+        ))}
       </div>
       <div style={{ background: C.paper, border: `1px solid ${C.border}`, borderRadius: 14, padding: 18, boxShadow: C.shadowSoft }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, letterSpacing: 0.8, marginBottom: 12, textTransform: 'uppercase' }}>Past</div>
-        {CONTEXTS_PAST.map((c, i) => <ContextRow key={`p-${i}`} ctx={c}/>)}
+        {CONTEXTS_PAST.map((c, i) => (
+          <ContextRow key={`p-${i}`} ctx={c} onDetailOpen={ctx => onDetailOpen?.(ctx, 'past')}/>
+        ))}
       </div>
       <div style={{ marginTop: 20, padding: '14px 16px', background: C.bellySoft, borderRadius: 10, fontSize: 13, color: C.ink, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
         <span style={{ fontSize: 16 }}>💡</span>
@@ -2362,7 +2393,7 @@ function QuickContextSheet({ type, onClose, onActivate }) {
 }
 
 // ── ActiveContextCard ──────────────────────────────────────────
-function ActiveContextCard({ context, onImBetter, onExtend }) {
+function ActiveContextCard({ context, onImBetter, onExtend, onClick }) {
   if (!context) return null
   const now = new Date()
   const daysSinceStart = Math.max(0, Math.floor((now - context.startDate) / 86400000))
@@ -2370,7 +2401,7 @@ function ActiveContextCard({ context, onImBetter, onExtend }) {
   const fmtDate = d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
   const startedLabel = daysSinceStart === 0 ? 'started today' : `started ${daysSinceStart}d ago`
   return (
-    <div style={{ background: C.ochreSoft, border: `2px solid ${C.ochre}`, borderRadius: 14, padding: 16, marginBottom: 20, boxShadow: `0 4px 16px ${C.ochre}26` }}>
+    <div onClick={onClick} style={{ background: C.ochreSoft, border: `2px solid ${C.ochre}`, borderRadius: 14, padding: 16, marginBottom: 20, boxShadow: `0 4px 16px ${C.ochre}26`, cursor: onClick ? 'pointer' : 'default' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
         <div>
           <div style={{ fontWeight: 700, fontSize: 15, color: C.ink, marginBottom: 3 }}>{context.icon} {context.label}</div>

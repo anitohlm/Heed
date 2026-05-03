@@ -1025,9 +1025,25 @@ function useSwipe(onRight, onLeft, threshold = 80) {
     }
 
     const finish = (finalDx) => {
-      snapBack()
-      if (finalDx > cb.current.threshold) cb.current.onRight?.()
-      else if (finalDx < -cb.current.threshold) cb.current.onLeft?.()
+      st.startX = null; st.startY = null; st.decided = null
+      const doneEl = wrap?.querySelector('[data-badge="done"]')
+      const skipEl = wrap?.querySelector('[data-badge="skip"]')
+      if (Math.abs(finalDx) >= cb.current.threshold) {
+        // fly off screen in the swipe direction
+        const dir = finalDx > 0 ? 1 : -1
+        const targetX = dir * ((typeof window !== 'undefined' ? window.innerWidth : 400) * 1.2)
+        el.style.transition = 'transform 0.28s ease-in'
+        el.style.transform = `translateX(${targetX}px) rotate(${dir * 22}deg) scale(0.9)`
+        if (doneEl) doneEl.style.opacity = 0
+        if (skipEl) skipEl.style.opacity = 0
+        setTimeout(() => {
+          el.style.transform = ''; el.style.transition = ''
+          if (finalDx > 0) cb.current.onRight?.()
+          else cb.current.onLeft?.()
+        }, 290)
+      } else {
+        snapBack()
+      }
     }
 
     const onTouchStart = (e) => {

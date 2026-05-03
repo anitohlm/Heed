@@ -2163,6 +2163,8 @@ function PlanCard({ plan, delay = 0, onSelectPlan }) {
   const daysUntil = plan.eventDate
     ? Math.round((plan.eventDate - new Date()) / 86400000)
     : null
+  const undone = plan.tasks ? plan.tasks.filter(t => !t.done) : []
+
   const subtitle = plan.type === 'project'
     ? `${doneCount} of ${totalCount} tasks · Due ${plan.dueDate}`
     : plan.type === 'goal'
@@ -2181,7 +2183,7 @@ function PlanCard({ plan, delay = 0, onSelectPlan }) {
   }[plan.type]
 
   return (
-    <div style={{ background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 14, padding: 14, marginBottom: 10, animation: `heed-fadeIn 0.2s ease ${delay}ms both` }}>
+    <div onClick={onSelectPlan ? () => onSelectPlan(plan.id) : undefined} style={{ background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 14, padding: 14, marginBottom: 10, animation: `heed-fadeIn 0.2s ease ${delay}ms both`, cursor: onSelectPlan ? 'pointer' : 'default' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
         <div style={{ width: 34, height: 34, borderRadius: 9, background: PLAN_ICON_BG[plan.type] || C.bellySoft, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>
           {plan.icon}
@@ -2207,15 +2209,6 @@ function PlanCard({ plan, delay = 0, onSelectPlan }) {
         </div>
       )}
 
-      {(plan.type === 'project' || plan.type === 'event') && preview.map((t, i) => (
-        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '4px 0', borderTop: `1px solid ${C.hairline}`, fontSize: 12, color: C.ink }}>
-          <div style={{ width: 15, height: 15, borderRadius: 4, border: `1.5px solid ${C.border}`, flexShrink: 0 }}/>
-          {t.label}
-        </div>
-      ))}
-      {(plan.type === 'project' || plan.type === 'event') && extra > 0 && (
-        <div style={{ fontSize: 11, color: C.inkMute, padding: '5px 0', borderTop: `1px solid ${C.hairline}`, marginTop: 2 }}>+ {extra} more task{extra !== 1 ? 's' : ''}</div>
-      )}
     </div>
   )
 }

@@ -1574,7 +1574,7 @@ function ShareableCard({ routine, variant = 'streak', theme = 'B' }) {
 }
 
 // ── RoutineCard ────────────────────────────────────────────────
-function RoutineCard({ routine, delay = 0, onMarkDone, onLighten, onEdit }) {
+function RoutineCard({ routine, delay = 0, onMarkDone, onLighten, onEdit, onShare }) {
   const [hover, setHover] = useState(false)
   const completionRate = routine.completion14d.filter(Boolean).length / routine.completion14d.length
   const isAttentionWorthy = routine.suggestion !== null
@@ -1676,6 +1676,7 @@ function RoutineCard({ routine, delay = 0, onMarkDone, onLighten, onEdit }) {
         <button style={getBtnPrimary()} onClick={() => onMarkDone && onMarkDone(routine.id)}>Mark today done</button>
         {isAttentionWorthy && <button style={{ ...getBtnPrimary(), background: C.ochre, color: C.warmDeep }} onClick={() => onLighten && onLighten(routine.id)}>Lighten this week</button>}
         <button style={getBtnGhost()} onClick={() => onEdit && onEdit(routine)}>Edit</button>
+        <button style={getBtnGhost()} onClick={() => onShare && onShare(routine)}>Share card</button>
       </div>
     </div>
   )
@@ -1782,7 +1783,7 @@ function ContextBanner({ upcomingContexts, onAskHeed }) {
 }
 
 // ── TodayTab ───────────────────────────────────────────────────
-function TodayTab({ tasks, routines, upcomingContexts, onMarkDone, onSkip, onMarkRoutineDone, onLightenRoutine, onEditRoutine, onAskHeed, onMoreOptions }) {
+function TodayTab({ tasks, routines, upcomingContexts, onMarkDone, onSkip, onMarkRoutineDone, onLightenRoutine, onEditRoutine, onAskHeed, onMoreOptions, onShareCard }) {
   const overdue = tasks.filter(t => t.overdue != null).sort((a, b) => b.overdue - a.overdue)
   const heroTask = overdue[0]
   const otherOverdue = overdue.slice(1)
@@ -1796,7 +1797,7 @@ function TodayTab({ tasks, routines, upcomingContexts, onMarkDone, onSkip, onMar
       )}
       <div style={{ marginTop: 28 }}>
         <SectionHeader motif="stem" count={routines.length}>Routines</SectionHeader>
-        {routines.map((r, i) => <RoutineCard key={r.id} routine={r} delay={i * 80} onMarkDone={onMarkRoutineDone} onLighten={onLightenRoutine} onEdit={onEditRoutine}/>)}
+        {routines.map((r, i) => <RoutineCard key={r.id} routine={r} delay={i * 80} onMarkDone={onMarkRoutineDone} onLighten={onLightenRoutine} onEdit={onEditRoutine} onShare={onShareCard}/>)}
       </div>
       {otherOverdue.length > 0 && (
         <div style={{ marginTop: 28 }}>
@@ -1917,7 +1918,7 @@ function SegmentButton({ active, onClick, label, count, accent }) {
   )
 }
 
-function TracksTab({ tasks, routines, onMarkDone, onSkip, onMarkRoutineDone, onLightenRoutine, onEditRoutine, onAddTask, onAddRoutine, onMoreOptions }) {
+function TracksTab({ tasks, routines, onMarkDone, onSkip, onMarkRoutineDone, onLightenRoutine, onEditRoutine, onAddTask, onAddRoutine, onMoreOptions, onShareCard }) {
   const [subtab, setSubtab] = useState('routines')
   const [filter, setFilter] = useState('all')
   const filteredTasks = filter === 'all' ? tasks : tasks.filter(t => t.category === filter)
@@ -1936,7 +1937,7 @@ function TracksTab({ tasks, routines, onMarkDone, onSkip, onMarkRoutineDone, onL
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
             <button onClick={onAddRoutine} style={getBtnPrimary()}>+ Build routine</button>
           </div>
-          {routines.map((r, i) => <RoutineCard key={r.id} routine={r} delay={i * 50} onMarkDone={onMarkRoutineDone} onLighten={onLightenRoutine} onEdit={onEditRoutine}/>)}
+          {routines.map((r, i) => <RoutineCard key={r.id} routine={r} delay={i * 50} onMarkDone={onMarkRoutineDone} onLighten={onLightenRoutine} onEdit={onEditRoutine} onShare={onShareCard}/>)}
         </div>
       )}
       {subtab === 'tasks' && (
@@ -3637,6 +3638,8 @@ export default function HeedApp() {
   const [quickContextType, setQuickContextType] = useState(null)
   const [detailCtx, setDetailCtx] = useState(null)
   const [detailOpen, setDetailOpen] = useState(false)
+  const [shareCtx, setShareCtx] = useState(null)
+  const [shareOpen, setShareOpen] = useState(false)
 
   useEffect(() => {
     fetch(`${FUNCTIONS_URL}/api/tasks`)
@@ -3794,6 +3797,15 @@ export default function HeedApp() {
     setToast({ message: 'Routine lightened for this week' })
   }, [])
 
+  const handleShareOpen = useCallback((routine) => {
+    setShareCtx(routine)
+    setShareOpen(true)
+  }, [])
+
+  const handleShareClose = useCallback(() => {
+    setShareOpen(false)
+  }, [])
+
   const handleEditRoutine = useCallback((routine) => {
     setEditingRoutine(routine)
     setRoutineModalOpen(true)
@@ -3910,10 +3922,10 @@ export default function HeedApp() {
       <MobileBottomNav tab={tab} onTab={setTab} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onAskHeed={() => setAskOpen(true)}/>
 
       <main className="heed-main" style={{ maxWidth: 820, margin: '0 auto', padding: '28px 32px 100px 32px', minHeight: 'calc(100vh - 140px)', display: 'flex', flexDirection: 'column' }}>
-        {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} upcomingContexts={upcomingContexts} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAskHeed={handleAskHeed} onMoreOptions={handleMoreOptions}/>}
+        {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} upcomingContexts={upcomingContexts} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAskHeed={handleAskHeed} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen}/>}
         {tab === 'calendar' && <CalendarTab tasks={apiTasks} contexts={[...(apiContexts.active||[]), ...(apiContexts.upcoming||[])]} routines={routines} onReschedule={handleReschedule} onMarkDone={handleMarkDone} onSkip={handleSkip} onAddTask={() => setModalOpen(true)} onAddContext={() => setContextModalOpen(true)} onEditRoutine={handleEditRoutine}/>}
         {tab === 'ask' && <AskTab prefill={askPrefill} onLightenRoutine={handleLightenRoutine}/>}
-        {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onMoreOptions={handleMoreOptions}/>}
+        {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen}/>}
         {tab === 'context' && <LifeTab upcoming={apiContexts.upcoming} active={apiContexts.active} activeContext={activeContext} onAddContext={() => setContextModalOpen(true)} onQuickContext={type => setQuickContextType(type)} onImBetter={() => setRecoveryOpen(true)} onExtend={handleExtendContext} onDetailOpen={handleDetailOpen}/>}
       </main>
 
@@ -3938,6 +3950,7 @@ export default function HeedApp() {
         onExtend={() => { handleDetailClose(); handleExtendContext() }}
         onAskHeed={handleAskHeed}
       />
+      <ShareCardSheet open={shareOpen} routine={shareCtx} onClose={handleShareClose}/>
       {toast && <Toast message={toast.message} onView={toast.showView ? handleToastView : undefined} onUndo={toast.onUndo} onDismiss={() => setToast(null)} />}
       <HeedFAB onAddTask={() => setModalOpen(true)} onAskHeed={() => setAskOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)}/>
     </div>

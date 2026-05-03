@@ -61,9 +61,33 @@ const ROUTINES = [
   },
 ]
 const CONTEXTS_PAST = [
-  { type: 'travel',  start: 'Dec 20, 2025', end: 'Dec 27, 2025', desc: 'Christmas trip to Baguio', skipped: 9 },
-  { type: 'illness', start: 'Feb 10, 2026', end: 'Feb 14, 2026', desc: 'Flu — bed rest',            skipped: 12 },
-  { type: 'busy',    start: 'Mar 16, 2026', end: 'Mar 22, 2026', desc: 'Client deadline week',      skipped: 7 },
+  {
+    type: 'travel', start: 'Dec 20, 2025', end: 'Dec 27, 2025', desc: 'Christmas trip to Baguio', skipped: 9,
+    heldTasks: [
+      { label: 'Pay Meralco bill',       overdueDays: 7 },
+      { label: 'Call Mom',               overdueDays: 7 },
+      { label: 'Submit timesheet',       overdueDays: 0 },
+      { label: 'Refill water dispenser', overdueDays: 3 },
+      { label: 'Morning routine',        overdueDays: 0 },
+    ],
+  },
+  {
+    type: 'illness', start: 'Feb 10, 2026', end: 'Feb 14, 2026', desc: 'Flu — bed rest', skipped: 12,
+    heldTasks: [
+      { label: 'Pay Meralco bill', overdueDays: 5 },
+      { label: 'Call Mom',         overdueDays: 5 },
+      { label: 'Morning routine',  overdueDays: 0 },
+      { label: 'Evening wind-down', overdueDays: 0 },
+    ],
+  },
+  {
+    type: 'busy', start: 'Mar 16, 2026', end: 'Mar 22, 2026', desc: 'Client deadline week', skipped: 7,
+    heldTasks: [
+      { label: 'Cat litter box',          overdueDays: 6 },
+      { label: 'Update expense tracker',  overdueDays: 6 },
+      { label: 'Wash bedsheets',          overdueDays: 0 },
+    ],
+  },
 ]
 const CONTEXTS_UPCOMING_DEMO = [
   {
@@ -72,6 +96,7 @@ const CONTEXTS_UPCOMING_DEMO = [
     end: 'Jun 9, 2026',
     desc: 'Singapore trip',
     _startDate: new Date('2026-06-05'),
+    routinesPaused: 2,
     askQuery: 'Plan around my Singapore trip',
     plan: {
       before: [

@@ -1025,7 +1025,7 @@ function HeroCard({ task, onMarkDone, onSkip }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
               <span style={{ fontFamily: 'Lora, serif', fontSize: 22, fontWeight: 600, color: swipeRight ? C.sage : swipeLeft ? C.ochre : C.ink, letterSpacing: -0.3 }}>{task.name}</span>
               {task.learned && <Pill tone="sage">✨ learned</Pill>}
-              {task.importance === 'high' && <Pill tone="danger">high</Pill>}
+              {task.importance && <ImportanceBadge importance={task.importance}/>}
             </div>
             <div style={{ fontSize: 13, color: C.inkMute, marginBottom: task.note ? 10 : 0 }}>
               {task.cadence} · last done {task.lastDone}
@@ -1105,7 +1105,7 @@ function TaskCard({ task, delay = 0, onMarkDone, onSkip }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
               <span style={{ fontWeight: 600, fontSize: 15, color: swipeRight ? C.sage : swipeLeft ? C.ochre : C.ink, letterSpacing: -0.1 }}>{task.name}</span>
               {task.learned && <Pill tone="sage">✨ learned</Pill>}
-              {task.importance === 'high' && <Pill tone="danger">high</Pill>}
+              {task.importance && <ImportanceBadge importance={task.importance}/>}
             </div>
             <div style={{ fontSize: 12.5, color: C.inkMute }}>{task.cadence} · last done {task.lastDone}</div>
           </div>

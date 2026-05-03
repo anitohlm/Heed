@@ -373,9 +373,9 @@ function MobileBottomNav({ tab, onTab, onAddTask, onAddRoutine, onAskHeed }) {
   }, [fabOpen])
 
   const fanItems = [
-    { label: 'Add task',  icon: '+',                               bg: C.ochre,     fg: C.warmDeep, angle: 30,  delay: 0,   onClick: onAddTask    },
-    { label: 'Ask Heed',  icon: null, naked: true,                                                  angle: 90,  delay: 55,  onClick: onAskHeed   },
-    { label: 'Routine',   icon: '◆',                              bg: C.sage,      fg: C.cream,    angle: 150, delay: 110, onClick: onAddRoutine },
+    { label: 'Add task',  icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="3.5" stroke="currentColor" strokeWidth="1.9"/><path d="M12 8v8M8 12h8" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"/></svg>, bg: C.ochre, fg: C.warmDeep, angle: 30,  delay: 0,   onClick: onAddTask    },
+    { label: 'Ask Heed',  icon: null, naked: true,                                                                                                                                                                                                                                                           angle: 90,  delay: 55,  onClick: onAskHeed   },
+    { label: 'Routine',   icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M17 2l4 4-4 4" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"/><path d="M3 11V9a4 4 0 0 1 4-4h14" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"/><path d="M7 22l-4-4 4-4" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"/><path d="M21 13v2a4 4 0 0 1-4 4H3" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"/></svg>, bg: C.sage, fg: C.cream, angle: 150, delay: 110, onClick: onAddRoutine },
   ]
   const FAN_R = 92
 
@@ -714,17 +714,17 @@ function ImportanceBadge({ importance }) {
       fontSize: 11.5, fontWeight: weight, letterSpacing: 0.1,
       boxShadow: shadow, flexShrink: 0,
     }}>
-      {importance === 'low' && (
+      {key === 'low' && (
         <svg width="8" height="8" viewBox="0 0 8 8" aria-hidden="true">
           <circle cx="4" cy="4" r="3" fill="none" stroke={C.cream} strokeWidth="1.5"/>
         </svg>
       )}
-      {importance === 'medium' && (
+      {key === 'medium' && (
         <svg width="8" height="8" viewBox="0 0 8 8" aria-hidden="true">
           <polygon points="4,0.5 7.5,4 4,7.5 0.5,4" fill={C.cream}/>
         </svg>
       )}
-      {importance === 'high' && (
+      {key === 'high' && (
         <svg width="8" height="8" viewBox="0 0 8 8" aria-hidden="true">
           <circle cx="4" cy="4" r="3.5" fill={C.cream}/>
         </svg>
@@ -991,34 +991,46 @@ function useSwipe(onRight, onLeft, threshold = 80) {
   s.current.onRight = onRight
   s.current.onLeft = onLeft
 
-  const onPointerDown = (e) => {
+  const onPointerDown = useCallback((e) => {
+    // Ignore non-primary buttons (right-click, etc.)
+    if (e.button !== undefined && e.button !== 0) return
     s.current.startX = e.clientX
     s.current.active = false
-  }
-  const onPointerMove = (e) => {
-    if (s.current.startX === null) return
-    const dx = e.clientX - s.current.startX
-    if (!s.current.active && Math.abs(dx) > 8) {
-      s.current.active = true
-      try { e.currentTarget.setPointerCapture(e.pointerId) } catch (_) {}
+    // Capture immediately so move events fire even when pointer leaves the element
+    try { e.currentTarget.setPointerCapture(e.pointerId) } catch (_) {}
+
+    const onMove = (ev) => {
+      if (s.current.startX === null) return
+      const dx = ev.clientX - s.current.startX
+      if (!s.current.active && Math.abs(dx) > 6) s.current.active = true
+      if (s.current.active) setOffset(Math.max(-130, Math.min(130, dx)))
     }
-    if (s.current.active) setOffset(Math.max(-130, Math.min(130, dx)))
-  }
-  const onPointerUp = (e) => {
-    if (!s.current.active) { s.current.startX = null; return }
-    const dx = e.clientX - s.current.startX
-    s.current.startX = null
-    s.current.active = false
-    setOffset(0)
-    if (dx > threshold) s.current.onRight?.()
-    else if (dx < -threshold) s.current.onLeft?.()
-  }
-  const onPointerCancel = () => {
-    s.current.startX = null
-    s.current.active = false
-    setOffset(0)
-  }
-  return { offset, onPointerDown, onPointerMove, onPointerUp, onPointerCancel }
+    const onUp = (ev) => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onCancel)
+      if (!s.current.active) { s.current.startX = null; return }
+      const dx = ev.clientX - s.current.startX
+      s.current.startX = null
+      s.current.active = false
+      setOffset(0)
+      if (dx > threshold) s.current.onRight?.()
+      else if (dx < -threshold) s.current.onLeft?.()
+    }
+    const onCancel = () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onCancel)
+      s.current.startX = null
+      s.current.active = false
+      setOffset(0)
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+    window.addEventListener('pointercancel', onCancel)
+  }, [threshold])
+
+  return { offset, onPointerDown }
 }
 
 // ── HeroCard ───────────────────────────────────────────────────
@@ -1762,8 +1774,8 @@ function HeedFAB({ onAddTask, onAskHeed, onAddRoutine }) {
       {open && <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 49, background: 'rgba(44,24,16,0.18)', animation: 'heed-fadeIn 0.18s ease' }}/>}
       {open && (
         <div style={{ position: 'fixed', bottom: 110, right: 28, zIndex: 51, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10 }}>
-          <SpeedDialItem label="Add a task" sublabel="Track something new" icon="+" iconBg={C.ochre} iconFg={C.warmDeep} onClick={() => { setOpen(false); onAddTask() }} delay={0}/>
-          <SpeedDialItem label="Build a routine" sublabel="A cluster of things together" icon="◆" iconBg={C.sage} iconFg={C.cream} onClick={() => { setOpen(false); onAddRoutine() }} delay={50}/>
+          <SpeedDialItem label="Add a task" sublabel="Track something new" icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="3.5" stroke="currentColor" strokeWidth="1.9"/><path d="M12 8v8M8 12h8" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"/></svg>} iconBg={C.ochre} iconFg={C.warmDeep} onClick={() => { setOpen(false); onAddTask() }} delay={0}/>
+          <SpeedDialItem label="Build a routine" sublabel="A cluster of things together" icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M17 2l4 4-4 4" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"/><path d="M3 11V9a4 4 0 0 1 4-4h14" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"/><path d="M7 22l-4-4 4-4" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"/><path d="M21 13v2a4 4 0 0 1-4 4H3" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"/></svg>} iconBg={C.sage} iconFg={C.cream} onClick={() => { setOpen(false); onAddRoutine() }} delay={50}/>
           <SpeedDialItem label="Ask Heed" sublabel="Get answers from anywhere" icon={<MayaOwl size={22} idle={false}/>} iconBg={C.bellySoft} iconFg={C.warmDark} onClick={() => { setOpen(false); onAskHeed() }} delay={100}/>
         </div>
       )}

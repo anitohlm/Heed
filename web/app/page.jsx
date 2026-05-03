@@ -283,6 +283,27 @@ const FALLBACK_RESPONSE = {
 }
 
 // ── Helpers ────────────────────────────────────────────────────
+// Render a cadence in days into something a human reads as natural prose.
+// "33.6 days" reads like a sensor log; "~5 weeks" reads like a friend.
+function formatCadence(days, { learned } = {}) {
+  if (days == null) return 'still learning your cadence'
+  const n = Number(days)
+  if (!Number.isFinite(n) || n <= 0) return 'still learning your cadence'
+  const tilde = learned ? '~' : ''
+  if (n < 1.5) return 'daily'
+  if (n <= 14) return `every ${tilde}${Math.round(n)} days`
+  if (n <= 56) {
+    const weeks = Math.round(n / 7)
+    return weeks === 1 ? 'weekly' : `every ${tilde}${weeks} weeks`
+  }
+  if (n <= 90 && Math.abs(n - 30) <= 4) return 'monthly'
+  if (n <= 365) {
+    const months = Math.round(n / 30)
+    return months === 1 ? 'monthly' : `every ${tilde}${months} months`
+  }
+  return `every ${tilde}${Math.round(n / 30)} months`
+}
+
 function computeTaskDisplay(task) {
   const now = new Date()
   const nextDue = task.next_due_at ? new Date(task.next_due_at) : null
@@ -296,9 +317,9 @@ function computeTaskDisplay(task) {
     else dueIn = Math.abs(diffDays)
   }
   const cadence = task.learned_cadence_days
-    ? `every ~${task.learned_cadence_days} days`
+    ? formatCadence(task.learned_cadence_days, { learned: true })
     : task.explicit_cadence_days
-    ? `every ${task.explicit_cadence_days} days`
+    ? formatCadence(task.explicit_cadence_days)
     : 'still learning your cadence'
   let lastDone = 'never'
   if (lastDoneDate) {
@@ -1673,7 +1694,7 @@ function RoutineRow({ routine, delay = 0, onMarkDone, onSkipToday, onLighten }) 
 }
 
 // ── RoutineCard ────────────────────────────────────────────────
-function RoutineCard({ routine, delay = 0, onMarkDone, onLighten, onEdit, onShare }) {
+function RoutineCard({ routine, delay = 0, onMarkDone, onLighten, onEdit, onShare, onMarkDay }) {
   const [hover, setHover] = useState(false)
   const completionRate = routine.completion14d.filter(Boolean).length / routine.completion14d.length
   const isAttentionWorthy = routine.suggestion !== null
@@ -1731,16 +1752,28 @@ function RoutineCard({ routine, delay = 0, onMarkDone, onLighten, onEdit, onShar
       <div style={{ marginBottom: 14 }}>
         <div style={{ fontSize: 10, fontWeight: 700, color: C.inkMute, letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 6 }}>Last 14 days</div>
         <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-          {routine.completion14d.map((done, i) => (
-            <svg key={i} width="16" height="18" viewBox="0 0 16 18" fill="none" aria-hidden="true">
-              <path d="M8 1 C8 1, 15 5, 15 10 C15 14, 12 17, 8 17 C4 17, 1 14, 1 10 C1 5, 8 1, 8 1 Z"
-                fill={done ? C.sage : 'transparent'}
-                stroke={done ? C.sage : C.border}
-                strokeWidth="1.5"
-                strokeDasharray={done ? 'none' : '2 2'}
-              />
-            </svg>
-          ))}
+          {routine.completion14d.map((done, i) => {
+            const len = routine.completion14d.length
+            const daysAgo = (len - 1) - i
+            const label = daysAgo === 0 ? 'today' : daysAgo === 1 ? 'yesterday' : `${daysAgo} days ago`
+            return (
+              <button key={i}
+                onClick={() => onMarkDay && onMarkDay(routine.id, i, !done)}
+                disabled={!onMarkDay}
+                aria-label={`Mark ${label} ${done ? 'not done' : 'done'}`}
+                title={`${done ? 'Done' : 'Not done'} ${label} — click to toggle`}
+                style={{ background: 'transparent', border: 'none', padding: 0, margin: 0, cursor: onMarkDay ? 'pointer' : 'default', lineHeight: 0 }}>
+                <svg width="16" height="18" viewBox="0 0 16 18" fill="none" aria-hidden="true">
+                  <path d="M8 1 C8 1, 15 5, 15 10 C15 14, 12 17, 8 17 C4 17, 1 14, 1 10 C1 5, 8 1, 8 1 Z"
+                    fill={done ? C.sage : 'transparent'}
+                    stroke={done ? C.sage : C.border}
+                    strokeWidth="1.5"
+                    strokeDasharray={done ? 'none' : '2 2'}
+                  />
+                </svg>
+              </button>
+            )
+          })}
           <div style={{ marginLeft: 8, fontSize: 10, color: C.inkMute, fontStyle: 'italic' }}>today →</div>
         </div>
       </div>
@@ -2054,7 +2087,7 @@ function SegmentButton({ active, onClick, label, count, accent }) {
   )
 }
 
-function TracksTab({ tasks, routines, onMarkDone, onSkip, onMarkRoutineDone, onLightenRoutine, onEditRoutine, onAddTask, onAddRoutine, onMoreOptions, onShareCard }) {
+function TracksTab({ tasks, routines, onMarkDone, onSkip, onMarkRoutineDone, onLightenRoutine, onEditRoutine, onAddTask, onAddRoutine, onMoreOptions, onShareCard, onMarkRoutineDay }) {
   const [subtab, setSubtab] = useState('routines')
   const [filter, setFilter] = useState('all')
   const filteredTasks = filter === 'all' ? tasks : tasks.filter(t => t.category === filter)
@@ -2073,7 +2106,7 @@ function TracksTab({ tasks, routines, onMarkDone, onSkip, onMarkRoutineDone, onL
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
             <button onClick={onAddRoutine} style={getBtnPrimary()}>+ Build routine</button>
           </div>
-          {routines.map((r, i) => <RoutineCard key={r.id} routine={r} delay={i * 50} onMarkDone={onMarkRoutineDone} onLighten={onLightenRoutine} onEdit={onEditRoutine} onShare={onShareCard}/>)}
+          {routines.map((r, i) => <RoutineCard key={r.id} routine={r} delay={i * 50} onMarkDone={onMarkRoutineDone} onLighten={onLightenRoutine} onEdit={onEditRoutine} onShare={onShareCard} onMarkDay={onMarkRoutineDay}/>)}
         </div>
       )}
       {subtab === 'tasks' && (
@@ -3493,7 +3526,7 @@ function AskInlineModal({ open, onClose, onLightenRoutine }) {
 }
 
 // ── AddTaskModal ───────────────────────────────────────────────
-function AddTaskModal({ open, onClose, onSubmit, initialData = null }) {
+function AddTaskModal({ open, onClose, onSubmit, onDelete, initialData = null }) {
   const isEdit = !!initialData
   const [name, setName] = useState('')
   const [category, setCategory] = useState('home')
@@ -3649,7 +3682,19 @@ function AddTaskModal({ open, onClose, onSubmit, initialData = null }) {
               <button onClick={() => { setDueDate(''); setDueTime('') }} style={{ background: 'none', border: 'none', color: C.inkMute, fontSize: 11.5, cursor: 'pointer', padding: '4px 0', fontFamily: 'inherit' }}>Clear</button>
             )}
           </div>
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center' }}>
+            {isEdit && onDelete && (
+              <button
+                onClick={() => {
+                  if (typeof window !== 'undefined' && !window.confirm("Remove this task? This can't be undone.")) return
+                  onDelete(initialData)
+                  onClose()
+                }}
+                style={{ background: 'transparent', border: `1px solid ${C.rust}66`, color: C.rust, padding: '7px 14px', borderRadius: 8, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', marginRight: 'auto' }}
+              >
+                Delete
+              </button>
+            )}
             <button onClick={onClose} style={getBtnGhost()}>Cancel</button>
             <button onClick={submit} disabled={!name.trim()} style={{ ...getBtnPrimary(), padding: '8px 18px', opacity: name.trim() ? 1 : 0.5, cursor: name.trim() ? 'pointer' : 'not-allowed' }}>{isEdit ? 'Save changes' : 'Add task'}</button>
           </div>
@@ -3848,7 +3893,8 @@ function AddRoutineModal({ open, onClose, onSubmit, initialData = null, seedTask
 }
 
 // ── Toast ──────────────────────────────────────────────────────
-function Toast({ message, onView, onUndo, onDismiss }) {
+function Toast({ message, onView, onUndo, onDismiss, reasons, onReason }) {
+  const [picked, setPicked] = useState(null)
   return (
     <div style={{
       position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
@@ -3856,14 +3902,34 @@ function Toast({ message, onView, onUndo, onDismiss }) {
       borderRadius: 10, padding: '10px 16px', display: 'flex', alignItems: 'center',
       gap: 10, boxShadow: '0 6px 22px rgba(0,0,0,0.45)', zIndex: 9999,
       animation: 'heed-slideUp 0.4s cubic-bezier(0.16,1,0.3,1)', whiteSpace: 'nowrap',
+      flexWrap: 'wrap', maxWidth: 'calc(100vw - 32px)',
     }}>
       <span style={{ fontSize: 16 }}>✓</span>
       <span style={{ fontSize: 13, color: C.ink, fontWeight: 500 }}>{message}</span>
+      {reasons && reasons.length > 0 && (
+        <div style={{ display: 'flex', gap: 5 }}>
+          {reasons.map(r => {
+            const isPicked = picked === r.value
+            return (
+              <button key={r.value} onClick={() => { if (picked) return; setPicked(r.value); onReason?.(r.value) }}
+                style={{
+                  background: isPicked ? C.sage + '33' : 'transparent',
+                  border: `1px solid ${isPicked ? C.sage : C.inkMute}`,
+                  color: isPicked ? C.sage : C.inkSoft,
+                  padding: '3px 9px', borderRadius: 999, fontSize: 11,
+                  cursor: picked ? 'default' : 'pointer', fontWeight: 600, fontFamily: 'inherit',
+                }}>
+                {isPicked ? '✓ ' : ''}{r.label}
+              </button>
+            )
+          })}
+        </div>
+      )}
       {onUndo && (
-        <button onClick={onUndo} style={{ marginLeft: 8, background: 'transparent', border: `1px solid ${C.inkMute}`, color: C.inkSoft, padding: '4px 10px', borderRadius: 6, fontSize: 11, cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>Undo</button>
+        <button onClick={onUndo} style={{ marginLeft: 4, background: 'transparent', border: `1px solid ${C.inkMute}`, color: C.inkSoft, padding: '4px 10px', borderRadius: 6, fontSize: 11, cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>Undo</button>
       )}
       {onView && (
-        <button onClick={onView} style={{ marginLeft: onUndo ? 4 : 8, background: 'transparent', border: `1px solid ${C.sage}`, color: C.sage, padding: '4px 10px', borderRadius: 6, fontSize: 11, cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>View Tracks</button>
+        <button onClick={onView} style={{ marginLeft: 4, background: 'transparent', border: `1px solid ${C.sage}`, color: C.sage, padding: '4px 10px', borderRadius: 6, fontSize: 11, cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>View Tracks</button>
       )}
       <button onClick={onDismiss} aria-label="Dismiss" style={{ marginLeft: 4, background: 'none', border: 'none', color: C.inkMute, fontSize: 18, cursor: 'pointer', lineHeight: 1, padding: 0 }}>×</button>
     </div>
@@ -4656,7 +4722,10 @@ export default function HeedApp() {
 
   useEffect(() => {
     if (!toast) return
-    const t = setTimeout(() => setToast(null), 3000)
+    // Toasts with reason chips need a longer window so the user can read +
+    // tap a chip before they vanish.
+    const ms = toast.reasons ? 6000 : 3000
+    const t = setTimeout(() => setToast(null), ms)
     return () => clearTimeout(t)
   }, [toast])
 
@@ -4695,15 +4764,28 @@ export default function HeedApp() {
     const taskId = typeof task === 'string' ? task : task.id
     const taskName = typeof task === 'string' ? 'Task' : task.name
     setDismissedIds(s => new Set([...s, taskId]))
+    // First post records the skip with reason='other'. The toast then offers
+    // three reason chips; tapping one fires a follow-up POST that overwrites
+    // the reason. Without this, the advisor's slip-pattern logic only ever
+    // sees "other" and can't tell "too busy" from "forgot".
+    const recordSkip = (reason) => {
+      fetch(`${FUNCTIONS_URL}/api/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ task_id: taskId, event_type: 'skipped', skip_reason: reason }),
+      }).catch(() => {})
+    }
+    recordSkip('other')
     setToast({
-      message: `"${taskName}" skipped`,
+      message: `"${taskName}" skipped — why?`,
       onUndo: () => { setDismissedIds(s => { const n = new Set(s); n.delete(taskId); return n }); setToast(null) },
+      reasons: [
+        { value: 'busy',   label: 'Busy' },
+        { value: 'forgot', label: 'Forgot' },
+        { value: 'not_today', label: 'Not today' },
+      ],
+      onReason: recordSkip,
     })
-    fetch(`${FUNCTIONS_URL}/api/completions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ task_id: taskId, event_type: 'skipped', skip_reason: 'other' }),
-    }).catch(() => {})
   }, [FUNCTIONS_URL])
 
   const handleReschedule = useCallback(async (taskId, newDate) => {
@@ -4755,10 +4837,10 @@ export default function HeedApp() {
         const updated = await resp.json()
         if (isEdit) {
           setApiTasks(t => t.map(x => x.id === data.id ? updated : x))
-          setToast({ message: 'Task updated' })
+          setToast({ message: 'Updated.' })
         } else {
           setApiTasks(t => [...t, updated])
-          setToast({ message: 'Task added', showView: true })
+          setToast({ message: "Got it. I'll watch this one.", showView: true })
           setTab('today')
         }
       }
@@ -4770,6 +4852,17 @@ export default function HeedApp() {
     setEditingTask(task)
     setModalOpen(true)
   }, [])
+
+  const handleDeleteTask = useCallback(async (task) => {
+    if (!task?.id) return
+    try {
+      const resp = await fetch(`${FUNCTIONS_URL}/api/tasks/${task.id}`, { method: 'DELETE' })
+      if (!resp.ok && resp.status !== 404) return
+    } catch { return }
+    setApiTasks(t => t.filter(x => x.id !== task.id))
+    setEditingTask(null)
+    setToast({ message: `${task.name || 'Task'} removed.` })
+  }, [FUNCTIONS_URL])
 
   // Apply a Phase 2 retrospective suggestion. Returns true if the action
   // succeeded so the sheet can mark it as ✓. Phase 2 wires adjust_cadence
@@ -4809,7 +4902,7 @@ export default function HeedApp() {
           .then(r => r.json())
           .then(d => d && setApiContexts(d))
           .catch(() => {})
-        setToast({ message: 'Context added' })
+        setToast({ message: "Noted. I'll plan around it." })
       }
     } catch {}
   }, [FUNCTIONS_URL])
@@ -4821,7 +4914,7 @@ export default function HeedApp() {
         ? rs.map(r => r.id === routineData.id ? { ...r, name: routineData.name, items: routineData.items } : r)
         : [...rs, routineData]
     )
-    setToast({ message: isEdit ? 'Routine updated' : 'Routine added', showView: true })
+    setToast({ message: isEdit ? 'Routine updated.' : 'Routine added — building up history.', showView: true })
     setEditingRoutine(null)
     setTab('today')
   }, [])
@@ -4833,12 +4926,31 @@ export default function HeedApp() {
       updated[updated.length - 1] = true
       return { ...r, completion14d: updated }
     }))
-    setToast({ message: 'Routine marked done for today' })
+    setToast({ message: 'Done for today. Nice.' })
   }, [])
 
   const handleSkipRoutineToday = useCallback((routineId) => {
-    setToast({ message: 'Routine skipped for today' })
+    setToast({ message: 'Skipped for today.' })
   }, [])
+
+  // Toggle a single day in the routine's 14-day completion strip.
+  // Index 0 is the oldest day, length-1 is today.
+  const handleMarkRoutineDay = useCallback((routineId, index, value) => {
+    setRoutines(rs => rs.map(r => {
+      if (r.id !== routineId) return r
+      const updated = [...r.completion14d]
+      if (index < 0 || index >= updated.length) return r
+      updated[index] = !!value
+      return { ...r, completion14d: updated }
+    }))
+    const daysAgo = (() => {
+      const r = routines.find(x => x.id === routineId)
+      if (!r) return 0
+      return (r.completion14d.length - 1) - index
+    })()
+    const when = daysAgo === 0 ? 'today' : daysAgo === 1 ? 'yesterday' : `${daysAgo} days ago`
+    setToast({ message: value ? `Marked ${when} done.` : `Cleared ${when}.` })
+  }, [routines])
 
   const handleLightenRoutine = useCallback((routineId, itemsToStrike = null) => {
     setRoutines(rs => rs.map(r => {
@@ -4846,7 +4958,7 @@ export default function HeedApp() {
       const strike = itemsToStrike || r.items.slice(Math.ceil(r.items.length / 2))
       return { ...r, suggestion: null, insight: 'Lightened for this week.', lightenedItems: strike }
     }))
-    setToast({ message: 'Routine lightened for this week' })
+    setToast({ message: "Lightened. I'll keep it gentle this week." })
   }, [])
 
   const handleShareOpen = useCallback((routine) => setShareCtx(routine), [])
@@ -4882,7 +4994,7 @@ export default function HeedApp() {
       newEnd.setDate(newEnd.getDate() + 2)
       return { ...ctx, endDate: newEnd }
     })
-    setToast({ message: 'Extended by 2 days' })
+    setToast({ message: "+2 days. I'll hold the line." })
   }, [])
 
   const handleEndContext = useCallback((mode) => {
@@ -4973,7 +5085,7 @@ export default function HeedApp() {
         {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} upcomingContexts={upcomingContexts} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onSkipRoutineToday={handleSkipRoutineToday} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAskHeed={handleAskHeed} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen}/>}
         {tab === 'calendar' && <CalendarTab tasks={apiTasks} contexts={[...(apiContexts.active||[]), ...(apiContexts.upcoming||[])]} routines={routines} onReschedule={handleReschedule} onMarkDone={handleMarkDone} onSkip={handleSkip} onAddTask={() => setModalOpen(true)} onAddContext={() => setContextModalOpen(true)} onEditRoutine={handleEditRoutine} onApplyRetroSuggestion={handleApplyRetroSuggestion}/>}
         {tab === 'ask' && <AskTab prefill={askPrefill} autoSend={askAutoSend} onAutoSendDone={() => setAskAutoSend(false)} onLightenRoutine={handleLightenRoutine}/>}
-        {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen}/>}
+        {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onMarkRoutineDay={handleMarkRoutineDay}/>}
         {tab === 'context' && <LifeTab upcoming={apiContexts.upcoming} active={apiContexts.active} activeContext={activeContext} onAddContext={() => setContextModalOpen(true)} onQuickContext={type => setQuickContextType(type)} onImBetter={() => setRecoveryOpen(true)} onExtend={handleExtendContext} onDetailOpen={handleDetailOpen}/>}
       </main>
 
@@ -4981,7 +5093,7 @@ export default function HeedApp() {
         Heed — CWB Hackathon 2026 · Azure OpenAI + Cosmos DB + AI Search
       </footer>
 
-      <AddTaskModal open={modalOpen} onClose={() => { setModalOpen(false); setEditingTask(null) }} onSubmit={handleAddTask} initialData={editingTask}/>
+      <AddTaskModal open={modalOpen} onClose={() => { setModalOpen(false); setEditingTask(null) }} onSubmit={handleAddTask} onDelete={handleDeleteTask} initialData={editingTask}/>
       <AddRoutineModal open={routineModalOpen} onClose={() => { setRoutineModalOpen(false); setEditingRoutine(null); setBuildRoutineTask(null) }} onSubmit={handleAddRoutine} initialData={editingRoutine} seedTask={buildRoutineTask}/>
       <AddContextModal open={contextModalOpen} onClose={() => setContextModalOpen(false)} onSubmit={handleAddContext}/>
       <AskInlineModal open={askOpen} onClose={() => setAskOpen(false)} onLightenRoutine={handleLightenRoutine}/>
@@ -4999,7 +5111,7 @@ export default function HeedApp() {
         onAskHeed={handleAskHeed}
       />
       <ShareCardSheet routine={shareCtx} onClose={handleShareClose}/>
-      {toast && <Toast message={toast.message} onView={toast.showView ? handleToastView : undefined} onUndo={toast.onUndo} onDismiss={() => setToast(null)} />}
+      {toast && <Toast message={toast.message} onView={toast.showView ? handleToastView : undefined} onUndo={toast.onUndo} onDismiss={() => setToast(null)} reasons={toast.reasons} onReason={toast.onReason}/>}
       <HeedFAB onAddTask={() => setModalOpen(true)} onAskHeed={() => setAskOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)}/>
     </div>
   )

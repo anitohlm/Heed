@@ -122,7 +122,14 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "propose_action",
-            "description": "Propose a structured action (mark done, skip, defer, lighten routine, add context). For multi-task or destructive actions, ALWAYS set requires_confirmation=true and wait for user response.",
+            "description": (
+                "Propose a structured action (mark done, skip, defer, lighten routine, add context). "
+                "For multi-task or destructive actions, ALWAYS set requires_confirmation=true and wait "
+                "for user response. For lighten_routine, payload MUST include a preview object: "
+                '{ "preview": { "remove": [{ "name": "Stretching" }, { "name": "Morning journal" }], '
+                '"keep": ["Vitamins", "Coffee"] } }. The remove/keep lists must match the items you '
+                "named in your prose so the user sees exactly what changes when they confirm."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -132,7 +139,15 @@ TOOLS = [
                     },
                     "task_id": {"type": "string"},
                     "routine_id": {"type": "string"},
-                    "payload": {"type": "object"},
+                    "payload": {
+                        "type": "object",
+                        "description": (
+                            "Action-specific payload. For lighten_routine: { preview: { remove: "
+                            "[{name: string}], keep: [string] }, duration_days?: number }. For defer: "
+                            "{ defer_until: 'YYYY-MM-DD' }. For add_context: { context_type, "
+                            "start_date, end_date, description }."
+                        ),
+                    },
                     "requires_confirmation": {"type": "boolean", "default": True},
                 },
                 "required": ["action_type"],

@@ -2473,7 +2473,7 @@ function SheetSectionLabel({ children }) {
 }
 
 // ── ContextDetailSheet ─────────────────────────────────────────
-function ContextDetailSheet({ open, ctx, heldTasks, onClose, onImBetter, onExtend }) {
+function ContextDetailSheet({ open, ctx, heldTasks, onClose, onImBetter, onExtend, onAskHeed }) {
   if (!open || !ctx) return null
 
   const fmtDate = d => {
@@ -2551,7 +2551,7 @@ function ContextDetailSheet({ open, ctx, heldTasks, onClose, onImBetter, onExten
                   )}
                 </div>
               )}
-              <button style={{ ...getBtnPrimary(), width: '100%', padding: 12, fontSize: 13, fontWeight: 700, borderRadius: 10 }}>
+              <button onClick={() => { onClose(); onAskHeed?.(ctx.askQuery || '') }} style={{ ...getBtnPrimary(), width: '100%', padding: 12, fontSize: 13, fontWeight: 700, borderRadius: 10 }}>
                 Ask Heed to plan around this
               </button>
             </div>
@@ -2938,6 +2938,7 @@ export default function HeedApp() {
         onClose={handleDetailClose}
         onImBetter={() => { handleDetailClose(); setRecoveryOpen(true) }}
         onExtend={() => { handleDetailClose(); handleExtendContext() }}
+        onAskHeed={handleAskHeed}
       />
       {toast && <Toast message={toast.message} onView={toast.showView ? handleToastView : undefined} onUndo={toast.onUndo} onDismiss={() => setToast(null)} />}
       <HeedFAB onAddTask={() => setModalOpen(true)} onAskHeed={() => setAskOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)}/>

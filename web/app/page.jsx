@@ -1621,11 +1621,24 @@ function ContextRow({ ctx, highlight }) {
         <div style={{ fontSize: 12, color: C.inkMute }}>{ctx.start} → {ctx.end}</div>
       </div>
       {highlight && <Pill tone="warn" glow>soon</Pill>}
+      {!highlight && ctx.skipped != null && (
+        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: C.rust }}>{ctx.skipped} skipped</div>
+          <div style={{ fontSize: 10, color: C.inkMute }}>tasks</div>
+        </div>
+      )}
     </div>
   )
 }
 
-function ContextTab({ upcoming, active, onAddContext }) {
+const CONTEXT_CHIPS = [
+  { type: 'sick',        label: '🌿 Sick' },
+  { type: 'busy',        label: '🌾 Busy week' },
+  { type: 'travel',      label: '✈️ Traveling' },
+  { type: 'celebration', label: '🌸 Celebration' },
+]
+
+function ContextTab({ upcoming, active, activeContext, onAddContext, onQuickContext, onImBetter, onExtend }) {
   const allUpcoming = [...(active || []).map(mapApiContext), ...(upcoming || []).map(mapApiContext)]
   return (
     <div>
@@ -1633,6 +1646,16 @@ function ContextTab({ upcoming, active, onAddContext }) {
         <SectionHeader>Context windows</SectionHeader>
         <button onClick={onAddContext} style={getBtnPrimary()}>+ Add context</button>
       </div>
+      <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginBottom: 20 }}>
+        {CONTEXT_CHIPS.map(c => (
+          <button key={c.type} onClick={() => onQuickContext(c.type)}
+            style={{ background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 999, padding: '6px 14px', fontSize: 12, color: C.ink, fontFamily: 'inherit', fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s' }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = C.ochre; e.currentTarget.style.background = C.ochreSoft }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.background = C.paper }}
+          >{c.label}</button>
+        ))}
+      </div>
+      {activeContext && <ActiveContextCard context={activeContext} onImBetter={onImBetter} onExtend={onExtend}/>}
       <div style={{ background: C.paper, border: `1px solid ${C.border}`, borderRadius: 14, padding: 18, marginBottom: 16, boxShadow: C.shadowSoft }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: C.sage, letterSpacing: 0.8, marginBottom: 12, textTransform: 'uppercase' }}>Upcoming</div>
         {allUpcoming.length === 0 ? (
@@ -2665,7 +2688,7 @@ export default function HeedApp() {
         {tab === 'calendar' && <CalendarTab/>}
         {tab === 'ask' && <AskTab prefill={askPrefill}/>}
         {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onMoreOptions={handleMoreOptions}/>}
-        {tab === 'context' && <ContextTab upcoming={apiContexts.upcoming} active={apiContexts.active} onAddContext={() => setContextModalOpen(true)}/>}
+        {tab === 'context' && <ContextTab upcoming={apiContexts.upcoming} active={apiContexts.active} activeContext={activeContext} onAddContext={() => setContextModalOpen(true)} onQuickContext={type => setQuickContextType(type)} onImBetter={() => setRecoveryOpen(true)} onExtend={handleExtendContext}/>}
       </main>
 
       <footer style={{ textAlign: 'center', fontSize: 11, color: C.inkMute, padding: '24px', borderTop: `1px solid ${C.hairline}`, fontStyle: 'italic' }}>
@@ -2678,6 +2701,8 @@ export default function HeedApp() {
       <AskInlineModal open={askOpen} onClose={() => setAskOpen(false)}/>
       <TaskOptionsSheet task={taskOptionsTask} onClose={() => setTaskOptionsTask(null)} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }}/>
       <AddToRoutineSheet task={addToRoutineTask} routines={routines} onClose={() => setAddToRoutineTask(null)} onSelect={handleAddTaskToRoutine}/>
+      <QuickContextSheet type={quickContextType} onClose={() => setQuickContextType(null)} onActivate={handleQuickContext}/>
+      <RecoverySummarySheet open={recoveryOpen} context={activeContext} heldTasks={activeContext ? displayTasks.filter(t => activeContext.heldTaskIds.includes(t.id)) : []} onClose={() => setRecoveryOpen(false)} onResumeAll={() => handleEndContext('resume')} onEaseBack={() => handleEndContext('ease')}/>
       {toast && <Toast message={toast.message} onView={toast.showView ? handleToastView : undefined} onUndo={toast.onUndo} onDismiss={() => setToast(null)} />}
       <HeedFAB onAddTask={() => setModalOpen(true)} onAskHeed={() => setAskOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)}/>
     </div>

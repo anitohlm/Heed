@@ -1850,7 +1850,7 @@ function WeekDetail({ tasks, weekStart, onTaskTap, onTaskDrop, onWeekOffsetChang
           const dayTasks  = tasks.filter(t => { const d = parseDue(t.next_due_at); return d && sameDay(d, date) })
           return (
             <div key={i} ref={el => colRefs.current[i] = el}
-              style={{ background: isTarget ? C.sageSoft : isToday ? C.bellySoft + '80' : 'transparent', borderRadius: 6, padding: '6px 4px', minHeight: 80 }}>
+              style={{ background: isTarget ? C.sageSoft : isToday ? C.bellySoft + '80' : 'transparent', borderRadius: 6, padding: '6px 4px', minHeight: 80, minWidth: 0, overflow: 'hidden' }}>
               <div style={{ textAlign: 'center', marginBottom: 6 }}>
                 <div style={{ fontSize: 9, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase' }}>
                   {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][i]}
@@ -1859,7 +1859,7 @@ function WeekDetail({ tasks, weekStart, onTaskTap, onTaskDrop, onWeekOffsetChang
                   {date.getDate()}
                 </div>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
                 {dayTasks.map(task => {
                   const imp  = task.importance || 'medium'
                   const bg   = impColor[imp] || C.ochre

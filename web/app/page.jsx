@@ -1385,6 +1385,45 @@ function TaskCard({ task, delay = 0, onMarkDone, onSkip, onMoreOptions }) {
   )
 }
 
+// ── useShareCard ──────────────────────────────────────────────
+function useShareCard() {
+  async function captureCard(el) {
+    const html2canvas = (await import('html2canvas')).default
+    const canvas = await html2canvas(el, { scale: 1, useCORS: true, logging: false })
+    return new Promise(resolve => canvas.toBlob(resolve, 'image/png'))
+  }
+
+  async function downloadCard(el, filename) {
+    const blob = await captureCard(el)
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  async function shareCard(el, filename, onFallback) {
+    const blob = await captureCard(el)
+    if (navigator.share && navigator.canShare) {
+      const file = new File([blob], filename, { type: 'image/png' })
+      if (navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file] })
+        return
+      }
+    }
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(url)
+    onFallback?.()
+  }
+
+  return { downloadCard, shareCard }
+}
+
 // ── ShareableCard sub-variants ────────────────────────────────
 function StreakVariant({ routine, t, streak, startedDate }) {
   return (

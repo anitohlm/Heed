@@ -1678,7 +1678,7 @@ function ContextTab({ upcoming, active, onAddContext }) {
 }
 
 // ── CalendarTab ────────────────────────────────────────────────
-const DAYS_OF_WEEK = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
+const TODAY_DATE = new Date()
 
 function startOfWeek(date) {
   const d = new Date(date)
@@ -1691,102 +1691,356 @@ function startOfWeek(date) {
 function addDays(date, n) { const d = new Date(date); d.setDate(d.getDate() + n); return d }
 function fmtMonth(d) { return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) }
 function sameDay(a, b) { return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate() }
+const parseDue = val => { if (!val) return null; const d = new Date(val); return isNaN(d) ? null : d }
 
-function buildSchedule(weekStart) {
-  const push = (offset, label, color, opts = {}) => ({ date: addDays(weekStart, offset), label, color, ...opts })
-  return [
-    push(0, 'Pay Maynilad', C.rust, { priority: 'high' }),
-    push(0, 'Pay Meralco', C.rust, { priority: 'high' }),
-    push(0, 'Call Mom', C.ochre, { priority: 'high' }),
-    push(1, 'Refill water dispenser', C.sage),
-    push(1, 'Vitamin D', C.ochre),
-    push(2, 'Cat litter box', C.ochre, { priority: 'high' }),
-    push(3, 'Submit timesheet', C.ochre, { priority: 'high' }),
-    push(4, 'Update expense tracker', C.ochre),
-    push(4, 'Wash bedsheets', C.sage),
-    push(5, 'Clean aircon filter', C.sage),
-  ]
-}
+function MonthStrip({ tasks, monthOffset, selectedWeekStart, onWeekSelect, onMonthChange }) {
+  const touchRef = useRef(null)
 
-const ROUTINE_TRACKS = [
-  { id: 'morning', label: 'Morning routine', color: C.ochre, days: [0,1,2,3,4] },
-  { id: 'evening', label: 'Evening wind-down', color: C.sage, days: [0,1,2,3,4,5,6] },
-]
+  const today = new Date()
+  const base = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1)
+  const monthYear = base.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 
-function CalendarChip({ item }) {
-  const [hover, setHover] = useState(false)
+  // Build list of week-Monday dates that overlap this month
+  const firstMonday = startOfWeek(base)
+  const lastOfMonth = new Date(base.getFullYear(), base.getMonth() + 1, 0)
+  const weeks = []
+  let cur = new Date(firstMonday)
+  while (cur <= lastOfMonth && weeks.length < 6) {
+    weeks.push(new Date(cur))
+    cur = addDays(cur, 7)
+  }
+
+  const dotColor = { high: C.rust, medium: C.ochre, low: C.sage }
+  function handleTouchStart(e) {
+    touchRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+  }
+  function handleTouchEnd(e) {
+    if (!touchRef.current) return
+    const dx = e.changedTouches[0].clientX - touchRef.current.x
+    const dy = Math.abs(e.changedTouches[0].clientY - touchRef.current.y)
+    if (Math.abs(dx) > 40 && dy < 60) onMonthChange(dx < 0 ? 1 : -1)
+    touchRef.current = null
+  }
+
+  const selKey = selectedWeekStart.toDateString()
+
   return (
-    <div onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
-      style={{ background: hover ? item.color + '22' : C.paper, border: `1px solid ${hover ? item.color : C.border}`, borderLeft: `3px solid ${item.color}`, borderRadius: 5, padding: '5px 8px', fontSize: 11.5, color: C.ink, cursor: 'pointer', transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 5, lineHeight: 1.2 }}>
-      {item.priority === 'high' && <span style={{ width: 5, height: 5, borderRadius: '50%', background: item.color, flexShrink: 0 }}/>}
-      <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: item.priority === 'high' ? 600 : 500 }}>{item.label}</span>
+    <div onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+        <button onClick={() => onMonthChange(-1)} style={{ background: 'none', border: 'none', fontSize: 18, color: C.inkSoft, cursor: 'pointer', padding: '0 6px', lineHeight: 1 }}>‹</button>
+        <div style={{ fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600, color: C.warmDark }}>{monthYear}</div>
+        <button onClick={() => onMonthChange(1)} style={{ background: 'none', border: 'none', fontSize: 18, color: C.inkSoft, cursor: 'pointer', padding: '0 6px', lineHeight: 1 }}>›</button>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 2, marginBottom: 4 }}>
+        {['M','T','W','T','F','S','S'].map((d, i) => (
+          <div key={i} style={{ textAlign: 'center', fontSize: 9, fontWeight: 700, color: C.inkMute, letterSpacing: 0.5 }}>{d}</div>
+        ))}
+      </div>
+      {weeks.map((weekMon, wi) => {
+        const isSelected = weekMon.toDateString() === selKey
+        return (
+          <div key={weekMon.toDateString()} onClick={() => onWeekSelect(weekMon)}
+            style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 2, background: isSelected ? C.bellySoft : 'transparent', borderRadius: 6, padding: '3px 0', marginBottom: 2, cursor: 'pointer' }}>
+            {[0,1,2,3,4,5,6].map(di => {
+              const date = addDays(weekMon, di)
+              const inMonth = date.getMonth() === base.getMonth()
+              const isToday = sameDay(date, today)
+              const dayTasks = tasks.filter(t => { const d = parseDue(t.next_due_at); return d && sameDay(d, date) })
+              const levels = [...new Set(dayTasks.map(t => t.importance).filter(Boolean))]
+              return (
+                <div key={di} style={{ textAlign: 'center', padding: '3px 0' }}>
+                  <div style={{ fontSize: 11, color: isToday ? C.rust : inMonth ? C.ink : C.inkMute, fontWeight: isToday ? 700 : 400 }}>
+                    {date.getDate()}
+                  </div>
+                  {levels.length > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: 2, marginTop: 1 }}>
+                      {(['high','medium','low']).filter(l => levels.includes(l)).map(l => (
+                        <div key={l} style={{ width: 4, height: 4, borderRadius: '50%', background: dotColor[l] }}/>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )
+      })}
     </div>
   )
 }
 
-function CalendarTab() {
-  const TODAY_DATE = new Date()
-  const [weekOffset, setWeekOffset] = useState(0)
-  const weekStart = addDays(startOfWeek(TODAY_DATE), weekOffset * 7)
-  const schedule = buildSchedule(weekStart)
+function WeekDetail({ tasks, weekStart, onTaskTap, onTaskDrop, onWeekOffsetChange }) {
+  const today = new Date()
+  const impColor = { high: C.rust, medium: C.ochre, low: C.sage }
+  const impIcon  = { high: '●', medium: '◆', low: '○' }
+
+  // Swipe to change week
+  const swipeRef = useRef(null)
+  function handleTouchStart(e) {
+    swipeRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+  }
+  function handleTouchEnd(e) {
+    if (!swipeRef.current) return
+    const dx = e.changedTouches[0].clientX - swipeRef.current.x
+    const dy = Math.abs(e.changedTouches[0].clientY - swipeRef.current.y)
+    if (Math.abs(dx) > 40 && dy < 60) onWeekOffsetChange(dx < 0 ? 1 : -1)
+    swipeRef.current = null
+  }
+
+  // Drag-to-reschedule
+  const [dragTask, setDragTask] = useState(null)
+  const [ghostPos, setGhostPos] = useState(null)
+  const [dropCol, setDropCol] = useState(null)
+  const colRefs = useRef([])
+  const containerRef = useRef(null)
+  const didDragRef = useRef(false)
+
+  function handlePointerDown(e, task) {
+    didDragRef.current = false
+    containerRef.current?.setPointerCapture(e.pointerId)
+    setDragTask(task)
+    setGhostPos({ x: e.clientX, y: e.clientY })
+  }
+  function handlePointerMove(e) {
+    if (!dragTask) return
+    setGhostPos({ x: e.clientX, y: e.clientY })
+    didDragRef.current = true
+    const idx = colRefs.current.findIndex(el => {
+      if (!el) return false
+      const r = el.getBoundingClientRect()
+      return e.clientX >= r.left && e.clientX <= r.right
+    })
+    setDropCol(idx >= 0 ? idx : null)
+  }
+  function handlePointerUp(e) {
+    if (dragTask && dropCol !== null) {
+      const newDate = addDays(weekStart, dropCol)
+      const origDate = parseDue(dragTask.next_due_at)
+      if (!origDate || !sameDay(origDate, newDate)) {
+        onTaskDrop(dragTask, newDate)
+      }
+    }
+    setDragTask(null)
+    setGhostPos(null)
+    setDropCol(null)
+  }
+
+  const startLabel = weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  const endLabel   = addDays(weekStart, 6).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+
+  colRefs.current = []
   return (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18, gap: 12, flexWrap: 'wrap' }}>
-        <SectionHeader>{fmtMonth(weekStart)}</SectionHeader>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <button onClick={() => setWeekOffset(o => o - 1)} style={{ ...getBtnGhost(), padding: '6px 12px', fontSize: 13 }}>‹ Previous</button>
-          <button onClick={() => setWeekOffset(0)} style={{ ...getBtnGhost(), padding: '6px 12px', fontSize: 13, background: weekOffset === 0 ? C.bellySoft : 'transparent', borderColor: weekOffset === 0 ? C.warmDark + '66' : C.border, color: weekOffset === 0 ? C.warmDark : C.inkSoft, fontWeight: weekOffset === 0 ? 600 : 500 }}>This week</button>
-          <button onClick={() => setWeekOffset(o => o + 1)} style={{ ...getBtnGhost(), padding: '6px 12px', fontSize: 13 }}>Next ›</button>
-        </div>
+    <div
+      ref={containerRef}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onPointerMove={dragTask ? handlePointerMove : undefined}
+      onPointerUp={dragTask ? handlePointerUp : undefined}
+      onPointerCancel={dragTask ? handlePointerUp : undefined}
+      style={{ position: 'relative' }}
+    >
+      <div style={{ fontSize: 10, fontWeight: 700, color: C.inkMute, letterSpacing: 0.7, textTransform: 'uppercase', marginBottom: 10 }}>
+        Week of {startLabel} – {endLabel}
       </div>
-      <div style={{ background: `linear-gradient(120deg, ${C.bellySoft} 0%, ${C.ochreSoft}88 100%)`, border: `1px solid ${C.border}`, borderRadius: 12, padding: '12px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12, animation: 'heed-fadeUp 0.4s ease' }}>
-        <MayaOwl size={32} idle={false}/>
-        <div style={{ fontSize: 13, color: C.ink, lineHeight: 1.5, flex: 1 }}>
-          <strong>Heed has scheduled these for you.</strong> Each task is placed on its best-fit day given your cadence patterns and importance.
-        </div>
-      </div>
-      <div style={{ background: C.paper, border: `1px solid ${C.border}`, borderRadius: 14, overflow: 'hidden', boxShadow: C.shadowSoft }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', background: C.bellySoft, borderBottom: `1px solid ${C.border}` }}>
-          {DAYS_OF_WEEK.map((d, i) => {
-            const date = addDays(weekStart, i)
-            const isToday = sameDay(date, TODAY_DATE)
-            return (
-              <div key={i} style={{ padding: '12px 10px', textAlign: 'center', borderRight: i < 6 ? `1px solid ${C.border}` : 'none' }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: C.inkMute, letterSpacing: 0.7, textTransform: 'uppercase' }}>{d}</div>
-                <div style={{ fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 600, color: isToday ? C.cream : C.warmDark, marginTop: 2, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: '50%', background: isToday ? C.warmDark : 'transparent' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 4 }}>
+        {[0,1,2,3,4,5,6].map(i => {
+          const date      = addDays(weekStart, i)
+          const isToday   = sameDay(date, today)
+          const isTarget  = dropCol === i && dragTask != null
+          const dayTasks  = tasks.filter(t => { const d = parseDue(t.next_due_at); return d && sameDay(d, date) })
+          return (
+            <div key={i} ref={el => colRefs.current[i] = el}
+              style={{ background: isTarget ? C.sageSoft : isToday ? C.bellySoft + '80' : 'transparent', borderRadius: 6, padding: '6px 4px', minHeight: 80 }}>
+              <div style={{ textAlign: 'center', marginBottom: 6 }}>
+                <div style={{ fontSize: 9, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase' }}>
+                  {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][i]}
+                </div>
+                <div style={{ fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: isToday ? C.cream : C.warmDark, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: '50%', background: isToday ? C.warmDark : 'transparent', marginTop: 2 }}>
                   {date.getDate()}
                 </div>
               </div>
-            )
-          })}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                {dayTasks.map(task => {
+                  const imp  = task.importance || 'medium'
+                  const bg   = impColor[imp] || C.ochre
+                  const icon = impIcon[imp]  || '◆'
+                  return (
+                    <div key={task.id}
+                      onPointerDown={e => handlePointerDown(e, task)}
+                      onClick={() => { if (!didDragRef.current) onTaskTap(task) }}
+                      style={{ background: bg, borderRadius: 4, padding: '3px 5px', fontSize: 9.5, color: C.cream, fontWeight: 600, cursor: 'pointer', userSelect: 'none', opacity: dragTask?.id === task.id ? 0.4 : 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', touchAction: 'none' }}>
+                      {icon} {task.name}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+      {dragTask && ghostPos && (
+        <div style={{ position: 'fixed', left: ghostPos.x - 40, top: ghostPos.y - 12, background: impColor[dragTask.importance || 'medium'] || C.ochre, borderRadius: 4, padding: '3px 8px', fontSize: 9.5, color: C.cream, fontWeight: 600, pointerEvents: 'none', zIndex: 9999, whiteSpace: 'nowrap', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', opacity: 0.9, boxShadow: '0 2px 8px rgba(0,0,0,0.25)' }}>
+          {impIcon[dragTask.importance || 'medium'] || '◆'} {dragTask.name}
         </div>
-        {ROUTINE_TRACKS.map(track => (
-          <div key={track.id} style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', borderBottom: `1px solid ${C.hairline}`, background: C.paper }}>
-            {[0,1,2,3,4,5,6].map(i => (
-              <div key={i} style={{ borderRight: i < 6 ? `1px solid ${C.hairline}` : 'none', padding: '6px 8px', display: 'flex', alignItems: 'center', gap: 6 }}>
-                {track.days.includes(i) && (<>
-                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: track.color }}/>
-                  <span style={{ fontSize: 10.5, color: track.color, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{track.label}</span>
-                </>)}
-              </div>
-            ))}
+      )}
+    </div>
+  )
+}
+
+function TaskDetailSheet({ task, onClose, onMarkDone, onSkip, onReschedule }) {
+  const [translateY, setTranslateY] = useState(100)
+  const touchRef    = useRef(null)
+  const dateInputRef = useRef(null)
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() =>
+      requestAnimationFrame(() => setTranslateY(0))
+    )
+    return () => cancelAnimationFrame(id)
+  }, [])
+
+  function handleTouchStart(e) { touchRef.current = e.touches[0].clientY }
+  function handleTouchMove(e) {
+    if (touchRef.current == null) return
+    const dy = e.touches[0].clientY - touchRef.current
+    if (dy > 0) setTranslateY(dy)
+  }
+  function handleTouchEnd(e) {
+    if (touchRef.current == null) return
+    const dy = e.changedTouches[0].clientY - touchRef.current
+    touchRef.current = null
+    if (dy > 80) { onClose(); return }
+    setTranslateY(0)
+  }
+
+  const cadenceLabel = task.learned_cadence_days
+    ? `every ~${task.learned_cadence_days} days`
+    : task.explicit_cadence_days
+    ? `every ~${task.explicit_cadence_days} days`
+    : 'unset'
+
+  const lastDoneLabel = task.last_done_at
+    ? new Date(task.last_done_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    : 'Never'
+
+  const dueLabel = task.next_due_at
+    ? parseDue(task.next_due_at)?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) ?? '—'
+    : '—'
+
+  function reschedule(newDate) {
+    onReschedule(task.id, newDate)
+    onClose()
+  }
+
+  const quickDates = [
+    { label: 'Today',   date: () => new Date() },
+    { label: '+1 day',  date: () => addDays(new Date(), 1) },
+    { label: '+3 days', date: () => addDays(new Date(), 3) },
+    { label: '+1 week', date: () => addDays(new Date(), 7) },
+  ]
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 200 }}>
+      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: `${C.ink}66` }}/>
+      <div
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: C.paper, borderRadius: '16px 16px 0 0', padding: '12px 20px 32px', boxShadow: `0 -4px 24px ${C.ink}22`, transform: `translateY(${translateY}px)`, transition: translateY === 0 ? 'transform 0.3s ease-out' : 'none', maxHeight: '80vh', overflowY: 'auto' }}
+      >
+        <div style={{ width: 36, height: 4, background: C.border, borderRadius: 2, margin: '0 auto 16px' }}/>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 14 }}>
+          <div>
+            <div style={{ fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 600, color: C.warmDark, marginBottom: 8 }}>{task.name}</div>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+              {task.category && (
+                <span style={{ background: C.sage, color: C.cream, padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600 }}>{task.category}</span>
+              )}
+              <ImportanceBadge importance={task.importance}/>
+            </div>
           </div>
-        ))}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', minHeight: 240 }}>
-          {[0,1,2,3,4,5,6].map(i => {
-            const date = addDays(weekStart, i)
-            const dayItems = schedule.filter(s => sameDay(s.date, date))
-            const isToday = sameDay(date, TODAY_DATE)
-            return (
-              <div key={i} style={{ borderRight: i < 6 ? `1px solid ${C.hairline}` : 'none', padding: '10px 8px', background: isToday ? C.bellySoft + '50' : 'transparent', display: 'flex', flexDirection: 'column', gap: 4, animation: 'heed-fadeIn 0.4s ease both', animationDelay: `${i * 60}ms` }}>
-                {dayItems.map((item, j) => <CalendarChip key={j} item={item}/>)}
-                {dayItems.length === 0 && <div style={{ fontSize: 11, color: C.inkMute + '88', fontStyle: 'italic', textAlign: 'center', marginTop: 12 }}>—</div>}
-              </div>
-            )
-          })}
+          <div style={{ textAlign: 'right', flexShrink: 0 }}>
+            <div style={{ fontSize: 11, color: C.inkMute, marginBottom: 2 }}>Due</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: C.rust }}>{dueLabel}</div>
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
+          {[{ label: 'Cadence', value: cadenceLabel }, { label: 'Last done', value: lastDoneLabel }].map(({ label, value }) => (
+            <div key={label} style={{ background: C.bellySoft, borderRadius: 8, padding: '10px 12px' }}>
+              <div style={{ fontSize: 10, color: C.inkMute, fontWeight: 600, letterSpacing: 0.4, textTransform: 'uppercase', marginBottom: 4 }}>{label}</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>{value}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 10, color: C.inkMute, fontWeight: 600, letterSpacing: 0.4, textTransform: 'uppercase', marginBottom: 8 }}>Reschedule to</div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {quickDates.map(({ label, date }) => (
+              <button key={label} onClick={() => reschedule(date())}
+                style={{ background: C.paper, border: `1.5px solid ${C.border}`, color: C.ink, padding: '6px 12px', borderRadius: 8, fontSize: 12, cursor: 'pointer', fontWeight: 500, fontFamily: 'inherit' }}>
+                {label}
+              </button>
+            ))}
+            <button
+              onClick={() => dateInputRef.current?.showPicker?.() || dateInputRef.current?.click()}
+              style={{ background: C.paper, border: `1.5px solid ${C.border}`, color: C.ink, padding: '6px 12px', borderRadius: 8, fontSize: 12, cursor: 'pointer', fontWeight: 500, fontFamily: 'inherit' }}>
+              Pick date…
+            </button>
+            <input ref={dateInputRef} type="date"
+              style={{ position: 'fixed', opacity: 0, pointerEvents: 'none', width: 0, height: 0 }}
+              onChange={e => { if (e.target.value) reschedule(new Date(e.target.value + 'T12:00:00')) }}/>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={() => { onMarkDone(task); onClose() }}
+            style={{ flex: 1, background: C.sage, color: C.cream, border: 'none', padding: 12, borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+            ✓ Mark Done
+          </button>
+          <button onClick={() => { onSkip(task); onClose() }}
+            style={{ flex: 1, background: C.paper, color: C.inkSoft, border: `1.5px solid ${C.border}`, padding: 12, borderRadius: 10, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}>
+            ↷ Skip
+          </button>
         </div>
       </div>
-      <div style={{ marginTop: 16, padding: '12px 16px', background: C.paper, border: `1px solid ${C.border}`, borderRadius: 10, boxShadow: C.shadowSoft }}>
+    </div>
+  )
+}
+
+function CalendarTab({ tasks, onReschedule, onMarkDone, onSkip }) {
+  const [monthOffset, setMonthOffset] = useState(0)
+  const [weekStart, setWeekStart]     = useState(startOfWeek(TODAY_DATE))
+  const [detailTask, setDetailTask]   = useState(null)
+
+  useEffect(() => {
+    const target = (weekStart.getFullYear() - TODAY_DATE.getFullYear()) * 12
+      + (weekStart.getMonth() - TODAY_DATE.getMonth())
+    setMonthOffset(target)
+  }, [weekStart])
+
+  function handleWeekOffsetChange(delta) {
+    setWeekStart(ws => addDays(ws, delta * 7))
+  }
+
+  return (
+    <div>
+      <div style={{ background: C.paper, border: `1px solid ${C.border}`, borderRadius: 14, padding: '14px 16px', marginBottom: 16, boxShadow: C.shadowSoft }}>
+        <MonthStrip
+          tasks={tasks}
+          monthOffset={monthOffset}
+          selectedWeekStart={weekStart}
+          onWeekSelect={setWeekStart}
+          onMonthChange={delta => setMonthOffset(o => o + delta)}
+        />
+        <div style={{ borderTop: `1px solid ${C.hairline}`, margin: '12px 0' }}/>
+        <WeekDetail
+          tasks={tasks}
+          weekStart={weekStart}
+          onTaskTap={setDetailTask}
+          onTaskDrop={(task, newDate) => onReschedule(task.id, newDate)}
+          onWeekOffsetChange={handleWeekOffsetChange}
+        />
+      </div>
+      <div style={{ padding: '12px 16px', background: C.paper, border: `1px solid ${C.border}`, borderRadius: 10, boxShadow: C.shadowSoft }}>
         <div style={{ fontSize: 10.5, fontWeight: 700, color: C.inkMute, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 10 }}>Legend</div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <ImportanceBadge importance="low"/>
@@ -1794,6 +2048,15 @@ function CalendarTab() {
           <ImportanceBadge importance="high"/>
         </div>
       </div>
+      {detailTask && (
+        <TaskDetailSheet
+          task={detailTask}
+          onClose={() => setDetailTask(null)}
+          onMarkDone={onMarkDone}
+          onSkip={onSkip}
+          onReschedule={onReschedule}
+        />
+      )}
     </div>
   )
 }
@@ -2396,6 +2659,26 @@ export default function HeedApp() {
     }).catch(() => {})
   }, [FUNCTIONS_URL])
 
+  const handleReschedule = useCallback(async (taskId, newDate) => {
+    const d = new Date(newDate)
+    if (isNaN(d.getTime())) return
+    const iso = d.toISOString()
+    try {
+      const res = await fetch(`${FUNCTIONS_URL}/api/tasks/${taskId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ next_due_at: iso }),
+      })
+      if (!res.ok) return
+    } catch {
+      return
+    }
+    fetch(`${FUNCTIONS_URL}/api/tasks`)
+      .then(r => r.json())
+      .then(data => Array.isArray(data) && setApiTasks(data))
+      .catch(() => {})
+  }, [FUNCTIONS_URL])
+
   const handleAskHeed = useCallback((query) => {
     setAskPrefill(query)
     setTab('ask')
@@ -2550,7 +2833,7 @@ export default function HeedApp() {
 
       <main className="heed-main" style={{ maxWidth: 820, margin: '0 auto', padding: '28px 32px 100px 32px', minHeight: 'calc(100vh - 140px)', display: 'flex', flexDirection: 'column' }}>
         {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} upcomingContexts={upcomingContexts} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAskHeed={handleAskHeed} onMoreOptions={handleMoreOptions}/>}
-        {tab === 'calendar' && <CalendarTab/>}
+        {tab === 'calendar' && <CalendarTab tasks={apiTasks} onReschedule={handleReschedule} onMarkDone={handleMarkDone} onSkip={handleSkip}/>}
         {tab === 'ask' && <AskTab prefill={askPrefill}/>}
         {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onMoreOptions={handleMoreOptions}/>}
         {tab === 'context' && <ContextTab upcoming={apiContexts.upcoming} active={apiContexts.active} onAddContext={() => setContextModalOpen(true)}/>}

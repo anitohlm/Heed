@@ -985,70 +985,88 @@ function Bubble({ role, content, streaming: isStreaming, actions, chips, onConfi
 }
 
 // ── useSwipe ────────────────────────────────────────────────────
+// Direct DOM listeners with { passive: false } on touchmove so we can
+// call preventDefault() and prevent the browser claiming the gesture.
 function useSwipe(onRight, onLeft, threshold = 80) {
   const [offset, setOffset] = useState(0)
-  const s = useRef({ startX: null, active: false, onRight, onLeft, threshold })
-  s.current.onRight = onRight
-  s.current.onLeft = onLeft
-  s.current.threshold = threshold
+  const ref = useRef(null)
+  const cb = useRef({ onRight, onLeft, threshold })
+  cb.current.onRight = onRight
+  cb.current.onLeft = onLeft
+  cb.current.threshold = threshold
 
-  const onTouchStart = useCallback((e) => {
-    const t = e.touches[0]; if (!t) return
-    s.current.startX = t.clientX; s.current.active = false
-  }, [])
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const st = { startX: null, active: false }
 
-  const onTouchMove = useCallback((e) => {
-    const t = e.touches[0]
-    if (!t || s.current.startX === null) return
-    const dx = t.clientX - s.current.startX
-    if (!s.current.active && Math.abs(dx) > 8) s.current.active = true
-    if (s.current.active) setOffset(Math.max(-130, Math.min(130, dx)))
-  }, [])
-
-  const onTouchEnd = useCallback((e) => {
-    if (!s.current.active) { s.current.startX = null; return }
-    const t = e.changedTouches[0]
-    const dx = t ? t.clientX - s.current.startX : 0
-    s.current.startX = null; s.current.active = false
-    setOffset(0)
-    if (dx > s.current.threshold) s.current.onRight?.()
-    else if (dx < -s.current.threshold) s.current.onLeft?.()
-  }, [])
-
-  const onTouchCancel = useCallback(() => {
-    s.current.startX = null; s.current.active = false; setOffset(0)
-  }, [])
-
-  const onMouseDown = useCallback((e) => {
-    if (e.button !== 0) return
-    s.current.startX = e.clientX; s.current.active = false
-    const onMove = (ev) => {
-      if (s.current.startX === null) return
-      const dx = ev.clientX - s.current.startX
-      if (!s.current.active && Math.abs(dx) > 8) s.current.active = true
-      if (s.current.active) setOffset(Math.max(-130, Math.min(130, dx)))
-    }
-    const onUp = (ev) => {
-      window.removeEventListener('mousemove', onMove)
-      window.removeEventListener('mouseup', onUp)
-      if (!s.current.active) { s.current.startX = null; return }
-      const dx = ev.clientX - s.current.startX
-      s.current.startX = null; s.current.active = false
+    const finish = (clientX) => {
+      if (!st.active) { st.startX = null; return }
+      const dx = clientX - st.startX
+      st.startX = null; st.active = false
       setOffset(0)
-      if (dx > s.current.threshold) s.current.onRight?.()
-      else if (dx < -s.current.threshold) s.current.onLeft?.()
+      if (dx > cb.current.threshold) cb.current.onRight?.()
+      else if (dx < -cb.current.threshold) cb.current.onLeft?.()
     }
-    window.addEventListener('mousemove', onMove)
-    window.addEventListener('mouseup', onUp)
-  }, [])
 
-  return { offset, onTouchStart, onTouchMove, onTouchEnd, onTouchCancel, onMouseDown }
+    const onTouchStart = (e) => {
+      const t = e.touches[0]; if (!t) return
+      st.startX = t.clientX; st.active = false
+    }
+    const onTouchMove = (e) => {
+      const t = e.touches[0]
+      if (!t || st.startX === null) return
+      const dx = t.clientX - st.startX
+      if (!st.active && Math.abs(dx) > 8) st.active = true
+      if (!st.active) return
+      try { if (e.cancelable) e.preventDefault() } catch (_) {}
+      setOffset(Math.max(-130, Math.min(130, dx)))
+    }
+    const onTouchEnd = (e) => {
+      const t = e.changedTouches[0]
+      finish(t ? t.clientX : (st.startX ?? 0))
+    }
+    const onTouchCancel = () => { st.startX = null; st.active = false; setOffset(0) }
+
+    const onMouseDown = (e) => {
+      if (e.button !== 0) return
+      st.startX = e.clientX; st.active = false
+      const onMove = (ev) => {
+        if (st.startX === null) return
+        const dx = ev.clientX - st.startX
+        if (!st.active && Math.abs(dx) > 8) st.active = true
+        if (st.active) setOffset(Math.max(-130, Math.min(130, dx)))
+      }
+      const onUp = (ev) => {
+        window.removeEventListener('mousemove', onMove)
+        window.removeEventListener('mouseup', onUp)
+        finish(ev.clientX)
+      }
+      window.addEventListener('mousemove', onMove)
+      window.addEventListener('mouseup', onUp)
+    }
+
+    el.addEventListener('touchstart', onTouchStart, { passive: true })
+    el.addEventListener('touchmove', onTouchMove, { passive: false })
+    el.addEventListener('touchend', onTouchEnd)
+    el.addEventListener('touchcancel', onTouchCancel)
+    el.addEventListener('mousedown', onMouseDown)
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart)
+      el.removeEventListener('touchmove', onTouchMove)
+      el.removeEventListener('touchend', onTouchEnd)
+      el.removeEventListener('touchcancel', onTouchCancel)
+      el.removeEventListener('mousedown', onMouseDown)
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  return { offset, ref }
 }
 
 // ── HeroCard ───────────────────────────────────────────────────
 function HeroCard({ task, onMarkDone, onSkip, onMoreOptions }) {
   const [hover, setHover] = useState(false)
-  const { offset, onTouchStart, onTouchMove, onTouchEnd, onTouchCancel, onMouseDown } = useSwipe(
+  const { offset, ref: swipeRef } = useSwipe(
     () => onMarkDone?.(task),
     () => onSkip?.(task),
   )
@@ -1069,11 +1087,7 @@ function HeroCard({ task, onMarkDone, onSkip, onMoreOptions }) {
         <span style={{ fontSize: 22, color: C.ochre, opacity: swipeLeft ? progress : 0 }}>↷</span>
       </div>
       <div
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
-        onTouchCancel={onTouchCancel}
-        onMouseDown={onMouseDown}
+        ref={swipeRef}
         onMouseEnter={() => !isSwiping && setHover(true)}
         onMouseLeave={() => setHover(false)}
         style={{
@@ -1131,7 +1145,7 @@ function HeroCard({ task, onMarkDone, onSkip, onMoreOptions }) {
 // ── TaskCard ───────────────────────────────────────────────────
 function TaskCard({ task, delay = 0, onMarkDone, onSkip, onMoreOptions }) {
   const [hover, setHover] = useState(false)
-  const { offset, onTouchStart, onTouchMove, onTouchEnd, onTouchCancel, onMouseDown } = useSwipe(
+  const { offset, ref: swipeRef } = useSwipe(
     () => onMarkDone?.(task),
     () => onSkip?.(task),
   )
@@ -1153,11 +1167,7 @@ function TaskCard({ task, delay = 0, onMarkDone, onSkip, onMoreOptions }) {
         <span style={{ fontSize: 18, color: C.ochre, opacity: swipeLeft ? progress : 0 }}>↷</span>
       </div>
       <div
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
-        onTouchCancel={onTouchCancel}
-        onMouseDown={onMouseDown}
+        ref={swipeRef}
         onMouseEnter={() => !isSwiping && setHover(true)}
         onMouseLeave={() => setHover(false)}
         style={{

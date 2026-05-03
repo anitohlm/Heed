@@ -2594,7 +2594,7 @@ function PlansPanel() {
           key={p.id}
           plan={p}
           delay={i * 50}
-          onSelectPlan={(p.type === 'project' || p.type === 'event') ? setSelectedPlanId : undefined}
+          onSelectPlan={(p.type === 'project' || p.type === 'event') ? (id) => setSelectedPlanId(id) : undefined}
         />
       ))}
       {addOpen && <AddPlanSheet onClose={() => setAddOpen(false)} onAdd={p => { addPlan(p); setAddOpen(false) }}/>}

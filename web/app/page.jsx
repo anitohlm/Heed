@@ -1876,7 +1876,10 @@ function TaskDetailSheet({ task, onClose, onMarkDone, onSkip, onReschedule }) {
   const dateInputRef = useRef(null)
 
   useEffect(() => {
-    requestAnimationFrame(() => setTranslateY(0))
+    const id = requestAnimationFrame(() =>
+      requestAnimationFrame(() => setTranslateY(0))
+    )
+    return () => cancelAnimationFrame(id)
   }, [])
 
   function handleTouchStart(e) { touchRef.current = e.touches[0].clientY }
@@ -1886,7 +1889,8 @@ function TaskDetailSheet({ task, onClose, onMarkDone, onSkip, onReschedule }) {
     if (dy > 0) setTranslateY(dy)
   }
   function handleTouchEnd(e) {
-    const dy = e.changedTouches[0].clientY - (touchRef.current ?? 0)
+    if (touchRef.current == null) return
+    const dy = e.changedTouches[0].clientY - touchRef.current
     touchRef.current = null
     if (dy > 80) { onClose(); return }
     setTranslateY(0)
@@ -1919,7 +1923,7 @@ function TaskDetailSheet({ task, onClose, onMarkDone, onSkip, onReschedule }) {
   ]
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 1000 }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 200 }}>
       <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: `${C.ink}66` }}/>
       <div
         onTouchStart={handleTouchStart}
@@ -1966,7 +1970,7 @@ function TaskDetailSheet({ task, onClose, onMarkDone, onSkip, onReschedule }) {
               Pick date…
             </button>
             <input ref={dateInputRef} type="date"
-              style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', width: 0, height: 0 }}
+              style={{ position: 'fixed', opacity: 0, pointerEvents: 'none', width: 0, height: 0 }}
               onChange={e => { if (e.target.value) reschedule(new Date(e.target.value + 'T12:00:00')) }}/>
           </div>
         </div>

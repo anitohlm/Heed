@@ -1400,7 +1400,7 @@ function useShareCard() {
     a.href = url
     a.download = filename
     a.click()
-    URL.revokeObjectURL(url)
+    setTimeout(() => URL.revokeObjectURL(url), 100)
   }
 
   async function shareCard(el, filename, onFallback) {
@@ -1417,7 +1417,7 @@ function useShareCard() {
     a.href = url
     a.download = filename
     a.click()
-    URL.revokeObjectURL(url)
+    setTimeout(() => URL.revokeObjectURL(url), 100)
     onFallback?.()
   }
 

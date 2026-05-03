@@ -985,11 +985,10 @@ function Bubble({ role, content, streaming: isStreaming, actions, chips, onConfi
 }
 
 // ── useSwipe ────────────────────────────────────────────────────
-// touchstart must be non-passive so the event sequence stays cancelable
-// on iOS Safari. We detect direction early (h vs v) and only call
-// preventDefault for horizontal swipes so vertical page scroll still works.
+// Pure DOM manipulation — no React state in the drag path — so the card
+// moves instantly on every touchmove without waiting for a React render.
+// Mirrors swipe-prototype.html exactly.
 function useSwipe(onRight, onLeft, threshold = 80) {
-  const [offset, setOffset] = useState(0)
   const ref = useRef(null)
   const cb = useRef({ onRight, onLeft, threshold })
   cb.current.onRight = onRight
@@ -999,22 +998,42 @@ function useSwipe(onRight, onLeft, threshold = 80) {
   useEffect(() => {
     const el = ref.current
     if (!el) return
-    // decided: null = undecided, 'h' = horizontal swipe, 'v' = vertical scroll
+    const wrap = el.parentElement        // wrapper div has touch-action:pan-y
     const st = { startX: null, startY: null, decided: null }
 
-    const reset = () => { st.startX = null; st.startY = null; st.decided = null; setOffset(0) }
+    const applyDrag = (dx) => {
+      const clamped = Math.max(-130, Math.min(130, dx))
+      el.style.transform = `translateX(${clamped}px) rotate(${clamped * 0.06}deg) scale(${1 + Math.abs(clamped) / 130 * 0.03})`
+      el.style.transition = 'none'
+      const progress = Math.min(Math.abs(clamped) / 80, 1)
+      const doneEl = wrap?.querySelector('[data-badge="done"]')
+      const skipEl = wrap?.querySelector('[data-badge="skip"]')
+      if (doneEl) doneEl.style.opacity = clamped > 0 ? progress : 0
+      if (skipEl) skipEl.style.opacity = clamped < 0 ? progress : 0
+    }
 
-    const finish = (clientX) => {
-      if (st.decided !== 'h') { reset(); return }
-      const dx = clientX - st.startX
-      reset()
-      if (dx > cb.current.threshold) cb.current.onRight?.()
-      else if (dx < -cb.current.threshold) cb.current.onLeft?.()
+    const snapBack = () => {
+      el.style.transition = 'transform 0.35s cubic-bezier(0.34,1.56,0.64,1)'
+      el.style.transform = 'translateX(0) rotate(0deg) scale(1)'
+      const doneEl = wrap?.querySelector('[data-badge="done"]')
+      const skipEl = wrap?.querySelector('[data-badge="skip"]')
+      if (doneEl) doneEl.style.opacity = 0
+      if (skipEl) skipEl.style.opacity = 0
+      // clear inline styles once snap-back is done so CSS hover can work again
+      el.addEventListener('transitionend', () => { el.style.transform = ''; el.style.transition = '' }, { once: true })
+      st.startX = null; st.startY = null; st.decided = null
+    }
+
+    const finish = (finalDx) => {
+      snapBack()
+      if (finalDx > cb.current.threshold) cb.current.onRight?.()
+      else if (finalDx < -cb.current.threshold) cb.current.onLeft?.()
     }
 
     const onTouchStart = (e) => {
       const t = e.touches[0]; if (!t) return
       st.startX = t.clientX; st.startY = t.clientY; st.decided = null
+      el.style.transition = 'none'       // kill any in-progress snap-back
     }
     const onTouchMove = (e) => {
       const t = e.touches[0]
@@ -1027,33 +1046,35 @@ function useSwipe(onRight, onLeft, threshold = 80) {
       }
       if (st.decided === 'v') return
       if (e.cancelable) e.preventDefault()
-      setOffset(Math.max(-130, Math.min(130, dx)))
+      applyDrag(dx)
     }
     const onTouchEnd = (e) => {
+      if (st.decided !== 'h') { st.startX = null; st.startY = null; st.decided = null; return }
       const t = e.changedTouches[0]
-      finish(t ? t.clientX : (st.startX ?? 0))
+      finish(t ? t.clientX - st.startX : 0)
     }
-    const onTouchCancel = () => reset()
+    const onTouchCancel = () => snapBack()
 
     const onMouseDown = (e) => {
       if (e.button !== 0) return
       st.startX = e.clientX; st.startY = e.clientY; st.decided = null
+      el.style.transition = 'none'
       const onMove = (ev) => {
         if (st.startX === null) return
         const dx = ev.clientX - st.startX
         if (!st.decided && Math.abs(dx) > 5) st.decided = 'h'
-        if (st.decided === 'h') setOffset(Math.max(-130, Math.min(130, dx)))
+        if (st.decided === 'h') applyDrag(dx)
       }
       const onUp = (ev) => {
         window.removeEventListener('mousemove', onMove)
         window.removeEventListener('mouseup', onUp)
-        finish(ev.clientX)
+        if (st.decided !== 'h') { snapBack(); return }
+        finish(ev.clientX - st.startX)
       }
       window.addEventListener('mousemove', onMove)
       window.addEventListener('mouseup', onUp)
     }
 
-    // non-passive touchstart keeps the event sequence cancelable on iOS
     el.addEventListener('touchstart', onTouchStart, { passive: false })
     el.addEventListener('touchmove', onTouchMove, { passive: false })
     el.addEventListener('touchend', onTouchEnd)
@@ -1068,57 +1089,48 @@ function useSwipe(onRight, onLeft, threshold = 80) {
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  return { offset, ref }
+  return { ref }
 }
 
 // ── HeroCard ───────────────────────────────────────────────────
 function HeroCard({ task, onMarkDone, onSkip, onMoreOptions }) {
   const [hover, setHover] = useState(false)
-  const { offset, ref: swipeRef } = useSwipe(
+  const { ref: swipeRef } = useSwipe(
     () => onMarkDone?.(task),
     () => onSkip?.(task),
   )
   const c = CATEGORY[task.category] || CATEGORY.admin
   const isCritical = task.overdue >= 7
-  const isSwiping = offset !== 0
-  const swipeRight = offset > 0
-  const swipeLeft = offset < 0
-  const progress = Math.min(Math.abs(offset) / 80, 1)
   return (
-    <div style={{ position: 'relative', marginBottom: 2 }}>
+    <div style={{ position: 'relative', marginBottom: 2, touchAction: 'pan-y', userSelect: 'none' }}>
       <div style={{
         position: 'absolute', inset: 0, borderRadius: 16,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px',
         pointerEvents: 'none',
       }}>
-        <span style={{ fontSize: 22, color: C.sage, opacity: swipeRight ? progress : 0 }}>✓</span>
-        <span style={{ fontSize: 22, color: C.ochre, opacity: swipeLeft ? progress : 0 }}>↷</span>
+        <span data-badge="done" style={{ fontSize: 22, color: C.sage, opacity: 0 }}>✓</span>
+        <span data-badge="skip" style={{ fontSize: 22, color: C.ochre, opacity: 0 }}>↷</span>
       </div>
       <div
         ref={swipeRef}
-        onMouseEnter={() => !isSwiping && setHover(true)}
+        className="heed-card"
+        onMouseEnter={() => setHover(true)}
         onMouseLeave={() => setHover(false)}
         style={{
           background: `linear-gradient(135deg, ${C.paperHi} 0%, ${C.paper} 100%)`,
-          border: `1.5px solid ${swipeRight ? C.sage + '88' : swipeLeft ? C.ochre + '66' : isCritical ? C.rust + '66' : C.border}`,
+          border: `1.5px solid ${isCritical ? C.rust + '66' : C.border}`,
           borderRadius: 16, padding: '22px 24px',
-          boxShadow: swipeRight ? `0 6px 24px ${C.sage}30` : swipeLeft ? `0 6px 24px ${C.ochre}22` : hover ? C.shadowMed : C.shadowSoft,
-          transform: `translateX(${offset}px) rotate(${offset * 0.06}deg) scale(${isSwiping ? 1.03 : 1})${!isSwiping && hover ? ' translateY(-2px)' : ''}`,
-          transformOrigin: 'center bottom',
-          transition: isSwiping ? 'none' : 'all 0.35s cubic-bezier(0.34,1.56,0.64,1)',
+          boxShadow: hover ? C.shadowMed : C.shadowSoft,
           position: 'relative', overflow: 'hidden',
           animation: 'heed-fadeUp 0.5s ease both',
-          userSelect: 'none', touchAction: 'pan-y',
         }}
       >
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: swipeRight ? C.sage : swipeLeft ? C.ochre : isCritical ? C.rust : c.color }}/>
-        {swipeRight && <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(120deg, ${C.sage}18 0%, transparent 55%)`, pointerEvents: 'none', opacity: progress }}/>}
-        {swipeLeft && <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(300deg, ${C.ochre}18 0%, transparent 55%)`, pointerEvents: 'none', opacity: progress }}/>}
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: isCritical ? C.rust : c.color }}/>
         <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
           <CategoryBadge category={task.category}/>
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
-              <span style={{ fontFamily: 'Lora, serif', fontSize: 22, fontWeight: 600, color: swipeRight ? C.sage : swipeLeft ? C.ochre : C.ink, letterSpacing: -0.3 }}>{task.name}</span>
+              <span style={{ fontFamily: 'Lora, serif', fontSize: 22, fontWeight: 600, color: C.ink, letterSpacing: -0.3 }}>{task.name}</span>
               {task.learned && <Pill tone="sage">✨ learned</Pill>}
               {task.importance && <ImportanceBadge importance={task.importance}/>}
             </div>
@@ -1132,10 +1144,10 @@ function HeroCard({ task, onMarkDone, onSkip, onMoreOptions }) {
             )}
           </div>
           <div style={{ textAlign: 'right', flexShrink: 0 }}>
-            <div style={{ fontFamily: 'Lora, serif', fontSize: 36, fontWeight: 700, color: swipeRight ? C.sage : swipeLeft ? C.ochre : isCritical ? C.rust : C.ochre, lineHeight: 1 }}>
-              {swipeRight ? '✓' : swipeLeft ? '↷' : `${task.overdue}d`}
+            <div style={{ fontFamily: 'Lora, serif', fontSize: 36, fontWeight: 700, color: isCritical ? C.rust : C.ochre, lineHeight: 1 }}>
+              {task.overdue}d
             </div>
-            {!swipeRight && !swipeLeft && <div style={{ fontSize: 11, color: C.inkMute, fontWeight: 700, letterSpacing: 0.6, textTransform: 'uppercase', marginTop: 2 }}>overdue</div>}
+            <div style={{ fontSize: 11, color: C.inkMute, fontWeight: 700, letterSpacing: 0.6, textTransform: 'uppercase', marginTop: 2 }}>overdue</div>
           </div>
         </div>
         <div style={{ marginTop: 16, display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -1153,70 +1165,59 @@ function HeroCard({ task, onMarkDone, onSkip, onMoreOptions }) {
 // ── TaskCard ───────────────────────────────────────────────────
 function TaskCard({ task, delay = 0, onMarkDone, onSkip, onMoreOptions }) {
   const [hover, setHover] = useState(false)
-  const { offset, ref: swipeRef } = useSwipe(
+  const { ref: swipeRef } = useSwipe(
     () => onMarkDone?.(task),
     () => onSkip?.(task),
   )
   const c = CATEGORY[task.category] || CATEGORY.admin
   const isOverdue = task.overdue != null
   const isCritical = isOverdue && task.overdue >= 7
-  const isSwiping = offset !== 0
-  const swipeRight = offset > 0
-  const swipeLeft = offset < 0
-  const progress = Math.min(Math.abs(offset) / 80, 1)
   return (
-    <div style={{ position: 'relative', marginBottom: 10 }}>
+    <div style={{ position: 'relative', marginBottom: 10, touchAction: 'pan-y', userSelect: 'none' }}>
       <div style={{
         position: 'absolute', inset: 0, borderRadius: 12,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 18px',
         pointerEvents: 'none',
       }}>
-        <span style={{ fontSize: 18, color: C.sage, opacity: swipeRight ? progress : 0 }}>✓</span>
-        <span style={{ fontSize: 18, color: C.ochre, opacity: swipeLeft ? progress : 0 }}>↷</span>
+        <span data-badge="done" style={{ fontSize: 18, color: C.sage, opacity: 0 }}>✓</span>
+        <span data-badge="skip" style={{ fontSize: 18, color: C.ochre, opacity: 0 }}>↷</span>
       </div>
       <div
         ref={swipeRef}
-        onMouseEnter={() => !isSwiping && setHover(true)}
+        className="heed-card"
+        onMouseEnter={() => setHover(true)}
         onMouseLeave={() => setHover(false)}
         style={{
           background: `linear-gradient(180deg, ${C.paperHi} 0%, ${C.paper} 100%)`,
-          border: `1.5px solid ${swipeRight ? C.sage + '77' : swipeLeft ? C.ochre + '55' : isCritical ? C.rust + '44' : C.border}`,
+          border: `1.5px solid ${isCritical ? C.rust + '44' : C.border}`,
           borderRadius: 12, padding: '14px 16px 14px 20px',
-          boxShadow: swipeRight ? `0 4px 18px ${C.sage}28` : swipeLeft ? `0 4px 18px ${C.ochre}20` : hover ? C.shadowMed : C.shadowSoft,
-          transform: `translateX(${offset}px) rotate(${offset * 0.06}deg) scale(${isSwiping ? 1.02 : 1})${!isSwiping && hover ? ' translateY(-2px)' : ''}`,
-          transformOrigin: 'center bottom',
-          transition: isSwiping ? 'none' : 'all 0.35s cubic-bezier(0.34,1.56,0.64,1)',
+          boxShadow: hover ? C.shadowMed : C.shadowSoft,
           position: 'relative',
           animation: 'heed-fadeUp 0.5s ease both',
           animationDelay: `${delay}ms`,
-          userSelect: 'none', touchAction: 'pan-y',
         }}
       >
-        <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: swipeRight ? C.sage : swipeLeft ? C.ochre : isCritical ? C.rust : c.color, borderRadius: '3px 0 0 3px' }}/>
-        {swipeRight && <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(120deg, ${C.sage}15 0%, transparent 55%)`, pointerEvents: 'none', opacity: progress }}/>}
-        {swipeLeft && <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(300deg, ${C.ochre}15 0%, transparent 55%)`, pointerEvents: 'none', opacity: progress }}/>}
+        <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: isCritical ? C.rust : c.color, borderRadius: '3px 0 0 3px' }}/>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 14 }}>
           <CategoryBadge category={task.category}/>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
-              <span style={{ fontWeight: 600, fontSize: 15, color: swipeRight ? C.sage : swipeLeft ? C.ochre : C.ink, letterSpacing: -0.1 }}>{task.name}</span>
+              <span style={{ fontWeight: 600, fontSize: 15, color: C.ink, letterSpacing: -0.1 }}>{task.name}</span>
               {task.learned && <Pill tone="sage">✨ learned</Pill>}
               {task.importance && <ImportanceBadge importance={task.importance}/>}
             </div>
             <div style={{ fontSize: 12.5, color: C.inkMute }}>{task.cadence} · last done {task.lastDone}</div>
           </div>
           <div style={{ textAlign: 'right', flexShrink: 0, minWidth: 64 }}>
-            {isOverdue && !swipeRight && !swipeLeft && (<>
+            {isOverdue && (<>
               <div style={{ fontFamily: 'Lora, serif', fontSize: 22, fontWeight: 600, color: isCritical ? C.rust : C.ochre, lineHeight: 1 }}>{task.overdue}d</div>
               <div style={{ fontSize: 10, color: C.inkMute, fontWeight: 600, letterSpacing: 0.4, textTransform: 'uppercase', marginTop: 2 }}>overdue</div>
             </>)}
-            {swipeRight && <div style={{ fontFamily: 'Lora, serif', fontSize: 22, fontWeight: 600, color: C.sage, lineHeight: 1 }}>✓</div>}
-            {swipeLeft && <div style={{ fontFamily: 'Lora, serif', fontSize: 22, fontWeight: 600, color: C.ochre, lineHeight: 1 }}>↷</div>}
-            {!swipeRight && !swipeLeft && task.dueIn === 0 && <Pill tone="sage">today</Pill>}
-            {!swipeRight && !swipeLeft && task.dueIn > 0 && <div style={{ fontSize: 12.5, color: C.inkMute }}>in {task.dueIn}d</div>}
+            {!isOverdue && task.dueIn === 0 && <Pill tone="sage">today</Pill>}
+            {!isOverdue && task.dueIn > 0 && <div style={{ fontSize: 12.5, color: C.inkMute }}>in {task.dueIn}d</div>}
           </div>
         </div>
-        {(hover && !isSwiping) && (
+        {hover && (
           <div style={{ marginTop: 10, display: 'flex', gap: 6, alignItems: 'center', animation: 'heed-fadeIn 0.2s ease' }}>
             <button style={getBtnPrimary()} onClick={() => onMarkDone?.(task)}>Mark done</button>
             <button style={getBtnGhost()} onClick={() => onSkip?.(task)}>Skip</button>

@@ -46,3 +46,14 @@ input, select, textarea {
 @media (min-width: 768px) and (max-width: 1023px) {
   .heed-main { max-width: 640px !important; padding: 20px 24px !important; }
 }
+
+/* Swipeable cards ─────────────────────────────────────────── */
+.heed-card {
+  cursor: grab;
+  transform-origin: center bottom;
+  transition: box-shadow 0.2s ease, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.heed-card:active { cursor: grabbing; }
+@media (hover: hover) {
+  .heed-card:hover { transform: translateY(-2px); }
+}

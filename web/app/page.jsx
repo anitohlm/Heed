@@ -1734,6 +1734,80 @@ const CONTEXT_CHIPS = [
   { type: 'celebration', label: '🌸 Celebration' },
 ]
 
+// ── PlanCard ────────────────────────────────────────────────────
+const PLAN_ICON_BG = { project: '#f0e8d8', goal: '#f5f0d8', event: '#e8f0e8' }
+
+function PlanCard({ plan, delay = 0 }) {
+  const doneCount = plan.tasks ? plan.tasks.filter(t => t.done).length : 0
+  const totalCount = plan.tasks ? plan.tasks.length : 0
+  const pct = totalCount > 0 ? Math.round(doneCount / totalCount * 100) : 0
+  const goalPct = plan.type === 'goal' && plan.target > 0
+    ? Math.round(plan.current / plan.target * 100)
+    : 0
+  const daysUntil = plan.eventDate
+    ? Math.round((plan.eventDate - new Date()) / 86400000)
+    : null
+  const undone = plan.tasks ? plan.tasks.filter(t => !t.done) : []
+  const preview = undone.slice(0, 2)
+  const extra = undone.length - preview.length
+
+  const subtitle = {
+    project: `${doneCount} of ${totalCount} tasks · Due ${plan.dueDate}`,
+    goal:    `${plan.unit}${plan.current.toLocaleString()} saved · Target ${plan.targetDate}`,
+    event:   daysUntil === null ? plan.title
+           : daysUntil <= 0    ? 'Today!'
+           : daysUntil === 1   ? 'Tomorrow'
+           : `in ${daysUntil} days`,
+  }[plan.type]
+
+  const badge = {
+    project: <div style={{ fontSize: 13, fontWeight: 700, color: C.rust, flexShrink: 0 }}>{pct}%</div>,
+    goal:    <div style={{ fontSize: 13, fontWeight: 700, color: C.ochre, flexShrink: 0 }}>{goalPct}%</div>,
+    event:   undone.length > 0
+               ? <div style={{ background: '#e8f0e8', color: '#3a6840', borderRadius: 999, padding: '2px 9px', fontSize: 11, fontWeight: 600, flexShrink: 0 }}>{undone.length} left</div>
+               : null,
+  }[plan.type]
+
+  return (
+    <div style={{ background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 14, padding: 14, marginBottom: 10, animation: `heed-fadeIn 0.2s ease ${delay}ms both` }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+        <div style={{ width: 34, height: 34, borderRadius: 9, background: PLAN_ICON_BG[plan.type] || C.bellySoft, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>
+          {plan.icon}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: C.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{plan.title}</div>
+          <div style={{ fontSize: 11.5, color: C.inkMute, marginTop: 2 }}>{subtitle}</div>
+        </div>
+        {badge}
+      </div>
+
+      {(plan.type === 'project' || plan.type === 'goal') && (
+        <div style={{ height: 4, background: C.bellySoft, borderRadius: 2, marginBottom: 8, overflow: 'hidden' }}>
+          <div style={{ height: '100%', borderRadius: 2, background: plan.type === 'project' ? C.rust : C.ochre, width: `${plan.type === 'project' ? pct : goalPct}%`, transition: 'width 0.4s ease' }}/>
+        </div>
+      )}
+
+      {plan.type === 'goal' && (
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          <span style={{ background: '#f5f0d8', color: '#7a6a20', borderRadius: 999, padding: '2px 9px', fontSize: 11, fontWeight: 600 }}>
+            {plan.unit}{(plan.target - plan.current).toLocaleString()} to go
+          </span>
+        </div>
+      )}
+
+      {(plan.type === 'project' || plan.type === 'event') && preview.map((t, i) => (
+        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '4px 0', borderTop: `1px solid ${C.hairline}`, fontSize: 12, color: C.ink }}>
+          <div style={{ width: 15, height: 15, borderRadius: 4, border: `1.5px solid ${C.border}`, flexShrink: 0 }}/>
+          {t.label}
+        </div>
+      ))}
+      {(plan.type === 'project' || plan.type === 'event') && extra > 0 && (
+        <div style={{ fontSize: 11, color: C.inkMute, padding: '5px 0', borderTop: `1px solid ${C.hairline}`, marginTop: 2 }}>+ {extra} more task{extra !== 1 ? 's' : ''}</div>
+      )}
+    </div>
+  )
+}
+
 function ContextTab({ upcoming, active, activeContext, onAddContext, onQuickContext, onImBetter, onExtend, onDetailOpen }) {
   const allUpcoming = [...(active || []).map(mapApiContext), ...(upcoming || []).map(mapApiContext)]
   return (

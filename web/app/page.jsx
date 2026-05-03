@@ -2341,6 +2341,50 @@ function ActiveContextCard({ context, onImBetter, onExtend }) {
   )
 }
 
+// ── RecoverySummarySheet ───────────────────────────────────────
+function RecoverySummarySheet({ open, context, heldTasks, onClose, onResumeAll, onEaseBack }) {
+  if (!open || !context) return null
+  const now = new Date()
+  const days = Math.max(1, Math.round((now - context.startDate) / 86400000))
+  const top3 = heldTasks.slice(0, 3)
+  const extraCount = Math.max(0, heldTasks.length - 3)
+  const gladEmoji = QUICK_CONTEXT_CONFIG[context.type]?.icon || '✨'
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 200 }} onClick={onClose}>
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(2px)' }}/>
+      <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: C.paper, borderRadius: '20px 20px 0 0', padding: `24px 24px calc(24px + env(safe-area-inset-bottom)) 24px`, animation: 'heed-slideUp 0.28s cubic-bezier(0.32,0.72,0,1)', boxShadow: '0 -8px 32px rgba(0,0,0,0.12)' }}>
+        <div style={{ width: 40, height: 4, borderRadius: 2, background: C.border, margin: '0 auto 20px' }}/>
+        <div style={{ fontFamily: 'Lora, serif', fontSize: 17, fontWeight: 600, color: C.ink, marginBottom: 4 }}>Glad you're back {gladEmoji}</div>
+        <div style={{ fontSize: 12.5, color: C.inkMute, marginBottom: 14 }}>{context.label} ran for <strong>{days} day{days !== 1 ? 's' : ''}</strong>. Here's what Heed held back:</div>
+        <div style={{ background: C.bellySoft, borderRadius: 10, padding: '12px 14px', marginBottom: 14 }}>
+          {top3.length === 0 ? (
+            <div style={{ fontSize: 12.5, color: C.inkMute, padding: '4px 0' }}>No tasks were held during this period.</div>
+          ) : (
+            <>
+              {top3.map((t, i) => (
+                <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, color: C.ink, padding: '4px 0', borderBottom: (i < top3.length - 1 || extraCount > 0) ? `1px solid ${C.hairline}` : 'none' }}>
+                  <span>{t.name}</span>
+                  {t.overdue ? <span style={{ color: C.rust, fontWeight: 600 }}>+{t.overdue}d overdue</span> : <span style={{ color: C.inkMute }}>held</span>}
+                </div>
+              ))}
+              {extraCount > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, color: C.inkMute, padding: '4px 0' }}>
+                  <span>+ {extraCount} more task{extraCount !== 1 ? 's' : ''}</span>
+                  <span style={{ color: C.sage, fontWeight: 600 }}>held</span>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={onResumeAll} style={{ ...getBtnPrimary(), flex: 2, background: C.sage, padding: 11, fontSize: 13, fontWeight: 700, borderRadius: 10 }}>Resume all</button>
+          <button onClick={onEaseBack} style={{ ...getBtnGhost(), flex: 1, padding: 11, fontSize: 13, borderRadius: 10 }}>Ease back in</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Main App ───────────────────────────────────────────────────
 export default function HeedApp() {
   const [apiTasks, setApiTasks] = useState([])

@@ -1524,7 +1524,6 @@ function ContextTab({ upcoming, active, onAddContext }) {
 }
 
 // ── CalendarTab ────────────────────────────────────────────────
-const TODAY_DATE = new Date()
 const DAYS_OF_WEEK = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
 
 function startOfWeek(date) {
@@ -1572,6 +1571,7 @@ function CalendarChip({ item }) {
 }
 
 function CalendarTab() {
+  const TODAY_DATE = new Date()
   const [weekOffset, setWeekOffset] = useState(0)
   const weekStart = addDays(startOfWeek(TODAY_DATE), weekOffset * 7)
   const schedule = buildSchedule(weekStart)
@@ -2217,7 +2217,10 @@ export default function HeedApp() {
 
   const tabs = APP_TABS
 
-  const todayStr = TODAY_DATE.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+  const [todayStr, setTodayStr] = useState('')
+  useEffect(() => {
+    setTodayStr(new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }))
+  }, [])
 
   return (
     <div style={{ minHeight: '100vh', background: `radial-gradient(ellipse at 30% 0%, ${C.paper} 0%, ${C.cream} 60%)`, color: C.ink, fontFamily: '"Nunito Sans", -apple-system, BlinkMacSystemFont, sans-serif' }}>

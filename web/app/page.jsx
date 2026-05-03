@@ -525,14 +525,7 @@ function MobileBottomNav({ tab, onTab }) {
                 <circle cx="11.5" cy="12" r="1" fill={ic}/>
               </svg>
             ),
-            ask: (
-              <svg width="17" height="17" viewBox="0 0 17 17" fill="none">
-                <path d="M2 3.5A1.5 1.5 0 0 1 3.5 2h10A1.5 1.5 0 0 1 15 3.5v7A1.5 1.5 0 0 1 13.5 12H10l-3 2.5V12H3.5A1.5 1.5 0 0 1 2 10.5v-7z" stroke={ic} strokeWidth="1.4" strokeLinejoin="round"/>
-                <circle cx="5.5" cy="7" r="0.9" fill={ic}/>
-                <circle cx="8.5" cy="7" r="0.9" fill={ic}/>
-                <circle cx="11.5" cy="7" r="0.9" fill={ic}/>
-              </svg>
-            ),
+            ask: <MayaOwl size={22} idle={false}/>,
             tracks: (
               <svg width="17" height="17" viewBox="0 0 17 17" fill="none">
                 <path d="M8.5 15.5V6.5" stroke={ic} strokeWidth="1.4" strokeLinecap="round"/>

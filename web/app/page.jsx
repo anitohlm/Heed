@@ -3311,6 +3311,147 @@ function SheetSectionLabel({ children }) {
   return <div style={{ fontSize: 10, fontWeight: 700, color: C.inkMute, letterSpacing: 0.7, textTransform: 'uppercase', marginBottom: 6 }}>{children}</div>
 }
 
+// ── ShareCardSheet ─────────────────────────────────────────────
+function ShareCardSheet({ open, routine, onClose }) {
+  const [variant, setVariant] = useState('streak')
+  const [shareTheme, setShareTheme] = useState('B')
+  const [loading, setLoading] = useState(false)
+  const [fallbackToast, setFallbackToast] = useState(false)
+  const hiddenRef = useRef(null)
+  const { downloadCard, shareCard } = useShareCard()
+
+  useEffect(() => {
+    const saved = localStorage.getItem('heed_shareTheme')
+    if (saved && SHARE_THEMES[saved]) setShareTheme(saved)
+  }, [])
+  useEffect(() => {
+    localStorage.setItem('heed_shareTheme', shareTheme)
+  }, [shareTheme])
+  useEffect(() => {
+    if (!fallbackToast) return
+    const id = setTimeout(() => setFallbackToast(false), 3500)
+    return () => clearTimeout(id)
+  }, [fallbackToast])
+
+  if (!open || !routine) return null
+
+  const slug = routine.name.toLowerCase().replace(/\s+/g, '-')
+  const filename = `heed-${slug}-${variant}.png`
+
+  async function handleDownload() {
+    setLoading(true)
+    try { await downloadCard(hiddenRef.current, filename) }
+    finally { setLoading(false) }
+  }
+
+  async function handleShare() {
+    setLoading(true)
+    try { await shareCard(hiddenRef.current, filename, () => setFallbackToast(true)) }
+    finally { setLoading(false) }
+  }
+
+  const VARIANTS = [['streak', 'Streak'], ['progress', 'Progress'], ['routine', 'Routine']]
+  const THEME_DOT_COLORS = { B: '#c8a450', D: '#a8c5a0', E: '#8a5444' }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.45)' }} onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} style={{
+        position: 'absolute', bottom: 0, left: 0, right: 0,
+        background: C.paper, borderRadius: '20px 20px 0 0',
+        padding: `22px 22px calc(22px + env(safe-area-inset-bottom)) 22px`,
+        animation: 'heed-slideUp 0.28s cubic-bezier(0.32,0.72,0,1)',
+        boxShadow: '0 -8px 32px rgba(0,0,0,0.12)',
+        maxHeight: '92vh', overflowY: 'auto',
+      }}>
+        {/* Drag handle */}
+        <div style={{ width: 32, height: 4, background: '#e0d8d0', borderRadius: 999, margin: '0 auto 18px' }}/>
+
+        {/* Title */}
+        <div style={{ fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 700, color: C.ink, marginBottom: 20, textAlign: 'center' }}>
+          Share your routine card
+        </div>
+
+        {/* Card preview — 138×184 = 750×1000 scaled by 0.184 */}
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
+          <div style={{ width: 138, height: 184, borderRadius: 5, overflow: 'hidden', flexShrink: 0, boxShadow: '0 4px 16px rgba(0,0,0,0.18)' }}>
+            <div style={{ width: 750, height: 1000, transform: 'scale(0.184)', transformOrigin: 'top left' }}>
+              <ShareableCard routine={routine} variant={variant} theme={shareTheme}/>
+            </div>
+          </div>
+        </div>
+
+        {/* Variant tabs */}
+        <div style={{ background: '#f5f0ea', borderRadius: 10, padding: 4, display: 'flex', gap: 4, marginBottom: 16 }}>
+          {VARIANTS.map(([v, label]) => (
+            <button key={v} onClick={() => setVariant(v)} style={{
+              flex: 1, padding: '8px 0', borderRadius: 7,
+              fontSize: 13, fontWeight: variant === v ? 700 : 500,
+              border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+              background: variant === v ? '#fff' : 'transparent',
+              color: variant === v ? C.warmDark : C.inkSoft,
+              boxShadow: variant === v ? '0 1px 4px rgba(0,0,0,0.12)' : 'none',
+              transition: 'all 0.15s',
+            }}>{label}</button>
+          ))}
+        </div>
+
+        {/* Theme dots */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, letterSpacing: 0.8, textTransform: 'uppercase' }}>Theme</span>
+          <div style={{ display: 'flex', gap: 10 }}>
+            {Object.entries(THEME_DOT_COLORS).map(([key, color]) => (
+              <button key={key} aria-label={`Theme ${key}`} onClick={() => setShareTheme(key)} style={{
+                width: 26, height: 26, borderRadius: '50%',
+                background: color, border: 'none', cursor: 'pointer',
+                outline: shareTheme === key ? `3px solid ${color}` : '3px solid transparent',
+                outlineOffset: 3,
+                boxShadow: shareTheme === key ? `0 0 0 2px ${C.paper}` : 'none',
+                transition: 'all 0.15s',
+              }}/>
+            ))}
+          </div>
+        </div>
+
+        {/* Button row */}
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button disabled={loading} onClick={handleDownload} style={{
+            flex: 2, padding: '13px 0', borderRadius: 10, border: 'none',
+            cursor: loading ? 'not-allowed' : 'pointer',
+            background: '#3d2b1f', color: '#fdf5e8',
+            fontSize: 14, fontWeight: 600, fontFamily: 'inherit',
+            opacity: loading ? 0.65 : 1, transition: 'opacity 0.15s',
+          }}>
+            {loading ? 'Saving…' : '⬇ Download PNG'}
+          </button>
+          <button disabled={loading} onClick={handleShare} style={{
+            flex: 1, padding: '13px 0', borderRadius: 10,
+            background: 'transparent', border: `1.5px solid #e0d4c8`,
+            color: C.ink, fontSize: 14, fontWeight: 500,
+            fontFamily: 'inherit', cursor: loading ? 'not-allowed' : 'pointer',
+            opacity: loading ? 0.65 : 1, transition: 'opacity 0.15s',
+          }}>
+            ↗ Share
+          </button>
+        </div>
+
+        {/* Fallback toast */}
+        {fallbackToast && (
+          <div style={{ marginTop: 12, padding: '8px 14px', background: C.bellySoft, borderRadius: 8, fontSize: 12, color: C.inkSoft, textAlign: 'center', animation: 'heed-fadeIn 0.2s ease' }}>
+            Saved to downloads — share from there
+          </div>
+        )}
+
+        {/* Hidden full-size card for html2canvas capture */}
+        <div style={{ position: 'absolute', left: '-9999px', top: 0, pointerEvents: 'none' }} aria-hidden="true">
+          <div ref={hiddenRef}>
+            <ShareableCard routine={routine} variant={variant} theme={shareTheme}/>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── ContextDetailSheet ─────────────────────────────────────────
 function ContextDetailSheet({ open, ctx, heldTasks, onClose, onImBetter, onExtend, onAskHeed }) {
   if (!open || !ctx) return null

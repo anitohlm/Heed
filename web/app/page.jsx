@@ -1674,6 +1674,7 @@ function startOfWeek(date) {
 function addDays(date, n) { const d = new Date(date); d.setDate(d.getDate() + n); return d }
 function fmtMonth(d) { return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) }
 function sameDay(a, b) { return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate() }
+const parseDue = val => { if (!val) return null; const d = new Date(val); return isNaN(d) ? null : d }
 
 function MonthStrip({ tasks, monthOffset, selectedWeekStart, onWeekSelect, onMonthChange }) {
   const touchRef = useRef(null)
@@ -1705,8 +1706,6 @@ function MonthStrip({ tasks, monthOffset, selectedWeekStart, onWeekSelect, onMon
   }
 
   const selKey = selectedWeekStart.toDateString()
-
-  const parseDue = val => { if (!val) return null; const d = new Date(val); return isNaN(d) ? null : d }
 
   return (
     <div onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
@@ -1776,15 +1775,19 @@ function WeekDetail({ tasks, weekStart, onTaskTap, onTaskDrop, onWeekOffsetChang
   const [ghostPos, setGhostPos] = useState(null)
   const [dropCol, setDropCol] = useState(null)
   const colRefs = useRef([])
+  const containerRef = useRef(null)
+  const didDragRef = useRef(false)
 
   function handlePointerDown(e, task) {
-    e.currentTarget.setPointerCapture(e.pointerId)
+    didDragRef.current = false
+    containerRef.current?.setPointerCapture(e.pointerId)
     setDragTask(task)
     setGhostPos({ x: e.clientX, y: e.clientY })
   }
   function handlePointerMove(e) {
     if (!dragTask) return
     setGhostPos({ x: e.clientX, y: e.clientY })
+    didDragRef.current = true
     const idx = colRefs.current.findIndex(el => {
       if (!el) return false
       const r = el.getBoundingClientRect()
@@ -1795,7 +1798,6 @@ function WeekDetail({ tasks, weekStart, onTaskTap, onTaskDrop, onWeekOffsetChang
   function handlePointerUp(e) {
     if (dragTask && dropCol !== null) {
       const newDate = addDays(weekStart, dropCol)
-      const parseDue = val => { if (!val) return null; const d = new Date(val); return isNaN(d) ? null : d }
       const origDate = parseDue(dragTask.next_due_at)
       if (!origDate || !sameDay(origDate, newDate)) {
         onTaskDrop(dragTask, newDate)
@@ -1809,8 +1811,10 @@ function WeekDetail({ tasks, weekStart, onTaskTap, onTaskDrop, onWeekOffsetChang
   const startLabel = weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
   const endLabel   = addDays(weekStart, 6).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 
+  colRefs.current = []
   return (
     <div
+      ref={containerRef}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
       onPointerMove={dragTask ? handlePointerMove : undefined}
@@ -1826,7 +1830,6 @@ function WeekDetail({ tasks, weekStart, onTaskTap, onTaskDrop, onWeekOffsetChang
           const date      = addDays(weekStart, i)
           const isToday   = sameDay(date, today)
           const isTarget  = dropCol === i && dragTask != null
-          const parseDue  = val => { if (!val) return null; const d = new Date(val); return isNaN(d) ? null : d }
           const dayTasks  = tasks.filter(t => { const d = parseDue(t.next_due_at); return d && sameDay(d, date) })
           return (
             <div key={i} ref={el => colRefs.current[i] = el}
@@ -1847,7 +1850,7 @@ function WeekDetail({ tasks, weekStart, onTaskTap, onTaskDrop, onWeekOffsetChang
                   return (
                     <div key={task.id}
                       onPointerDown={e => handlePointerDown(e, task)}
-                      onClick={() => { if (!dragTask) onTaskTap(task) }}
+                      onClick={() => { if (!didDragRef.current) onTaskTap(task) }}
                       style={{ background: bg, borderRadius: 4, padding: '3px 5px', fontSize: 9.5, color: C.cream, fontWeight: 600, cursor: 'pointer', userSelect: 'none', opacity: dragTask?.id === task.id ? 0.4 : 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', touchAction: 'none' }}>
                       {icon} {task.name}
                     </div>

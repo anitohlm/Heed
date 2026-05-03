@@ -3286,7 +3286,7 @@ function TaskDetailSheet({ task, onClose, onMarkDone, onSkip, onReschedule }) {
   )
 }
 
-function CalendarTab({ tasks, contexts, routines, onReschedule, onMarkDone, onSkip, onAddTask, onAddContext, onEditRoutine }) {
+function CalendarTab({ tasks, contexts, routines, onReschedule, onMarkDone, onSkip, onAddTask, onAddContext, onEditRoutine, onApplyRetroSuggestion }) {
   const [monthOffset, setMonthOffset] = useState(0)
   const [weekStart, setWeekStart]     = useState(startOfWeek(TODAY_DATE))
   const [detailTask, setDetailTask]   = useState(null)
@@ -3369,7 +3369,7 @@ function CalendarTab({ tasks, contexts, routines, onReschedule, onMarkDone, onSk
         />
       )}
       {retroOpen && (
-        <RetrospectiveSheet retrospective={retrospective} onClose={() => setRetroOpen(false)}/>
+        <RetrospectiveSheet retrospective={retrospective} onClose={() => setRetroOpen(false)} onApplySuggestion={onApplyRetroSuggestion}/>
       )}
     </div>
   )
@@ -3872,8 +3872,11 @@ function Toast({ message, onView, onUndo, onDismiss }) {
 
 // ── RetrospectiveSheet ─────────────────────────────────────────
 // Phase 1: client-side computed retrospective. See computeRetrospective().
-function RetrospectiveSheet({ retrospective, onClose }) {
+// Phase 2: rule-based patterns + suggestion buttons wired via onApplySuggestion.
+function RetrospectiveSheet({ retrospective, onClose, onApplySuggestion }) {
   const [translateY, setTranslateY] = useState(100)
+  const [appliedIds, setAppliedIds] = useState(() => new Set())
+  const [pendingId, setPendingId] = useState(null)
   const touchRef = useRef(null)
   useEffect(() => {
     const id = requestAnimationFrame(() =>
@@ -3980,13 +3983,81 @@ function RetrospectiveSheet({ retrospective, onClose }) {
           <>
             {sectionLabel('Worth attention')}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {r.needs_attention.map(a => (
-                <div key={a.task_id} style={{ background: C.ochreSoft, border: `1px solid ${C.ochre}44`, borderRadius: 10, padding: '12px 14px' }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: C.ink, marginBottom: 3 }}>{a.task_name}</div>
-                  <div style={{ fontSize: 12.5, color: C.inkSoft, marginBottom: 8 }}>{a.detail}</div>
-                  {a.suggested_label && (
-                    <div style={{ fontSize: 11, color: C.warmDark, fontWeight: 600 }}>Suggested: {a.suggested_label}</div>
-                  )}
+              {r.needs_attention.map(a => {
+                const sid = `adjust-${a.task_id}`
+                const applied = appliedIds.has(sid)
+                const pending = pendingId === sid
+                const canApply = a.suggested_action === 'adjust_cadence' && a.suggested_payload?.new_cadence_days
+                return (
+                  <div key={a.task_id} style={{ background: C.ochreSoft, border: `1px solid ${C.ochre}44`, borderRadius: 10, padding: '12px 14px' }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: C.ink, marginBottom: 3 }}>{a.task_name}</div>
+                    <div style={{ fontSize: 12.5, color: C.inkSoft, marginBottom: 10 }}>{a.detail}</div>
+                    {canApply && (
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button
+                          disabled={applied || pending}
+                          onClick={async () => {
+                            if (!onApplySuggestion) return
+                            setPendingId(sid)
+                            try {
+                              const ok = await onApplySuggestion({
+                                action_type: 'adjust_cadence',
+                                target_id: a.task_id,
+                                target_name: a.task_name,
+                                payload: a.suggested_payload,
+                              })
+                              if (ok) setAppliedIds(s => new Set([...s, sid]))
+                            } finally {
+                              setPendingId(null)
+                            }
+                          }}
+                          style={{
+                            background: applied ? C.sage : C.warmDark,
+                            color: C.cream,
+                            border: 'none',
+                            padding: '7px 14px',
+                            borderRadius: 8,
+                            fontSize: 12,
+                            fontWeight: 600,
+                            cursor: (applied || pending) ? 'default' : 'pointer',
+                            opacity: pending ? 0.6 : 1,
+                            fontFamily: 'inherit',
+                          }}>
+                          {applied ? `✓ Pushed to ${a.suggested_payload.new_cadence_days}d` : pending ? 'Applying…' : a.suggested_label}
+                        </button>
+                        {!applied && !pending && (
+                          <button
+                            onClick={() => setAppliedIds(s => new Set([...s, sid]))}
+                            style={{
+                              background: 'transparent',
+                              color: C.inkMute,
+                              border: `1px solid ${C.border}`,
+                              padding: '7px 12px',
+                              borderRadius: 8,
+                              fontSize: 12,
+                              fontWeight: 500,
+                              cursor: 'pointer',
+                              fontFamily: 'inherit',
+                            }}>
+                            Dismiss
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </>
+        )}
+        {r.patterns.length > 0 && (
+          <>
+            {sectionLabel('Patterns')}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {r.patterns.map((p, i) => (
+                <div key={`${p.kind}-${i}`} style={{ background: C.bellySoft, borderRadius: 10, padding: '10px 14px' }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: C.warmDark, marginBottom: 2 }}>{p.label}</div>
+                  <div style={{ fontSize: 12, color: C.inkSoft, lineHeight: 1.5 }}>{p.detail}</div>
                 </div>
               ))}
             </div>
@@ -4700,6 +4771,31 @@ export default function HeedApp() {
     setModalOpen(true)
   }, [])
 
+  // Apply a Phase 2 retrospective suggestion. Returns true if the action
+  // succeeded so the sheet can mark it as ✓. Phase 2 wires adjust_cadence
+  // (PATCH /api/tasks/{id}); other action_types fall through to no-op.
+  const handleApplyRetroSuggestion = useCallback(async (suggestion) => {
+    try {
+      if (suggestion.action_type === 'adjust_cadence') {
+        const newDays = suggestion.payload?.new_cadence_days
+        if (!newDays || !suggestion.target_id) return false
+        const resp = await fetch(`${FUNCTIONS_URL}/api/tasks/${suggestion.target_id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ explicit_cadence_days: newDays }),
+        })
+        if (!resp.ok) return false
+        const updated = await resp.json()
+        setApiTasks(t => t.map(x => x.id === suggestion.target_id ? updated : x))
+        setToast({ message: `${suggestion.target_name || 'Task'} cadence pushed to ${newDays}d` })
+        return true
+      }
+      return false
+    } catch {
+      return false
+    }
+  }, [FUNCTIONS_URL])
+
   const handleAddContext = useCallback(async (data) => {
     const body = { context_type: data.type, start_date: data.startDate, end_date: data.endDate, description: data.description }
     try {
@@ -4875,7 +4971,7 @@ export default function HeedApp() {
 
       <main className="heed-main" style={{ maxWidth: 820, margin: '0 auto', padding: '28px 32px 100px 32px', minHeight: 'calc(100vh - 140px)', display: 'flex', flexDirection: 'column' }}>
         {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} upcomingContexts={upcomingContexts} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onSkipRoutineToday={handleSkipRoutineToday} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAskHeed={handleAskHeed} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen}/>}
-        {tab === 'calendar' && <CalendarTab tasks={apiTasks} contexts={[...(apiContexts.active||[]), ...(apiContexts.upcoming||[])]} routines={routines} onReschedule={handleReschedule} onMarkDone={handleMarkDone} onSkip={handleSkip} onAddTask={() => setModalOpen(true)} onAddContext={() => setContextModalOpen(true)} onEditRoutine={handleEditRoutine}/>}
+        {tab === 'calendar' && <CalendarTab tasks={apiTasks} contexts={[...(apiContexts.active||[]), ...(apiContexts.upcoming||[])]} routines={routines} onReschedule={handleReschedule} onMarkDone={handleMarkDone} onSkip={handleSkip} onAddTask={() => setModalOpen(true)} onAddContext={() => setContextModalOpen(true)} onEditRoutine={handleEditRoutine} onApplyRetroSuggestion={handleApplyRetroSuggestion}/>}
         {tab === 'ask' && <AskTab prefill={askPrefill} autoSend={askAutoSend} onAutoSendDone={() => setAskAutoSend(false)} onLightenRoutine={handleLightenRoutine}/>}
         {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen}/>}
         {tab === 'context' && <LifeTab upcoming={apiContexts.upcoming} active={apiContexts.active} activeContext={activeContext} onAddContext={() => setContextModalOpen(true)} onQuickContext={type => setQuickContextType(type)} onImBetter={() => setRecoveryOpen(true)} onExtend={handleExtendContext} onDetailOpen={handleDetailOpen}/>}

@@ -84,10 +84,10 @@ const CONTEXTS_UPCOMING_DEMO = [
   },
 ]
 const SUGGESTIONS = [
-  { text: "What am I forgetting?", emoji: "🌿" },
-  { text: "Plan around my Singapore trip", emoji: "✈️" },
+  { text: "What am I forgetting?", emoji: "🦉" },
+  { text: "Plan around my Singapore trip", emoji: "🗺️" },
   { text: "I have a busy week — lighten my routine", emoji: "🪶" },
-  { text: "Why did I skip my morning routine this week?", emoji: "☕" },
+  { text: "Why did I skip my morning routine this week?", emoji: "🌅" },
 ]
 const SCRIPTED_RESPONSES = {
   "What am I forgetting?": {
@@ -102,8 +102,8 @@ const SCRIPTED_RESPONSES = {
       { action_type: 'defer', emoji: '→', label: 'Defer Maynilad bill', payload: { defer_until: '2026-05-10' } },
     ],
     chips: [
-      { emoji: '✈️', text: 'Plan around my Singapore trip' },
-      { emoji: '📞', text: 'Why did I skip calling Mom?' },
+      { emoji: '🗺️', text: 'Plan around my Singapore trip' },
+      { emoji: '🕊️', text: 'Why did I skip calling Mom?' },
       { emoji: '✓', text: 'I already paid the bills' },
     ],
   },
@@ -116,9 +116,9 @@ const SCRIPTED_RESPONSES = {
     ],
     answer: `Got it — **Singapore trip Apr 28 – May 2** is locked in.\n\n**Before you leave (next 6 days):**\n• Pay Maynilad and Meralco — handle these this week.\n• Submit timesheet (Friday).\n• Refill water dispenser the day before you fly.\n\n**While you're away:**\n• I'll pause your morning and evening routines automatically.\n\n**When you're back (May 3–5):**\n• I'll resume your routines on May 3 with a soft start — just the essentials.\n• Aircon cleaning can wait until that weekend.`,
     chips: [
-      { emoji: '🌿', text: 'Lighten my routine while away' },
-      { emoji: '📋', text: 'What am I forgetting before I leave?' },
-      { emoji: '👍', text: 'Looks good, thanks' },
+      { emoji: '🍃', text: 'Lighten my routine while away' },
+      { emoji: '🌾', text: 'What am I forgetting before I leave?' },
+      { emoji: '🌱', text: 'Looks good, thanks' },
     ],
   },
   "I have a busy week — lighten my routine": {
@@ -132,7 +132,7 @@ const SCRIPTED_RESPONSES = {
       { action_type: 'lighten_routine', emoji: '🪶', label: 'Lighten Morning Routine', payload: { duration_days: 7, preview: { remove: [{ name: 'Stretching', duration_min: 5 }, { name: 'Morning journal', duration_min: 10 }], keep: ['Vitamins', 'Coffee'] } } },
     ],
     chips: [
-      { emoji: '📅', text: 'How long until things calm down?' },
+      { emoji: '🍂', text: 'How long until things calm down?' },
       { emoji: '🌙', text: 'Lighten my evening routine too' },
       { emoji: '✓', text: "Sounds right, let's do it" },
     ],
@@ -145,12 +145,12 @@ const SCRIPTED_RESPONSES = {
     answer: `You skipped Monday and Tuesday this week.\n\n**Pattern across both days:**\n• Both days you woke up later than usual (after 8 AM based on first task logs).\n• You marked the skip as "too busy" both times.\n\n**The bigger picture:**\nYour morning routine completion drops sharply when your bedtime goes past 11 PM. When sleep slips, your morning slips with it.\n\nWant me to send a quiet "wind down" nudge at 10:30 PM on nights when you've been up late?`,
     actions: [
       { action_type: 'lighten_routine', emoji: '🪶', label: 'Lighten it this week', payload: { duration_days: 5, preview: { remove: [{ name: 'Stretching', duration_min: 5 }, { name: 'Morning journal', duration_min: 10 }], keep: ['Vitamins', 'Coffee'] } } },
-      { action_type: 'skip', emoji: '⏭', label: 'Skip this week entirely', payload: {} },
+      { action_type: 'skip', emoji: '🍂', label: 'Skip this week entirely', payload: {} },
     ],
     chips: [
-      { emoji: '📊', text: 'Show me the full skip history' },
-      { emoji: '🌿', text: 'Lighten the routine permanently' },
-      { emoji: '👍', text: 'Thanks, I just needed to know' },
+      { emoji: '🌳', text: 'Show me the full skip history' },
+      { emoji: '🌱', text: 'Lighten the routine permanently' },
+      { emoji: '🪴', text: 'Thanks, I just needed to know' },
     ],
   },
 }
@@ -158,9 +158,9 @@ const FALLBACK_RESPONSE = {
   thinking: ["Searching your task memory...", "Cross-referencing context...", "Drafting a response..."],
   answer: `I'm reaching out to your personal agent now. If I seem slow, I'm probably thinking hard.\n\nIn this prototype, a few scripted responses are pre-wired — try one of the suggestion chips above to see the full experience. The live agent uses Azure OpenAI + AI Search to answer anything about your tasks and patterns.`,
   chips: [
-    { emoji: '🤔', text: 'What am I forgetting?' },
-    { emoji: '✈️', text: 'Plan around my Singapore trip' },
-    { emoji: '🌿', text: 'I have a busy week — lighten my routine' },
+    { emoji: '🦉', text: 'What am I forgetting?' },
+    { emoji: '🗺️', text: 'Plan around my Singapore trip' },
+    { emoji: '🪶', text: 'I have a busy week — lighten my routine' },
   ],
 }
 
@@ -460,6 +460,42 @@ function MobileBottomNav({ tab, onTab, onAddTask, onAddRoutine, onAskHeed }) {
           const active = tab === t.id
           const isAsk = t.id === 'ask'
           if (isAsk) return <div key="ask" style={{ flex: 1 }} />
+          const ic = active ? C.warmDark : C.inkMute
+          const navIcon = {
+            today: (
+              <svg width="17" height="17" viewBox="0 0 17 17" fill="none">
+                <path d="M8.5 2C8.5 2,14.5 5.5,14.5 10C14.5 13,12 15,8.5 15C5 15,2.5 13,2.5 10C2.5 5.5,8.5 2,8.5 2Z"
+                  stroke={ic} strokeWidth="1.4" strokeLinejoin="round"/>
+                <path d="M8.5 15V8" stroke={ic} strokeWidth="1.4" strokeLinecap="round"/>
+                <path d="M5.5 10.5L8.5 8L11.5 10.5" stroke={ic} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            ),
+            calendar: (
+              <svg width="17" height="17" viewBox="0 0 17 17" fill="none">
+                <rect x="1.5" y="4.5" width="14" height="11" rx="2.5" stroke={ic} strokeWidth="1.4"/>
+                <path d="M5.5 2.5v4M11.5 2.5v4M1.5 8.5h14" stroke={ic} strokeWidth="1.4" strokeLinecap="round"/>
+                <circle cx="5.5" cy="12" r="1" fill={ic}/>
+                <circle cx="8.5" cy="12" r="1" fill={ic}/>
+                <circle cx="11.5" cy="12" r="1" fill={ic}/>
+              </svg>
+            ),
+            tracks: (
+              <svg width="17" height="17" viewBox="0 0 17 17" fill="none">
+                <path d="M8.5 15.5V6.5" stroke={ic} strokeWidth="1.4" strokeLinecap="round"/>
+                <path d="M8.5 10.5C6.5 8.5,3.5 8.5,2.5 9.5" stroke={ic} strokeWidth="1.4" strokeLinecap="round"/>
+                <path d="M8.5 7.5C10.5 5.5,13.5 5.5,14.5 6.5" stroke={ic} strokeWidth="1.4" strokeLinecap="round"/>
+                <path d="M8.5 6V2.5" stroke={ic} strokeWidth="1.4" strokeLinecap="round"/>
+                <circle cx="8.5" cy="2.5" r="1.2" fill={ic}/>
+              </svg>
+            ),
+            context: (
+              <svg width="17" height="17" viewBox="0 0 17 17" fill="none">
+                <path d="M2 5C4 3,6 2.5,8.5 2.5C11 2.5,13 3,15 5" stroke={ic} strokeWidth="1.4" strokeLinecap="round"/>
+                <path d="M2 9C4 7,6 6.5,8.5 6.5C11 6.5,13 7,15 9" stroke={ic} strokeWidth="1.4" strokeLinecap="round"/>
+                <path d="M2 13C4 11,6 10.5,8.5 10.5C11 10.5,13 11,15 13" stroke={ic} strokeWidth="1.4" strokeLinecap="round"/>
+              </svg>
+            ),
+          }[t.id]
           return (
             <button
               key={t.id}
@@ -471,19 +507,23 @@ function MobileBottomNav({ tab, onTab, onAddTask, onAddRoutine, onAskHeed }) {
                 background: 'none',
                 border: 'none',
                 borderTop: `2px solid ${active ? C.warmDark : 'transparent'}`,
-                padding: '10px 4px 8px',
+                padding: '8px 4px 7px',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
+                gap: 3,
                 cursor: 'pointer',
                 fontFamily: 'inherit',
                 minWidth: 0,
               }}
             >
+              <div style={{ transition: 'opacity 0.15s', opacity: active ? 1 : 0.7 }}>
+                {navIcon}
+              </div>
               <span style={{
-                fontSize: 11,
+                fontSize: 10,
                 fontWeight: active ? 700 : 500,
-                color: active ? C.warmDark : C.inkMute,
+                color: ic,
                 letterSpacing: 0.1,
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
@@ -1263,7 +1303,7 @@ function ContextBanner({ upcomingContexts, onAskHeed }) {
     >
       <div style={{ position: 'absolute', right: -10, top: -10, width: 80, height: 80, opacity: 0.08, background: C.ochre, borderRadius: '50%' }}/>
       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-        <div style={{ fontSize: 28, lineHeight: 1, flexShrink: 0 }}>✈️</div>
+        <div style={{ fontSize: 28, lineHeight: 1, flexShrink: 0 }}>🗺️</div>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 10.5, fontWeight: 700, color: C.warmDark, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 2 }}>
             Upcoming{daysAway != null ? ` · ${daysAway} days away` : ''}
@@ -1520,7 +1560,7 @@ function TracksTab({ tasks, routines, onMarkDone, onSkip, onMarkRoutineDone, onL
 
 // ── ContextTab ─────────────────────────────────────────────────
 function ContextRow({ ctx, highlight }) {
-  const icons = { travel: '✈️', illness: '🤒', busy: '⏱️', celebration: '🎉' }
+  const icons = { travel: '🗺️', illness: '🌿', busy: '🌾', celebration: '🌸' }
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 0', borderTop: `1px solid ${C.hairline}` }}>
       <div style={{ width: 38, height: 38, borderRadius: '50%', background: highlight ? C.ochreSoft : C.bellySoft, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
@@ -1862,9 +1902,43 @@ function AddTaskModal({ open, onClose, onSubmit }) {
           </div>
           <div style={{ marginBottom: 14 }}>
             <label style={getFieldLabel()}>How important?</label>
-            <div style={{ display: 'flex', gap: 6 }}>
-              {[{v:'low',label:'Low',tone:C.sage},{v:'medium',label:'Medium',tone:C.ochre},{v:'high',label:'High',tone:C.rust}].map(({v,label,tone}) => (
-                <button key={v} onClick={() => setImportance(v)} style={{ flex: 1, background: importance === v ? tone : C.paper, color: importance === v ? C.cream : C.inkSoft, border: `1.5px solid ${importance === v ? tone : C.border}`, padding: '8px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}>{label}</button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {[
+                { v: 'low',    tone: C.sage  },
+                { v: 'medium', tone: C.ochre },
+                { v: 'high',   tone: C.rust  },
+              ].map(({ v, tone }) => (
+                <button key={v} onClick={() => setImportance(v)}
+                  style={{
+                    flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                    background: tone, color: C.cream,
+                    padding: '11px 8px', borderRadius: 10, minHeight: 44,
+                    fontSize: 13,
+                    fontWeight: v === 'high' ? 700 : v === 'medium' ? 500 : 400,
+                    border: importance === v ? `2.5px solid ${C.cream}` : '2.5px solid transparent',
+                    boxShadow: importance === v
+                      ? (v === 'high' ? `0 0 0 2px ${tone}, 0 3px 10px ${tone}50` : `0 0 0 2px ${tone}`)
+                      : 'none',
+                    opacity: importance === v ? 1 : 0.5,
+                    cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
+                  }}>
+                  {v === 'low' && (
+                    <svg width="13" height="13" viewBox="0 0 13 13" aria-hidden="true">
+                      <circle cx="6.5" cy="6.5" r="5" fill="none" stroke={C.cream} strokeWidth="2"/>
+                    </svg>
+                  )}
+                  {v === 'medium' && (
+                    <svg width="13" height="13" viewBox="0 0 13 13" aria-hidden="true">
+                      <polygon points="6.5,1.5 11.5,6.5 6.5,11.5 1.5,6.5" fill={C.cream}/>
+                    </svg>
+                  )}
+                  {v === 'high' && (
+                    <svg width="13" height="13" viewBox="0 0 13 13" aria-hidden="true">
+                      <circle cx="6.5" cy="6.5" r="5.5" fill={C.cream}/>
+                    </svg>
+                  )}
+                  {v.charAt(0).toUpperCase() + v.slice(1)}
+                </button>
               ))}
             </div>
           </div>
@@ -1923,10 +1997,10 @@ function AddContextModal({ open, onClose, onSubmit }) {
   }
   if (!open) return null
   const typeOptions = [
-    { v: 'travel', label: 'Travel', icon: '✈️', tone: C.ochre },
-    { v: 'illness', label: 'Illness', icon: '🤒', tone: C.rust },
-    { v: 'busy', label: 'Busy week', icon: '⏱️', tone: C.warmDark },
-    { v: 'celebration', label: 'Celebration', icon: '🎉', tone: C.rose },
+    { v: 'travel', label: 'Travel', icon: '🗺️', tone: C.ochre },
+    { v: 'illness', label: 'Illness', icon: '🌿', tone: C.rust },
+    { v: 'busy', label: 'Busy week', icon: '🌾', tone: C.warmDark },
+    { v: 'celebration', label: 'Celebration', icon: '🌸', tone: C.rose },
   ]
   const inputStyle = { width: '100%', boxSizing: 'border-box', background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '10px 14px', fontSize: 14, color: C.ink, outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.15s' }
   return (

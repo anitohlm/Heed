@@ -657,7 +657,8 @@ function ImportanceBadge({ importance }) {
     medium: { bg: C.ochre, weight: 500, shadow: 'none' },
     high:   { bg: C.rust,  weight: 700, shadow: `0 2px 8px ${C.rust}40` },
   }
-  const { bg, weight, shadow } = cfg[importance] || cfg.medium
+  const key = cfg[importance] ? importance : 'medium'
+  const { bg, weight, shadow } = cfg[key]
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -681,7 +682,7 @@ function ImportanceBadge({ importance }) {
           <circle cx="4" cy="4" r="3.5" fill={C.cream}/>
         </svg>
       )}
-      {importance.charAt(0).toUpperCase() + importance.slice(1)}
+      {key.charAt(0).toUpperCase() + key.slice(1)}
     </span>
   )
 }

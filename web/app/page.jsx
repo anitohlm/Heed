@@ -985,8 +985,9 @@ function Bubble({ role, content, streaming: isStreaming, actions, chips, onConfi
 }
 
 // ── useSwipe ────────────────────────────────────────────────────
-// Direct DOM listeners with { passive: false } on touchmove so we can
-// call preventDefault() and prevent the browser claiming the gesture.
+// touchstart must be non-passive so the event sequence stays cancelable
+// on iOS Safari. We detect direction early (h vs v) and only call
+// preventDefault for horizontal swipes so vertical page scroll still works.
 function useSwipe(onRight, onLeft, threshold = 80) {
   const [offset, setOffset] = useState(0)
   const ref = useRef(null)
@@ -998,44 +999,50 @@ function useSwipe(onRight, onLeft, threshold = 80) {
   useEffect(() => {
     const el = ref.current
     if (!el) return
-    const st = { startX: null, active: false }
+    // decided: null = undecided, 'h' = horizontal swipe, 'v' = vertical scroll
+    const st = { startX: null, startY: null, decided: null }
+
+    const reset = () => { st.startX = null; st.startY = null; st.decided = null; setOffset(0) }
 
     const finish = (clientX) => {
-      if (!st.active) { st.startX = null; return }
+      if (st.decided !== 'h') { reset(); return }
       const dx = clientX - st.startX
-      st.startX = null; st.active = false
-      setOffset(0)
+      reset()
       if (dx > cb.current.threshold) cb.current.onRight?.()
       else if (dx < -cb.current.threshold) cb.current.onLeft?.()
     }
 
     const onTouchStart = (e) => {
       const t = e.touches[0]; if (!t) return
-      st.startX = t.clientX; st.active = false
+      st.startX = t.clientX; st.startY = t.clientY; st.decided = null
     }
     const onTouchMove = (e) => {
       const t = e.touches[0]
       if (!t || st.startX === null) return
       const dx = t.clientX - st.startX
-      if (!st.active && Math.abs(dx) > 8) st.active = true
-      if (!st.active) return
-      try { if (e.cancelable) e.preventDefault() } catch (_) {}
+      const dy = t.clientY - st.startY
+      if (!st.decided) {
+        if (Math.abs(dx) < 5 && Math.abs(dy) < 5) return
+        st.decided = Math.abs(dx) >= Math.abs(dy) ? 'h' : 'v'
+      }
+      if (st.decided === 'v') return
+      if (e.cancelable) e.preventDefault()
       setOffset(Math.max(-130, Math.min(130, dx)))
     }
     const onTouchEnd = (e) => {
       const t = e.changedTouches[0]
       finish(t ? t.clientX : (st.startX ?? 0))
     }
-    const onTouchCancel = () => { st.startX = null; st.active = false; setOffset(0) }
+    const onTouchCancel = () => reset()
 
     const onMouseDown = (e) => {
       if (e.button !== 0) return
-      st.startX = e.clientX; st.active = false
+      st.startX = e.clientX; st.startY = e.clientY; st.decided = null
       const onMove = (ev) => {
         if (st.startX === null) return
         const dx = ev.clientX - st.startX
-        if (!st.active && Math.abs(dx) > 8) st.active = true
-        if (st.active) setOffset(Math.max(-130, Math.min(130, dx)))
+        if (!st.decided && Math.abs(dx) > 5) st.decided = 'h'
+        if (st.decided === 'h') setOffset(Math.max(-130, Math.min(130, dx)))
       }
       const onUp = (ev) => {
         window.removeEventListener('mousemove', onMove)
@@ -1046,7 +1053,8 @@ function useSwipe(onRight, onLeft, threshold = 80) {
       window.addEventListener('mouseup', onUp)
     }
 
-    el.addEventListener('touchstart', onTouchStart, { passive: true })
+    // non-passive touchstart keeps the event sequence cancelable on iOS
+    el.addEventListener('touchstart', onTouchStart, { passive: false })
     el.addEventListener('touchmove', onTouchMove, { passive: false })
     el.addEventListener('touchend', onTouchEnd)
     el.addEventListener('touchcancel', onTouchCancel)

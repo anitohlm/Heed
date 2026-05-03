@@ -1083,18 +1083,27 @@ function Bubble({ role, content, streaming: isStreaming, actions, chips, onConfi
 // Pointer events were unreliable on some Android Chrome builds where
 // the gesture system would intercept horizontal moves despite
 // touch-action: pan-y. Touchmove preventDefault is more declarative.
-function useSwipe(onRight, onLeft, threshold = 80) {
+function useSwipe(onRight, onLeft, threshold = 80, onLongPress = null, longPressMs = 500) {
   const ref = useRef(null)
-  const cb = useRef({ onRight, onLeft, threshold })
+  const cb = useRef({ onRight, onLeft, threshold, onLongPress, longPressMs })
   cb.current.onRight = onRight
   cb.current.onLeft = onLeft
   cb.current.threshold = threshold
+  cb.current.onLongPress = onLongPress
+  cb.current.longPressMs = longPressMs
 
   useEffect(() => {
     const el = ref.current
     if (!el) return
     const wrap = el.parentElement
     const st = { startX: null, startY: null, decided: null }
+    let longPressTimer = null
+    const clearLongPress = () => {
+      if (longPressTimer !== null) {
+        clearTimeout(longPressTimer)
+        longPressTimer = null
+      }
+    }
 
     const getBadges = () => ({
       done: wrap?.querySelector('[data-badge="done"]'),
@@ -1138,11 +1147,29 @@ function useSwipe(onRight, onLeft, threshold = 80) {
       st.startX = clientX; st.startY = clientY; st.active = false
       el.style.animation = 'none'  // cancel fill-mode freeze so JS transform takes over
       el.style.transition = 'none'
+      // Long-press: fires if touch is held still for longPressMs without
+      // turning into a swipe. Cancelled on movement >8px or early release.
+      if (cb.current.onLongPress) {
+        clearLongPress()
+        longPressTimer = setTimeout(() => {
+          longPressTimer = null
+          // Cancel the in-progress drag tracking and consume this gesture as a long-press.
+          st.startX = null; st.startY = null; st.active = false
+          if (navigator.vibrate) try { navigator.vibrate(15) } catch (_) {}
+          cb.current.onLongPress()
+        }, cb.current.longPressMs)
+      }
     }
 
     const moveDrag = (clientX, clientY, evt) => {
       if (st.startX === null) return
       const dx = clientX - st.startX
+      const dy = clientY - st.startY
+      // Cancel pending long-press once the finger moves meaningfully — long-press
+      // is hold-still; movement means the user is starting a swipe or scroll.
+      if (longPressTimer !== null && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) {
+        clearLongPress()
+      }
       // Activate on |dx| > 8 regardless of dy — matches swipe-prototype.
       // touch-action:pan-y already keeps clearly-vertical gestures from reaching JS;
       // a JS-side dy check rejected valid diagonal swipes (e.g. dx=10 dy=11).
@@ -1153,6 +1180,7 @@ function useSwipe(onRight, onLeft, threshold = 80) {
     }
 
     const endDrag = (clientX) => {
+      clearLongPress()
       if (st.startX === null) { st.active = false; return }
       const dx = clientX - st.startX
       const wasActive = st.active
@@ -1165,7 +1193,7 @@ function useSwipe(onRight, onLeft, threshold = 80) {
     const ts = (e) => beginDrag(e.touches[0].clientX, e.touches[0].clientY)
     const tm = (e) => moveDrag(e.touches[0].clientX, e.touches[0].clientY, e)
     const te = (e) => endDrag(e.changedTouches[0].clientX)
-    const tc = () => { st.startX = null; st.startY = null; st.active = false; snapBack() }
+    const tc = () => { clearLongPress(); st.startX = null; st.startY = null; st.active = false; snapBack() }
     const md = (e) => { if (e.button === 0) beginDrag(e.clientX, e.clientY) }
     const mm = (e) => moveDrag(e.clientX, e.clientY, e)
     const mu = (e) => endDrag(e.clientX)
@@ -1198,6 +1226,8 @@ function HeroCard({ task, onMarkDone, onSkip, onMoreOptions }) {
   const { ref: swipeRef } = useSwipe(
     () => onMarkDone?.(task),
     () => onSkip?.(task),
+    80,
+    () => onMoreOptions?.(task),
   )
   const c = CATEGORY[task.category] || CATEGORY.admin
   const isCritical = task.overdue >= 7
@@ -1268,6 +1298,8 @@ function TaskCard({ task, delay = 0, onMarkDone, onSkip, onMoreOptions }) {
   const { ref: swipeRef } = useSwipe(
     () => onMarkDone?.(task),
     () => onSkip?.(task),
+    80,
+    () => onMoreOptions?.(task),
   )
   const c = CATEGORY[task.category] || CATEGORY.admin
   const isOverdue = task.overdue != null
@@ -2755,25 +2787,45 @@ function AskInlineModal({ open, onClose, onLightenRoutine }) {
 }
 
 // ── AddTaskModal ───────────────────────────────────────────────
-function AddTaskModal({ open, onClose, onSubmit }) {
+function AddTaskModal({ open, onClose, onSubmit, initialData = null }) {
+  const isEdit = !!initialData
   const [name, setName] = useState('')
   const [category, setCategory] = useState('home')
   const [importance, setImportance] = useState('medium')
   const [cadenceMode, setCadenceMode] = useState('learn')
   const [cadenceDays, setCadenceDays] = useState(7)
   const inputRef = useRef(null)
-  useEffect(() => { if (open && inputRef.current) setTimeout(() => inputRef.current?.focus(), 50) }, [open])
+  useEffect(() => {
+    if (!open) return
+    if (initialData) {
+      setName(initialData.name || '')
+      setCategory(initialData.category || 'home')
+      setImportance(initialData.importance || 'medium')
+      const explicit = initialData.explicit_cadence_days
+      setCadenceMode(explicit ? 'set' : 'learn')
+      setCadenceDays(explicit || 7)
+    } else {
+      setName(''); setCategory('home'); setImportance('medium'); setCadenceMode('learn'); setCadenceDays(7)
+    }
+    if (inputRef.current) setTimeout(() => inputRef.current?.focus(), 50)
+  }, [open, initialData])
   useEffect(() => {
     if (!open) return
     const fn = (e) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', fn)
     return () => window.removeEventListener('keydown', fn)
   }, [open, onClose])
-  const reset = () => { setName(''); setCategory('home'); setImportance('medium'); setCadenceMode('learn'); setCadenceDays(7) }
   const submit = () => {
     if (!name.trim()) return
-    onSubmit({ name: name.trim(), category, importance, explicit_cadence_days: cadenceMode === 'set' ? cadenceDays : null })
-    reset(); onClose()
+    const payload = {
+      name: name.trim(),
+      category,
+      importance,
+      explicit_cadence_days: cadenceMode === 'set' ? cadenceDays : null,
+    }
+    if (isEdit) payload.id = initialData.id
+    onSubmit(payload)
+    onClose()
   }
   if (!open) return null
   return (
@@ -2784,8 +2836,8 @@ function AddTaskModal({ open, onClose, onSubmit }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
             <div style={{ width: 40, height: 40, borderRadius: '50%', background: C.ochreSoft, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><MayaOwl size={28} idle={false}/></div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 19, fontWeight: 600, color: C.warmDark, letterSpacing: -0.3, lineHeight: 1.1, marginBottom: 2 }}>What should I help you remember?</div>
-              <div style={{ fontSize: 12, color: C.inkMute, fontStyle: 'italic' }}>I'll figure out the best schedule for it.</div>
+              <div style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 19, fontWeight: 600, color: C.warmDark, letterSpacing: -0.3, lineHeight: 1.1, marginBottom: 2 }}>{isEdit ? 'Edit task' : 'What should I help you remember?'}</div>
+              <div style={{ fontSize: 12, color: C.inkMute, fontStyle: 'italic' }}>{isEdit ? 'Update the details below.' : "I'll figure out the best schedule for it."}</div>
             </div>
             <button onClick={onClose} aria-label="Close" style={{ background: 'transparent', border: 'none', color: C.inkMute, cursor: 'pointer', fontSize: 20, padding: 4, lineHeight: 1, fontFamily: 'inherit' }}>×</button>
           </div>
@@ -2871,7 +2923,7 @@ function AddTaskModal({ open, onClose, onSubmit }) {
           </div>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             <button onClick={onClose} style={getBtnGhost()}>Cancel</button>
-            <button onClick={submit} disabled={!name.trim()} style={{ ...getBtnPrimary(), padding: '8px 18px', opacity: name.trim() ? 1 : 0.5, cursor: name.trim() ? 'pointer' : 'not-allowed' }}>Add task</button>
+            <button onClick={submit} disabled={!name.trim()} style={{ ...getBtnPrimary(), padding: '8px 18px', opacity: name.trim() ? 1 : 0.5, cursor: name.trim() ? 'pointer' : 'not-allowed' }}>{isEdit ? 'Save changes' : 'Add task'}</button>
           </div>
         </div>
       </div>
@@ -3068,7 +3120,7 @@ function Toast({ message, onView, onUndo, onDismiss }) {
 }
 
 // ── TaskOptionsSheet ───────────────────────────────────────────
-function TaskOptionsSheet({ task, onClose, onAddToRoutine, onBuildRoutine }) {
+function TaskOptionsSheet({ task, onClose, onEdit, onAddToRoutine, onBuildRoutine }) {
   if (!task) return null
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 200 }} onClick={onClose}>
@@ -3078,6 +3130,23 @@ function TaskOptionsSheet({ task, onClose, onAddToRoutine, onBuildRoutine }) {
         <div style={{ fontFamily: 'Lora, serif', fontSize: 17, fontWeight: 600, color: C.ink, marginBottom: 3 }}>{task.name}</div>
         <div style={{ fontSize: 12.5, color: C.inkMute, marginBottom: 20 }}>{task.cadence}</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {onEdit && (
+            <button onClick={() => { onEdit(task); onClose() }}
+              style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', background: C.bellySoft, border: `1.5px solid ${C.border}`, borderRadius: 12, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', transition: 'all 0.15s' }}
+              onMouseEnter={e => e.currentTarget.style.borderColor = C.warmDark + '88'}
+              onMouseLeave={e => e.currentTarget.style.borderColor = C.border}
+            >
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: C.warmDark + '22', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                  <path d="M16.5 4.5l3 3L8 19l-4 1 1-4L16.5 4.5z" stroke={C.warmDark} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: C.ink, marginBottom: 2 }}>Edit task</div>
+                <div style={{ fontSize: 12, color: C.inkMute }}>Update name, category, importance, or cadence</div>
+              </div>
+            </button>
+          )}
           <button onClick={() => { onAddToRoutine(task); onClose() }}
             style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', background: C.bellySoft, border: `1.5px solid ${C.border}`, borderRadius: 12, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', transition: 'all 0.15s' }}
             onMouseEnter={e => e.currentTarget.style.borderColor = C.sage + '88'}
@@ -3584,6 +3653,7 @@ export default function HeedApp() {
   const [toast, setToast] = useState(null)
   const [askPrefill, setAskPrefill] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
+  const [editingTask, setEditingTask] = useState(null)
   const [askOpen, setAskOpen] = useState(false)
   const [routineModalOpen, setRoutineModalOpen] = useState(false)
   const [editingRoutine, setEditingRoutine] = useState(null)
@@ -3690,20 +3760,35 @@ export default function HeedApp() {
 
   const handleAddTask = useCallback(async (data) => {
     const body = { name: data.name, category: data.category, importance: data.importance, explicit_cadence_days: data.explicit_cadence_days || null }
+    const isEdit = !!data.id
     try {
-      const resp = await fetch(`${FUNCTIONS_URL}/api/tasks`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
+      const resp = await fetch(
+        isEdit ? `${FUNCTIONS_URL}/api/tasks/${data.id}` : `${FUNCTIONS_URL}/api/tasks`,
+        {
+          method: isEdit ? 'PATCH' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        }
+      )
       if (resp.ok) {
-        const newTask = await resp.json()
-        setApiTasks(t => [...t, newTask])
-        setToast({ message: 'Task added', showView: true })
-        setTab('today')
+        const updated = await resp.json()
+        if (isEdit) {
+          setApiTasks(t => t.map(x => x.id === data.id ? updated : x))
+          setToast({ message: 'Task updated' })
+        } else {
+          setApiTasks(t => [...t, updated])
+          setToast({ message: 'Task added', showView: true })
+          setTab('today')
+        }
       }
     } catch {}
+    setEditingTask(null)
   }, [FUNCTIONS_URL])
+
+  const handleEditTask = useCallback((task) => {
+    setEditingTask(task)
+    setModalOpen(true)
+  }, [])
 
   const handleAddContext = useCallback(async (data) => {
     const body = { context_type: data.type, start_date: data.startDate, end_date: data.endDate, description: data.description }
@@ -3885,11 +3970,11 @@ export default function HeedApp() {
         Heed — CWB Hackathon 2026 · Azure OpenAI + Cosmos DB + AI Search
       </footer>
 
-      <AddTaskModal open={modalOpen} onClose={() => setModalOpen(false)} onSubmit={handleAddTask}/>
+      <AddTaskModal open={modalOpen} onClose={() => { setModalOpen(false); setEditingTask(null) }} onSubmit={handleAddTask} initialData={editingTask}/>
       <AddRoutineModal open={routineModalOpen} onClose={() => { setRoutineModalOpen(false); setEditingRoutine(null); setBuildRoutineTask(null) }} onSubmit={handleAddRoutine} initialData={editingRoutine} seedTask={buildRoutineTask}/>
       <AddContextModal open={contextModalOpen} onClose={() => setContextModalOpen(false)} onSubmit={handleAddContext}/>
       <AskInlineModal open={askOpen} onClose={() => setAskOpen(false)} onLightenRoutine={handleLightenRoutine}/>
-      <TaskOptionsSheet task={taskOptionsTask} onClose={() => setTaskOptionsTask(null)} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }}/>
+      <TaskOptionsSheet task={taskOptionsTask} onClose={() => setTaskOptionsTask(null)} onEdit={handleEditTask} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }}/>
       <AddToRoutineSheet task={addToRoutineTask} routines={routines} onClose={() => setAddToRoutineTask(null)} onSelect={handleAddTaskToRoutine}/>
       <QuickContextSheet type={quickContextType} onClose={() => setQuickContextType(null)} onActivate={handleQuickContext}/>
       <RecoverySummarySheet open={recoveryOpen} context={activeContext} heldTasks={activeContext ? displayTasks.filter(t => activeContext.heldTaskIds.includes(t.id)) : []} onClose={() => setRecoveryOpen(false)} onResumeAll={() => handleEndContext('resume')} onEaseBack={() => handleEndContext('ease')}/>

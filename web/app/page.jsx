@@ -1834,7 +1834,7 @@ function WeekDetail({ tasks, weekStart, onTaskTap, onWeekOffsetChange, onAddTask
                 {dayCtxs.map((ctx, j) => {
                   const cfg = QUICK_CONTEXT_CONFIG[ctx.context_type] || {}
                   return (
-                    <div key={j} style={{ background: C.ochreSoft, border: `1px solid ${C.ochre}55`, borderRadius: 20, padding: '3px 8px', fontSize: 10.5, color: C.warmDark, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3, whiteSpace: 'nowrap', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <div key={j} style={{ background: C.ochreSoft, border: `1px solid ${C.ochre}55`, borderRadius: 5, padding: '3px 8px', fontSize: 10.5, color: C.warmDark, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3, whiteSpace: 'nowrap', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {cfg.icon || '📅'} {ctx.description || cfg.label || ctx.context_type}
                     </div>
                   )
@@ -1846,20 +1846,20 @@ function WeekDetail({ tasks, weekStart, onTaskTap, onWeekOffsetChange, onAddTask
                   return (
                     <div key={task.id}
                       onClick={() => onTaskTap(task)}
-                      style={{ background: bg, borderRadius: 20, padding: '4px 10px', fontSize: 11, color: C.cream, fontWeight: 600, cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
+                      style={{ background: bg, borderRadius: 5, padding: '4px 10px', fontSize: 11, color: C.cream, fontWeight: 600, cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
                       {icon} {task.name}
                     </div>
                   )
                 })}
                 {dayTasks.length === 0 && (
                   <button onClick={() => onAddTask(date)}
-                    style={{ background: 'none', border: `1px dashed ${C.border}`, color: C.inkMute, padding: '3px 10px', borderRadius: 20, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit', opacity: 0.6 }}>
+                    style={{ background: 'none', border: `1px dashed ${C.border}`, color: C.inkMute, padding: '3px 10px', borderRadius: 5, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit', opacity: 0.6 }}>
                     + Add task
                   </button>
                 )}
                 {dayCtxs.length === 0 && (
                   <button onClick={() => onAddContext && onAddContext(date)}
-                    style={{ background: 'none', border: `1px dashed ${C.border}`, color: C.inkMute, padding: '3px 10px', borderRadius: 20, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit', opacity: 0.45 }}>
+                    style={{ background: 'none', border: `1px dashed ${C.border}`, color: C.inkMute, padding: '3px 10px', borderRadius: 5, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit', opacity: 0.45 }}>
                     + Add context
                   </button>
                 )}

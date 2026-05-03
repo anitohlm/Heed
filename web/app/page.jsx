@@ -1780,7 +1780,7 @@ function MonthStrip({ tasks, monthOffset, selectedWeekStart, onWeekSelect, onMon
   )
 }
 
-function WeekDetail({ tasks, weekStart, onTaskTap, onWeekOffsetChange, onAddTask }) {
+function WeekDetail({ tasks, weekStart, onTaskTap, onWeekOffsetChange, onAddTask, contexts = [], onAddContext }) {
   const today = new Date()
   const impColor = { high: C.rust, medium: C.ochre, low: C.sage }
   const impIcon  = { high: '●', medium: '◆', low: '○' }
@@ -1797,6 +1797,15 @@ function WeekDetail({ tasks, weekStart, onTaskTap, onWeekOffsetChange, onAddTask
     swipeRef.current = null
   }
 
+  function contextsOnDay(date) {
+    return contexts.filter(ctx => {
+      if (!ctx.start_date) return false
+      const s = new Date(ctx.start_date); s.setHours(0,0,0,0)
+      const e = ctx.end_date ? new Date(ctx.end_date) : new Date(ctx.start_date); e.setHours(23,59,59,999)
+      return date >= s && date <= e
+    })
+  }
+
   const startLabel = weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
   const endLabel   = addDays(weekStart, 6).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 
@@ -1810,6 +1819,7 @@ function WeekDetail({ tasks, weekStart, onTaskTap, onWeekOffsetChange, onAddTask
           const date     = addDays(weekStart, i)
           const isToday  = sameDay(date, today)
           const dayTasks = tasks.filter(t => { const d = parseDue(t.next_due_at); return d && sameDay(d, date) })
+          const dayCtxs  = contextsOnDay(date)
           const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
           return (
             <div key={i}
@@ -1821,6 +1831,14 @@ function WeekDetail({ tasks, weekStart, onTaskTap, onWeekOffsetChange, onAddTask
                 </div>
               </div>
               <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center', paddingTop: 6 }}>
+                {dayCtxs.map((ctx, j) => {
+                  const cfg = QUICK_CONTEXT_CONFIG[ctx.context_type] || {}
+                  return (
+                    <div key={j} style={{ background: C.ochreSoft, border: `1px solid ${C.ochre}55`, borderRadius: 20, padding: '3px 8px', fontSize: 10.5, color: C.warmDark, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3, whiteSpace: 'nowrap', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {cfg.icon || '📅'} {ctx.description || cfg.label || ctx.context_type}
+                    </div>
+                  )
+                })}
                 {dayTasks.map(task => {
                   const imp  = task.importance || 'medium'
                   const bg   = impColor[imp] || C.ochre
@@ -1837,6 +1855,12 @@ function WeekDetail({ tasks, weekStart, onTaskTap, onWeekOffsetChange, onAddTask
                   <button onClick={() => onAddTask(date)}
                     style={{ background: 'none', border: `1px dashed ${C.border}`, color: C.inkMute, padding: '3px 10px', borderRadius: 20, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit', opacity: 0.6 }}>
                     + Add task
+                  </button>
+                )}
+                {dayCtxs.length === 0 && (
+                  <button onClick={() => onAddContext && onAddContext(date)}
+                    style={{ background: 'none', border: `1px dashed ${C.border}`, color: C.inkMute, padding: '3px 10px', borderRadius: 20, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit', opacity: 0.45 }}>
+                    + Add context
                   </button>
                 )}
               </div>
@@ -1967,7 +1991,7 @@ function TaskDetailSheet({ task, onClose, onMarkDone, onSkip, onReschedule }) {
   )
 }
 
-function CalendarTab({ tasks, onReschedule, onMarkDone, onSkip, onAddTask }) {
+function CalendarTab({ tasks, contexts, onReschedule, onMarkDone, onSkip, onAddTask, onAddContext }) {
   const [monthOffset, setMonthOffset] = useState(0)
   const [weekStart, setWeekStart]     = useState(startOfWeek(TODAY_DATE))
   const [detailTask, setDetailTask]   = useState(null)
@@ -1996,9 +2020,11 @@ function CalendarTab({ tasks, onReschedule, onMarkDone, onSkip, onAddTask }) {
         <WeekDetail
           tasks={tasks}
           weekStart={weekStart}
+          contexts={contexts}
           onTaskTap={setDetailTask}
           onWeekOffsetChange={handleWeekOffsetChange}
           onAddTask={onAddTask}
+          onAddContext={onAddContext}
         />
       </div>
       <div style={{ padding: '12px 16px', background: C.paper, border: `1px solid ${C.border}`, borderRadius: 10, boxShadow: C.shadowSoft }}>
@@ -2929,7 +2955,7 @@ export default function HeedApp() {
 
       <main className="heed-main" style={{ maxWidth: 820, margin: '0 auto', padding: '28px 32px 100px 32px', minHeight: 'calc(100vh - 140px)', display: 'flex', flexDirection: 'column' }}>
         {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} upcomingContexts={upcomingContexts} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAskHeed={handleAskHeed} onMoreOptions={handleMoreOptions}/>}
-        {tab === 'calendar' && <CalendarTab tasks={apiTasks} onReschedule={handleReschedule} onMarkDone={handleMarkDone} onSkip={handleSkip} onAddTask={() => setModalOpen(true)}/>}
+        {tab === 'calendar' && <CalendarTab tasks={apiTasks} contexts={[...(apiContexts.active||[]), ...(apiContexts.upcoming||[])]} onReschedule={handleReschedule} onMarkDone={handleMarkDone} onSkip={handleSkip} onAddTask={() => setModalOpen(true)} onAddContext={() => setContextModalOpen(true)}/>}
         {tab === 'ask' && <AskTab prefill={askPrefill}/>}
         {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onMoreOptions={handleMoreOptions}/>}
         {tab === 'context' && <ContextTab upcoming={apiContexts.upcoming} active={apiContexts.active} activeContext={activeContext} onAddContext={() => setContextModalOpen(true)} onQuickContext={type => setQuickContextType(type)} onImBetter={() => setRecoveryOpen(true)} onExtend={handleExtendContext}/>}

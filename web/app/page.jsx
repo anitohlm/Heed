@@ -702,7 +702,7 @@ function ImportanceBadge({ importance }) {
   const cfg = {
     low:    { bg: C.sage,  weight: 400, shadow: 'none' },
     medium: { bg: C.ochre, weight: 500, shadow: 'none' },
-    high:   { bg: C.rust,  weight: 700, shadow: `0 2px 8px ${C.rust}40` },
+    high:   { bg: C.rust,  weight: 700, shadow: `inset 0 0 0 1.5px ${C.cream}70, 0 2px 8px ${C.rust}40` },
   }
   const key = cfg[importance] ? importance : 'medium'
   const { bg, weight, shadow } = cfg[key]

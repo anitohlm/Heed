@@ -1083,27 +1083,18 @@ function Bubble({ role, content, streaming: isStreaming, actions, chips, onConfi
 // Pointer events were unreliable on some Android Chrome builds where
 // the gesture system would intercept horizontal moves despite
 // touch-action: pan-y. Touchmove preventDefault is more declarative.
-function useSwipe(onRight, onLeft, threshold = 80, onLongPress = null, longPressMs = 500) {
+function useSwipe(onRight, onLeft, threshold = 80) {
   const ref = useRef(null)
-  const cb = useRef({ onRight, onLeft, threshold, onLongPress, longPressMs })
+  const cb = useRef({ onRight, onLeft, threshold })
   cb.current.onRight = onRight
   cb.current.onLeft = onLeft
   cb.current.threshold = threshold
-  cb.current.onLongPress = onLongPress
-  cb.current.longPressMs = longPressMs
 
   useEffect(() => {
     const el = ref.current
     if (!el) return
     const wrap = el.parentElement
     const st = { startX: null, startY: null, decided: null }
-    let longPressTimer = null
-    const clearLongPress = () => {
-      if (longPressTimer !== null) {
-        clearTimeout(longPressTimer)
-        longPressTimer = null
-      }
-    }
 
     const getBadges = () => ({
       done: wrap?.querySelector('[data-badge="done"]'),
@@ -1147,29 +1138,11 @@ function useSwipe(onRight, onLeft, threshold = 80, onLongPress = null, longPress
       st.startX = clientX; st.startY = clientY; st.active = false
       el.style.animation = 'none'  // cancel fill-mode freeze so JS transform takes over
       el.style.transition = 'none'
-      // Long-press: fires if touch is held still for longPressMs without
-      // turning into a swipe. Cancelled on movement >8px or early release.
-      if (cb.current.onLongPress) {
-        clearLongPress()
-        longPressTimer = setTimeout(() => {
-          longPressTimer = null
-          // Cancel the in-progress drag tracking and consume this gesture as a long-press.
-          st.startX = null; st.startY = null; st.active = false
-          if (navigator.vibrate) try { navigator.vibrate(15) } catch (_) {}
-          cb.current.onLongPress()
-        }, cb.current.longPressMs)
-      }
     }
 
     const moveDrag = (clientX, clientY, evt) => {
       if (st.startX === null) return
       const dx = clientX - st.startX
-      const dy = clientY - st.startY
-      // Cancel pending long-press once the finger moves meaningfully — long-press
-      // is hold-still; movement means the user is starting a swipe or scroll.
-      if (longPressTimer !== null && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) {
-        clearLongPress()
-      }
       // Activate on |dx| > 8 regardless of dy — matches swipe-prototype.
       // touch-action:pan-y already keeps clearly-vertical gestures from reaching JS;
       // a JS-side dy check rejected valid diagonal swipes (e.g. dx=10 dy=11).
@@ -1180,7 +1153,6 @@ function useSwipe(onRight, onLeft, threshold = 80, onLongPress = null, longPress
     }
 
     const endDrag = (clientX) => {
-      clearLongPress()
       if (st.startX === null) { st.active = false; return }
       const dx = clientX - st.startX
       const wasActive = st.active
@@ -1193,7 +1165,7 @@ function useSwipe(onRight, onLeft, threshold = 80, onLongPress = null, longPress
     const ts = (e) => beginDrag(e.touches[0].clientX, e.touches[0].clientY)
     const tm = (e) => moveDrag(e.touches[0].clientX, e.touches[0].clientY, e)
     const te = (e) => endDrag(e.changedTouches[0].clientX)
-    const tc = () => { clearLongPress(); st.startX = null; st.startY = null; st.active = false; snapBack() }
+    const tc = () => { st.startX = null; st.startY = null; st.active = false; snapBack() }
     const md = (e) => { if (e.button === 0) beginDrag(e.clientX, e.clientY) }
     const mm = (e) => moveDrag(e.clientX, e.clientY, e)
     const mu = (e) => endDrag(e.clientX)
@@ -1226,9 +1198,12 @@ function HeroCard({ task, onMarkDone, onSkip, onMoreOptions }) {
   const { ref: swipeRef } = useSwipe(
     () => onMarkDone?.(task),
     () => onSkip?.(task),
-    80,
-    () => onMoreOptions?.(task),
   )
+  const handleCardClick = (e) => {
+    // Don't intercept clicks on inner buttons / inputs.
+    if (e.target.closest('button, a, input, textarea, select')) return
+    onMoreOptions?.(task)
+  }
   const c = CATEGORY[task.category] || CATEGORY.admin
   const isCritical = task.overdue >= 7
   return (
@@ -1244,6 +1219,7 @@ function HeroCard({ task, onMarkDone, onSkip, onMoreOptions }) {
       <div
         ref={swipeRef}
         className="heed-card"
+        onClick={handleCardClick}
         onMouseEnter={() => setHover(true)}
         onMouseLeave={() => setHover(false)}
         style={{
@@ -1298,9 +1274,11 @@ function TaskCard({ task, delay = 0, onMarkDone, onSkip, onMoreOptions }) {
   const { ref: swipeRef } = useSwipe(
     () => onMarkDone?.(task),
     () => onSkip?.(task),
-    80,
-    () => onMoreOptions?.(task),
   )
+  const handleCardClick = (e) => {
+    if (e.target.closest('button, a, input, textarea, select')) return
+    onMoreOptions?.(task)
+  }
   const c = CATEGORY[task.category] || CATEGORY.admin
   const isOverdue = task.overdue != null
   const isCritical = isOverdue && task.overdue >= 7
@@ -1317,6 +1295,7 @@ function TaskCard({ task, delay = 0, onMarkDone, onSkip, onMoreOptions }) {
       <div
         ref={swipeRef}
         className="heed-card"
+        onClick={handleCardClick}
         onMouseEnter={() => setHover(true)}
         onMouseLeave={() => setHover(false)}
         style={{

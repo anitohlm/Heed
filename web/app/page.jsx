@@ -439,16 +439,18 @@ function MobileBottomNav({ tab, onTab, onAddTask, onAddRoutine, onAskHeed }) {
             height: 68,
             borderRadius: '50%',
             background: C.paper,
-            border: `2px solid ${C.border}`,
-            boxShadow: `0 -4px 20px rgba(0,0,0,0.22), ${C.shadowMed}`,
+            border: `2.5px solid ${C.warmDark}99`,
+            boxShadow: fabOpen
+              ? `0 0 0 3px ${C.paper}, 0 0 0 6px ${C.warmDark}55, 0 0 18px 4px ${C.warmDark}30, 0 -6px 24px rgba(0,0,0,0.28)`
+              : `0 0 0 3px ${C.paper}, 0 0 0 5px ${C.border}, 0 -4px 20px rgba(0,0,0,0.22)`,
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             padding: 0,
             zIndex: 52,
-            transition: 'transform 0.2s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.2s, opacity 0.2s',
-            opacity: fabOpen ? 1 : 0.9,
+            transition: 'transform 0.2s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.25s ease, opacity 0.2s',
+            opacity: fabOpen ? 1 : 0.92,
           }}
         >
           <MayaOwl size={50} idle={false}/>
@@ -646,6 +648,41 @@ function Pill({ children, tone = 'ink', glow = false }) {
       background: t.bg, color: t.color,
       boxShadow: glow ? `0 0 8px ${t.color}44` : 'none',
     }}>{children}</span>
+  )
+}
+
+function ImportanceBadge({ importance }) {
+  const cfg = {
+    low:    { bg: C.sage,  weight: 400, shadow: 'none' },
+    medium: { bg: C.ochre, weight: 500, shadow: 'none' },
+    high:   { bg: C.rust,  weight: 700, shadow: `0 2px 8px ${C.rust}40` },
+  }
+  const { bg, weight, shadow } = cfg[importance] || cfg.medium
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 6,
+      background: bg, color: C.cream,
+      padding: '3px 10px', borderRadius: 999,
+      fontSize: 11.5, fontWeight: weight, letterSpacing: 0.1,
+      boxShadow: shadow, flexShrink: 0,
+    }}>
+      {importance === 'low' && (
+        <svg width="8" height="8" viewBox="0 0 8 8" aria-hidden="true">
+          <circle cx="4" cy="4" r="3" fill="none" stroke={C.cream} strokeWidth="1.5"/>
+        </svg>
+      )}
+      {importance === 'medium' && (
+        <svg width="8" height="8" viewBox="0 0 8 8" aria-hidden="true">
+          <polygon points="4,0.5 7.5,4 4,7.5 0.5,4" fill={C.cream}/>
+        </svg>
+      )}
+      {importance === 'high' && (
+        <svg width="8" height="8" viewBox="0 0 8 8" aria-hidden="true">
+          <circle cx="4" cy="4" r="3.5" fill={C.cream}/>
+        </svg>
+      )}
+      {importance.charAt(0).toUpperCase() + importance.slice(1)}
+    </span>
   )
 }
 

@@ -3313,7 +3313,7 @@ function SheetSectionLabel({ children }) {
 }
 
 // ── ShareCardSheet ─────────────────────────────────────────────
-function ShareCardSheet({ open, routine, onClose }) {
+function ShareCardSheet({ routine, onClose }) {
   const [variant, setVariant] = useState('streak')
   const [shareTheme, setShareTheme] = useState('B')
   const [loading, setLoading] = useState(false)
@@ -3334,7 +3334,7 @@ function ShareCardSheet({ open, routine, onClose }) {
     return () => clearTimeout(id)
   }, [fallbackToast])
 
-  if (!open || !routine) return null
+  if (!routine) return null
 
   const slug = routine.name.toLowerCase().replace(/\s+/g, '-')
   const filename = `heed-${slug}-${variant}.png`
@@ -3639,7 +3639,6 @@ export default function HeedApp() {
   const [detailCtx, setDetailCtx] = useState(null)
   const [detailOpen, setDetailOpen] = useState(false)
   const [shareCtx, setShareCtx] = useState(null)
-  const [shareOpen, setShareOpen] = useState(false)
 
   useEffect(() => {
     fetch(`${FUNCTIONS_URL}/api/tasks`)
@@ -3797,14 +3796,9 @@ export default function HeedApp() {
     setToast({ message: 'Routine lightened for this week' })
   }, [])
 
-  const handleShareOpen = useCallback((routine) => {
-    setShareCtx(routine)
-    setShareOpen(true)
-  }, [])
+  const handleShareOpen = useCallback((routine) => setShareCtx(routine), [])
 
-  const handleShareClose = useCallback(() => {
-    setShareOpen(false)
-  }, [])
+  const handleShareClose = useCallback(() => setShareCtx(null), [])
 
   const handleEditRoutine = useCallback((routine) => {
     setEditingRoutine(routine)
@@ -3950,7 +3944,7 @@ export default function HeedApp() {
         onExtend={() => { handleDetailClose(); handleExtendContext() }}
         onAskHeed={handleAskHeed}
       />
-      <ShareCardSheet open={shareOpen} routine={shareCtx} onClose={handleShareClose}/>
+      <ShareCardSheet routine={shareCtx} onClose={handleShareClose}/>
       {toast && <Toast message={toast.message} onView={toast.showView ? handleToastView : undefined} onUndo={toast.onUndo} onDismiss={() => setToast(null)} />}
       <HeedFAB onAddTask={() => setModalOpen(true)} onAskHeed={() => setAskOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)}/>
     </div>

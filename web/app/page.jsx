@@ -1989,101 +1989,42 @@ function TaskDetailSheet({ task, onClose, onMarkDone, onSkip, onReschedule }) {
   )
 }
 
-function buildSchedule(weekStart) {
-  const push = (offset, label, color, opts = {}) => ({ date: addDays(weekStart, offset), label, color, ...opts })
-  return [
-    push(0, 'Pay Maynilad', C.rust, { priority: 'high' }),
-    push(0, 'Pay Meralco', C.rust, { priority: 'high' }),
-    push(0, 'Call Mom', C.ochre, { priority: 'high' }),
-    push(1, 'Refill water dispenser', C.sage),
-    push(1, 'Vitamin D', C.ochre),
-    push(2, 'Cat litter box', C.ochre, { priority: 'high' }),
-    push(3, 'Submit timesheet', C.ochre, { priority: 'high' }),
-    push(4, 'Update expense tracker', C.ochre),
-    push(4, 'Wash bedsheets', C.sage),
-    push(5, 'Clean aircon filter', C.sage),
-  ]
-}
-
-const ROUTINE_TRACKS = [
-  { id: 'morning', label: 'Morning routine', color: C.ochre, days: [0,1,2,3,4] },
-  { id: 'evening', label: 'Evening wind-down', color: C.sage, days: [0,1,2,3,4,5,6] },
-]
-
-function CalendarChip({ item }) {
-  const [hover, setHover] = useState(false)
-  return (
-    <div onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
-      style={{ background: hover ? item.color + '22' : C.paper, border: `1px solid ${hover ? item.color : C.border}`, borderLeft: `3px solid ${item.color}`, borderRadius: 5, padding: '5px 8px', fontSize: 11.5, color: C.ink, cursor: 'pointer', transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 5, lineHeight: 1.2 }}>
-      {item.priority === 'high' && <span style={{ width: 5, height: 5, borderRadius: '50%', background: item.color, flexShrink: 0 }}/>}
-      <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: item.priority === 'high' ? 600 : 500 }}>{item.label}</span>
-    </div>
-  )
-}
-
-function CalendarTab() {
+function CalendarTab({ tasks, onReschedule, onMarkDone, onSkip }) {
   const TODAY_DATE = new Date()
-  const [weekOffset, setWeekOffset] = useState(0)
-  const weekStart = addDays(startOfWeek(TODAY_DATE), weekOffset * 7)
-  const schedule = buildSchedule(weekStart)
+  const [monthOffset, setMonthOffset] = useState(0)
+  const [weekStart, setWeekStart]     = useState(startOfWeek(TODAY_DATE))
+  const [detailTask, setDetailTask]   = useState(null)
+
+  useEffect(() => {
+    const target = (weekStart.getFullYear() - TODAY_DATE.getFullYear()) * 12
+      + (weekStart.getMonth() - TODAY_DATE.getMonth())
+    setMonthOffset(target)
+  }, [weekStart])
+
+  function handleWeekOffsetChange(delta) {
+    setWeekStart(ws => addDays(ws, delta * 7))
+  }
+
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18, gap: 12, flexWrap: 'wrap' }}>
-        <SectionHeader>{fmtMonth(weekStart)}</SectionHeader>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <button onClick={() => setWeekOffset(o => o - 1)} style={{ ...getBtnGhost(), padding: '6px 12px', fontSize: 13 }}>‹ Previous</button>
-          <button onClick={() => setWeekOffset(0)} style={{ ...getBtnGhost(), padding: '6px 12px', fontSize: 13, background: weekOffset === 0 ? C.bellySoft : 'transparent', borderColor: weekOffset === 0 ? C.warmDark + '66' : C.border, color: weekOffset === 0 ? C.warmDark : C.inkSoft, fontWeight: weekOffset === 0 ? 600 : 500 }}>This week</button>
-          <button onClick={() => setWeekOffset(o => o + 1)} style={{ ...getBtnGhost(), padding: '6px 12px', fontSize: 13 }}>Next ›</button>
-        </div>
+      <div style={{ background: C.paper, border: `1px solid ${C.border}`, borderRadius: 14, padding: '14px 16px', marginBottom: 16, boxShadow: C.shadowSoft }}>
+        <MonthStrip
+          tasks={tasks}
+          monthOffset={monthOffset}
+          selectedWeekStart={weekStart}
+          onWeekSelect={setWeekStart}
+          onMonthChange={delta => setMonthOffset(o => o + delta)}
+        />
+        <div style={{ borderTop: `1px solid ${C.hairline}`, margin: '12px 0' }}/>
+        <WeekDetail
+          tasks={tasks}
+          weekStart={weekStart}
+          onTaskTap={setDetailTask}
+          onTaskDrop={(task, newDate) => onReschedule(task.id, newDate)}
+          onWeekOffsetChange={handleWeekOffsetChange}
+        />
       </div>
-      <div style={{ background: `linear-gradient(120deg, ${C.bellySoft} 0%, ${C.ochreSoft}88 100%)`, border: `1px solid ${C.border}`, borderRadius: 12, padding: '12px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12, animation: 'heed-fadeUp 0.4s ease' }}>
-        <MayaOwl size={32} idle={false}/>
-        <div style={{ fontSize: 13, color: C.ink, lineHeight: 1.5, flex: 1 }}>
-          <strong>Heed has scheduled these for you.</strong> Each task is placed on its best-fit day given your cadence patterns and importance.
-        </div>
-      </div>
-      <div style={{ background: C.paper, border: `1px solid ${C.border}`, borderRadius: 14, overflow: 'hidden', boxShadow: C.shadowSoft }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', background: C.bellySoft, borderBottom: `1px solid ${C.border}` }}>
-          {DAYS_OF_WEEK.map((d, i) => {
-            const date = addDays(weekStart, i)
-            const isToday = sameDay(date, TODAY_DATE)
-            return (
-              <div key={i} style={{ padding: '12px 10px', textAlign: 'center', borderRight: i < 6 ? `1px solid ${C.border}` : 'none' }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: C.inkMute, letterSpacing: 0.7, textTransform: 'uppercase' }}>{d}</div>
-                <div style={{ fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 600, color: isToday ? C.cream : C.warmDark, marginTop: 2, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: '50%', background: isToday ? C.warmDark : 'transparent' }}>
-                  {date.getDate()}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-        {ROUTINE_TRACKS.map(track => (
-          <div key={track.id} style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', borderBottom: `1px solid ${C.hairline}`, background: C.paper }}>
-            {[0,1,2,3,4,5,6].map(i => (
-              <div key={i} style={{ borderRight: i < 6 ? `1px solid ${C.hairline}` : 'none', padding: '6px 8px', display: 'flex', alignItems: 'center', gap: 6 }}>
-                {track.days.includes(i) && (<>
-                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: track.color }}/>
-                  <span style={{ fontSize: 10.5, color: track.color, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{track.label}</span>
-                </>)}
-              </div>
-            ))}
-          </div>
-        ))}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', minHeight: 240 }}>
-          {[0,1,2,3,4,5,6].map(i => {
-            const date = addDays(weekStart, i)
-            const dayItems = schedule.filter(s => sameDay(s.date, date))
-            const isToday = sameDay(date, TODAY_DATE)
-            return (
-              <div key={i} style={{ borderRight: i < 6 ? `1px solid ${C.hairline}` : 'none', padding: '10px 8px', background: isToday ? C.bellySoft + '50' : 'transparent', display: 'flex', flexDirection: 'column', gap: 4, animation: 'heed-fadeIn 0.4s ease both', animationDelay: `${i * 60}ms` }}>
-                {dayItems.map((item, j) => <CalendarChip key={j} item={item}/>)}
-                {dayItems.length === 0 && <div style={{ fontSize: 11, color: C.inkMute + '88', fontStyle: 'italic', textAlign: 'center', marginTop: 12 }}>—</div>}
-              </div>
-            )
-          })}
-        </div>
-      </div>
-      <div style={{ marginTop: 16, padding: '12px 16px', background: C.paper, border: `1px solid ${C.border}`, borderRadius: 10, boxShadow: C.shadowSoft }}>
+      <div style={{ padding: '12px 16px', background: C.paper, border: `1px solid ${C.border}`, borderRadius: 10, boxShadow: C.shadowSoft }}>
         <div style={{ fontSize: 10.5, fontWeight: 700, color: C.inkMute, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 10 }}>Legend</div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <ImportanceBadge importance="low"/>
@@ -2091,6 +2032,15 @@ function CalendarTab() {
           <ImportanceBadge importance="high"/>
         </div>
       </div>
+      {detailTask && (
+        <TaskDetailSheet
+          task={detailTask}
+          onClose={() => setDetailTask(null)}
+          onMarkDone={onMarkDone}
+          onSkip={onSkip}
+          onReschedule={onReschedule}
+        />
+      )}
     </div>
   )
 }

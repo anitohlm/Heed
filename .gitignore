@@ -11,3 +11,4 @@ local.settings.json
 *.log
 .DS_Store
 *.tmp
+.claude/worktrees/

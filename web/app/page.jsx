@@ -444,6 +444,33 @@ function useChat({ onLightenRoutine } = {}) {
   return { messages, input, setInput, thinking, streaming, busy, send, executeAction }
 }
 
+// ── useMic hook ────────────────────────────────────────────────
+function useMic(onTranscript) {
+  const [listening, setListening] = useState(false)
+  const recogRef = useRef(null)
+  const supported = typeof window !== 'undefined' && !!(window.SpeechRecognition || window.webkitSpeechRecognition)
+  const stop = useCallback(() => { recogRef.current?.stop() }, [])
+  const toggle = useCallback(() => {
+    if (!supported) return
+    if (listening) { stop(); return }
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition
+    const r = new SR()
+    r.lang = 'en-US'; r.interimResults = true; r.continuous = false
+    r.onstart = () => setListening(true)
+    r.onresult = (e) => {
+      const transcript = Array.from(e.results).map(res => res[0].transcript).join('')
+      const isFinal = e.results[e.results.length - 1].isFinal
+      onTranscript(transcript, isFinal)
+    }
+    r.onend = () => setListening(false)
+    r.onerror = () => setListening(false)
+    recogRef.current = r
+    r.start()
+  }, [listening, supported, onTranscript, stop])
+  useEffect(() => () => recogRef.current?.abort(), [])
+  return { listening, toggle, supported }
+}
+
 // ── Button style factories (called each render so C reads current theme) ──
 const getBtnPrimary = () => ({
   background: C.warmDark, color: C.cream, border: 'none',
@@ -1532,6 +1559,72 @@ function ShareableCard({ routine, variant = 'streak', theme = 'B' }) {
   )
 }
 
+// ── RoutineRow (Today tab — compact at-a-glance) ────────────────
+function RoutineRow({ routine, delay = 0, onMarkDone, onSkipToday, onLighten }) {
+  const last7 = routine.completion14d.slice(-7)
+  const thisWeekCount = last7.filter(Boolean).length
+  const isHealthy = thisWeekCount >= 5
+  const isAttention = routine.suggestion !== null
+  const isLightened = !!routine.lightenedItems?.length
+  const borderColor = isLightened
+    ? `${C.sage}73`
+    : isAttention && !isLightened
+    ? `${C.ochre}73`
+    : C.border
+  const { ref: swipeRef } = useSwipe(
+    () => onMarkDone?.(routine.id),
+    () => onSkipToday?.(routine.id),
+  )
+  return (
+    <div style={{ position: 'relative', marginBottom: 8, touchAction: 'pan-y', userSelect: 'none' }}>
+      <div style={{ position: 'absolute', inset: 0, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', pointerEvents: 'none' }}>
+        <span data-badge="done" style={{ fontSize: 16, color: C.sage, opacity: 0 }}>✓</span>
+        <span data-badge="skip" style={{ fontSize: 16, color: C.ochre, opacity: 0 }}>↷</span>
+      </div>
+      <div
+        ref={swipeRef}
+        className="heed-card"
+        style={{
+          background: C.paperHi,
+          border: `1px solid ${borderColor}`,
+          borderRadius: 10,
+          padding: '11px 14px',
+          animation: 'heed-fadeUp 0.5s ease both',
+          animationDelay: `${delay}ms`,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
+          <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: C.ink }}>{routine.name}</span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: isHealthy ? C.sage : C.ochre }}>
+            {isHealthy ? '✓' : '⚠'} {thisWeekCount}/7 this week
+          </span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+            {last7.map((done, i) => (
+              <span key={i} style={{ width: 6, height: 6, borderRadius: '50%', display: 'inline-block', background: done ? C.sage : C.border }}/>
+            ))}
+            <span style={{ marginLeft: 4, fontSize: 10, color: C.inkMute, fontStyle: 'italic' }}>today →</span>
+          </div>
+          {isLightened && (
+            <span style={{ fontSize: 10.5, fontWeight: 600, color: C.sage, background: C.sageSoft, border: `1px solid ${C.sage}4d`, borderRadius: 999, padding: '2px 9px' }}>
+              {routine.lightenedItems.length} items optional
+            </span>
+          )}
+          {isAttention && !isLightened && (
+            <span
+              onClick={() => onLighten?.(routine.id)}
+              style={{ fontSize: 10.5, fontWeight: 600, color: C.ochre, background: C.ochreSoft, border: `1px solid ${C.ochre}40`, borderRadius: 999, padding: '2px 9px', cursor: 'pointer' }}
+            >
+              Lighten this week →
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── RoutineCard ────────────────────────────────────────────────
 function RoutineCard({ routine, delay = 0, onMarkDone, onLighten, onEdit, onShare }) {
   const [hover, setHover] = useState(false)
@@ -1809,9 +1902,39 @@ function ThinkingBubble({ steps }) {
   )
 }
 
+function MicButton({ listening, onToggle, disabled }) {
+  return (
+    <button
+      onClick={onToggle}
+      disabled={disabled}
+      aria-label={listening ? 'Stop recording' : 'Speak your question'}
+      style={{
+        width: 44, height: 44, borderRadius: '50%', flexShrink: 0,
+        background: listening ? '#e53e3e' : C.paper,
+        border: `1.5px solid ${listening ? '#e53e3e' : C.border}`,
+        color: listening ? '#fff' : C.inkMute,
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 0, transition: 'all 0.2s ease',
+        boxShadow: listening ? '0 0 0 4px rgba(229,62,62,0.25)' : 'none',
+        animation: listening ? 'heed-breathe 1.2s ease-in-out infinite' : 'none',
+        opacity: disabled ? 0.4 : 1,
+      }}
+    >
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+        <rect x="9" y="2" width="6" height="12" rx="3" stroke="currentColor" strokeWidth="1.9"/>
+        <path d="M5 10a7 7 0 0 0 14 0" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"/>
+        <line x1="12" y1="20" x2="12" y2="23" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"/>
+        <line x1="9" y1="23" x2="15" y2="23" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"/>
+      </svg>
+    </button>
+  )
+}
+
 function AskTab({ prefill = '', onLightenRoutine }) {
   const { messages, input, setInput, thinking, streaming, busy, send, executeAction } = useChat({ onLightenRoutine })
   const scrollRef = useRef(null)
+  const { listening, toggle: toggleMic, supported: micSupported } = useMic(useCallback((text) => setInput(text), [setInput]))
   useEffect(() => {
     if (prefill) setInput(prefill)
   }, [prefill, setInput])
@@ -1852,14 +1975,15 @@ function AskTab({ prefill = '', onLightenRoutine }) {
           {streaming && <Bubble role="assistant" content={streaming} streaming/>}
         </div>
       )}
-      <div style={{ display: 'flex', gap: 10, padding: '14px 4px', borderTop: messages.length > 0 ? `1px solid ${C.hairline}` : 'none' }}>
+      <div style={{ display: 'flex', gap: 8, padding: '14px 4px', borderTop: messages.length > 0 ? `1px solid ${C.hairline}` : 'none', alignItems: 'center' }}>
+        {micSupported && <MicButton listening={listening} onToggle={toggleMic} disabled={busy}/>}
         <input
           value={input} onChange={e => setInput(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && send(input)}
-          placeholder="Ask Heed anything..." disabled={busy}
-          style={{ flex: 1, background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '12px 16px', fontSize: 14, color: C.ink, outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.15s' }}
+          placeholder={listening ? 'Listening…' : 'Ask Heed anything…'} disabled={busy}
+          style={{ flex: 1, background: C.paper, border: `1.5px solid ${listening ? '#e53e3e' : C.border}`, borderRadius: 10, padding: '12px 16px', fontSize: 14, color: C.ink, outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.15s' }}
           onFocus={e => { e.target.style.borderColor = C.warmDark }}
-          onBlur={e => { e.target.style.borderColor = C.border }}
+          onBlur={e => { if (!listening) e.target.style.borderColor = C.border }}
         />
         <button onClick={() => send(input)} disabled={busy || !input.trim()} style={{ ...getBtnPrimary(), padding: '12px 22px', fontSize: 13, opacity: (busy || !input.trim()) ? 0.5 : 1 }}>Send</button>
       </div>
@@ -1969,6 +2093,62 @@ const CONTEXT_CHIPS = [
   { type: 'travel',      label: '✈️ Traveling' },
   { type: 'celebration', label: '🌸 Celebration' },
 ]
+
+// ── usePlans — localStorage-backed plan state ─────────────────
+function usePlans(initialPlans) {
+  const [plans, setPlans] = useState(() => {
+    try {
+      const saved = localStorage.getItem('heed_plans')
+      return saved ? JSON.parse(saved) : initialPlans
+    } catch {
+      return initialPlans
+    }
+  })
+
+  useEffect(() => {
+    localStorage.setItem('heed_plans', JSON.stringify(plans))
+  }, [plans])
+
+  const checkTask = useCallback((planId, taskIndex) => {
+    setPlans(prev => prev.map(p => p.id !== planId ? p : {
+      ...p, tasks: p.tasks.map((t, i) => i === taskIndex ? { ...t, done: !t.done } : t),
+    }))
+  }, [])
+
+  const renameTask = useCallback((planId, taskIndex, newLabel) => {
+    setPlans(prev => prev.map(p => p.id !== planId ? p : {
+      ...p, tasks: p.tasks.map((t, i) => i === taskIndex ? { ...t, label: newLabel } : t),
+    }))
+  }, [])
+
+  const addTask = useCallback((planId, label) => {
+    setPlans(prev => prev.map(p => p.id !== planId ? p : {
+      ...p, tasks: [...p.tasks, { label, done: false }],
+    }))
+  }, [])
+
+  const deleteTask = useCallback((planId, taskIndex) => {
+    setPlans(prev => prev.map(p => p.id !== planId ? p : {
+      ...p, tasks: p.tasks.filter((_, i) => i !== taskIndex),
+    }))
+  }, [])
+
+  const reorderTasks = useCallback((planId, fromIndex, toIndex) => {
+    setPlans(prev => prev.map(p => {
+      if (p.id !== planId) return p
+      const t = [...p.tasks]
+      const [moved] = t.splice(fromIndex, 1)
+      t.splice(toIndex, 0, moved)
+      return { ...p, tasks: t }
+    }))
+  }, [])
+
+  const addPlan = useCallback((plan) => {
+    setPlans(prev => [plan, ...prev])
+  }, [])
+
+  return { plans, checkTask, renameTask, addTask, deleteTask, reorderTasks, addPlan }
+}
 
 // ── PlanCard ────────────────────────────────────────────────────
 const PLAN_ICON_BG = { project: '#f0e8d8', goal: '#f5f0d8', event: '#e8f0e8' }
@@ -2703,6 +2883,7 @@ function AskInlineModal({ open, onClose, onLightenRoutine }) {
   const { messages, input, setInput, thinking, streaming, busy, send, executeAction } = useChat({ onLightenRoutine })
   const scrollRef = useRef(null)
   const inputRef = useRef(null)
+  const { listening, toggle: toggleMic, supported: micSupported } = useMic(useCallback((text) => setInput(text), [setInput]))
   useEffect(() => { if (open && inputRef.current) setTimeout(() => inputRef.current?.focus(), 100) }, [open])
   useEffect(() => {
     if (!open) return
@@ -2752,10 +2933,11 @@ function AskInlineModal({ open, onClose, onLightenRoutine }) {
             {thinking && thinking.length > 0 && <ThinkingBubble steps={thinking}/>}
             {streaming && <Bubble role="assistant" content={streaming} streaming/>}
           </div>
-          <div style={{ display: 'flex', gap: 8, paddingTop: 10, borderTop: messages.length > 0 ? `1px solid ${C.hairline}` : 'none', flexShrink: 0 }}>
-            <input ref={inputRef} value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && send(input)} placeholder="Ask Heed anything..." disabled={busy}
-              style={{ flex: 1, background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '10px 14px', fontSize: 14, color: C.ink, outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.15s' }}
-              onFocus={e => { e.target.style.borderColor = C.warmDark }} onBlur={e => { e.target.style.borderColor = C.border }}
+          <div style={{ display: 'flex', gap: 8, paddingTop: 10, borderTop: messages.length > 0 ? `1px solid ${C.hairline}` : 'none', flexShrink: 0, alignItems: 'center' }}>
+            {micSupported && <MicButton listening={listening} onToggle={toggleMic} disabled={busy}/>}
+            <input ref={inputRef} value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && send(input)} placeholder={listening ? 'Listening…' : 'Ask Heed anything…'} disabled={busy}
+              style={{ flex: 1, background: C.paper, border: `1.5px solid ${listening ? '#e53e3e' : C.border}`, borderRadius: 10, padding: '10px 14px', fontSize: 14, color: C.ink, outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.15s' }}
+              onFocus={e => { e.target.style.borderColor = C.warmDark }} onBlur={e => { if (!listening) e.target.style.borderColor = C.border }}
             />
             <button onClick={() => send(input)} disabled={busy || !input.trim()} style={{ ...getBtnPrimary(), padding: '10px 18px', fontSize: 13, opacity: (busy || !input.trim()) ? 0.5 : 1 }}>Send</button>
           </div>

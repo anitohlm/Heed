@@ -12,7 +12,7 @@ const APP_TABS = [
   { id: 'calendar', label: 'Calendar' },
   { id: 'ask',      label: 'Ask Heed' },
   { id: 'tracks',   label: 'Tracks' },
-  { id: 'context',  label: 'Plans' },
+  { id: 'context',  label: 'Life' },
 ]
 
 // ── Design tokens (getter proxy — reads active theme on each access) ──────
@@ -112,6 +112,34 @@ const CONTEXTS_UPCOMING_DEMO = [
         'Aircon cleaning can wait until that weekend',
       ],
     },
+  },
+]
+const DEMO_PLANS = [
+  {
+    id: 'plan-1', type: 'project', icon: '📦', title: 'Move apartments',
+    dueDate: 'Jun 15',
+    tasks: [
+      { label: 'Book moving truck',           done: true },
+      { label: 'Notify landlord',             done: true },
+      { label: 'Pack bedroom',                done: false },
+      { label: 'Transfer utilities',          done: false },
+      { label: 'Update address with bank',    done: false },
+      { label: 'Deep clean current unit',     done: false },
+      { label: 'Return keys',                 done: false },
+    ],
+  },
+  {
+    id: 'plan-2', type: 'event', icon: '📅', title: 'Job interview — Acme Co.',
+    eventDate: new Date('2026-05-08'),
+    tasks: [
+      { label: 'Research the company',        done: true },
+      { label: 'Prepare questions to ask',    done: false },
+      { label: 'Iron outfit',                 done: false },
+    ],
+  },
+  {
+    id: 'plan-3', type: 'goal', icon: '🎯', title: 'Save ₱50,000',
+    current: 31500, target: 50000, unit: '₱', targetDate: 'Aug 2026',
   },
 ]
 const SUGGESTIONS = [

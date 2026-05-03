@@ -1385,6 +1385,155 @@ function TaskCard({ task, delay = 0, onMarkDone, onSkip, onMoreOptions }) {
   )
 }
 
+// ── ShareableCard sub-variants ────────────────────────────────
+function StreakVariant({ routine, t, streak, startedDate }) {
+  return (
+    <>
+      <div style={{ fontSize: 26, fontWeight: 700, color: t.accent, letterSpacing: 3, textTransform: 'uppercase', marginBottom: 16 }}>
+        My {routine.name}
+      </div>
+      <div style={{ fontFamily: 'Lora, serif', fontSize: 200, fontWeight: 700, color: t.text, lineHeight: 0.85, marginBottom: 12 }}>
+        {streak}
+      </div>
+      <div style={{ fontSize: 30, fontWeight: 700, color: t.accent, letterSpacing: 6, textTransform: 'uppercase', marginBottom: 14 }}>
+        DAY STREAK
+      </div>
+      <div style={{ fontSize: 18, color: t.text, opacity: 0.45, letterSpacing: 3, textTransform: 'uppercase', marginBottom: 64 }}>
+        STARTED {startedDate.toUpperCase()}
+      </div>
+      <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+        {routine.completion14d.map((done, i) => (
+          <svg key={i} width="32" height="36" viewBox="0 0 16 18" fill="none" aria-hidden="true">
+            <path d="M8 1 C8 1, 15 5, 15 10 C15 14, 12 17, 8 17 C4 17, 1 14, 1 10 C1 5, 8 1, 8 1 Z"
+              fill={done ? t.accent : 'transparent'}
+              stroke={done ? t.accent : `${t.accent}44`}
+              strokeWidth="1.5"
+            />
+          </svg>
+        ))}
+      </div>
+      <div style={{ fontSize: 18, color: t.text, opacity: 0.4, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 'auto' }}>
+        Last 14 days
+      </div>
+    </>
+  )
+}
+
+function ProgressVariant({ routine, t, pct }) {
+  const r = 120
+  const circ = 2 * Math.PI * r
+  const filled = (pct / 100) * circ
+  return (
+    <>
+      <div style={{ fontSize: 26, fontWeight: 700, color: t.accent, letterSpacing: 3, textTransform: 'uppercase', marginBottom: 48 }}>
+        My {routine.name}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, marginBottom: 48 }}>
+        <div style={{ position: 'relative', width: 300, height: 300 }}>
+          <svg width="300" height="300" viewBox="0 0 300 300" style={{ transform: 'rotate(-90deg)' }}>
+            <circle cx="150" cy="150" r={r} fill="none" stroke={`${t.accent}22`} strokeWidth="18"/>
+            <circle cx="150" cy="150" r={r} fill="none" stroke={t.accent} strokeWidth="36" opacity="0.12"/>
+            <circle cx="150" cy="150" r={r} fill="none" stroke={t.accent} strokeWidth="18" strokeLinecap="round"
+              strokeDasharray={`${filled} ${circ}`}/>
+          </svg>
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span style={{ fontFamily: 'Lora, serif', fontSize: 80, fontWeight: 700, color: t.text, lineHeight: 1 }}>
+              {pct}%
+            </span>
+          </div>
+        </div>
+      </div>
+      <div style={{ fontSize: 22, fontWeight: 700, color: t.text, opacity: 0.45, letterSpacing: 3, textTransform: 'uppercase', textAlign: 'center', marginBottom: 'auto' }}>
+        COMPLETED · LAST 14 DAYS
+      </div>
+    </>
+  )
+}
+
+function RoutineVariant({ routine, t, pct }) {
+  return (
+    <>
+      <div style={{ fontFamily: 'Lora, serif', fontSize: 56, fontWeight: 700, color: t.text, lineHeight: 1.15, marginBottom: 18 }}>
+        My {routine.name}
+      </div>
+      <div style={{ fontSize: 22, color: t.text, opacity: 0.5, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 56 }}>
+        {routine.schedule}
+      </div>
+      <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 'auto' }}>
+        {routine.items.map((item, i) => (
+          <span key={i} style={{
+            padding: '14px 26px', borderRadius: 999,
+            background: `${t.accent}1a`,
+            border: `1.5px solid ${t.accent}55`,
+            fontSize: 20, color: t.text, fontWeight: 500,
+          }}>{item}</span>
+        ))}
+      </div>
+      <div style={{ alignSelf: 'flex-start', padding: '12px 24px', borderRadius: 999, background: `${t.accent}1a`, border: `1px solid ${t.accent}44`, display: 'inline-flex', alignItems: 'center', gap: 10, marginTop: 48 }}>
+        <span style={{ fontFamily: 'Lora, serif', fontSize: 26, fontWeight: 700, color: t.accent }}>{pct}%</span>
+        <span style={{ fontSize: 16, color: t.text, opacity: 0.55, letterSpacing: 1.5, textTransform: 'uppercase' }}>· 14d</span>
+      </div>
+    </>
+  )
+}
+
+// ── ShareableCard ──────────────────────────────────────────────
+function ShareableCard({ routine, variant = 'streak', theme = 'B' }) {
+  const _uid = React.useId().replace(/:/g, '')  // unique per render instance (preview vs hidden)
+  const t = SHARE_THEMES[theme]
+  const streak = computeStreakCount(routine.completion14d)
+  const pct = computeCompletionPct(routine.completion14d)
+  const startedDate = formatStartedDate(streak)
+  const uid = `${_uid}-${routine.id}-${theme}`
+  const padLeft = t.vertRule ? 38 : 0
+  return (
+    <div style={{
+      width: 750, height: 1000,
+      background: t.bg,
+      borderRadius: 24,
+      padding: `60px 56px 48px 56px`,
+      display: 'flex',
+      flexDirection: 'column',
+      position: 'relative',
+      overflow: 'hidden',
+      boxShadow: '0 8px 24px rgba(0,0,0,.45), 0 2px 6px rgba(0,0,0,.25)',
+      fontFamily: '"Nunito Sans", -apple-system, sans-serif',
+    }}>
+      {/* Noise texture overlay */}
+      <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', opacity: 0.04 }} aria-hidden="true">
+        <filter id={`${uid}-noise`}>
+          <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/>
+          <feColorMatrix type="saturate" values="0"/>
+        </filter>
+        <rect width="100%" height="100%" filter={`url(#${uid}-noise)`}/>
+      </svg>
+      {/* Corner arc decoration */}
+      <svg style={{ position: 'absolute', top: 0, right: 0, width: 220, height: 220, pointerEvents: 'none', overflow: 'visible' }} aria-hidden="true">
+        <circle cx="220" cy="0" r="130" fill="none" stroke={t.accent} strokeWidth="0.6" opacity="0.4"/>
+        <circle cx="220" cy="0" r="175" fill="none" stroke={t.accent} strokeWidth="0.4" opacity="0.2"/>
+      </svg>
+      {/* Vertical rule for theme E */}
+      {t.vertRule && (
+        <div style={{ position: 'absolute', left: 30, top: 60, bottom: 60, width: 1.5, background: t.vertRule }}/>
+      )}
+      {/* Card content */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', paddingLeft: padLeft, minHeight: 0 }}>
+        {variant === 'streak'   && <StreakVariant   routine={routine} t={t} streak={streak} startedDate={startedDate}/>}
+        {variant === 'progress' && <ProgressVariant routine={routine} t={t} pct={pct}/>}
+        {variant === 'routine'  && <RoutineVariant  routine={routine} t={t} pct={pct}/>}
+      </div>
+      {/* Brand bar */}
+      <div style={{ borderTop: `1px solid ${t.divider}`, paddingTop: 22, display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingLeft: padLeft }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <OwlSignature oc={t.owl} size={20}/>
+          <span style={{ fontFamily: 'Lora, serif', fontWeight: 700, fontSize: 20, color: t.accent, letterSpacing: 0.5 }}>heed</span>
+        </div>
+        <span style={{ fontSize: 12, fontWeight: 700, color: t.text, opacity: 0.25, letterSpacing: 3, textTransform: 'uppercase' }}>RITUAL</span>
+      </div>
+    </div>
+  )
+}
+
 // ── RoutineCard ────────────────────────────────────────────────
 function RoutineCard({ routine, delay = 0, onMarkDone, onLighten, onEdit }) {
   const [hover, setHover] = useState(false)

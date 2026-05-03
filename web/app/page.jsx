@@ -85,7 +85,7 @@ function computeStreakCount(completion14d) {
   return count
 }
 function formatStartedDate(streakCount) {
-  const d = new Date(Date.now() - streakCount * 86400000)
+  const d = new Date(Date.now() - Math.max(0, streakCount - 1) * 86400000)
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 function computeCompletionPct(completion14d) {
@@ -1390,7 +1390,9 @@ function useShareCard() {
   async function captureCard(el) {
     const html2canvas = (await import('html2canvas')).default
     const canvas = await html2canvas(el, { scale: 1, useCORS: true, logging: false })
-    return new Promise(resolve => canvas.toBlob(resolve, 'image/png'))
+    return new Promise((resolve, reject) =>
+      canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('PNG encoding failed')), 'image/png')
+    )
   }
 
   async function downloadCard(el, filename) {
@@ -3341,14 +3343,24 @@ function ShareCardSheet({ routine, onClose }) {
 
   async function handleDownload() {
     setLoading(true)
-    try { await downloadCard(hiddenRef.current, filename) }
-    finally { setLoading(false) }
+    try {
+      await downloadCard(hiddenRef.current, filename)
+    } catch {
+      // PNG encoding or download failed silently
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function handleShare() {
     setLoading(true)
-    try { await shareCard(hiddenRef.current, filename, () => setFallbackToast(true)) }
-    finally { setLoading(false) }
+    try {
+      await shareCard(hiddenRef.current, filename, () => setFallbackToast(true))
+    } catch {
+      // PNG encoding or share failed silently
+    } finally {
+      setLoading(false)
+    }
   }
 
   const VARIANTS = [['streak', 'Streak'], ['progress', 'Progress'], ['routine', 'Routine']]

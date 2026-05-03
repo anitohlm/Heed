@@ -985,58 +985,81 @@ function Bubble({ role, content, streaming: isStreaming, actions, chips, onConfi
 }
 
 // ── useSwipe ────────────────────────────────────────────────────
+// Uses direct DOM listeners (not React synthetic events) so touch events
+// can be non-passive and the browser won't steal the gesture for scroll.
 function useSwipe(onRight, onLeft, threshold = 80) {
   const [offset, setOffset] = useState(0)
-  const s = useRef({ startX: null, active: false, onRight, onLeft })
-  s.current.onRight = onRight
-  s.current.onLeft = onLeft
+  const ref = useRef(null)
+  const cb = useRef({ onRight, onLeft, threshold })
+  cb.current.onRight = onRight
+  cb.current.onLeft = onLeft
+  cb.current.threshold = threshold
 
-  const onPointerDown = useCallback((e) => {
-    // Ignore non-primary buttons (right-click, etc.)
-    if (e.button !== undefined && e.button !== 0) return
-    s.current.startX = e.clientX
-    s.current.active = false
-    // Capture immediately so move events fire even when pointer leaves the element
-    try { e.currentTarget.setPointerCapture(e.pointerId) } catch (_) {}
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const st = { startX: null, active: false }
 
-    const onMove = (ev) => {
-      if (s.current.startX === null) return
-      const dx = ev.clientX - s.current.startX
-      if (!s.current.active && Math.abs(dx) > 6) s.current.active = true
-      if (s.current.active) setOffset(Math.max(-130, Math.min(130, dx)))
-    }
-    const onUp = (ev) => {
-      window.removeEventListener('pointermove', onMove)
-      window.removeEventListener('pointerup', onUp)
-      window.removeEventListener('pointercancel', onCancel)
-      if (!s.current.active) { s.current.startX = null; return }
-      const dx = ev.clientX - s.current.startX
-      s.current.startX = null
-      s.current.active = false
+    const finish = (clientX) => {
+      if (!st.active) { st.startX = null; return }
+      const dx = clientX - st.startX
+      st.startX = null; st.active = false
       setOffset(0)
-      if (dx > threshold) s.current.onRight?.()
-      else if (dx < -threshold) s.current.onLeft?.()
+      if (dx > cb.current.threshold) cb.current.onRight?.()
+      else if (dx < -cb.current.threshold) cb.current.onLeft?.()
     }
-    const onCancel = () => {
-      window.removeEventListener('pointermove', onMove)
-      window.removeEventListener('pointerup', onUp)
-      window.removeEventListener('pointercancel', onCancel)
-      s.current.startX = null
-      s.current.active = false
-      setOffset(0)
-    }
-    window.addEventListener('pointermove', onMove)
-    window.addEventListener('pointerup', onUp)
-    window.addEventListener('pointercancel', onCancel)
-  }, [threshold])
 
-  return { offset, onPointerDown }
+    const onTouchStart = (e) => { st.startX = e.touches[0].clientX; st.active = false }
+    const onTouchMove = (e) => {
+      if (st.startX === null) return
+      const dx = e.touches[0].clientX - st.startX
+      if (!st.active && Math.abs(dx) > 8) st.active = true
+      if (!st.active) return
+      if (e.cancelable) e.preventDefault()
+      setOffset(Math.max(-130, Math.min(130, dx)))
+    }
+    const onTouchEnd = (e) => finish(e.changedTouches[0].clientX)
+    const onTouchCancel = () => { st.startX = null; st.active = false; setOffset(0) }
+
+    const onMouseDown = (e) => {
+      if (e.button !== 0) return
+      st.startX = e.clientX; st.active = false
+      const onMouseMove = (ev) => {
+        if (st.startX === null) return
+        const dx = ev.clientX - st.startX
+        if (!st.active && Math.abs(dx) > 8) st.active = true
+        if (st.active) setOffset(Math.max(-130, Math.min(130, dx)))
+      }
+      const onMouseUp = (ev) => {
+        window.removeEventListener('mousemove', onMouseMove)
+        window.removeEventListener('mouseup', onMouseUp)
+        finish(ev.clientX)
+      }
+      window.addEventListener('mousemove', onMouseMove)
+      window.addEventListener('mouseup', onMouseUp)
+    }
+
+    el.addEventListener('touchstart', onTouchStart, { passive: true })
+    el.addEventListener('touchmove', onTouchMove, { passive: false })
+    el.addEventListener('touchend', onTouchEnd)
+    el.addEventListener('touchcancel', onTouchCancel)
+    el.addEventListener('mousedown', onMouseDown)
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart)
+      el.removeEventListener('touchmove', onTouchMove)
+      el.removeEventListener('touchend', onTouchEnd)
+      el.removeEventListener('touchcancel', onTouchCancel)
+      el.removeEventListener('mousedown', onMouseDown)
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  return { offset, ref }
 }
 
 // ── HeroCard ───────────────────────────────────────────────────
 function HeroCard({ task, onMarkDone, onSkip }) {
   const [hover, setHover] = useState(false)
-  const { offset, onPointerDown } = useSwipe(
+  const { offset, ref: swipeRef } = useSwipe(
     () => onMarkDone?.(task),
     () => onSkip?.(task),
   )
@@ -1057,9 +1080,9 @@ function HeroCard({ task, onMarkDone, onSkip }) {
         <span style={{ fontSize: 22, color: C.ochre, opacity: swipeLeft ? progress : 0 }}>↷</span>
       </div>
       <div
+        ref={swipeRef}
         onMouseEnter={() => !isSwiping && setHover(true)}
         onMouseLeave={() => setHover(false)}
-        onPointerDown={onPointerDown}
         style={{
           background: `linear-gradient(135deg, ${C.paperHi} 0%, ${C.paper} 100%)`,
           border: `1.5px solid ${swipeRight ? C.sage + '88' : swipeLeft ? C.ochre + '66' : isCritical ? C.rust + '66' : C.border}`,
@@ -1112,7 +1135,7 @@ function HeroCard({ task, onMarkDone, onSkip }) {
 // ── TaskCard ───────────────────────────────────────────────────
 function TaskCard({ task, delay = 0, onMarkDone, onSkip }) {
   const [hover, setHover] = useState(false)
-  const { offset, onPointerDown } = useSwipe(
+  const { offset, ref: swipeRef } = useSwipe(
     () => onMarkDone?.(task),
     () => onSkip?.(task),
   )
@@ -1136,7 +1159,7 @@ function TaskCard({ task, delay = 0, onMarkDone, onSkip }) {
       <div
         onMouseEnter={() => !isSwiping && setHover(true)}
         onMouseLeave={() => setHover(false)}
-        onPointerDown={onPointerDown}
+        ref={swipeRef}
         style={{
           background: `linear-gradient(180deg, ${C.paperHi} 0%, ${C.paper} 100%)`,
           border: `1.5px solid ${swipeRight ? C.sage + '77' : swipeLeft ? C.ochre + '55' : isCritical ? C.rust + '44' : C.border}`,

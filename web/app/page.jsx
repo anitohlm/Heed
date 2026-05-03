@@ -1742,7 +1742,7 @@ function ContextBanner({ upcomingContexts, onAskHeed }) {
 }
 
 // ── TodayTab ───────────────────────────────────────────────────
-function TodayTab({ tasks, routines, upcomingContexts, onMarkDone, onSkip, onMarkRoutineDone, onLightenRoutine, onEditRoutine, onAskHeed, onMoreOptions, onShareCard }) {
+function TodayTab({ tasks, routines, upcomingContexts, onMarkDone, onSkip, onMarkRoutineDone, onSkipRoutineToday, onLightenRoutine, onEditRoutine, onAskHeed, onMoreOptions, onShareCard }) {
   const overdue = tasks.filter(t => t.overdue != null).sort((a, b) => b.overdue - a.overdue)
   const heroTask = overdue[0]
   const otherOverdue = overdue.slice(1)
@@ -3832,6 +3832,10 @@ export default function HeedApp() {
     setToast({ message: 'Routine marked done for today' })
   }, [])
 
+  const handleSkipRoutineToday = useCallback((routineId) => {
+    setToast({ message: 'Routine skipped for today' })
+  }, [])
+
   const handleLightenRoutine = useCallback((routineId, itemsToStrike = null) => {
     setRoutines(rs => rs.map(r => {
       if (r.id !== routineId) return r
@@ -3961,7 +3965,7 @@ export default function HeedApp() {
       <MobileBottomNav tab={tab} onTab={setTab}/>
 
       <main className="heed-main" style={{ maxWidth: 820, margin: '0 auto', padding: '28px 32px 100px 32px', minHeight: 'calc(100vh - 140px)', display: 'flex', flexDirection: 'column' }}>
-        {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} upcomingContexts={upcomingContexts} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAskHeed={handleAskHeed} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen}/>}
+        {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} upcomingContexts={upcomingContexts} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onSkipRoutineToday={handleSkipRoutineToday} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAskHeed={handleAskHeed} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen}/>}
         {tab === 'calendar' && <CalendarTab tasks={apiTasks} contexts={[...(apiContexts.active||[]), ...(apiContexts.upcoming||[])]} routines={routines} onReschedule={handleReschedule} onMarkDone={handleMarkDone} onSkip={handleSkip} onAddTask={() => setModalOpen(true)} onAddContext={() => setContextModalOpen(true)} onEditRoutine={handleEditRoutine}/>}
         {tab === 'ask' && <AskTab prefill={askPrefill} onLightenRoutine={handleLightenRoutine}/>}
         {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen}/>}

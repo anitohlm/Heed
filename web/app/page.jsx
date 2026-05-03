@@ -1675,6 +1675,82 @@ function addDays(date, n) { const d = new Date(date); d.setDate(d.getDate() + n)
 function fmtMonth(d) { return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) }
 function sameDay(a, b) { return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate() }
 
+function MonthStrip({ tasks, monthOffset, selectedWeekStart, onWeekSelect, onMonthChange }) {
+  const today = new Date()
+  const base = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1)
+  const monthYear = base.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+
+  // Build list of week-Monday dates that overlap this month
+  const firstMonday = startOfWeek(base)
+  const lastOfMonth = new Date(base.getFullYear(), base.getMonth() + 1, 0)
+  const weeks = []
+  let cur = new Date(firstMonday)
+  while (cur <= lastOfMonth && weeks.length < 6) {
+    weeks.push(new Date(cur))
+    cur = addDays(cur, 7)
+  }
+
+  const dotColor = { high: C.rust, medium: C.ochre, low: C.sage }
+
+  const touchRef = useRef(null)
+  function handleTouchStart(e) {
+    touchRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+  }
+  function handleTouchEnd(e) {
+    if (!touchRef.current) return
+    const dx = e.changedTouches[0].clientX - touchRef.current.x
+    const dy = Math.abs(e.changedTouches[0].clientY - touchRef.current.y)
+    if (Math.abs(dx) > 40 && dy < 60) onMonthChange(dx < 0 ? 1 : -1)
+    touchRef.current = null
+  }
+
+  const selKey = selectedWeekStart.toDateString()
+
+  return (
+    <div onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+        <button onClick={() => onMonthChange(-1)} style={{ background: 'none', border: 'none', fontSize: 18, color: C.inkSoft, cursor: 'pointer', padding: '0 6px', lineHeight: 1 }}>‹</button>
+        <div style={{ fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600, color: C.warmDark }}>{monthYear}</div>
+        <button onClick={() => onMonthChange(1)} style={{ background: 'none', border: 'none', fontSize: 18, color: C.inkSoft, cursor: 'pointer', padding: '0 6px', lineHeight: 1 }}>›</button>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 2, marginBottom: 4 }}>
+        {['M','T','W','T','F','S','S'].map((d, i) => (
+          <div key={i} style={{ textAlign: 'center', fontSize: 9, fontWeight: 700, color: C.inkMute, letterSpacing: 0.5 }}>{d}</div>
+        ))}
+      </div>
+      {weeks.map((weekMon, wi) => {
+        const isSelected = weekMon.toDateString() === selKey
+        return (
+          <div key={wi} onClick={() => onWeekSelect(weekMon)}
+            style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 2, background: isSelected ? C.bellySoft : 'transparent', borderRadius: 6, padding: '3px 0', marginBottom: 2, cursor: 'pointer' }}>
+            {[0,1,2,3,4,5,6].map(di => {
+              const date = addDays(weekMon, di)
+              const inMonth = date.getMonth() === base.getMonth()
+              const isToday = sameDay(date, today)
+              const dayTasks = tasks.filter(t => t.next_due_at && sameDay(new Date(t.next_due_at), date))
+              const levels = [...new Set(dayTasks.map(t => t.importance).filter(Boolean))]
+              return (
+                <div key={di} style={{ textAlign: 'center', padding: '3px 0' }}>
+                  <div style={{ fontSize: 11, color: isToday ? C.rust : inMonth ? C.ink : C.inkMute, fontWeight: isToday ? 700 : 400 }}>
+                    {date.getDate()}
+                  </div>
+                  {levels.length > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: 2, marginTop: 1 }}>
+                      {(['high','medium','low']).filter(l => levels.includes(l)).map(l => (
+                        <div key={l} style={{ width: 4, height: 4, borderRadius: '50%', background: dotColor[l] }}/>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 function buildSchedule(weekStart) {
   const push = (offset, label, color, opts = {}) => ({ date: addDays(weekStart, offset), label, color, ...opts })
   return [

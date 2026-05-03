@@ -1898,8 +1898,8 @@ function WeekDetail({ tasks, weekStart, onTaskTap, onWeekOffsetChange, onAddTask
               const days = routineDays(r)
               return (
                 <button key={r.id} onClick={() => onEditRoutine && onEditRoutine(r)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '6px 10px', borderRadius: 8, background: C.sage + '14', border: 'none', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', width: '100%' }}>
-                  <div style={{ flexShrink: 0, width: 44, fontSize: 11, fontWeight: 600, color: C.warmDark, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 10px', borderRadius: 8, background: C.sage + '14', border: 'none', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', width: '100%' }}>
+                  <div style={{ flexShrink: 0, width: 110, fontSize: 12, fontWeight: 600, color: C.warmDark, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {r.name}
                   </div>
                   <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>

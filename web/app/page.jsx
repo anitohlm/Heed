@@ -61,9 +61,33 @@ const ROUTINES = [
   },
 ]
 const CONTEXTS_PAST = [
-  { type: 'travel',  start: 'Dec 20, 2025', end: 'Dec 27, 2025', desc: 'Christmas trip to Baguio', skipped: 9 },
-  { type: 'illness', start: 'Feb 10, 2026', end: 'Feb 14, 2026', desc: 'Flu — bed rest',            skipped: 12 },
-  { type: 'busy',    start: 'Mar 16, 2026', end: 'Mar 22, 2026', desc: 'Client deadline week',      skipped: 7 },
+  {
+    type: 'travel', start: 'Dec 20, 2025', end: 'Dec 27, 2025', desc: 'Christmas trip to Baguio', skipped: 9,
+    heldTasks: [
+      { label: 'Pay Meralco bill',       overdueDays: 7 },
+      { label: 'Call Mom',               overdueDays: 7 },
+      { label: 'Submit timesheet',       overdueDays: 0 },
+      { label: 'Refill water dispenser', overdueDays: 3 },
+      { label: 'Morning routine',        overdueDays: 0 },
+    ],
+  },
+  {
+    type: 'illness', start: 'Feb 10, 2026', end: 'Feb 14, 2026', desc: 'Flu — bed rest', skipped: 12,
+    heldTasks: [
+      { label: 'Pay Meralco bill', overdueDays: 5 },
+      { label: 'Call Mom',         overdueDays: 5 },
+      { label: 'Morning routine',  overdueDays: 0 },
+      { label: 'Evening wind-down', overdueDays: 0 },
+    ],
+  },
+  {
+    type: 'busy', start: 'Mar 16, 2026', end: 'Mar 22, 2026', desc: 'Client deadline week', skipped: 7,
+    heldTasks: [
+      { label: 'Cat litter box',          overdueDays: 6 },
+      { label: 'Update expense tracker',  overdueDays: 6 },
+      { label: 'Wash bedsheets',          overdueDays: 0 },
+    ],
+  },
 ]
 const CONTEXTS_UPCOMING_DEMO = [
   {
@@ -72,6 +96,7 @@ const CONTEXTS_UPCOMING_DEMO = [
     end: 'Jun 9, 2026',
     desc: 'Singapore trip',
     _startDate: new Date('2026-06-05'),
+    routinesPaused: 2,
     askQuery: 'Plan around my Singapore trip',
     plan: {
       before: [
@@ -1230,8 +1255,13 @@ function TaskCard({ task, delay = 0, onMarkDone, onSkip, onMoreOptions }) {
             {!isOverdue && task.dueIn > 0 && <div style={{ fontSize: 12.5, color: C.inkMute }}>in {task.dueIn}d</div>}
           </div>
         </div>
+<<<<<<< HEAD
         {hover && (
           <div className="heed-task-actions" style={{ marginTop: 10, display: 'flex', gap: 6, alignItems: 'center', animation: 'heed-fadeIn 0.2s ease' }}>
+=======
+        {(hover && !isSwiping) && (
+          <div style={{ marginTop: 10, display: 'flex', gap: 6, alignItems: 'center', animation: 'heed-fadeIn 0.2s ease' }}>
+>>>>>>> worktree-task-more-options
             <button style={getBtnPrimary()} onClick={() => onMarkDone?.(task)}>Mark done</button>
             <button style={getBtnGhost()} onClick={() => onSkip?.(task)}>Skip</button>
             <button aria-label="More options" style={{ ...getBtnGhost(), marginLeft: 'auto', width: 32, height: 32, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 7, flexShrink: 0 }} onClick={() => onMoreOptions?.(task)}>
@@ -1631,16 +1661,37 @@ function TracksTab({ tasks, routines, onMarkDone, onSkip, onMarkRoutineDone, onL
 }
 
 // ── ContextTab ─────────────────────────────────────────────────
-function ContextRow({ ctx, highlight }) {
+function ContextRow({ ctx, highlight, onDetailOpen }) {
   const icons = { travel: '🗺️', illness: '🌿', busy: '🌾', celebration: '🌸' }
+  const tasksBeforeCount = ctx.plan?.before?.length || 0
+  const routinesPaused = ctx.routinesPaused || 0
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 0', borderTop: `1px solid ${C.hairline}` }}>
-      <div style={{ width: 38, height: 38, borderRadius: '50%', background: highlight ? C.ochreSoft : C.bellySoft, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
+    <div
+      onClick={() => onDetailOpen?.(ctx)}
+      style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '12px 0', borderTop: `1px solid ${C.hairline}`, cursor: onDetailOpen ? 'pointer' : 'default' }}
+    >
+      <div style={{ width: 38, height: 38, borderRadius: '50%', background: highlight ? C.ochreSoft : C.bellySoft, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0, marginTop: 2 }}>
         {icons[ctx.type] || '📌'}
       </div>
       <div style={{ flex: 1 }}>
         <div style={{ fontSize: 14, color: C.ink, fontWeight: 500, marginBottom: 2 }}>{ctx.desc}</div>
-        <div style={{ fontSize: 12, color: C.inkMute }}>{ctx.start} → {ctx.end}</div>
+        <div style={{ fontSize: 12, color: C.inkMute, marginBottom: highlight && (tasksBeforeCount > 0 || routinesPaused > 0) ? 8 : 0 }}>
+          {ctx.start} → {ctx.end}
+        </div>
+        {highlight && (tasksBeforeCount > 0 || routinesPaused > 0) && (
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {tasksBeforeCount > 0 && (
+              <span style={{ background: C.bellySoft, border: `1px solid ${C.border}`, borderRadius: 6, padding: '3px 8px', fontSize: 10.5, color: C.inkSoft }}>
+                📋 {tasksBeforeCount} task{tasksBeforeCount !== 1 ? 's' : ''} before you go
+              </span>
+            )}
+            {routinesPaused > 0 && (
+              <span style={{ background: C.bellySoft, border: `1px solid ${C.border}`, borderRadius: 6, padding: '3px 8px', fontSize: 10.5, color: C.inkSoft }}>
+                ⏸ {routinesPaused} routine{routinesPaused !== 1 ? 's' : ''} paused
+              </span>
+            )}
+          </div>
+        )}
       </div>
       {highlight && <Pill tone="warn" glow>soon</Pill>}
       {!highlight && ctx.skipped != null && (
@@ -1660,8 +1711,12 @@ const CONTEXT_CHIPS = [
   { type: 'celebration', label: '🌸 Celebration' },
 ]
 
+<<<<<<< HEAD
 function ContextTab({ upcoming, active, activeContext, onAddContext, onQuickContext, onImBetter, onExtend }) {
   const allUpcoming = [...(active || []).map(mapApiContext), ...(upcoming || []).map(mapApiContext)]
+=======
+function ContextTab({ allUpcoming, activeContext, onAddContext, onQuickContext, onImBetter, onExtend, onDetailOpen }) {
+>>>>>>> worktree-task-more-options
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
@@ -1677,16 +1732,31 @@ function ContextTab({ upcoming, active, activeContext, onAddContext, onQuickCont
           >{c.label}</button>
         ))}
       </div>
+<<<<<<< HEAD
       {activeContext && <ActiveContextCard context={activeContext} onImBetter={onImBetter} onExtend={onExtend}/>}
+=======
+      {activeContext && (
+        <ActiveContextCard
+          context={activeContext}
+          onImBetter={onImBetter}
+          onExtend={onExtend}
+          onClick={() => onDetailOpen?.(activeContext, 'active')}
+        />
+      )}
+>>>>>>> worktree-task-more-options
       <div style={{ background: C.paper, border: `1px solid ${C.border}`, borderRadius: 14, padding: 18, marginBottom: 16, boxShadow: C.shadowSoft }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: C.sage, letterSpacing: 0.8, marginBottom: 12, textTransform: 'uppercase' }}>Upcoming</div>
-        {allUpcoming.length === 0 ? (
+        {(allUpcoming || []).length === 0 ? (
           <div style={{ fontSize: 12.5, color: C.inkMute, fontStyle: 'italic', padding: '8px 0' }}>Nothing on the horizon. Tap "+ Add context" if you have a trip, illness, or busy week coming up.</div>
-        ) : allUpcoming.map((c, i) => <ContextRow key={`u-${i}`} ctx={c} highlight/>)}
+        ) : (allUpcoming || []).map((c, i) => (
+          <ContextRow key={`u-${i}`} ctx={c} highlight onDetailOpen={ctx => onDetailOpen?.(ctx, 'upcoming')}/>
+        ))}
       </div>
       <div style={{ background: C.paper, border: `1px solid ${C.border}`, borderRadius: 14, padding: 18, boxShadow: C.shadowSoft }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, letterSpacing: 0.8, marginBottom: 12, textTransform: 'uppercase' }}>Past</div>
-        {CONTEXTS_PAST.map((c, i) => <ContextRow key={`p-${i}`} ctx={c}/>)}
+        {CONTEXTS_PAST.map((c, i) => (
+          <ContextRow key={`p-${i}`} ctx={c} onDetailOpen={ctx => onDetailOpen?.(ctx, 'past')}/>
+        ))}
       </div>
       <div style={{ marginTop: 20, padding: '14px 16px', background: C.bellySoft, borderRadius: 10, fontSize: 13, color: C.ink, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
         <span style={{ fontSize: 16 }}>💡</span>
@@ -2637,7 +2707,11 @@ function QuickContextSheet({ type, onClose, onActivate }) {
 }
 
 // ── ActiveContextCard ──────────────────────────────────────────
+<<<<<<< HEAD
 function ActiveContextCard({ context, onImBetter, onExtend }) {
+=======
+function ActiveContextCard({ context, onImBetter, onExtend, onClick }) {
+>>>>>>> worktree-task-more-options
   if (!context) return null
   const now = new Date()
   const daysSinceStart = Math.max(0, Math.floor((now - context.startDate) / 86400000))
@@ -2645,7 +2719,11 @@ function ActiveContextCard({ context, onImBetter, onExtend }) {
   const fmtDate = d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
   const startedLabel = daysSinceStart === 0 ? 'started today' : `started ${daysSinceStart}d ago`
   return (
+<<<<<<< HEAD
     <div style={{ background: C.ochreSoft, border: `2px solid ${C.ochre}`, borderRadius: 14, padding: 16, marginBottom: 20, boxShadow: `0 4px 16px ${C.ochre}26` }}>
+=======
+    <div onClick={onClick} style={{ background: C.ochreSoft, border: `2px solid ${C.ochre}`, borderRadius: 14, padding: 16, marginBottom: 20, boxShadow: `0 4px 16px ${C.ochre}26`, cursor: onClick ? 'pointer' : 'default' }}>
+>>>>>>> worktree-task-more-options
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
         <div>
           <div style={{ fontWeight: 700, fontSize: 15, color: C.ink, marginBottom: 3 }}>{context.icon} {context.label}</div>
@@ -2657,8 +2735,13 @@ function ActiveContextCard({ context, onImBetter, onExtend }) {
         Heed is holding <strong>{context.heldTaskIds.length} tasks</strong> until you're back. Morning &amp; evening routines paused.
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
+<<<<<<< HEAD
         <button onClick={onImBetter} style={{ ...getBtnPrimary(), flex: 1, background: C.sage, padding: '9px 14px' }}>I'm better now</button>
         <button onClick={onExtend} style={{ ...getBtnGhost(), padding: '9px 14px' }}>Extend 2 days</button>
+=======
+        <button onClick={e => { e.stopPropagation(); onImBetter?.() }} style={{ ...getBtnPrimary(), flex: 1, background: C.sage, padding: '9px 14px' }}>I'm better now</button>
+        <button onClick={e => { e.stopPropagation(); onExtend?.() }} style={{ ...getBtnGhost(), padding: '9px 14px' }}>Extend 2 days</button>
+>>>>>>> worktree-task-more-options
       </div>
     </div>
   )
@@ -2708,6 +2791,170 @@ function RecoverySummarySheet({ open, context, heldTasks, onClose, onResumeAll, 
   )
 }
 
+<<<<<<< HEAD
+=======
+// ── Standalone sheet components ────────────────────────────────
+function SheetSectionCard({ children, style }) {
+  return <div style={{ background: C.bellySoft, border: `1px solid ${C.border}`, borderRadius: 10, padding: '12px 14px', ...style }}>{children}</div>
+}
+function SheetSectionLabel({ children }) {
+  return <div style={{ fontSize: 10, fontWeight: 700, color: C.inkMute, letterSpacing: 0.7, textTransform: 'uppercase', marginBottom: 6 }}>{children}</div>
+}
+
+// ── ContextDetailSheet ─────────────────────────────────────────
+function ContextDetailSheet({ open, ctx, heldTasks, onClose, onImBetter, onExtend, onAskHeed }) {
+  if (!open || !ctx) return null
+
+  const fmtDate = d => {
+    if (!d) return ''
+    const parsed = typeof d === 'string' ? new Date(d) : d
+    return parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  }
+
+  const now = new Date()
+  let subtitle = `${ctx.start || ''} → ${ctx.end || ''}`
+  if (ctx._status === 'upcoming' && ctx._startDate) {
+    const daysAway = Math.ceil((ctx._startDate - now) / 86400000)
+    const weeksAway = Math.ceil(daysAway / 7)
+    subtitle += daysAway <= 0 ? ' · this week' : daysAway < 7 ? ` · in ${daysAway} day${daysAway !== 1 ? 's' : ''}` : ` · in ${weeksAway} week${weeksAway !== 1 ? 's' : ''}`
+  }
+  if (ctx._status === 'active') {
+    const daysSinceStart = Math.max(0, Math.floor((now - ctx.startDate) / 86400000))
+    const totalDays = Math.max(1, Math.round((ctx.endDate - ctx.startDate) / 86400000) + 1)
+    subtitle = `${fmtDate(ctx.startDate)} → ${fmtDate(ctx.endDate)} · Day ${daysSinceStart + 1} of ${totalDays}`
+  }
+  if (ctx._status === 'past') {
+    const startD = new Date(ctx.start)
+    const endD = new Date(ctx.end)
+    const dur = Math.max(1, Math.round((endD - startD) / 86400000) + 1)
+    subtitle = `${ctx.start} → ${ctx.end} · ${dur} day${dur !== 1 ? 's' : ''}`
+  }
+
+  const icons = { travel: '🗺️', illness: '🌿', busy: '🌾', celebration: '🌸' }
+  const icon = ctx.icon || icons[ctx.type] || '📌'
+  const bgForIcon = ctx._status === 'active' ? C.ochreSoft : ctx._status === 'upcoming' ? C.ochreSoft : C.bellySoft
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 200 }} onClick={onClose}>
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(2px)' }}/>
+      <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: C.paper, borderRadius: '20px 20px 0 0', padding: `24px 24px calc(24px + env(safe-area-inset-bottom)) 24px`, animation: 'heed-slideUp 0.28s cubic-bezier(0.32,0.72,0,1)', boxShadow: '0 -8px 32px rgba(0,0,0,0.12)', maxHeight: '80vh', overflowY: 'auto' }}>
+        <div style={{ width: 40, height: 4, borderRadius: 2, background: C.border, margin: '0 auto 20px' }}/>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
+          <div style={{ width: 44, height: 44, borderRadius: '50%', background: bgForIcon, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>
+            {icon}
+          </div>
+          <div>
+            <div style={{ fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 700, color: C.ink, marginBottom: 3 }}>{ctx.desc || ctx.label}</div>
+            <div style={{ fontSize: 12, color: C.inkMute }}>{subtitle}</div>
+          </div>
+        </div>
+
+        {ctx._status === 'upcoming' && (() => {
+          const tasksBefore = ctx.plan?.before || []
+          const whileAway = ctx.plan?.during?.[0] || ''
+          const comingBack = ctx.plan?.after?.[0] || ''
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
+              {tasksBefore.length > 0 && (
+                <SheetSectionCard>
+                  <SheetSectionLabel>Before you go</SheetSectionLabel>
+                  {tasksBefore.slice(0, 5).map((t, i) => (
+                    <div key={i} style={{ fontSize: 13, color: C.ink, padding: '2px 0' }}>• {t}</div>
+                  ))}
+                </SheetSectionCard>
+              )}
+              {(whileAway || comingBack) && (
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {whileAway && (
+                    <SheetSectionCard style={{ flex: 1 }}>
+                      <SheetSectionLabel>While away</SheetSectionLabel>
+                      <div style={{ fontSize: 12.5, color: C.inkSoft }}>{whileAway}</div>
+                    </SheetSectionCard>
+                  )}
+                  {comingBack && (
+                    <SheetSectionCard style={{ flex: 1 }}>
+                      <SheetSectionLabel>Coming back</SheetSectionLabel>
+                      <div style={{ fontSize: 12.5, color: C.inkSoft }}>{comingBack}</div>
+                    </SheetSectionCard>
+                  )}
+                </div>
+              )}
+              <button onClick={() => { onClose(); onAskHeed?.(ctx.askQuery || '') }} style={{ ...getBtnPrimary(), width: '100%', padding: 12, fontSize: 13, fontWeight: 700, borderRadius: 10 }}>
+                Ask Heed to plan around this
+              </button>
+            </div>
+          )
+        })()}
+
+        {ctx._status === 'active' && (() => {
+          const top3 = (heldTasks || []).slice(0, 3)
+          const extraCount = Math.max(0, (heldTasks || []).length - 3)
+          return (
+            <div style={{ marginBottom: 16 }}>
+              <SheetSectionCard style={{ marginBottom: 12 }}>
+                {top3.length === 0 ? (
+                  <div style={{ fontSize: 13, color: C.inkMute }}>Heed is holding your tasks while {ctx.label} is active.</div>
+                ) : (
+                  <>
+                    {top3.map((t, i) => (
+                      <div key={t.id || i} style={{ fontSize: 13, color: C.ink, padding: '4px 0', borderBottom: i < top3.length - 1 ? `1px solid ${C.hairline}` : 'none' }}>
+                        {t.name}
+                      </div>
+                    ))}
+                    {extraCount > 0 && (
+                      <div style={{ fontSize: 12.5, color: C.inkMute, padding: '4px 0' }}>+ {extraCount} more task{extraCount !== 1 ? 's' : ''}</div>
+                    )}
+                  </>
+                )}
+              </SheetSectionCard>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={onImBetter} style={{ ...getBtnPrimary(), flex: 1, background: C.sage, padding: '10px 14px' }}>I'm better now</button>
+                <button onClick={onExtend} style={{ ...getBtnGhost(), padding: '10px 14px' }}>Extend 2 days</button>
+              </div>
+            </div>
+          )
+        })()}
+
+        {ctx._status === 'past' && (() => {
+          const tasks = ctx.heldTasks || []
+          const top3 = tasks.slice(0, 3)
+          const extraCount = Math.max(0, tasks.length - 3)
+          return (
+            <SheetSectionCard style={{ marginBottom: 16 }}>
+              {tasks.length === 0 ? (
+                <div style={{ fontSize: 13, color: C.inkMute }}>No tasks were held during this period.</div>
+              ) : (
+                <>
+                  <div style={{ fontSize: 12.5, color: C.inkSoft, marginBottom: 8 }}>
+                    Heed held back <strong>{ctx.skipped}</strong> tasks during this period:
+                  </div>
+                  {top3.map((t, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: C.ink, padding: '4px 0', borderBottom: (i < top3.length - 1 || extraCount > 0) ? `1px solid ${C.hairline}` : 'none' }}>
+                      <span>{t.label}</span>
+                      {t.overdueDays > 0
+                        ? <span style={{ color: C.rust, fontWeight: 600 }}>+{t.overdueDays}d overdue</span>
+                        : <span style={{ color: C.inkMute }}>paused</span>
+                      }
+                    </div>
+                  ))}
+                  {extraCount > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, color: C.inkMute, padding: '4px 0' }}>
+                      <span>+ {extraCount} more task{extraCount !== 1 ? 's' : ''}</span>
+                      <span style={{ color: C.sage, fontWeight: 600 }}>held</span>
+                    </div>
+                  )}
+                </>
+              )}
+            </SheetSectionCard>
+          )
+        })()}
+      </div>
+    </div>
+  )
+}
+
+>>>>>>> worktree-task-more-options
 // ── Main App ───────────────────────────────────────────────────
 export default function HeedApp() {
   const [apiTasks, setApiTasks] = useState([])
@@ -2738,6 +2985,11 @@ export default function HeedApp() {
   const [activeContext, setActiveContext] = useState(null)
   const [recoveryOpen, setRecoveryOpen] = useState(false)
   const [quickContextType, setQuickContextType] = useState(null)
+<<<<<<< HEAD
+=======
+  const [detailCtx, setDetailCtx] = useState(null)
+  const [detailOpen, setDetailOpen] = useState(false)
+>>>>>>> worktree-task-more-options
 
   useEffect(() => {
     fetch(`${FUNCTIONS_URL}/api/tasks`)
@@ -2933,6 +3185,18 @@ export default function HeedApp() {
     setToast({ message: mode === 'resume' ? "You're back — tasks resumed" : 'Easing you back in — top tasks surfaced' })
   }, [])
 
+<<<<<<< HEAD
+=======
+  const handleDetailOpen = useCallback((ctx, status) => {
+    setDetailCtx({ ...ctx, _status: status })
+    setDetailOpen(true)
+  }, [])
+
+  const handleDetailClose = useCallback(() => {
+    setDetailOpen(false)
+  }, [])
+
+>>>>>>> worktree-task-more-options
   const handleAddTaskToRoutine = useCallback((task, routineId) => {
     setRoutines(rs => rs.map(r => {
       if (r.id !== routineId) return r
@@ -3002,10 +3266,17 @@ export default function HeedApp() {
 
       <main className="heed-main" style={{ maxWidth: 820, margin: '0 auto', padding: '28px 32px 100px 32px', minHeight: 'calc(100vh - 140px)', display: 'flex', flexDirection: 'column' }}>
         {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} upcomingContexts={upcomingContexts} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAskHeed={handleAskHeed} onMoreOptions={handleMoreOptions}/>}
+<<<<<<< HEAD
         {tab === 'calendar' && <CalendarTab tasks={apiTasks} contexts={[...(apiContexts.active||[]), ...(apiContexts.upcoming||[])]} routines={routines} onReschedule={handleReschedule} onMarkDone={handleMarkDone} onSkip={handleSkip} onAddTask={() => setModalOpen(true)} onAddContext={() => setContextModalOpen(true)} onEditRoutine={handleEditRoutine}/>}
         {tab === 'ask' && <AskTab prefill={askPrefill}/>}
         {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onMoreOptions={handleMoreOptions}/>}
         {tab === 'context' && <ContextTab upcoming={apiContexts.upcoming} active={apiContexts.active} activeContext={activeContext} onAddContext={() => setContextModalOpen(true)} onQuickContext={type => setQuickContextType(type)} onImBetter={() => setRecoveryOpen(true)} onExtend={handleExtendContext}/>}
+=======
+        {tab === 'calendar' && <CalendarTab/>}
+        {tab === 'ask' && <AskTab prefill={askPrefill}/>}
+        {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onMoreOptions={handleMoreOptions}/>}
+        {tab === 'context' && <ContextTab allUpcoming={upcomingContexts} activeContext={activeContext} onAddContext={() => setContextModalOpen(true)} onQuickContext={type => setQuickContextType(type)} onImBetter={() => setRecoveryOpen(true)} onExtend={handleExtendContext} onDetailOpen={handleDetailOpen}/>}
+>>>>>>> worktree-task-more-options
       </main>
 
       <footer style={{ textAlign: 'center', fontSize: 11, color: C.inkMute, padding: '24px', borderTop: `1px solid ${C.hairline}`, fontStyle: 'italic' }}>
@@ -3020,6 +3291,18 @@ export default function HeedApp() {
       <AddToRoutineSheet task={addToRoutineTask} routines={routines} onClose={() => setAddToRoutineTask(null)} onSelect={handleAddTaskToRoutine}/>
       <QuickContextSheet type={quickContextType} onClose={() => setQuickContextType(null)} onActivate={handleQuickContext}/>
       <RecoverySummarySheet open={recoveryOpen} context={activeContext} heldTasks={activeContext ? displayTasks.filter(t => activeContext.heldTaskIds.includes(t.id)) : []} onClose={() => setRecoveryOpen(false)} onResumeAll={() => handleEndContext('resume')} onEaseBack={() => handleEndContext('ease')}/>
+<<<<<<< HEAD
+=======
+      <ContextDetailSheet
+        open={detailOpen}
+        ctx={detailCtx}
+        heldTasks={detailCtx?._status === 'active' && activeContext ? displayTasks.filter(t => activeContext.heldTaskIds.includes(t.id)) : []}
+        onClose={handleDetailClose}
+        onImBetter={() => { handleDetailClose(); setRecoveryOpen(true) }}
+        onExtend={() => { handleDetailClose(); handleExtendContext() }}
+        onAskHeed={handleAskHeed}
+      />
+>>>>>>> worktree-task-more-options
       {toast && <Toast message={toast.message} onView={toast.showView ? handleToastView : undefined} onUndo={toast.onUndo} onDismiss={() => setToast(null)} />}
       <HeedFAB onAddTask={() => setModalOpen(true)} onAskHeed={() => setAskOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)}/>
     </div>

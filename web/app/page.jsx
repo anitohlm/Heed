@@ -188,7 +188,7 @@ const SCRIPTED_RESPONSES = {
     ],
     answer: `Acknowledged — I'm marking this week as busy.\n\n**Your morning routine, lightened:**\nLooking at your skip patterns from the last three busy weeks, you almost always keep:\n• Vitamins (you keep these 90% of the time, even when stressed)\n• Coffee (you wouldn't skip this if the building was on fire)\n\n**My suggestion:** This week, your morning routine is just **vitamins + coffee.** I won't ping you about stretch or journal. We'll bring them back once your week clears up.`,
     actions: [
-      { action_type: 'lighten_routine', emoji: '🪶', label: 'Lighten Morning Routine', payload: { duration_days: 7, preview: { remove: [{ name: 'Stretching', duration_min: 5 }, { name: 'Morning journal', duration_min: 10 }], keep: ['Vitamins', 'Coffee'] } } },
+      { action_type: 'lighten_routine', emoji: '🪶', label: 'Lighten Morning Routine', routine_id: 'morning', payload: { duration_days: 7, preview: { remove: [{ name: 'Stretching', duration_min: 5 }, { name: 'Morning journal', duration_min: 10 }], keep: ['Vitamins', 'Coffee'] } } },
     ],
     chips: [
       { emoji: '🍂', text: 'How long until things calm down?' },
@@ -203,7 +203,7 @@ const SCRIPTED_RESPONSES = {
     ],
     answer: `You skipped Monday and Tuesday this week.\n\n**Pattern across both days:**\n• Both days you woke up later than usual (after 8 AM based on first task logs).\n• You marked the skip as "too busy" both times.\n\n**The bigger picture:**\nYour morning routine completion drops sharply when your bedtime goes past 11 PM. When sleep slips, your morning slips with it.\n\nWant me to send a quiet "wind down" nudge at 10:30 PM on nights when you've been up late?`,
     actions: [
-      { action_type: 'lighten_routine', emoji: '🪶', label: 'Lighten it this week', payload: { duration_days: 5, preview: { remove: [{ name: 'Stretching', duration_min: 5 }, { name: 'Morning journal', duration_min: 10 }], keep: ['Vitamins', 'Coffee'] } } },
+      { action_type: 'lighten_routine', emoji: '🪶', label: 'Lighten it this week', routine_id: 'morning', payload: { duration_days: 5, preview: { remove: [{ name: 'Stretching', duration_min: 5 }, { name: 'Morning journal', duration_min: 10 }], keep: ['Vitamins', 'Coffee'] } } },
       { action_type: 'skip', emoji: '🍂', label: 'Skip this week entirely', payload: {} },
     ],
     chips: [
@@ -266,7 +266,7 @@ function mapApiContext(ctx) {
 }
 
 // ── useChat hook ───────────────────────────────────────────────
-function useChat() {
+function useChat({ onLightenRoutine } = {}) {
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [thinking, setThinking] = useState(null)
@@ -351,6 +351,10 @@ function useChat() {
       })
       const result = await resp.json()
       if (!result.ok) throw new Error(result.error || 'Failed')
+      if (action.action_type === 'lighten_routine' && onLightenRoutine) {
+        const itemsToStrike = (action.payload?.preview?.remove || []).map(x => typeof x === 'object' ? x.name : x)
+        onLightenRoutine(action.routine_id, itemsToStrike.length > 0 ? itemsToStrike : null)
+      }
       setMessages(msgs => msgs.map((m, i) => {
         if (i !== messageIndex) return m
         return {
@@ -1578,8 +1582,8 @@ function ThinkingBubble({ steps }) {
   )
 }
 
-function AskTab({ prefill = '' }) {
-  const { messages, input, setInput, thinking, streaming, busy, send, executeAction } = useChat()
+function AskTab({ prefill = '', onLightenRoutine }) {
+  const { messages, input, setInput, thinking, streaming, busy, send, executeAction } = useChat({ onLightenRoutine })
   const scrollRef = useRef(null)
   useEffect(() => {
     if (prefill) setInput(prefill)
@@ -1918,6 +1922,26 @@ function AddPlanSheet({ onClose, onAdd }) {
           </>
         )}
       </div>
+    </div>
+  )
+}
+
+// ── PlansPanel ───────────────────────────────────────────────────
+function PlansPanel() {
+  const [plans, setPlans] = useState(DEMO_PLANS)
+  const [addOpen, setAddOpen] = useState(false)
+  return (
+    <div style={{ animation: 'heed-fadeIn 0.2s ease' }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+        <button onClick={() => setAddOpen(true)} style={getBtnPrimary()}>+ Add plan</button>
+      </div>
+      {plans.length === 0 && (
+        <div style={{ textAlign: 'center', padding: '32px 16px', color: C.inkMute, fontSize: 13, fontStyle: 'italic' }}>
+          No plans yet. Tap "+ Add plan" to create a goal, project, or event.
+        </div>
+      )}
+      {plans.map((p, i) => <PlanCard key={p.id} plan={p} delay={i * 50}/>)}
+      {addOpen && <AddPlanSheet onClose={() => setAddOpen(false)} onAdd={p => { setPlans(ps => [p, ...ps]); setAddOpen(false) }}/>}
     </div>
   )
 }
@@ -2417,8 +2441,8 @@ function HeedFAB({ onAddTask, onAskHeed, onAddRoutine }) {
 }
 
 // ── AskInlineModal ─────────────────────────────────────────────
-function AskInlineModal({ open, onClose }) {
-  const { messages, input, setInput, thinking, streaming, busy, send, executeAction } = useChat()
+function AskInlineModal({ open, onClose, onLightenRoutine }) {
+  const { messages, input, setInput, thinking, streaming, busy, send, executeAction } = useChat({ onLightenRoutine })
   const scrollRef = useRef(null)
   const inputRef = useRef(null)
   useEffect(() => { if (open && inputRef.current) setTimeout(() => inputRef.current?.focus(), 100) }, [open])
@@ -3322,11 +3346,11 @@ export default function HeedApp() {
     setToast({ message: 'Routine marked done for today' })
   }, [])
 
-  const handleLightenRoutine = useCallback((routineId) => {
+  const handleLightenRoutine = useCallback((routineId, itemsToStrike = null) => {
     setRoutines(rs => rs.map(r => {
       if (r.id !== routineId) return r
-      const keepCount = Math.ceil(r.items.length / 2)
-      return { ...r, suggestion: null, insight: 'Lightened for this week.', lightenedItems: r.items.slice(keepCount) }
+      const strike = itemsToStrike || r.items.slice(Math.ceil(r.items.length / 2))
+      return { ...r, suggestion: null, insight: 'Lightened for this week.', lightenedItems: strike }
     }))
     setToast({ message: 'Routine lightened for this week' })
   }, [])
@@ -3449,7 +3473,7 @@ export default function HeedApp() {
       <main className="heed-main" style={{ maxWidth: 820, margin: '0 auto', padding: '28px 32px 100px 32px', minHeight: 'calc(100vh - 140px)', display: 'flex', flexDirection: 'column' }}>
         {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} upcomingContexts={upcomingContexts} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAskHeed={handleAskHeed} onMoreOptions={handleMoreOptions}/>}
         {tab === 'calendar' && <CalendarTab tasks={apiTasks} contexts={[...(apiContexts.active||[]), ...(apiContexts.upcoming||[])]} routines={routines} onReschedule={handleReschedule} onMarkDone={handleMarkDone} onSkip={handleSkip} onAddTask={() => setModalOpen(true)} onAddContext={() => setContextModalOpen(true)} onEditRoutine={handleEditRoutine}/>}
-        {tab === 'ask' && <AskTab prefill={askPrefill}/>}
+        {tab === 'ask' && <AskTab prefill={askPrefill} onLightenRoutine={handleLightenRoutine}/>}
         {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onMoreOptions={handleMoreOptions}/>}
         {tab === 'context' && <ContextTab upcoming={apiContexts.upcoming} active={apiContexts.active} activeContext={activeContext} onAddContext={() => setContextModalOpen(true)} onQuickContext={type => setQuickContextType(type)} onImBetter={() => setRecoveryOpen(true)} onExtend={handleExtendContext} onDetailOpen={handleDetailOpen}/>}
       </main>
@@ -3461,7 +3485,7 @@ export default function HeedApp() {
       <AddTaskModal open={modalOpen} onClose={() => setModalOpen(false)} onSubmit={handleAddTask}/>
       <AddRoutineModal open={routineModalOpen} onClose={() => { setRoutineModalOpen(false); setEditingRoutine(null); setBuildRoutineTask(null) }} onSubmit={handleAddRoutine} initialData={editingRoutine} seedTask={buildRoutineTask}/>
       <AddContextModal open={contextModalOpen} onClose={() => setContextModalOpen(false)} onSubmit={handleAddContext}/>
-      <AskInlineModal open={askOpen} onClose={() => setAskOpen(false)}/>
+      <AskInlineModal open={askOpen} onClose={() => setAskOpen(false)} onLightenRoutine={handleLightenRoutine}/>
       <TaskOptionsSheet task={taskOptionsTask} onClose={() => setTaskOptionsTask(null)} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }}/>
       <AddToRoutineSheet task={addToRoutineTask} routines={routines} onClose={() => setAddToRoutineTask(null)} onSelect={handleAddTaskToRoutine}/>
       <QuickContextSheet type={quickContextType} onClose={() => setQuickContextType(null)} onActivate={handleQuickContext}/>

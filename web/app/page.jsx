@@ -419,24 +419,57 @@ function MobileBottomNav({ tab, onTab, onAddTask, onAddRoutine, onAskHeed }) {
           zIndex: 50,
           paddingBottom: 'env(safe-area-inset-bottom)',
           boxShadow: '0 -2px 16px rgba(0,0,0,0.12)',
+          overflow: 'visible',
         }}
       >
+        {/* Owl FAB — floats above the nav bar */}
+        <button
+          onClick={() => setFabOpen(o => !o)}
+          aria-label="Open Heed menu"
+          aria-expanded={fabOpen}
+          style={{
+            position: 'absolute',
+            top: -30,
+            left: '50%',
+            transform: fabOpen
+              ? 'translateX(-50%) rotate(15deg) scale(1.1)'
+              : 'translateX(-50%) scale(1)',
+            transformOrigin: '50% 80%',
+            width: 68,
+            height: 68,
+            borderRadius: '50%',
+            background: C.paper,
+            border: `2px solid ${C.border}`,
+            boxShadow: `0 -4px 20px rgba(0,0,0,0.22), ${C.shadowMed}`,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 0,
+            zIndex: 52,
+            transition: 'transform 0.2s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.2s, opacity 0.2s',
+            opacity: fabOpen ? 1 : 0.9,
+          }}
+        >
+          <MayaOwl size={50} idle={false}/>
+        </button>
+
         {APP_TABS.map(t => {
           const active = tab === t.id
           const isAsk = t.id === 'ask'
+          if (isAsk) return <div key="ask" style={{ flex: 1 }} />
           return (
             <button
               key={t.id}
-              onClick={() => isAsk ? setFabOpen(o => !o) : onTab(t.id)}
-              aria-label={isAsk ? 'Open Heed menu' : t.label}
-              aria-expanded={isAsk ? fabOpen : undefined}
-              aria-current={!isAsk && active ? 'page' : undefined}
+              onClick={() => onTab(t.id)}
+              aria-label={t.label}
+              aria-current={active ? 'page' : undefined}
               style={{
                 flex: 1,
                 background: 'none',
                 border: 'none',
-                borderTop: `2px solid ${!isAsk && active ? C.warmDark : 'transparent'}`,
-                padding: isAsk ? '4px 0 6px' : '10px 4px 8px',
+                borderTop: `2px solid ${active ? C.warmDark : 'transparent'}`,
+                padding: '10px 4px 8px',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
@@ -445,31 +478,20 @@ function MobileBottomNav({ tab, onTab, onAddTask, onAddRoutine, onAskHeed }) {
                 minWidth: 0,
               }}
             >
-              {isAsk ? (
-                <div style={{
-                  opacity: fabOpen ? 1 : 0.55,
-                  transform: fabOpen ? 'rotate(15deg) scale(1.15)' : 'scale(1)',
-                  transformOrigin: 'center bottom',
-                  transition: 'all 0.2s cubic-bezier(0.34,1.56,0.64,1)',
-                }}>
-                  <MayaOwl size={30} idle={false}/>
-                </div>
-              ) : (
-                <span style={{
-                  fontSize: 11,
-                  fontWeight: active ? 700 : 500,
-                  color: active ? C.warmDark : C.inkMute,
-                  letterSpacing: 0.1,
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  maxWidth: '100%',
-                  padding: '0 2px',
-                  transition: 'color 0.15s',
-                }}>
-                  {t.label}
-                </span>
-              )}
+              <span style={{
+                fontSize: 11,
+                fontWeight: active ? 700 : 500,
+                color: active ? C.warmDark : C.inkMute,
+                letterSpacing: 0.1,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                maxWidth: '100%',
+                padding: '0 2px',
+                transition: 'color 0.15s',
+              }}>
+                {t.label}
+              </span>
             </button>
           )
         })}

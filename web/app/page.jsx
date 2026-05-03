@@ -2110,32 +2110,32 @@ function usePlans(initialPlans) {
   }, [plans])
 
   const checkTask = useCallback((planId, taskIndex) => {
-    setPlans(prev => prev.map(p => p.id !== planId ? p : {
+    setPlans(prev => prev.map(p => p.id !== planId || !p.tasks ? p : {
       ...p, tasks: p.tasks.map((t, i) => i === taskIndex ? { ...t, done: !t.done } : t),
     }))
   }, [])
 
   const renameTask = useCallback((planId, taskIndex, newLabel) => {
-    setPlans(prev => prev.map(p => p.id !== planId ? p : {
+    setPlans(prev => prev.map(p => p.id !== planId || !p.tasks ? p : {
       ...p, tasks: p.tasks.map((t, i) => i === taskIndex ? { ...t, label: newLabel } : t),
     }))
   }, [])
 
   const addTask = useCallback((planId, label) => {
-    setPlans(prev => prev.map(p => p.id !== planId ? p : {
+    setPlans(prev => prev.map(p => p.id !== planId || !p.tasks ? p : {
       ...p, tasks: [...p.tasks, { label, done: false }],
     }))
   }, [])
 
   const deleteTask = useCallback((planId, taskIndex) => {
-    setPlans(prev => prev.map(p => p.id !== planId ? p : {
+    setPlans(prev => prev.map(p => p.id !== planId || !p.tasks ? p : {
       ...p, tasks: p.tasks.filter((_, i) => i !== taskIndex),
     }))
   }, [])
 
   const reorderTasks = useCallback((planId, fromIndex, toIndex) => {
     setPlans(prev => prev.map(p => {
-      if (p.id !== planId) return p
+      if (p.id !== planId || !p.tasks) return p
       const t = [...p.tasks]
       const [moved] = t.splice(fromIndex, 1)
       t.splice(toIndex, 0, moved)

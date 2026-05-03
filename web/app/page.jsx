@@ -1759,14 +1759,14 @@ function PlanCard({ plan, delay = 0 }) {
   const preview = undone.slice(0, 2)
   const extra = undone.length - preview.length
 
-  const subtitle = {
-    project: `${doneCount} of ${totalCount} tasks · Due ${plan.dueDate}`,
-    goal:    `${plan.unit}${plan.current.toLocaleString()} saved · Target ${plan.targetDate}`,
-    event:   daysUntil === null ? plan.title
-           : daysUntil <= 0    ? 'Today!'
-           : daysUntil === 1   ? 'Tomorrow'
-           : `in ${daysUntil} days`,
-  }[plan.type]
+  const subtitle = plan.type === 'project'
+    ? `${doneCount} of ${totalCount} tasks · Due ${plan.dueDate}`
+    : plan.type === 'goal'
+    ? `${plan.unit}${(plan.current ?? 0).toLocaleString()} saved · Target ${plan.targetDate}`
+    : daysUntil === null ? plan.title
+    : daysUntil <= 0    ? 'Today!'
+    : daysUntil === 1   ? 'Tomorrow'
+    : `in ${daysUntil} days`
 
   const badge = {
     project: <div style={{ fontSize: 13, fontWeight: 700, color: C.rust, flexShrink: 0 }}>{pct}%</div>,
@@ -1798,7 +1798,7 @@ function PlanCard({ plan, delay = 0 }) {
       {plan.type === 'goal' && (
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           <span style={{ background: '#f5f0d8', color: '#7a6a20', borderRadius: 999, padding: '2px 9px', fontSize: 11, fontWeight: 600 }}>
-            {plan.unit}{(plan.target - plan.current).toLocaleString()} to go
+            {plan.unit}{((plan.target ?? 0) - (plan.current ?? 0)).toLocaleString()} to go
           </span>
         </div>
       )}

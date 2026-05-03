@@ -2590,6 +2590,34 @@ function QuickContextSheet({ type, onClose, onActivate }) {
   )
 }
 
+// ── ActiveContextCard ──────────────────────────────────────────
+function ActiveContextCard({ context, onImBetter, onExtend }) {
+  if (!context) return null
+  const now = new Date()
+  const daysSinceStart = Math.max(0, Math.floor((now - context.startDate) / 86400000))
+  const totalDays = Math.max(1, Math.round((context.endDate - context.startDate) / 86400000) + 1)
+  const fmtDate = d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  const startedLabel = daysSinceStart === 0 ? 'started today' : `started ${daysSinceStart}d ago`
+  return (
+    <div style={{ background: C.ochreSoft, border: `2px solid ${C.ochre}`, borderRadius: 14, padding: 16, marginBottom: 20, boxShadow: `0 4px 16px ${C.ochre}26` }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+        <div>
+          <div style={{ fontWeight: 700, fontSize: 15, color: C.ink, marginBottom: 3 }}>{context.icon} {context.label}</div>
+          <div style={{ fontSize: 12, color: C.inkMute }}>{fmtDate(context.startDate)} → {fmtDate(context.endDate)} · {startedLabel}</div>
+        </div>
+        <div style={{ background: C.ochre, color: '#fff', borderRadius: 999, padding: '3px 10px', fontSize: 11, fontWeight: 700, flexShrink: 0, marginLeft: 8 }}>Day {daysSinceStart + 1} of {totalDays}</div>
+      </div>
+      <div style={{ background: C.paper, border: `1px solid ${C.border}`, borderRadius: 9, padding: '10px 12px', fontSize: 12.5, color: C.ink, marginBottom: 12 }}>
+        Heed is holding <strong>{context.heldTaskIds.length} tasks</strong> until you're back. Morning &amp; evening routines paused.
+      </div>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button onClick={onImBetter} style={{ ...getBtnPrimary(), flex: 1, background: C.sage, padding: '9px 14px' }}>I'm better now</button>
+        <button onClick={onExtend} style={{ ...getBtnGhost(), padding: '9px 14px' }}>Extend 2 days</button>
+      </div>
+    </div>
+  )
+}
+
 // ── Main App ───────────────────────────────────────────────────
 export default function HeedApp() {
   const [apiTasks, setApiTasks] = useState([])

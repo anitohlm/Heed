@@ -2153,7 +2153,7 @@ function usePlans(initialPlans) {
 // ── PlanCard ────────────────────────────────────────────────────
 const PLAN_ICON_BG = { project: '#f0e8d8', goal: '#f5f0d8', event: '#e8f0e8' }
 
-function PlanCard({ plan, delay = 0 }) {
+function PlanCard({ plan, delay = 0, onSelectPlan }) {
   const doneCount = plan.tasks ? plan.tasks.filter(t => t.done).length : 0
   const totalCount = plan.tasks ? plan.tasks.length : 0
   const pct = totalCount > 0 ? Math.round(doneCount / totalCount * 100) : 0
@@ -2163,10 +2163,6 @@ function PlanCard({ plan, delay = 0 }) {
   const daysUntil = plan.eventDate
     ? Math.round((plan.eventDate - new Date()) / 86400000)
     : null
-  const undone = plan.tasks ? plan.tasks.filter(t => !t.done) : []
-  const preview = undone.slice(0, 2)
-  const extra = undone.length - preview.length
-
   const subtitle = plan.type === 'project'
     ? `${doneCount} of ${totalCount} tasks · Due ${plan.dueDate}`
     : plan.type === 'goal'
@@ -2955,6 +2951,8 @@ function AddTaskModal({ open, onClose, onSubmit, initialData = null }) {
   const [importance, setImportance] = useState('medium')
   const [cadenceMode, setCadenceMode] = useState('learn')
   const [cadenceDays, setCadenceDays] = useState(7)
+  const [dueDate, setDueDate] = useState('')
+  const [dueTime, setDueTime] = useState('')
   const inputRef = useRef(null)
   useEffect(() => {
     if (!open) return
@@ -2965,8 +2963,10 @@ function AddTaskModal({ open, onClose, onSubmit, initialData = null }) {
       const explicit = initialData.explicit_cadence_days
       setCadenceMode(explicit ? 'set' : 'learn')
       setCadenceDays(explicit || 7)
+      setDueDate(initialData.dueDate || '')
+      setDueTime(initialData.dueTime || '')
     } else {
-      setName(''); setCategory('home'); setImportance('medium'); setCadenceMode('learn'); setCadenceDays(7)
+      setName(''); setCategory('home'); setImportance('medium'); setCadenceMode('learn'); setCadenceDays(7); setDueDate(''); setDueTime('')
     }
     if (inputRef.current) setTimeout(() => inputRef.current?.focus(), 50)
   }, [open, initialData])
@@ -2983,6 +2983,8 @@ function AddTaskModal({ open, onClose, onSubmit, initialData = null }) {
       category,
       importance,
       explicit_cadence_days: cadenceMode === 'set' ? cadenceDays : null,
+      dueDate: dueDate || null,
+      dueTime: dueTime || null,
     }
     if (isEdit) payload.id = initialData.id
     onSubmit(payload)
@@ -3080,6 +3082,22 @@ function AddTaskModal({ open, onClose, onSubmit, initialData = null }) {
                   {[1,7,14,30].map(n => <button key={n} onClick={() => setCadenceDays(n)} style={{ background: 'transparent', border: 'none', color: C.warmDark, fontWeight: 600, cursor: 'pointer', padding: '0 4px', fontFamily: 'inherit', fontSize: 11 }}>{n}d</button>)}
                 </div>
               </div>
+            )}
+          </div>
+          <div style={{ marginBottom: 18 }}>
+            <label style={getFieldLabel()}>Due date & time <span style={{ fontWeight: 400, color: C.inkMute, fontStyle: 'italic' }}>(optional)</span></label>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
+                style={{ flex: 1, background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '9px 12px', fontSize: 13, color: dueDate ? C.ink : C.inkMute, outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.15s' }}
+                onFocus={e => { e.target.style.borderColor = C.warmDark }} onBlur={e => { e.target.style.borderColor = C.border }}
+              />
+              <input type="time" value={dueTime} onChange={e => setDueTime(e.target.value)} disabled={!dueDate}
+                style={{ flex: '0 0 110px', background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '9px 12px', fontSize: 13, color: dueTime ? C.ink : C.inkMute, outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.15s', opacity: dueDate ? 1 : 0.4 }}
+                onFocus={e => { e.target.style.borderColor = C.warmDark }} onBlur={e => { e.target.style.borderColor = C.border }}
+              />
+            </div>
+            {(dueDate || dueTime) && (
+              <button onClick={() => { setDueDate(''); setDueTime('') }} style={{ background: 'none', border: 'none', color: C.inkMute, fontSize: 11.5, cursor: 'pointer', padding: '4px 0', fontFamily: 'inherit' }}>Clear</button>
             )}
           </div>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>

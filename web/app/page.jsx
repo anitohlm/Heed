@@ -12,7 +12,7 @@ const APP_TABS = [
   { id: 'calendar', label: 'Calendar' },
   { id: 'ask',      label: 'Ask Heed' },
   { id: 'tracks',   label: 'Tracks' },
-  { id: 'context',  label: 'Context' },
+  { id: 'context',  label: 'Plans' },
 ]
 
 // ── Design tokens (getter proxy — reads active theme on each access) ──────

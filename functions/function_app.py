@@ -420,9 +420,7 @@ def execute_action(req: func.HttpRequest) -> func.HttpResponse:
         return _json_response({"ok": False, "error": result.get("error", "Failed")}, 400)
 
     elif action_type == "lighten_routine":
-        routine_id = payload.get("routine_id")
-        if not routine_id:
-            return _error("routine_id required for lighten_routine")
+        routine_id = payload.get("routine_id") or "default"
         result = action_tools.lighten_routine(
             routine_id, USER_ID,
             items_to_keep=payload.get("keep", []),

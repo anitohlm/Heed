@@ -234,9 +234,6 @@ def validate_action(action: AgentAction, user_confirmed: bool = False) -> tuple[
     if action.action_type in {"mark_done", "skip", "defer"} and not action.task_id:
         return False, "task_id required for this action type"
 
-    if action.action_type == "lighten_routine" and not action.routine_id:
-        return False, "routine_id required for lighten_routine"
-
     if action.action_type == "add_context":
         required = {"context_type", "start_date", "end_date", "description"}
         missing = required - set(action.payload.keys())

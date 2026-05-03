@@ -2306,6 +2306,9 @@ export default function HeedApp() {
   const [taskOptionsTask, setTaskOptionsTask] = useState(null)
   const [addToRoutineTask, setAddToRoutineTask] = useState(null)
   const [buildRoutineTask, setBuildRoutineTask] = useState(null)
+  const [activeContext, setActiveContext] = useState(null)
+  const [recoveryOpen, setRecoveryOpen] = useState(false)
+  const [quickContextType, setQuickContextType] = useState(null)
 
   useEffect(() => {
     fetch(`${FUNCTIONS_URL}/api/tasks`)
@@ -2453,6 +2456,34 @@ export default function HeedApp() {
 
   const handleMoreOptions = useCallback((task) => {
     setTaskOptionsTask(task)
+  }, [])
+
+  const handleQuickContext = useCallback((type, days) => {
+    const cfg = QUICK_CONTEXT_CONFIG[type]
+    const startDate = new Date()
+    const endDate = new Date()
+    endDate.setDate(endDate.getDate() + days - 1)
+    const heldTaskIds = apiTasks
+      .filter(t => t.status === 'active' && !dismissedIds.has(t.id))
+      .map(t => t.id)
+    setActiveContext({ id: `ctx-${Date.now()}`, type, label: cfg.label, icon: cfg.icon, startDate, endDate, heldTaskIds })
+    setToast({ message: cfg.toastMsg })
+  }, [apiTasks, dismissedIds])
+
+  const handleExtendContext = useCallback(() => {
+    setActiveContext(ctx => {
+      if (!ctx) return ctx
+      const newEnd = new Date(ctx.endDate)
+      newEnd.setDate(newEnd.getDate() + 2)
+      return { ...ctx, endDate: newEnd }
+    })
+    setToast({ message: 'Extended by 2 days' })
+  }, [])
+
+  const handleEndContext = useCallback((mode) => {
+    setActiveContext(null)
+    setRecoveryOpen(false)
+    setToast({ message: mode === 'resume' ? "You're back — tasks resumed" : 'Easing you back in — top tasks surfaced' })
   }, [])
 
   const handleAddTaskToRoutine = useCallback((task, routineId) => {

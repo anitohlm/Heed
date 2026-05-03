@@ -1662,6 +1662,7 @@ function ContextTab({ upcoming, active, onAddContext }) {
 
 // ── CalendarTab ────────────────────────────────────────────────
 const DAYS_OF_WEEK = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
+const TODAY_DATE = new Date()
 
 function startOfWeek(date) {
   const d = new Date(date)
@@ -1990,7 +1991,6 @@ function TaskDetailSheet({ task, onClose, onMarkDone, onSkip, onReschedule }) {
 }
 
 function CalendarTab({ tasks, onReschedule, onMarkDone, onSkip }) {
-  const TODAY_DATE = new Date()
   const [monthOffset, setMonthOffset] = useState(0)
   const [weekStart, setWeekStart]     = useState(startOfWeek(TODAY_DATE))
   const [detailTask, setDetailTask]   = useState(null)

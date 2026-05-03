@@ -1255,13 +1255,8 @@ function TaskCard({ task, delay = 0, onMarkDone, onSkip, onMoreOptions }) {
             {!isOverdue && task.dueIn > 0 && <div style={{ fontSize: 12.5, color: C.inkMute }}>in {task.dueIn}d</div>}
           </div>
         </div>
-<<<<<<< HEAD
-        {hover && (
-          <div className="heed-task-actions" style={{ marginTop: 10, display: 'flex', gap: 6, alignItems: 'center', animation: 'heed-fadeIn 0.2s ease' }}>
-=======
         {(hover && !isSwiping) && (
           <div style={{ marginTop: 10, display: 'flex', gap: 6, alignItems: 'center', animation: 'heed-fadeIn 0.2s ease' }}>
->>>>>>> worktree-task-more-options
             <button style={getBtnPrimary()} onClick={() => onMarkDone?.(task)}>Mark done</button>
             <button style={getBtnGhost()} onClick={() => onSkip?.(task)}>Skip</button>
             <button aria-label="More options" style={{ ...getBtnGhost(), marginLeft: 'auto', width: 32, height: 32, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 7, flexShrink: 0 }} onClick={() => onMoreOptions?.(task)}>
@@ -1711,12 +1706,8 @@ const CONTEXT_CHIPS = [
   { type: 'celebration', label: '🌸 Celebration' },
 ]
 
-<<<<<<< HEAD
-function ContextTab({ upcoming, active, activeContext, onAddContext, onQuickContext, onImBetter, onExtend }) {
+function ContextTab({ upcoming, active, activeContext, onAddContext, onQuickContext, onImBetter, onExtend, onDetailOpen }) {
   const allUpcoming = [...(active || []).map(mapApiContext), ...(upcoming || []).map(mapApiContext)]
-=======
-function ContextTab({ allUpcoming, activeContext, onAddContext, onQuickContext, onImBetter, onExtend, onDetailOpen }) {
->>>>>>> worktree-task-more-options
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
@@ -1732,9 +1723,6 @@ function ContextTab({ allUpcoming, activeContext, onAddContext, onQuickContext, 
           >{c.label}</button>
         ))}
       </div>
-<<<<<<< HEAD
-      {activeContext && <ActiveContextCard context={activeContext} onImBetter={onImBetter} onExtend={onExtend}/>}
-=======
       {activeContext && (
         <ActiveContextCard
           context={activeContext}
@@ -1743,7 +1731,6 @@ function ContextTab({ allUpcoming, activeContext, onAddContext, onQuickContext, 
           onClick={() => onDetailOpen?.(activeContext, 'active')}
         />
       )}
->>>>>>> worktree-task-more-options
       <div style={{ background: C.paper, border: `1px solid ${C.border}`, borderRadius: 14, padding: 18, marginBottom: 16, boxShadow: C.shadowSoft }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: C.sage, letterSpacing: 0.8, marginBottom: 12, textTransform: 'uppercase' }}>Upcoming</div>
         {(allUpcoming || []).length === 0 ? (
@@ -2707,11 +2694,7 @@ function QuickContextSheet({ type, onClose, onActivate }) {
 }
 
 // ── ActiveContextCard ──────────────────────────────────────────
-<<<<<<< HEAD
-function ActiveContextCard({ context, onImBetter, onExtend }) {
-=======
 function ActiveContextCard({ context, onImBetter, onExtend, onClick }) {
->>>>>>> worktree-task-more-options
   if (!context) return null
   const now = new Date()
   const daysSinceStart = Math.max(0, Math.floor((now - context.startDate) / 86400000))
@@ -2719,11 +2702,7 @@ function ActiveContextCard({ context, onImBetter, onExtend, onClick }) {
   const fmtDate = d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
   const startedLabel = daysSinceStart === 0 ? 'started today' : `started ${daysSinceStart}d ago`
   return (
-<<<<<<< HEAD
-    <div style={{ background: C.ochreSoft, border: `2px solid ${C.ochre}`, borderRadius: 14, padding: 16, marginBottom: 20, boxShadow: `0 4px 16px ${C.ochre}26` }}>
-=======
     <div onClick={onClick} style={{ background: C.ochreSoft, border: `2px solid ${C.ochre}`, borderRadius: 14, padding: 16, marginBottom: 20, boxShadow: `0 4px 16px ${C.ochre}26`, cursor: onClick ? 'pointer' : 'default' }}>
->>>>>>> worktree-task-more-options
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
         <div>
           <div style={{ fontWeight: 700, fontSize: 15, color: C.ink, marginBottom: 3 }}>{context.icon} {context.label}</div>
@@ -2735,13 +2714,8 @@ function ActiveContextCard({ context, onImBetter, onExtend, onClick }) {
         Heed is holding <strong>{context.heldTaskIds.length} tasks</strong> until you're back. Morning &amp; evening routines paused.
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
-<<<<<<< HEAD
-        <button onClick={onImBetter} style={{ ...getBtnPrimary(), flex: 1, background: C.sage, padding: '9px 14px' }}>I'm better now</button>
-        <button onClick={onExtend} style={{ ...getBtnGhost(), padding: '9px 14px' }}>Extend 2 days</button>
-=======
         <button onClick={e => { e.stopPropagation(); onImBetter?.() }} style={{ ...getBtnPrimary(), flex: 1, background: C.sage, padding: '9px 14px' }}>I'm better now</button>
         <button onClick={e => { e.stopPropagation(); onExtend?.() }} style={{ ...getBtnGhost(), padding: '9px 14px' }}>Extend 2 days</button>
->>>>>>> worktree-task-more-options
       </div>
     </div>
   )
@@ -2791,8 +2765,6 @@ function RecoverySummarySheet({ open, context, heldTasks, onClose, onResumeAll, 
   )
 }
 
-<<<<<<< HEAD
-=======
 // ── Standalone sheet components ────────────────────────────────
 function SheetSectionCard({ children, style }) {
   return <div style={{ background: C.bellySoft, border: `1px solid ${C.border}`, borderRadius: 10, padding: '12px 14px', ...style }}>{children}</div>
@@ -2954,7 +2926,6 @@ function ContextDetailSheet({ open, ctx, heldTasks, onClose, onImBetter, onExten
   )
 }
 
->>>>>>> worktree-task-more-options
 // ── Main App ───────────────────────────────────────────────────
 export default function HeedApp() {
   const [apiTasks, setApiTasks] = useState([])
@@ -2985,11 +2956,8 @@ export default function HeedApp() {
   const [activeContext, setActiveContext] = useState(null)
   const [recoveryOpen, setRecoveryOpen] = useState(false)
   const [quickContextType, setQuickContextType] = useState(null)
-<<<<<<< HEAD
-=======
   const [detailCtx, setDetailCtx] = useState(null)
   const [detailOpen, setDetailOpen] = useState(false)
->>>>>>> worktree-task-more-options
 
   useEffect(() => {
     fetch(`${FUNCTIONS_URL}/api/tasks`)
@@ -3185,8 +3153,6 @@ export default function HeedApp() {
     setToast({ message: mode === 'resume' ? "You're back — tasks resumed" : 'Easing you back in — top tasks surfaced' })
   }, [])
 
-<<<<<<< HEAD
-=======
   const handleDetailOpen = useCallback((ctx, status) => {
     setDetailCtx({ ...ctx, _status: status })
     setDetailOpen(true)
@@ -3196,7 +3162,7 @@ export default function HeedApp() {
     setDetailOpen(false)
   }, [])
 
->>>>>>> worktree-task-more-options
+
   const handleAddTaskToRoutine = useCallback((task, routineId) => {
     setRoutines(rs => rs.map(r => {
       if (r.id !== routineId) return r
@@ -3266,17 +3232,10 @@ export default function HeedApp() {
 
       <main className="heed-main" style={{ maxWidth: 820, margin: '0 auto', padding: '28px 32px 100px 32px', minHeight: 'calc(100vh - 140px)', display: 'flex', flexDirection: 'column' }}>
         {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} upcomingContexts={upcomingContexts} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAskHeed={handleAskHeed} onMoreOptions={handleMoreOptions}/>}
-<<<<<<< HEAD
         {tab === 'calendar' && <CalendarTab tasks={apiTasks} contexts={[...(apiContexts.active||[]), ...(apiContexts.upcoming||[])]} routines={routines} onReschedule={handleReschedule} onMarkDone={handleMarkDone} onSkip={handleSkip} onAddTask={() => setModalOpen(true)} onAddContext={() => setContextModalOpen(true)} onEditRoutine={handleEditRoutine}/>}
         {tab === 'ask' && <AskTab prefill={askPrefill}/>}
         {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onMoreOptions={handleMoreOptions}/>}
-        {tab === 'context' && <ContextTab upcoming={apiContexts.upcoming} active={apiContexts.active} activeContext={activeContext} onAddContext={() => setContextModalOpen(true)} onQuickContext={type => setQuickContextType(type)} onImBetter={() => setRecoveryOpen(true)} onExtend={handleExtendContext}/>}
-=======
-        {tab === 'calendar' && <CalendarTab/>}
-        {tab === 'ask' && <AskTab prefill={askPrefill}/>}
-        {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onMoreOptions={handleMoreOptions}/>}
-        {tab === 'context' && <ContextTab allUpcoming={upcomingContexts} activeContext={activeContext} onAddContext={() => setContextModalOpen(true)} onQuickContext={type => setQuickContextType(type)} onImBetter={() => setRecoveryOpen(true)} onExtend={handleExtendContext} onDetailOpen={handleDetailOpen}/>}
->>>>>>> worktree-task-more-options
+        {tab === 'context' && <ContextTab upcoming={apiContexts.upcoming} active={apiContexts.active} activeContext={activeContext} onAddContext={() => setContextModalOpen(true)} onQuickContext={type => setQuickContextType(type)} onImBetter={() => setRecoveryOpen(true)} onExtend={handleExtendContext} onDetailOpen={handleDetailOpen}/>}
       </main>
 
       <footer style={{ textAlign: 'center', fontSize: 11, color: C.inkMute, padding: '24px', borderTop: `1px solid ${C.hairline}`, fontStyle: 'italic' }}>
@@ -3291,8 +3250,6 @@ export default function HeedApp() {
       <AddToRoutineSheet task={addToRoutineTask} routines={routines} onClose={() => setAddToRoutineTask(null)} onSelect={handleAddTaskToRoutine}/>
       <QuickContextSheet type={quickContextType} onClose={() => setQuickContextType(null)} onActivate={handleQuickContext}/>
       <RecoverySummarySheet open={recoveryOpen} context={activeContext} heldTasks={activeContext ? displayTasks.filter(t => activeContext.heldTaskIds.includes(t.id)) : []} onClose={() => setRecoveryOpen(false)} onResumeAll={() => handleEndContext('resume')} onEaseBack={() => handleEndContext('ease')}/>
-<<<<<<< HEAD
-=======
       <ContextDetailSheet
         open={detailOpen}
         ctx={detailCtx}
@@ -3302,7 +3259,6 @@ export default function HeedApp() {
         onExtend={() => { handleDetailClose(); handleExtendContext() }}
         onAskHeed={handleAskHeed}
       />
->>>>>>> worktree-task-more-options
       {toast && <Toast message={toast.message} onView={toast.showView ? handleToastView : undefined} onUndo={toast.onUndo} onDismiss={() => setToast(null)} />}
       <HeedFAB onAddTask={() => setModalOpen(true)} onAskHeed={() => setAskOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)}/>
     </div>

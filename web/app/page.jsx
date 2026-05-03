@@ -375,7 +375,7 @@ function MobileBottomNav({ tab, onTab, onAddTask, onAddRoutine, onAskHeed }) {
   const fanItems = [
     { label: 'Add task',  icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="3.5" stroke="currentColor" strokeWidth="1.9"/><path d="M12 8v8M8 12h8" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"/></svg>, bg: C.ochre, fg: C.warmDeep, angle: 30,  delay: 0,   onClick: onAddTask    },
     { label: 'Ask Heed',  icon: null, naked: true,                                                                                                                                                                                                                                                           angle: 90,  delay: 55,  onClick: onAskHeed   },
-    { label: 'Routine',   icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M17 2l4 4-4 4" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"/><path d="M3 11V9a4 4 0 0 1 4-4h14" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"/><path d="M7 22l-4-4 4-4" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"/><path d="M21 13v2a4 4 0 0 1-4 4H3" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"/></svg>, bg: C.sage, fg: C.cream, angle: 150, delay: 110, onClick: onAddRoutine },
+    { label: 'Build a Routine', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M17 2l4 4-4 4" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"/><path d="M3 11V9a4 4 0 0 1 4-4h14" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"/><path d="M7 22l-4-4 4-4" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"/><path d="M21 13v2a4 4 0 0 1-4 4H3" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"/></svg>, bg: C.sage, fg: C.cream, angle: 150, delay: 110, onClick: onAddRoutine },
   ]
   const FAN_R = 92
 
@@ -1036,7 +1036,7 @@ function useSwipe(onRight, onLeft, threshold = 80) {
 // ── HeroCard ───────────────────────────────────────────────────
 function HeroCard({ task, onMarkDone, onSkip }) {
   const [hover, setHover] = useState(false)
-  const { offset, onPointerDown, onPointerMove, onPointerUp, onPointerCancel } = useSwipe(
+  const { offset, onPointerDown } = useSwipe(
     () => onMarkDone?.(task),
     () => onSkip?.(task),
   )
@@ -1060,9 +1060,6 @@ function HeroCard({ task, onMarkDone, onSkip }) {
         onMouseEnter={() => !isSwiping && setHover(true)}
         onMouseLeave={() => setHover(false)}
         onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerCancel={onPointerCancel}
         style={{
           background: `linear-gradient(135deg, ${C.paperHi} 0%, ${C.paper} 100%)`,
           border: `1.5px solid ${swipeRight ? C.sage + '88' : swipeLeft ? C.ochre + '66' : isCritical ? C.rust + '66' : C.border}`,
@@ -1115,7 +1112,7 @@ function HeroCard({ task, onMarkDone, onSkip }) {
 // ── TaskCard ───────────────────────────────────────────────────
 function TaskCard({ task, delay = 0, onMarkDone, onSkip }) {
   const [hover, setHover] = useState(false)
-  const { offset, onPointerDown, onPointerMove, onPointerUp, onPointerCancel } = useSwipe(
+  const { offset, onPointerDown } = useSwipe(
     () => onMarkDone?.(task),
     () => onSkip?.(task),
   )
@@ -1140,9 +1137,6 @@ function TaskCard({ task, delay = 0, onMarkDone, onSkip }) {
         onMouseEnter={() => !isSwiping && setHover(true)}
         onMouseLeave={() => setHover(false)}
         onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerCancel={onPointerCancel}
         style={{
           background: `linear-gradient(180deg, ${C.paperHi} 0%, ${C.paper} 100%)`,
           border: `1.5px solid ${swipeRight ? C.sage + '77' : swipeLeft ? C.ochre + '55' : isCritical ? C.rust + '44' : C.border}`,

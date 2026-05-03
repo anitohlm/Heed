@@ -2279,13 +2279,17 @@ function AddToRoutineSheet({ task, routines, onClose, onSelect }) {
   )
 }
 
+const QUICK_SHEET_DURATIONS = [1, 2, 3, 5, 7]
+const QUICK_SHEET_LABELS = { 1: '1 day', 2: '2 days', 3: '3 days', 5: '5 days', 7: '1 week' }
+
 // ── QuickContextSheet ──────────────────────────────────────────
 function QuickContextSheet({ type, onClose, onActivate }) {
-  const DURATIONS = [1, 2, 3, 5, 7]
-  const LABELS = { 1: '1 day', 2: '2 days', 3: '3 days', 5: '5 days', 7: '1 week' }
   const cfg = type ? QUICK_CONTEXT_CONFIG[type] : null
   const [selected, setSelected] = useState(cfg?.defaultDays ?? 2)
-  useEffect(() => { if (cfg) setSelected(cfg.defaultDays) }, [type])
+  useEffect(() => {
+    const defaultDays = type ? QUICK_CONTEXT_CONFIG[type]?.defaultDays : null
+    if (defaultDays != null) setSelected(defaultDays)
+  }, [type])
   if (!type) return null
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 200 }} onClick={onClose}>
@@ -2295,9 +2299,9 @@ function QuickContextSheet({ type, onClose, onActivate }) {
         <div style={{ fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 600, color: C.ink, marginBottom: 4 }}>{cfg.icon} {cfg.question}</div>
         <div style={{ fontSize: 12, color: C.inkMute, marginBottom: 16 }}>Heed will hold your tasks until then</div>
         <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-          {DURATIONS.map(d => (
+          {QUICK_SHEET_DURATIONS.map(d => (
             <button key={d} onClick={() => setSelected(d)} style={{ flex: 1, background: selected === d ? C.warmDark : C.bellySoft, color: selected === d ? C.cream : C.ink, border: 'none', borderRadius: 10, padding: '10px 4px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}>
-              {LABELS[d]}
+              {QUICK_SHEET_LABELS[d]}
             </button>
           ))}
         </div>

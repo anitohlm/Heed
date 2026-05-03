@@ -1770,15 +1770,24 @@ function RoutineCard({ routine, delay = 0, onMarkDone, onLighten, onEdit, onShar
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
         {routine.items.map((item, i) => {
           const isOptional = routine.lightenedItems?.includes(item)
+          const isDoneToday = (routine.todayItemsDone || []).includes(item)
           return (
-            <span key={i} style={{
-              fontSize: 12, padding: '4px 10px', borderRadius: 6, fontWeight: 500,
-              background: isOptional ? 'transparent' : C.bellySoft,
-              color: isOptional ? C.inkMute : C.warmDark,
-              border: isOptional ? `1px dashed ${C.border}` : 'none',
-              textDecoration: isOptional ? 'line-through' : 'none',
-              opacity: isOptional ? 0.6 : 1,
-            }}>{item}</span>
+            <button
+              key={i}
+              onClick={() => onMarkDay && !isOptional && onMarkDay(routine.id, '__item__', item)}
+              disabled={!onMarkDay || isOptional}
+              style={{
+                fontSize: 12, padding: '4px 10px', borderRadius: 6, fontWeight: 500, fontFamily: 'inherit',
+                background: isDoneToday ? C.sage + '22' : isOptional ? 'transparent' : C.bellySoft,
+                color: isDoneToday ? C.sage : isOptional ? C.inkMute : C.warmDark,
+                border: isDoneToday ? `1px solid ${C.sage}55` : isOptional ? `1px dashed ${C.border}` : '1px solid transparent',
+                textDecoration: isOptional ? 'line-through' : 'none',
+                opacity: isOptional ? 0.6 : 1,
+                cursor: onMarkDay && !isOptional ? 'pointer' : 'default',
+                transition: 'all 0.15s',
+              }}>
+              {isDoneToday ? '✓ ' : ''}{item}
+            </button>
           )
         })}
       </div>
@@ -2388,13 +2397,15 @@ function PlanCard({ plan, delay = 0, onSelectPlan }) {
 }
 
 // ── PlanDetailScreen ───────────────────────────────────────────
-function PlanDetailScreen({ plan, onBack, onCheck, onRename, onAddTask, onDeleteTask, onReorder }) {
+function PlanDetailScreen({ plan, onBack, onCheck, onRename, onAddTask, onDeleteTask, onReorder, onUpdatePlan }) {
   const [editingIndex, setEditingIndex] = useState(null)
   const [editValue, setEditValue] = useState('')
   const [newTaskLabel, setNewTaskLabel] = useState('')
   const [swipedIndex, setSwipedIndex] = useState(null)
   const [dragIndex, setDragIndex] = useState(null)
   const [dropIndex, setDropIndex] = useState(null)
+  const [editingPlan, setEditingPlan] = useState(false)
+  const [editDraft, setEditDraft] = useState({ icon: '', title: '', date: '' })
   const rowRefs = useRef([])
   const swipeStart = useRef({ x: null, index: null })
   const dragRef = useRef({ dragIndex: null, dropIndex: null })
@@ -2455,6 +2466,32 @@ function PlanDetailScreen({ plan, onBack, onCheck, onRename, onAddTask, onDelete
     setEditValue('')
   }
 
+  function formatEventDate(val) {
+    if (!val) return ''
+    if (val instanceof Date) return val.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    return String(val)
+  }
+
+  function openEditPlan() {
+    setEditDraft({
+      icon: plan.icon,
+      title: plan.title,
+      date: plan.type === 'project' ? (plan.dueDate ?? '') : formatEventDate(plan.eventDate),
+    })
+    setEditingPlan(true)
+  }
+  function cancelEditPlan() { setEditingPlan(false) }
+  function saveEditPlan() {
+    const updates = {
+      icon: editDraft.icon.trim() || plan.icon,
+      title: editDraft.title.trim() || plan.title,
+    }
+    if (plan.type === 'project') updates.dueDate = editDraft.date.trim()
+    if (plan.type === 'event')   updates.eventDate = editDraft.date.trim()
+    onUpdatePlan(plan.id, updates)
+    setEditingPlan(false)
+  }
+
   return (
     <div style={{ animation: 'heed-fadeIn 0.2s ease' }}>
       {/* top bar */}
@@ -2464,7 +2501,39 @@ function PlanDetailScreen({ plan, onBack, onCheck, onRename, onAddTask, onDelete
           <span style={{ fontSize: 18 }}>{plan.icon}</span>
           <span style={{ fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600, color: C.warmDark }}>{plan.title}</span>
         </div>
+        <button onClick={editingPlan ? cancelEditPlan : openEditPlan} style={{ background: 'none', border: 'none', color: C.border, fontSize: 16, cursor: 'pointer', padding: '4px 0', fontFamily: 'inherit', lineHeight: 1 }}>{editingPlan ? '×' : '✎'}</button>
       </div>
+
+      {/* edit panel */}
+      {editingPlan && (
+        <div style={{ background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '12px 14px', marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+            <input
+              value={editDraft.icon}
+              onChange={e => setEditDraft(d => ({ ...d, icon: e.target.value }))}
+              style={{ width: 36, height: 36, textAlign: 'center', fontSize: 22, border: 'none', borderBottom: `1.5px solid ${C.ochre}`, outline: 'none', background: 'transparent', fontFamily: 'inherit', flexShrink: 0 }}
+            />
+            <input
+              value={editDraft.title}
+              onChange={e => setEditDraft(d => ({ ...d, title: e.target.value }))}
+              style={{ flex: 1, fontSize: 14, fontWeight: 600, border: 'none', borderBottom: `1.5px solid ${C.ochre}`, outline: 'none', background: 'transparent', fontFamily: 'inherit', color: C.ink }}
+            />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+            <span style={{ fontSize: 12, color: C.inkMute, flexShrink: 0 }}>{plan.type === 'project' ? 'Due' : 'Date'}</span>
+            <input
+              value={editDraft.date}
+              onChange={e => setEditDraft(d => ({ ...d, date: e.target.value }))}
+              placeholder={plan.type === 'project' ? 'e.g. Jun 15' : 'e.g. May 8'}
+              style={{ flex: 1, fontSize: 13, border: 'none', borderBottom: `1.5px solid ${C.ochre}`, outline: 'none', background: 'transparent', fontFamily: 'inherit', color: C.ink }}
+            />
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <button onClick={cancelEditPlan} style={{ background: 'none', border: 'none', color: C.inkMute, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', padding: '4px 0' }}>Cancel</button>
+            <button onClick={saveEditPlan} style={{ background: 'none', border: 'none', color: C.ochre, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', padding: '4px 0' }}>Save →</button>
+          </div>
+        </div>
+      )}
 
       {/* progress bar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
@@ -2832,7 +2901,7 @@ function routineDays(routine) {
 // approximations in places where we don't yet have backend completion
 // history (noted inline). Backend endpoint will replace this in Phase 1b
 // keeping the same shape, so the UI doesn't change.
-function computeRetrospective(period, { tasks = [], routines = [], contexts = [] } = {}) {
+function computeRetrospective(period, { tasks = [], routines = [], contexts = [], recentSkips = [] } = {}) {
   // period: { year, monthIndex } where monthIndex is 0-based
   const periodStart = new Date(period.year, period.monthIndex, 1)
   const periodEnd   = new Date(period.year, period.monthIndex + 1, 0, 23, 59, 59)
@@ -3408,7 +3477,7 @@ function TaskDetailSheet({ task, onClose, onMarkDone, onSkip, onReschedule }) {
   )
 }
 
-function CalendarTab({ tasks, contexts, routines, onReschedule, onMarkDone, onSkip, onAddTask, onAddContext, onEditRoutine, onApplyRetroSuggestion }) {
+function CalendarTab({ tasks, contexts, routines, recentSkips = [], onReschedule, onMarkDone, onSkip, onAddTask, onAddContext, onEditRoutine, onApplyRetroSuggestion }) {
   const [monthOffset, setMonthOffset] = useState(0)
   const [weekStart, setWeekStart]     = useState(startOfWeek(TODAY_DATE))
   const [detailTask, setDetailTask]   = useState(null)
@@ -3431,7 +3500,7 @@ function CalendarTab({ tasks, contexts, routines, onReschedule, onMarkDone, onSk
   const isPastMonth = monthOffset < 0
   const isCurrentMonth = monthOffset === 0
   const showRetroPill = isPastMonth || isCurrentMonth  // Hide for future months.
-  const retrospective = retroOpen ? computeRetrospective(viewedPeriod, { tasks, routines, contexts }) : null
+  const retrospective = retroOpen ? computeRetrospective(viewedPeriod, { tasks, routines, contexts, recentSkips }) : null
 
   return (
     <div>
@@ -4784,6 +4853,9 @@ export default function HeedApp() {
   const [apiTasks, setApiTasks] = useState([])
   const [apiContexts, setApiContexts] = useState({ active: [], upcoming: [] })
   const [dismissedIds, setDismissedIds] = useState(new Set())
+  // Last ~200 skip events with reason. Retrospective reads these to detect
+  // forgot/busy patterns. Backend completion log will replace this in Phase 1b.
+  const [recentSkips, setRecentSkips] = useState([])
   const [routines, setRoutines] = useState(ROUTINES)
   const [tab, setTab] = useState('today')
   const [theme, setTheme] = useState(DEFAULT_THEME)
@@ -4874,12 +4946,20 @@ export default function HeedApp() {
     // three reason chips; tapping one fires a follow-up POST that overwrites
     // the reason. Without this, the advisor's slip-pattern logic only ever
     // sees "other" and can't tell "too busy" from "forgot".
+    // We also keep a local copy in recentSkips for retrospective patterns.
     const recordSkip = (reason) => {
       fetch(`${FUNCTIONS_URL}/api/completions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ task_id: taskId, event_type: 'skipped', skip_reason: reason }),
       }).catch(() => {})
+      setRecentSkips(s => {
+        // Replace any earlier 'other'-reason entry for the same task in the
+        // last 60 seconds with the refined reason — keeps the local log clean.
+        const cutoff = Date.now() - 60_000
+        const filtered = s.filter(e => !(e.task_id === taskId && e.ts >= cutoff && e.reason === 'other'))
+        return [{ task_id: taskId, task_name: taskName, reason, ts: Date.now() }, ...filtered].slice(0, 200)
+      })
     }
     recordSkip('other')
     setToast({
@@ -5039,9 +5119,25 @@ export default function HeedApp() {
     setToast({ message: 'Skipped for today.' })
   }, [])
 
-  // Toggle a single day in the routine's 14-day completion strip.
+  // Toggle a single day in the routine's 14-day completion strip,
+  // OR toggle a single ITEM done for today when index === '__item__'.
   // Index 0 is the oldest day, length-1 is today.
   const handleMarkRoutineDay = useCallback((routineId, index, value) => {
+    if (index === '__item__') {
+      // value is the item name; toggle in todayItemsDone array.
+      setRoutines(rs => rs.map(r => {
+        if (r.id !== routineId) return r
+        const cur = r.todayItemsDone || []
+        const next = cur.includes(value) ? cur.filter(x => x !== value) : [...cur, value]
+        // Filter out lightened items so they never count.
+        const live = (r.items || []).filter(it => !(r.lightenedItems || []).includes(it))
+        const allDone = live.length > 0 && live.every(it => next.includes(it))
+        const updatedC14 = [...(r.completion14d || [])]
+        if (updatedC14.length && allDone) updatedC14[updatedC14.length - 1] = true
+        return { ...r, todayItemsDone: next, completion14d: updatedC14 }
+      }))
+      return
+    }
     setRoutines(rs => rs.map(r => {
       if (r.id !== routineId) return r
       const updated = [...r.completion14d]
@@ -5198,7 +5294,7 @@ export default function HeedApp() {
 
       <main className="heed-main" style={{ maxWidth: 820, margin: '0 auto', padding: '28px 32px 100px 32px', minHeight: 'calc(100vh - 140px)', display: 'flex', flexDirection: 'column' }}>
         {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} upcomingContexts={upcomingContexts} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onSkipRoutineToday={handleSkipRoutineToday} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAskHeed={handleAskHeed} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen}/>}
-        {tab === 'calendar' && <CalendarTab tasks={apiTasks} contexts={[...(apiContexts.active||[]), ...(apiContexts.upcoming||[])]} routines={routines} onReschedule={handleReschedule} onMarkDone={handleMarkDone} onSkip={handleSkip} onAddTask={() => setModalOpen(true)} onAddContext={() => setContextModalOpen(true)} onEditRoutine={handleEditRoutine} onApplyRetroSuggestion={handleApplyRetroSuggestion}/>}
+        {tab === 'calendar' && <CalendarTab tasks={apiTasks} contexts={[...(apiContexts.active||[]), ...(apiContexts.upcoming||[])]} routines={routines} recentSkips={recentSkips} onReschedule={handleReschedule} onMarkDone={handleMarkDone} onSkip={handleSkip} onAddTask={() => setModalOpen(true)} onAddContext={() => setContextModalOpen(true)} onEditRoutine={handleEditRoutine} onApplyRetroSuggestion={handleApplyRetroSuggestion}/>}
         {tab === 'ask' && <AskTab prefill={askPrefill} autoSend={askAutoSend} onAutoSendDone={() => setAskAutoSend(false)} onLightenRoutine={handleLightenRoutine}/>}
         {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onMarkRoutineDay={handleMarkRoutineDay}/>}
         {tab === 'context' && <LifeTab upcoming={apiContexts.upcoming} active={apiContexts.active} activeContext={activeContext} onAddContext={() => setContextModalOpen(true)} onQuickContext={type => setQuickContextType(type)} onImBetter={() => setRecoveryOpen(true)} onExtend={handleExtendContext} onDetailOpen={handleDetailOpen}/>}

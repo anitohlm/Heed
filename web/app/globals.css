@@ -5,6 +5,10 @@
 html, body {
   margin: 0;
   padding: 0;
+  /* Prevent any descendant — esp. the swipe fly-off that translates a
+     card 120% of viewport width — from making the page horizontally
+     scrollable. */
+  overflow-x: hidden;
 }
 
 button {

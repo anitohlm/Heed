@@ -40,6 +40,9 @@ input, select, textarea {
 
   /* iOS auto-zoom prevention: any input smaller than 16px gets bumped */
   input, select, textarea { font-size: 16px !important; }
+
+  /* Hide hover-revealed task actions on touch devices — swipe replaces them */
+  .heed-task-actions { display: none !important; }
 }
 
 /* Tablet  ────────────────────────────────────────────────── */

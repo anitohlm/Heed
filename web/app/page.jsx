@@ -1231,7 +1231,7 @@ function TaskCard({ task, delay = 0, onMarkDone, onSkip, onMoreOptions }) {
           </div>
         </div>
         {hover && (
-          <div style={{ marginTop: 10, display: 'flex', gap: 6, alignItems: 'center', animation: 'heed-fadeIn 0.2s ease' }}>
+          <div className="heed-task-actions" style={{ marginTop: 10, display: 'flex', gap: 6, alignItems: 'center', animation: 'heed-fadeIn 0.2s ease' }}>
             <button style={getBtnPrimary()} onClick={() => onMarkDone?.(task)}>Mark done</button>
             <button style={getBtnGhost()} onClick={() => onSkip?.(task)}>Skip</button>
             <button aria-label="More options" style={{ ...getBtnGhost(), marginLeft: 'auto', width: 32, height: 32, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 7, flexShrink: 0 }} onClick={() => onMoreOptions?.(task)}>

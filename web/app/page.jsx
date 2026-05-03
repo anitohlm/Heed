@@ -1692,7 +1692,7 @@ function TracksTab({ tasks, routines, onMarkDone, onSkip, onMarkRoutineDone, onL
   )
 }
 
-// ── ContextTab ─────────────────────────────────────────────────
+// ── Life Events helpers ─────────────────────────────────────────
 function ContextRow({ ctx, highlight, onDetailOpen }) {
   const icons = { travel: '🗺️', illness: '🌿', busy: '🌾', celebration: '🌸' }
   const tasksBeforeCount = ctx.plan?.before?.length || 0
@@ -1946,15 +1946,11 @@ function PlansPanel() {
   )
 }
 
-function ContextTab({ upcoming, active, activeContext, onAddContext, onQuickContext, onImBetter, onExtend, onDetailOpen }) {
-  const allUpcoming = [...(active || []).map(mapApiContext), ...(upcoming || []).map(mapApiContext)]
+// ── LifeEventsPanel ─────────────────────────────────────────────
+function LifeEventsPanel({ allUpcoming, activeContext, onAddContext, onQuickContext, onImBetter, onExtend, onDetailOpen }) {
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-        <SectionHeader>Context windows</SectionHeader>
-        <button onClick={onAddContext} style={getBtnPrimary()}>+ Add context</button>
-      </div>
-      <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginBottom: 20 }}>
+    <div style={{ animation: 'heed-fadeIn 0.2s ease' }}>
+      <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginBottom: 14 }}>
         {CONTEXT_CHIPS.map(c => (
           <button key={c.type} onClick={() => onQuickContext(c.type)}
             style={{ background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 999, padding: '6px 14px', fontSize: 12, color: C.ink, fontFamily: 'inherit', fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s' }}
@@ -1962,6 +1958,11 @@ function ContextTab({ upcoming, active, activeContext, onAddContext, onQuickCont
             onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.background = C.paper }}
           >{c.label}</button>
         ))}
+        <button onClick={onAddContext}
+          style={{ background: 'transparent', border: `1.5px solid ${C.border}`, borderRadius: 999, padding: '6px 14px', fontSize: 12, color: C.inkSoft, fontFamily: 'inherit', fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s' }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = C.ochre }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = C.border }}
+        >+ Add event</button>
       </div>
       {activeContext && (
         <ActiveContextCard
@@ -1973,9 +1974,9 @@ function ContextTab({ upcoming, active, activeContext, onAddContext, onQuickCont
       )}
       <div style={{ background: C.paper, border: `1px solid ${C.border}`, borderRadius: 14, padding: 18, marginBottom: 16, boxShadow: C.shadowSoft }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: C.sage, letterSpacing: 0.8, marginBottom: 12, textTransform: 'uppercase' }}>Upcoming</div>
-        {(allUpcoming || []).length === 0 ? (
-          <div style={{ fontSize: 12.5, color: C.inkMute, fontStyle: 'italic', padding: '8px 0' }}>Nothing on the horizon. Tap "+ Add context" if you have a trip, illness, or busy week coming up.</div>
-        ) : (allUpcoming || []).map((c, i) => (
+        {allUpcoming.length === 0 ? (
+          <div style={{ fontSize: 12.5, color: C.inkMute, fontStyle: 'italic', padding: '8px 0' }}>Nothing on the horizon. Tap a chip above if something came up, or "+ Add event" to plan ahead.</div>
+        ) : allUpcoming.map((c, i) => (
           <ContextRow key={`u-${i}`} ctx={c} highlight onDetailOpen={ctx => onDetailOpen?.(ctx, 'upcoming')}/>
         ))}
       </div>
@@ -1987,8 +1988,38 @@ function ContextTab({ upcoming, active, activeContext, onAddContext, onQuickCont
       </div>
       <div style={{ marginTop: 20, padding: '14px 16px', background: C.bellySoft, borderRadius: 10, fontSize: 13, color: C.ink, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
         <span style={{ fontSize: 16 }}>💡</span>
-        <span>You can also tell Heed about context in plain language — try <em>"I'm sick this week"</em> or <em>"I'm traveling next month."</em></span>
+        <span>You can also tell Heed in plain language — try <em>"I'm sick this week"</em> or <em>"I'm traveling next month."</em></span>
       </div>
+    </div>
+  )
+}
+
+// ── LifeTab ──────────────────────────────────────────────────────
+function LifeTab({ upcoming, active, activeContext, onAddContext, onQuickContext, onImBetter, onExtend, onDetailOpen }) {
+  const [subtab, setSubtab] = useState('plans')
+  const allUpcoming = [...(active || []).map(mapApiContext), ...(upcoming || []).map(mapApiContext)]
+  return (
+    <div>
+      <div style={{ marginBottom: 18 }}>
+        <SectionHeader>Life</SectionHeader>
+        <div style={{ fontSize: 12.5, color: C.inkMute, fontStyle: 'italic', marginTop: -8 }}>Your plans and life events, in one place.</div>
+      </div>
+      <div style={{ display: 'flex', background: C.paper, border: `1px solid ${C.border}`, borderRadius: 10, padding: 4, marginBottom: 18, gap: 4 }}>
+        <SegmentButton active={subtab === 'plans'} onClick={() => setSubtab('plans')} label="Plans" count={DEMO_PLANS.length} accent={C.warmDark}/>
+        <SegmentButton active={subtab === 'events'} onClick={() => setSubtab('events')} label="Life Events" count={allUpcoming.length} accent={C.sage}/>
+      </div>
+      {subtab === 'plans'  && <PlansPanel/>}
+      {subtab === 'events' && (
+        <LifeEventsPanel
+          allUpcoming={allUpcoming}
+          activeContext={activeContext}
+          onAddContext={onAddContext}
+          onQuickContext={onQuickContext}
+          onImBetter={onImBetter}
+          onExtend={onExtend}
+          onDetailOpen={onDetailOpen}
+        />
+      )}
     </div>
   )
 }
@@ -3475,7 +3506,7 @@ export default function HeedApp() {
         {tab === 'calendar' && <CalendarTab tasks={apiTasks} contexts={[...(apiContexts.active||[]), ...(apiContexts.upcoming||[])]} routines={routines} onReschedule={handleReschedule} onMarkDone={handleMarkDone} onSkip={handleSkip} onAddTask={() => setModalOpen(true)} onAddContext={() => setContextModalOpen(true)} onEditRoutine={handleEditRoutine}/>}
         {tab === 'ask' && <AskTab prefill={askPrefill} onLightenRoutine={handleLightenRoutine}/>}
         {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onMoreOptions={handleMoreOptions}/>}
-        {tab === 'context' && <ContextTab upcoming={apiContexts.upcoming} active={apiContexts.active} activeContext={activeContext} onAddContext={() => setContextModalOpen(true)} onQuickContext={type => setQuickContextType(type)} onImBetter={() => setRecoveryOpen(true)} onExtend={handleExtendContext} onDetailOpen={handleDetailOpen}/>}
+        {tab === 'context' && <LifeTab upcoming={apiContexts.upcoming} active={apiContexts.active} activeContext={activeContext} onAddContext={() => setContextModalOpen(true)} onQuickContext={type => setQuickContextType(type)} onImBetter={() => setRecoveryOpen(true)} onExtend={handleExtendContext} onDetailOpen={handleDetailOpen}/>}
       </main>
 
       <footer style={{ textAlign: 'center', fontSize: 11, color: C.inkMute, padding: '24px', borderTop: `1px solid ${C.hairline}`, fontStyle: 'italic' }}>

@@ -2488,7 +2488,7 @@ function PlanDetailScreen({ plan, onBack, onCheck, onRename, onAddTask, onDelete
     }
     if (plan.type === 'project') updates.dueDate = editDraft.date.trim()
     if (plan.type === 'event')   updates.eventDate = editDraft.date.trim()
-    onUpdatePlan(plan.id, updates)
+    onUpdatePlan?.(plan.id, updates)
     setEditingPlan(false)
   }
 
@@ -3021,6 +3021,53 @@ function computeRetrospective(period, { tasks = [], routines = [], contexts = []
     })
     .filter(Boolean)
     .slice(0, 4)
+
+  // ── Skip-reason attention items ─────────────────────────
+  // Reads recentSkips (in-memory log populated by handleSkip). Detects:
+  //   forgot_pattern — same task skipped as 'forgot' 3+ times this period
+  //   busy_cluster   — 3+ 'busy' skips on the same task this period
+  // Supplements the cadence-based items above without replacing them.
+  const skipsThisPeriod = recentSkips.filter(s => {
+    const ts = new Date(s.ts)
+    return ts >= periodStart && ts <= periodEnd
+  })
+  const forgotByTask = new Map()
+  const busyByTask = new Map()
+  for (const s of skipsThisPeriod) {
+    if (s.reason === 'forgot') forgotByTask.set(s.task_id, (forgotByTask.get(s.task_id) || 0) + 1)
+    else if (s.reason === 'busy') busyByTask.set(s.task_id, (busyByTask.get(s.task_id) || 0) + 1)
+  }
+  const seenAttentionIds = new Set(needsAttention.map(a => a.task_id))
+  for (const [taskId, count] of forgotByTask) {
+    if (count < 3 || seenAttentionIds.has(taskId)) continue
+    const skip = skipsThisPeriod.find(s => s.task_id === taskId && s.reason === 'forgot')
+    if (!skip) continue
+    needsAttention.push({
+      task_id: taskId,
+      task_name: skip.task_name || 'This task',
+      issue: 'forgot_pattern',
+      detail: `Marked "Forgot" ${count} times this month. The cadence may be drifting out of memory — want a different cue?`,
+      suggested_action: 'review',
+      suggested_payload: null,
+      suggested_label: null,
+    })
+    seenAttentionIds.add(taskId)
+  }
+  for (const [taskId, count] of busyByTask) {
+    if (count < 3 || seenAttentionIds.has(taskId)) continue
+    const skip = skipsThisPeriod.find(s => s.task_id === taskId && s.reason === 'busy')
+    if (!skip) continue
+    needsAttention.push({
+      task_id: taskId,
+      task_name: skip.task_name || 'This task',
+      issue: 'busy_cluster',
+      detail: `Skipped as "Busy" ${count} times. Cadence may be too tight for your real load.`,
+      suggested_action: 'review',
+      suggested_payload: null,
+      suggested_label: null,
+    })
+    seenAttentionIds.add(taskId)
+  }
 
   // ── Context impact ──────────────────────────────────────
   const contextImpacts = (contexts || [])

@@ -61,6 +61,20 @@ const ROUTINES = [
   },
 ]
 
+const TASKS_DEMO = (() => {
+  const ago = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString() }
+  const from = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString() }
+  return [
+    { id: 'demo_1', status: 'active', name: 'Pay electricity bill',   category: 'finance',       next_due_at: ago(14), last_done_at: ago(44), explicit_cadence_days: 30 },
+    { id: 'demo_2', status: 'active', name: 'Call Mom',               category: 'relationships', next_due_at: ago(8),  last_done_at: ago(15), learned_cadence_days: 7  },
+    { id: 'demo_3', status: 'active', name: 'Refill water dispenser', category: 'home',          next_due_at: ago(5),  last_done_at: ago(19), explicit_cadence_days: 14 },
+    { id: 'demo_4', status: 'active', name: 'Take vitamins',          category: 'health',        next_due_at: ago(3),  last_done_at: ago(3),  explicit_cadence_days: 1  },
+    { id: 'demo_5', status: 'active', name: 'Submit expense report',  category: 'admin',         next_due_at: ago(1),  last_done_at: ago(31), explicit_cadence_days: 30 },
+    { id: 'demo_6', status: 'active', name: 'Clean bathroom',         category: 'home',          next_due_at: from(2), last_done_at: ago(12), explicit_cadence_days: 14 },
+    { id: 'demo_7', status: 'active', name: 'Back up photos',         category: 'admin',         next_due_at: from(5), last_done_at: ago(25), explicit_cadence_days: 30 },
+  ]
+})()
+
 // ── Share-card helpers ─────────────────────────────────────────
 function computeStreakCount(completion14d) {
   let count = 0
@@ -3312,7 +3326,7 @@ export default function HeedApp() {
     return () => clearTimeout(t)
   }, [toast])
 
-  const displayTasks = apiTasks
+  const displayTasks = (apiTasks.length > 0 ? apiTasks : TASKS_DEMO)
     .filter(t => t.status === 'active' && !dismissedIds.has(t.id))
     .map(computeTaskDisplay)
 

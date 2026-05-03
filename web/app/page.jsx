@@ -2558,8 +2558,7 @@ function AddPlanSheet({ onClose, onAdd }) {
 }
 
 // ── PlansPanel ───────────────────────────────────────────────────
-function PlansPanel() {
-  const { plans, checkTask, renameTask, addTask, deleteTask, reorderTasks, addPlan } = usePlans(DEMO_PLANS)
+function PlansPanel({ plans, checkTask, renameTask, addTask, deleteTask, reorderTasks, addPlan }) {
   const [addOpen, setAddOpen] = useState(false)
   const [selectedPlanId, setSelectedPlanId] = useState(null)
 
@@ -2653,6 +2652,7 @@ function LifeEventsPanel({ allUpcoming, activeContext, onAddContext, onQuickCont
 // ── LifeTab ──────────────────────────────────────────────────────
 function LifeTab({ upcoming, active, activeContext, onAddContext, onQuickContext, onImBetter, onExtend, onDetailOpen }) {
   const [subtab, setSubtab] = useState('plans')
+  const plansHook = usePlans(DEMO_PLANS)
   const allUpcoming = [...(active || []).map(mapApiContext), ...(upcoming || []).map(mapApiContext)]
   return (
     <div>
@@ -2661,10 +2661,10 @@ function LifeTab({ upcoming, active, activeContext, onAddContext, onQuickContext
         <div style={{ fontSize: 12.5, color: C.inkMute, fontStyle: 'italic', marginTop: -8 }}>Your plans and life events, in one place.</div>
       </div>
       <div style={{ display: 'flex', background: C.paper, border: `1px solid ${C.border}`, borderRadius: 10, padding: 4, marginBottom: 18, gap: 4 }}>
-        <SegmentButton active={subtab === 'plans'} onClick={() => setSubtab('plans')} label="Plans" count={DEMO_PLANS.length} accent={C.warmDark}/>
+        <SegmentButton active={subtab === 'plans'} onClick={() => setSubtab('plans')} label="Plans" count={plansHook.plans.length} accent={C.warmDark}/>
         <SegmentButton active={subtab === 'events'} onClick={() => setSubtab('events')} label="Life Events" count={allUpcoming.length} accent={C.sage}/>
       </div>
-      {subtab === 'plans'  && <PlansPanel/>}
+      {subtab === 'plans'  && <PlansPanel {...plansHook}/>}
       {subtab === 'events' && (
         <LifeEventsPanel
           allUpcoming={allUpcoming}

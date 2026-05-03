@@ -1615,13 +1615,9 @@ function RoutineRow({ routine, delay = 0, onMarkDone, onSkipToday, onLighten }) 
   const last7 = routine.completion14d.slice(-7)
   const thisWeekCount = last7.filter(Boolean).length
   const isHealthy = thisWeekCount >= 5
-  const isAttention = routine.suggestion !== null
+  const isAttention = routine.suggestion != null
   const isLightened = !!routine.lightenedItems?.length
-  const borderColor = isLightened
-    ? `${C.sage}73`
-    : isAttention && !isLightened
-    ? `${C.ochre}73`
-    : C.border
+  const borderColor = isLightened ? `${C.sage}73` : isAttention ? `${C.ochre}73` : C.border
   const { ref: swipeRef } = useSwipe(
     () => onMarkDone?.(routine.id),
     () => onSkipToday?.(routine.id),
@@ -1982,13 +1978,19 @@ function MicButton({ listening, onToggle, disabled }) {
   )
 }
 
-function AskTab({ prefill = '', onLightenRoutine }) {
+function AskTab({ prefill = '', autoSend = false, onAutoSendDone, onLightenRoutine }) {
   const { messages, input, setInput, thinking, streaming, busy, send, executeAction } = useChat({ onLightenRoutine })
   const scrollRef = useRef(null)
   const { listening, toggle: toggleMic, supported: micSupported } = useMic(useCallback((text) => setInput(text), [setInput]))
   useEffect(() => {
-    if (prefill) setInput(prefill)
-  }, [prefill, setInput])
+    if (!prefill) return
+    if (autoSend) {
+      send(prefill)
+      onAutoSendDone?.()
+    } else {
+      setInput(prefill)
+    }
+  }, [prefill, autoSend]) // eslint-disable-line react-hooks/exhaustive-deps
   const owlMood = busy ? 'thinking' : 'calm'
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight
@@ -4074,6 +4076,7 @@ export default function HeedApp() {
   }, [theme])
   const [toast, setToast] = useState(null)
   const [askPrefill, setAskPrefill] = useState('')
+  const [askAutoSend, setAskAutoSend] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
   const [editingTask, setEditingTask] = useState(null)
   const [askOpen, setAskOpen] = useState(false)
@@ -4172,6 +4175,12 @@ export default function HeedApp() {
 
   const handleAskHeed = useCallback((query) => {
     setAskPrefill(query)
+    setTab('ask')
+  }, [])
+
+  const handleMicAsk = useCallback((transcript) => {
+    setAskPrefill(transcript)
+    setAskAutoSend(true)
     setTab('ask')
   }, [])
 
@@ -4382,12 +4391,12 @@ export default function HeedApp() {
         ))}
       </nav>
 
-      <MobileBottomNav tab={tab} onTab={setTab}/>
+      <MobileBottomNav tab={tab} onTab={setTab} onMicAsk={handleMicAsk}/>
 
       <main className="heed-main" style={{ maxWidth: 820, margin: '0 auto', padding: '28px 32px 100px 32px', minHeight: 'calc(100vh - 140px)', display: 'flex', flexDirection: 'column' }}>
         {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} upcomingContexts={upcomingContexts} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onSkipRoutineToday={handleSkipRoutineToday} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAskHeed={handleAskHeed} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen}/>}
         {tab === 'calendar' && <CalendarTab tasks={apiTasks} contexts={[...(apiContexts.active||[]), ...(apiContexts.upcoming||[])]} routines={routines} onReschedule={handleReschedule} onMarkDone={handleMarkDone} onSkip={handleSkip} onAddTask={() => setModalOpen(true)} onAddContext={() => setContextModalOpen(true)} onEditRoutine={handleEditRoutine}/>}
-        {tab === 'ask' && <AskTab prefill={askPrefill} onLightenRoutine={handleLightenRoutine}/>}
+        {tab === 'ask' && <AskTab prefill={askPrefill} autoSend={askAutoSend} onAutoSendDone={() => setAskAutoSend(false)} onLightenRoutine={handleLightenRoutine}/>}
         {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen}/>}
         {tab === 'context' && <LifeTab upcoming={apiContexts.upcoming} active={apiContexts.active} activeContext={activeContext} onAddContext={() => setContextModalOpen(true)} onQuickContext={type => setQuickContextType(type)} onImBetter={() => setRecoveryOpen(true)} onExtend={handleExtendContext} onDetailOpen={handleDetailOpen}/>}
       </main>

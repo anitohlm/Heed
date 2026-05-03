@@ -2380,12 +2380,19 @@ export default function HeedApp() {
   }, [FUNCTIONS_URL])
 
   const handleReschedule = useCallback(async (taskId, newDate) => {
-    const iso = new Date(newDate).toISOString()
-    await fetch(`${FUNCTIONS_URL}/api/tasks/${taskId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ next_due_at: iso }),
-    }).catch(() => {})
+    const d = new Date(newDate)
+    if (isNaN(d.getTime())) return
+    const iso = d.toISOString()
+    try {
+      const res = await fetch(`${FUNCTIONS_URL}/api/tasks/${taskId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ next_due_at: iso }),
+      })
+      if (!res.ok) return
+    } catch {
+      return
+    }
     fetch(`${FUNCTIONS_URL}/api/tasks`)
       .then(r => r.json())
       .then(data => Array.isArray(data) && setApiTasks(data))

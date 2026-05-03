@@ -10,11 +10,18 @@ is the contract for how this agent thinks.
 
 import os
 import json
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import AsyncIterator
 from openai import AzureOpenAI
 from agents.tools import cosmos_tool, search_tool, bing_tool, action_tools
 from agents.models import AgentAction
+
+
+# Tools whose only effect is to emit a frontend event (action chip, follow-up
+# chips). Once the model has streamed its answer text and called only these,
+# no further LLM iteration is needed — saves one full round trip per response.
+_TERMINAL_TOOLS = {"propose_action", "suggest_followups"}
 
 
 # -----------------------------------------------------------------------------
@@ -407,42 +414,71 @@ async def stream_response(
             }
             messages.append(assistant_msg)
 
-            # Dispatch each tool call and append results
-            for tc in tool_calls_acc.values():
+            ordered = list(tool_calls_acc.values())
+            parsed_args = []
+            for tc in ordered:
                 try:
-                    args = json.loads(tc["arguments"]) if tc["arguments"] else {}
+                    parsed_args.append(json.loads(tc["arguments"]) if tc["arguments"] else {})
                 except json.JSONDecodeError:
-                    args = {}
+                    parsed_args.append({})
 
+            # Yield tool_call events upfront (preserves prior UX of "thinking" → tools list)
+            for tc in ordered:
                 yield {"type": "tool_call", "name": tc["name"]}
-                result = _dispatch_tool(tc["name"], args, user_id)
-                preview = result[:120] + "..." if len(result) > 120 else result
-                yield {"type": "tool_result", "name": tc["name"], "preview": preview}
 
-                if tc["name"] == "propose_action" and args:
-                    action_type = args.get("action_type", "")
-                    default_label, default_emoji = _ACTION_DISPLAY.get(
-                        action_type, (action_type.replace("_", " ").title(), "")
-                    )
-                    payload = args.get("payload") or {}
-                    yield {
-                        "type": "action",
-                        "action_type": action_type,
-                        "label": payload.get("label", default_label),
-                        "emoji": payload.get("emoji", default_emoji),
-                        "task_id": args.get("task_id"),
-                        "routine_id": args.get("routine_id"),
-                        "payload": payload,
-                    }
-                elif tc["name"] == "suggest_followups" and args:
-                    chips_emitted = True
-                    yield {"type": "chips", "chips": args.get("chips", [])}
+            # Dispatch all tools concurrently — the LLM often calls 2+ data tools
+            # (e.g. get_today_view + get_active_contexts) per iteration; running
+            # them sequentially doubled the latency for no reason.
+            results_by_id: dict[str, str] = {}
+            with ThreadPoolExecutor(max_workers=max(1, len(ordered))) as executor:
+                futures = {
+                    executor.submit(_dispatch_tool, tc["name"], parsed_args[i], user_id): (i, tc)
+                    for i, tc in enumerate(ordered)
+                }
+                for fut in as_completed(futures):
+                    i, tc = futures[fut]
+                    args = parsed_args[i]
+                    result = fut.result()
+                    results_by_id[tc["id"]] = result
+                    preview = result[:120] + "..." if len(result) > 120 else result
+                    yield {"type": "tool_result", "name": tc["name"], "preview": preview}
 
+                    if tc["name"] == "propose_action" and args:
+                        action_type = args.get("action_type", "")
+                        default_label, default_emoji = _ACTION_DISPLAY.get(
+                            action_type, (action_type.replace("_", " ").title(), "")
+                        )
+                        payload = args.get("payload") or {}
+                        yield {
+                            "type": "action",
+                            "action_type": action_type,
+                            "label": payload.get("label", default_label),
+                            "emoji": payload.get("emoji", default_emoji),
+                            "task_id": args.get("task_id"),
+                            "routine_id": args.get("routine_id"),
+                            "payload": payload,
+                        }
+                    elif tc["name"] == "suggest_followups" and args:
+                        chips_emitted = True
+                        yield {"type": "chips", "chips": args.get("chips", [])}
+
+            # Append tool results in the SAME order the model called them in,
+            # which is what the OpenAI tool-call protocol expects.
+            for tc in ordered:
                 messages.append({
                     "role": "tool",
                     "tool_call_id": tc["id"],
-                    "content": result,
+                    "content": results_by_id[tc["id"]],
                 })
+
+            # Early-break: if the assistant streamed its final answer this
+            # iteration AND every tool it called was terminal (no follow-up data
+            # to digest), the next LLM round trip would just produce empty
+            # content. Skip it — saves ~1–3 s of perceived latency.
+            non_terminal = [tc["name"] for tc in ordered if tc["name"] not in _TERMINAL_TOOLS]
+            if current_text and not non_terminal:
+                final_text = current_text
+                break
         else:
             # Unexpected finish — break to avoid infinite loop
             final_text = current_text

@@ -445,7 +445,7 @@ function useChat({ onLightenRoutine } = {}) {
 }
 
 // ── useMic hook ────────────────────────────────────────────────
-function useMic(onTranscript) {
+function useMic(onTranscript, onEnd) {
   const [listening, setListening] = useState(false)
   const recogRef = useRef(null)
   const supported = typeof window !== 'undefined' && !!(window.SpeechRecognition || window.webkitSpeechRecognition)
@@ -462,11 +462,11 @@ function useMic(onTranscript) {
       const isFinal = e.results[e.results.length - 1].isFinal
       onTranscript(transcript, isFinal)
     }
-    r.onend = () => setListening(false)
-    r.onerror = () => setListening(false)
+    r.onend = () => { setListening(false); onEnd?.() }
+    r.onerror = () => { setListening(false); onEnd?.() }
     recogRef.current = r
     r.start()
-  }, [listening, supported, onTranscript, stop])
+  }, [listening, supported, onTranscript, onEnd, stop])
   useEffect(() => () => recogRef.current?.abort(), [])
   return { listening, toggle, supported }
 }
@@ -516,8 +516,49 @@ function ThemeSwitcher({ theme, onTheme }) {
 }
 
 // ── MobileBottomNav ────────────────────────────────────────────
-function MobileBottomNav({ tab, onTab }) {
+function MobileBottomNav({ tab, onTab, onMicAsk }) {
   const askActive = tab === 'ask'
+  const [pressing, setPressing] = useState(false)
+  const pressTimer = useRef(null)
+  const latestTranscript = useRef('')
+
+  const { listening: micListening, toggle: startMic, supported: micSupported } = useMic(
+    useCallback((text) => { latestTranscript.current = text }, []),
+    useCallback(() => {
+      const t = latestTranscript.current.trim()
+      latestTranscript.current = ''
+      if (t) onMicAsk?.(t)
+    }, [onMicAsk])
+  )
+
+  const handleOwlDown = useCallback((e) => {
+    if (!micSupported) return
+    e.preventDefault()
+    setPressing(true)
+    pressTimer.current = setTimeout(() => {
+      pressTimer.current = null
+      setPressing(false)
+      startMic()
+    }, 500)
+  }, [micSupported, startMic])
+
+  const handleOwlUp = useCallback(() => {
+    if (pressTimer.current) {
+      clearTimeout(pressTimer.current)
+      pressTimer.current = null
+      setPressing(false)
+      onTab('ask')
+    }
+  }, [onTab])
+
+  const handleOwlCancel = useCallback(() => {
+    if (pressTimer.current) {
+      clearTimeout(pressTimer.current)
+      pressTimer.current = null
+      setPressing(false)
+    }
+  }, [])
+
   return (
     <>
       <nav
@@ -533,22 +574,29 @@ function MobileBottomNav({ tab, onTab }) {
           overflow: 'visible',
         }}
       >
-        {/* Owl circle — overlaps the top edge of the nav bar */}
+        {/* Owl circle — tap = Ask Heed screen; long-press = mic then auto-send */}
         <button
-          onClick={() => onTab('ask')}
-          aria-label="Ask Heed"
+          onPointerDown={micSupported ? handleOwlDown : undefined}
+          onPointerUp={micSupported ? handleOwlUp : undefined}
+          onPointerLeave={micSupported ? handleOwlCancel : undefined}
+          onPointerCancel={micSupported ? handleOwlCancel : undefined}
+          onClick={micSupported ? undefined : () => onTab('ask')}
+          onContextMenu={e => e.preventDefault()}
+          aria-label={micListening ? 'Listening… release to send' : 'Ask Heed — hold to speak'}
           aria-current={askActive ? 'page' : undefined}
           style={{
             position: 'absolute',
             top: -30,
             left: '50%',
-            transform: 'translateX(-50%)',
+            transform: `translateX(-50%) scale(${pressing ? 1.12 : 1})`,
             width: 68,
             height: 68,
             borderRadius: '50%',
             background: C.paper,
-            border: `2.5px solid ${askActive ? C.warmDark : `${C.warmDark}99`}`,
-            boxShadow: askActive
+            border: `2.5px solid ${micListening ? '#e53e3e' : askActive ? C.warmDark : `${C.warmDark}99`}`,
+            boxShadow: micListening
+              ? `0 0 0 3px #fff3f3, 0 0 0 8px rgba(229,62,62,0.35), 0 -4px 20px rgba(229,62,62,0.3)`
+              : askActive
               ? `0 0 0 3px ${C.paper}, 0 0 0 6px ${C.warmDark}55, 0 -6px 24px rgba(0,0,0,0.28)`
               : `0 0 0 3px ${C.paper}, 0 0 0 5px ${C.border}, 0 -4px 20px rgba(0,0,0,0.22)`,
             cursor: 'pointer',
@@ -557,10 +605,13 @@ function MobileBottomNav({ tab, onTab }) {
             justifyContent: 'center',
             padding: 0,
             zIndex: 52,
-            transition: 'box-shadow 0.2s ease, border-color 0.2s ease',
+            transition: 'box-shadow 0.2s ease, border-color 0.2s ease, transform 0.15s ease',
+            animation: micListening ? 'heed-breathe 1.2s ease-in-out infinite' : 'none',
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
           }}
         >
-          <MayaOwl size={50} idle={false}/>
+          <MayaOwl size={50} idle={false} mood={micListening ? 'thinking' : 'calm'} speaking={micListening}/>
         </button>
 
         {APP_TABS.map(t => {
@@ -2219,6 +2270,182 @@ const PLAN_TYPES = [
   { type: 'goal',    icon: '🎯', label: 'Goal',     desc: 'Something to work toward with a measurable target' },
   { type: 'event',   icon: '📅', label: 'Event',    desc: 'A date you\'re preparing for' },
 ]
+
+// ── PlanDetailScreen ───────────────────────────────────────────
+function PlanDetailScreen({ plan, onBack, onCheck, onRename, onAddTask, onDeleteTask, onReorder }) {
+  const [editingIndex, setEditingIndex] = useState(null)
+  const [editValue, setEditValue] = useState('')
+  const [newTaskLabel, setNewTaskLabel] = useState('')
+  const [swipedIndex, setSwipedIndex] = useState(null)
+  const [dragIndex, setDragIndex] = useState(null)
+  const [dropIndex, setDropIndex] = useState(null)
+  const rowRefs = useRef([])
+  const swipeStart = useRef({ x: null, index: null })
+  const dragRef = useRef({ dragIndex: null, dropIndex: null })
+
+  const doneCount = plan.tasks.filter(t => t.done).length
+  const totalCount = plan.tasks.length
+  const pct = totalCount > 0 ? Math.round(doneCount / totalCount * 100) : 0
+
+  function startEdit(i, label) {
+    setSwipedIndex(null)
+    setEditingIndex(i)
+    setEditValue(label)
+  }
+  function commitEdit() {
+    if (editingIndex !== null && editValue.trim()) onRename(plan.id, editingIndex, editValue.trim())
+    setEditingIndex(null)
+    setEditValue('')
+  }
+  function cancelEdit() { setEditingIndex(null); setEditValue('') }
+
+  function handleAddTask() {
+    if (!newTaskLabel.trim()) return
+    onAddTask(plan.id, newTaskLabel.trim())
+    setNewTaskLabel('')
+  }
+
+  function handleDragPointerDown(e, i) {
+    e.currentTarget.setPointerCapture(e.pointerId)
+    dragRef.current = { dragIndex: i, dropIndex: i }
+    setDragIndex(i)
+    setDropIndex(i)
+  }
+  function handleDragPointerMove(e) {
+    if (dragRef.current.dragIndex === null) return
+    let nearest = dragRef.current.dragIndex
+    let minDist = Infinity
+    rowRefs.current.forEach((el, idx) => {
+      if (!el) return
+      const rect = el.getBoundingClientRect()
+      const mid = rect.top + rect.height / 2
+      const dist = Math.abs(e.clientY - mid)
+      if (dist < minDist) { minDist = dist; nearest = idx }
+    })
+    dragRef.current.dropIndex = nearest
+    setDropIndex(nearest)
+  }
+  function handleDragPointerUp() {
+    const { dragIndex: di, dropIndex: dpi } = dragRef.current
+    if (di !== null && dpi !== null && di !== dpi) onReorder(plan.id, di, dpi)
+    dragRef.current = { dragIndex: null, dropIndex: null }
+    setDragIndex(null)
+    setDropIndex(null)
+  }
+
+  return (
+    <div style={{ animation: 'heed-fadeIn 0.2s ease' }}>
+      {/* top bar */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+        <button onClick={onBack} style={{ background: 'none', border: 'none', color: C.ochre, fontSize: 15, fontWeight: 700, cursor: 'pointer', padding: '4px 0', fontFamily: 'inherit' }}>‹ Plans</button>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
+          <span style={{ fontSize: 18 }}>{plan.icon}</span>
+          <span style={{ fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600, color: C.warmDark }}>{plan.title}</span>
+        </div>
+      </div>
+
+      {/* progress bar */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+        <div style={{ flex: 1, height: 5, background: C.bellySoft, borderRadius: 3, overflow: 'hidden' }}>
+          <div style={{ height: '100%', borderRadius: 3, background: C.rust, width: `${pct}%`, transition: 'width 0.3s ease' }}/>
+        </div>
+        <div style={{ fontSize: 11.5, color: C.inkMute, fontWeight: 600, whiteSpace: 'nowrap' }}>{doneCount} / {totalCount} done</div>
+      </div>
+
+      {/* task list */}
+      <div style={{ background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
+        {plan.tasks.map((task, i) => {
+          const isSwiped = swipedIndex === i
+          const isDragging = dragIndex === i
+          const isDropAbove = dropIndex === i && dragIndex !== null && dragIndex !== i && i <= dragIndex
+          const isDropBelow = dropIndex === i && dragIndex !== null && dragIndex !== i && i > dragIndex
+          const isEditing = editingIndex === i
+
+          return (
+            <div
+              key={i}
+              ref={el => { rowRefs.current[i] = el }}
+              style={{ position: 'relative', overflow: 'hidden' }}
+              onPointerDown={e => {
+                if (e.target.closest('[data-drag-handle]')) return
+                swipeStart.current = { x: e.clientX, index: i }
+              }}
+              onPointerMove={e => {
+                if (swipeStart.current.index !== i || swipeStart.current.x === null) return
+                const dx = e.clientX - swipeStart.current.x
+                if (dx < -60) { setSwipedIndex(i); swipeStart.current.x = null }
+                else if (dx > 20) { setSwipedIndex(null); swipeStart.current.x = null }
+              }}
+              onPointerUp={() => { swipeStart.current = { x: null, index: null } }}
+            >
+              {isDropAbove && <div style={{ height: 2, background: C.ochre, margin: '0 12px' }}/>}
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px',
+                borderTop: i === 0 ? 'none' : `1px solid ${C.hairline}`,
+                background: isDragging ? '#fffaef' : 'transparent',
+                boxShadow: isDragging ? '0 3px 10px rgba(0,0,0,.12)' : 'none',
+                borderRadius: isDragging ? 6 : 0,
+                transform: isSwiped ? 'translateX(-68px)' : 'translateX(0)',
+                transition: isDragging ? 'none' : 'transform 0.2s ease',
+                userSelect: 'none',
+              }}>
+                {/* drag handle */}
+                <span
+                  data-drag-handle
+                  onPointerDown={e => handleDragPointerDown(e, i)}
+                  onPointerMove={handleDragPointerMove}
+                  onPointerUp={handleDragPointerUp}
+                  style={{ fontSize: 15, color: C.border, cursor: isDragging ? 'grabbing' : 'grab', flexShrink: 0, touchAction: 'none', padding: '0 2px', lineHeight: 1 }}
+                >≡</span>
+                {/* checkbox */}
+                <div
+                  onClick={() => { setSwipedIndex(null); setEditingIndex(null); onCheck(plan.id, i) }}
+                  style={{ width: 16, height: 16, borderRadius: 4, flexShrink: 0, cursor: 'pointer', border: `1.5px solid ${task.done ? C.rust : C.border}`, background: task.done ? C.rust : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  {task.done && <span style={{ color: 'white', fontSize: 10, lineHeight: 1 }}>✓</span>}
+                </div>
+                {/* label or edit input */}
+                {isEditing ? (
+                  <input
+                    autoFocus
+                    value={editValue}
+                    onChange={e => setEditValue(e.target.value)}
+                    onBlur={commitEdit}
+                    onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') cancelEdit() }}
+                    style={{ flex: 1, border: 'none', borderBottom: `1.5px solid ${C.ochre}`, outline: 'none', fontSize: 13, color: C.ink, background: 'transparent', padding: '1px 0', fontFamily: 'inherit' }}
+                  />
+                ) : (
+                  <span style={{ flex: 1, fontSize: 13, color: task.done ? C.inkMute : C.ink, textDecoration: task.done ? 'line-through' : 'none' }}>{task.label}</span>
+                )}
+                {/* pencil */}
+                {!isEditing && (
+                  <span onClick={() => startEdit(i, task.label)} style={{ fontSize: 13, color: C.border, cursor: 'pointer', flexShrink: 0, padding: '0 3px', lineHeight: 1 }}>✎</span>
+                )}
+              </div>
+              {/* swipe delete button */}
+              {isSwiped && (
+                <div onClick={() => { setSwipedIndex(null); onDeleteTask(plan.id, i) }} style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 68, background: '#e05050', color: 'white', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>Delete</div>
+              )}
+              {isDropBelow && <div style={{ height: 2, background: C.ochre, margin: '0 12px' }}/>}
+            </div>
+          )
+        })}
+        {/* add task row */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', borderTop: `1px solid ${C.hairline}` }}>
+          <span style={{ fontSize: 17, color: C.ochre, fontWeight: 700, lineHeight: 1, flexShrink: 0 }}>+</span>
+          <input
+            placeholder="Add a task…"
+            value={newTaskLabel}
+            onChange={e => setNewTaskLabel(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') handleAddTask() }}
+            onBlur={handleAddTask}
+            style={{ flex: 1, border: 'none', borderBottom: `1px solid ${C.hairline}`, outline: 'none', fontSize: 13, color: C.ink, background: 'transparent', padding: '2px 0', fontFamily: 'inherit' }}
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function AddPlanSheet({ onClose, onAdd }) {
   const [step, setStep]   = useState('pick')   // 'pick' | 'form'

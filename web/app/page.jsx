@@ -791,6 +791,26 @@ function MayaOwl({ size = 120, mood = 'calm', speaking = false, idle = true }) {
   )
 }
 
+// ── OwlSignature (static — used in ShareableCard brand bar) ───
+function OwlSignature({ oc, size = 20 }) {
+  const h = Math.round(size * 23 / 20)
+  return (
+    <svg width={size} height={h} viewBox="0 0 200 230" fill="none" aria-hidden="true">
+      <ellipse cx="100" cy="140" rx="58" ry="65" fill={oc.body}/>
+      <path d="M 72 82 Q 66 58 79 50 Q 85 68 85 83 Z" fill={oc.tuft}/>
+      <path d="M 128 82 Q 134 58 121 50 Q 115 68 115 83 Z" fill={oc.tuft}/>
+      <ellipse cx="100" cy="155" rx="36" ry="46" fill={oc.eyeRing} opacity="0.35"/>
+      <circle cx="78" cy="100" r="20" fill={oc.eyeRing}/>
+      <circle cx="122" cy="100" r="20" fill={oc.eyeRing}/>
+      <ellipse cx="78" cy="100" rx="10" ry="10" fill={oc.pupil}/>
+      <ellipse cx="122" cy="100" rx="10" ry="10" fill={oc.pupil}/>
+      <circle cx="80" cy="96" r="3.5" fill={oc.eyeRing} opacity="0.7"/>
+      <circle cx="124" cy="96" r="3.5" fill={oc.eyeRing} opacity="0.7"/>
+      <path d="M 100 113 L 92 124 Q 100 130 108 124 Z" fill={oc.beak}/>
+    </svg>
+  )
+}
+
 // ── Shared components ──────────────────────────────────────────
 function Pill({ children, tone = 'ink', glow = false }) {
   const tones = {

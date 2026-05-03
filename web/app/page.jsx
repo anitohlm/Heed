@@ -1780,12 +1780,11 @@ function MonthStrip({ tasks, monthOffset, selectedWeekStart, onWeekSelect, onMon
   )
 }
 
-function WeekDetail({ tasks, weekStart, onTaskTap, onTaskDrop, onWeekOffsetChange, onAddTask }) {
+function WeekDetail({ tasks, weekStart, onTaskTap, onWeekOffsetChange, onAddTask }) {
   const today = new Date()
   const impColor = { high: C.rust, medium: C.ochre, low: C.sage }
   const impIcon  = { high: '●', medium: '◆', low: '○' }
 
-  // Swipe to change week
   const swipeRef = useRef(null)
   function handleTouchStart(e) {
     swipeRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
@@ -1798,69 +1797,11 @@ function WeekDetail({ tasks, weekStart, onTaskTap, onTaskDrop, onWeekOffsetChang
     swipeRef.current = null
   }
 
-  // Drag-to-reschedule
-  const [dragTask, setDragTask] = useState(null)
-  const [ghostPos, setGhostPos] = useState(null)
-  const [dropCol, setDropCol] = useState(null)
-  const colRefs = useRef([])
-  const containerRef = useRef(null)
-  const didDragRef = useRef(false)
-  const dragTaskRef = useRef(null)
-  const dropColRef = useRef(null)
-
-  function handlePointerDown(e, task) {
-    didDragRef.current = false
-    dragTaskRef.current = task
-    dropColRef.current = null
-    containerRef.current?.setPointerCapture(e.pointerId)
-    setDragTask(task)
-    setGhostPos({ x: e.clientX, y: e.clientY })
-  }
-  function handlePointerMove(e) {
-    if (!dragTaskRef.current) return
-    setGhostPos({ x: e.clientX, y: e.clientY })
-    didDragRef.current = true
-    let bestIdx = null, bestDist = Infinity
-    colRefs.current.forEach((el, i) => {
-      if (!el) return
-      const r = el.getBoundingClientRect()
-      const dist = Math.abs(e.clientY - (r.top + r.bottom) / 2)
-      if (dist < bestDist) { bestDist = dist; bestIdx = i }
-    })
-    dropColRef.current = bestIdx
-    setDropCol(bestIdx)
-  }
-  function handlePointerUp(e) {
-    const task = dragTaskRef.current
-    const dc = dropColRef.current
-    if (task && dc !== null) {
-      const newDate = addDays(weekStart, dc)
-      const origDate = parseDue(task.next_due_at)
-      if (!origDate || !sameDay(origDate, newDate)) {
-        onTaskDrop(task, newDate)
-      }
-    }
-    dragTaskRef.current = null
-    dropColRef.current = null
-    setDragTask(null)
-    setGhostPos(null)
-    setDropCol(null)
-  }
-
   const startLabel = weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
   const endLabel   = addDays(weekStart, 6).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 
-  colRefs.current = []
   return (
-    <div
-      ref={containerRef}
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerUp}
-      style={{ position: 'relative' }}
-    >
+    <div onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
       <div style={{ fontSize: 10, fontWeight: 700, color: C.inkMute, letterSpacing: 0.7, textTransform: 'uppercase', marginBottom: 10 }}>
         Week of {startLabel} – {endLabel}
       </div>
@@ -1868,12 +1809,11 @@ function WeekDetail({ tasks, weekStart, onTaskTap, onTaskDrop, onWeekOffsetChang
         {[0,1,2,3,4,5,6].map(i => {
           const date     = addDays(weekStart, i)
           const isToday  = sameDay(date, today)
-          const isTarget = dropCol === i && dragTask != null
           const dayTasks = tasks.filter(t => { const d = parseDue(t.next_due_at); return d && sameDay(d, date) })
           const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
           return (
-            <div key={i} ref={el => colRefs.current[i] = el}
-              style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '8px 10px', borderRadius: 8, background: isTarget ? C.sageSoft : isToday ? C.bellySoft + '80' : 'transparent', minHeight: 40 }}>
+            <div key={i}
+              style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '8px 10px', borderRadius: 8, background: isToday ? C.bellySoft + '80' : 'transparent', minHeight: 40 }}>
               <div style={{ flexShrink: 0, width: 44, display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 2 }}>
                 <div style={{ fontSize: 9, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: 0.5 }}>{dayNames[i]}</div>
                 <div style={{ fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600, color: isToday ? C.cream : C.warmDark, width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: isToday ? C.warmDark : 'transparent', marginTop: 2 }}>
@@ -1887,9 +1827,8 @@ function WeekDetail({ tasks, weekStart, onTaskTap, onTaskDrop, onWeekOffsetChang
                   const icon = impIcon[imp]  || '◆'
                   return (
                     <div key={task.id}
-                      onPointerDown={e => handlePointerDown(e, task)}
-                      onClick={() => { if (!didDragRef.current) onTaskTap(task) }}
-                      style={{ background: bg, borderRadius: 20, padding: '4px 10px', fontSize: 11, color: C.cream, fontWeight: 600, cursor: 'pointer', userSelect: 'none', opacity: dragTask?.id === task.id ? 0.4 : 1, touchAction: 'none', whiteSpace: 'nowrap' }}>
+                      onClick={() => onTaskTap(task)}
+                      style={{ background: bg, borderRadius: 20, padding: '4px 10px', fontSize: 11, color: C.cream, fontWeight: 600, cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
                       {icon} {task.name}
                     </div>
                   )
@@ -1905,11 +1844,6 @@ function WeekDetail({ tasks, weekStart, onTaskTap, onTaskDrop, onWeekOffsetChang
           )
         })}
       </div>
-      {dragTask && ghostPos && (
-        <div style={{ position: 'fixed', left: ghostPos.x - 40, top: ghostPos.y - 12, background: impColor[dragTask.importance || 'medium'] || C.ochre, borderRadius: 4, padding: '3px 8px', fontSize: 9.5, color: C.cream, fontWeight: 600, pointerEvents: 'none', zIndex: 9999, whiteSpace: 'nowrap', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', opacity: 0.9, boxShadow: '0 2px 8px rgba(0,0,0,0.25)' }}>
-          {impIcon[dragTask.importance || 'medium'] || '◆'} {dragTask.name}
-        </div>
-      )}
     </div>
   )
 }
@@ -2063,7 +1997,6 @@ function CalendarTab({ tasks, onReschedule, onMarkDone, onSkip, onAddTask }) {
           tasks={tasks}
           weekStart={weekStart}
           onTaskTap={setDetailTask}
-          onTaskDrop={(task, newDate) => onReschedule(task.id, newDate)}
           onWeekOffsetChange={handleWeekOffsetChange}
           onAddTask={onAddTask}
         />

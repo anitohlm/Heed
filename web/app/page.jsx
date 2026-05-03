@@ -36,6 +36,12 @@ const CATEGORY = {
 }
 
 // ── Static seed data (offline/demo fallback) ───────────────────
+const QUICK_CONTEXT_CONFIG = {
+  sick:        { label: 'Sick — rest mode',          icon: '🌿', defaultDays: 2, question: 'How long are you sick?',           activateLabel: 'Activate rest mode',        toastMsg: 'Rest mode activated — Heed is holding your tasks' },
+  busy:        { label: 'Busy week',                 icon: '🌾', defaultDays: 5, question: 'How long is your busy period?',    activateLabel: 'Activate busy mode',        toastMsg: 'Busy mode activated — Heed is holding your tasks' },
+  travel:      { label: 'Traveling',                 icon: '✈️', defaultDays: 7, question: 'How many days are you traveling?', activateLabel: 'Activate travel mode',      toastMsg: 'Travel mode activated — Heed is holding your tasks' },
+  celebration: { label: 'Celebration',               icon: '🌸', defaultDays: 1, question: 'How long is the celebration?',     activateLabel: 'Activate celebration mode', toastMsg: 'Celebration mode activated — Heed is holding your tasks' },
+}
 const ROUTINES = [
   {
     id: 'morning', name: 'Morning routine', schedule: 'Weekdays, ~7:00 AM',
@@ -55,9 +61,9 @@ const ROUTINES = [
   },
 ]
 const CONTEXTS_PAST = [
-  { type: 'travel', start: 'Dec 20, 2025', end: 'Dec 27, 2025', desc: 'Christmas trip to Baguio' },
-  { type: 'illness', start: 'Feb 10, 2026', end: 'Feb 14, 2026', desc: 'Flu — bed rest' },
-  { type: 'busy', start: 'Mar 16, 2026', end: 'Mar 22, 2026', desc: 'Client deadline week' },
+  { type: 'travel',  start: 'Dec 20, 2025', end: 'Dec 27, 2025', desc: 'Christmas trip to Baguio', skipped: 9 },
+  { type: 'illness', start: 'Feb 10, 2026', end: 'Feb 14, 2026', desc: 'Flu — bed rest',            skipped: 12 },
+  { type: 'busy',    start: 'Mar 16, 2026', end: 'Mar 22, 2026', desc: 'Client deadline week',      skipped: 7 },
 ]
 const CONTEXTS_UPCOMING_DEMO = [
   {

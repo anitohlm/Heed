@@ -2464,6 +2464,170 @@ function RecoverySummarySheet({ open, context, heldTasks, onClose, onResumeAll, 
   )
 }
 
+// ── ContextDetailSheet ─────────────────────────────────────────
+function ContextDetailSheet({ open, ctx, heldTasks, onClose, onImBetter, onExtend }) {
+  if (!open || !ctx) return null
+
+  const fmtDate = d => {
+    if (!d) return ''
+    const parsed = typeof d === 'string' ? new Date(d) : d
+    return parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  }
+
+  const now = new Date()
+  let subtitle = `${ctx.start || ''} → ${ctx.end || ''}`
+  if (ctx._status === 'upcoming' && ctx._startDate) {
+    const daysAway = Math.ceil((ctx._startDate - now) / 86400000)
+    const weeksAway = Math.ceil(daysAway / 7)
+    subtitle += daysAway <= 0 ? ' · this week' : daysAway < 7 ? ` · in ${daysAway} day${daysAway !== 1 ? 's' : ''}` : ` · in ${weeksAway} week${weeksAway !== 1 ? 's' : ''}`
+  }
+  if (ctx._status === 'active') {
+    const daysSinceStart = Math.max(0, Math.floor((now - ctx.startDate) / 86400000))
+    const totalDays = Math.max(1, Math.round((ctx.endDate - ctx.startDate) / 86400000) + 1)
+    subtitle = `${fmtDate(ctx.startDate)} → ${fmtDate(ctx.endDate)} · Day ${daysSinceStart + 1} of ${totalDays}`
+  }
+  if (ctx._status === 'past') {
+    const startD = new Date(ctx.start)
+    const endD = new Date(ctx.end)
+    const dur = Math.max(1, Math.round((endD - startD) / 86400000) + 1)
+    subtitle = `${ctx.start} → ${ctx.end} · ${dur} day${dur !== 1 ? 's' : ''}`
+  }
+
+  const icons = { travel: '🗺️', illness: '🌿', busy: '🌾', celebration: '🌸' }
+  const icon = ctx.icon || icons[ctx.type] || '📌'
+  const bgForIcon = ctx._status === 'active' ? C.ochreSoft : ctx._status === 'upcoming' ? C.ochreSoft : C.bellySoft
+
+  const SectionCard = ({ children, style }) => (
+    <div style={{ background: C.bellySoft, border: `1px solid ${C.border}`, borderRadius: 10, padding: '12px 14px', ...style }}>
+      {children}
+    </div>
+  )
+  const SectionLabel = ({ children }) => (
+    <div style={{ fontSize: 10, fontWeight: 700, color: C.inkMute, letterSpacing: 0.7, textTransform: 'uppercase', marginBottom: 6 }}>
+      {children}
+    </div>
+  )
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 200 }} onClick={onClose}>
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(2px)' }}/>
+      <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: C.paper, borderRadius: '20px 20px 0 0', padding: `24px 24px calc(24px + env(safe-area-inset-bottom)) 24px`, animation: 'heed-slideUp 0.28s cubic-bezier(0.32,0.72,0,1)', boxShadow: '0 -8px 32px rgba(0,0,0,0.12)', maxHeight: '80vh', overflowY: 'auto' }}>
+        <div style={{ width: 40, height: 4, borderRadius: 2, background: C.border, margin: '0 auto 20px' }}/>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
+          <div style={{ width: 44, height: 44, borderRadius: '50%', background: bgForIcon, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>
+            {icon}
+          </div>
+          <div>
+            <div style={{ fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 700, color: C.ink, marginBottom: 3 }}>{ctx.desc || ctx.label}</div>
+            <div style={{ fontSize: 12, color: C.inkMute }}>{subtitle}</div>
+          </div>
+        </div>
+
+        {ctx._status === 'upcoming' && (() => {
+          const tasksBefore = ctx.plan?.before || []
+          const whileAway = ctx.plan?.during?.[0] || ''
+          const comingBack = ctx.plan?.after?.[0] || ''
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
+              {tasksBefore.length > 0 && (
+                <SectionCard>
+                  <SectionLabel>Before you go</SectionLabel>
+                  {tasksBefore.slice(0, 5).map((t, i) => (
+                    <div key={i} style={{ fontSize: 13, color: C.ink, padding: '2px 0' }}>• {t}</div>
+                  ))}
+                </SectionCard>
+              )}
+              {(whileAway || comingBack) && (
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {whileAway && (
+                    <SectionCard style={{ flex: 1 }}>
+                      <SectionLabel>While away</SectionLabel>
+                      <div style={{ fontSize: 12.5, color: C.inkSoft }}>{whileAway}</div>
+                    </SectionCard>
+                  )}
+                  {comingBack && (
+                    <SectionCard style={{ flex: 1 }}>
+                      <SectionLabel>Coming back</SectionLabel>
+                      <div style={{ fontSize: 12.5, color: C.inkSoft }}>{comingBack}</div>
+                    </SectionCard>
+                  )}
+                </div>
+              )}
+              <button style={{ ...getBtnPrimary(), width: '100%', padding: 12, fontSize: 13, fontWeight: 700, borderRadius: 10 }}>
+                Ask Heed to plan around this
+              </button>
+            </div>
+          )
+        })()}
+
+        {ctx._status === 'active' && (() => {
+          const top3 = (heldTasks || []).slice(0, 3)
+          const extraCount = Math.max(0, (heldTasks || []).length - 3)
+          return (
+            <div style={{ marginBottom: 16 }}>
+              <SectionCard style={{ marginBottom: 12 }}>
+                {top3.length === 0 ? (
+                  <div style={{ fontSize: 13, color: C.inkMute }}>Heed is holding your tasks while {ctx.label} is active.</div>
+                ) : (
+                  <>
+                    {top3.map((t, i) => (
+                      <div key={t.id || i} style={{ fontSize: 13, color: C.ink, padding: '4px 0', borderBottom: i < top3.length - 1 ? `1px solid ${C.hairline}` : 'none' }}>
+                        {t.name}
+                      </div>
+                    ))}
+                    {extraCount > 0 && (
+                      <div style={{ fontSize: 12.5, color: C.inkMute, padding: '4px 0' }}>+ {extraCount} more task{extraCount !== 1 ? 's' : ''}</div>
+                    )}
+                  </>
+                )}
+              </SectionCard>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={onImBetter} style={{ ...getBtnPrimary(), flex: 1, background: C.sage, padding: '10px 14px' }}>I'm better now</button>
+                <button onClick={onExtend} style={{ ...getBtnGhost(), padding: '10px 14px' }}>Extend 2 days</button>
+              </div>
+            </div>
+          )
+        })()}
+
+        {ctx._status === 'past' && (() => {
+          const tasks = ctx.heldTasks || []
+          const top3 = tasks.slice(0, 3)
+          const extraCount = Math.max(0, tasks.length - 3)
+          return (
+            <SectionCard style={{ marginBottom: 16 }}>
+              {tasks.length === 0 ? (
+                <div style={{ fontSize: 13, color: C.inkMute }}>No tasks were held during this period.</div>
+              ) : (
+                <>
+                  <div style={{ fontSize: 12.5, color: C.inkSoft, marginBottom: 8 }}>
+                    Heed held back <strong>{ctx.skipped}</strong> tasks during this period:
+                  </div>
+                  {top3.map((t, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: C.ink, padding: '4px 0', borderBottom: (i < top3.length - 1 || extraCount > 0) ? `1px solid ${C.hairline}` : 'none' }}>
+                      <span>{t.label}</span>
+                      {t.overdueDays > 0
+                        ? <span style={{ color: C.rust, fontWeight: 600 }}>+{t.overdueDays}d overdue</span>
+                        : <span style={{ color: C.inkMute }}>paused</span>
+                      }
+                    </div>
+                  ))}
+                  {extraCount > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, color: C.inkMute, padding: '4px 0' }}>
+                      <span>+ {extraCount} more task{extraCount !== 1 ? 's' : ''}</span>
+                      <span style={{ color: C.sage, fontWeight: 600 }}>held</span>
+                    </div>
+                  )}
+                </>
+              )}
+            </SectionCard>
+          )
+        })()}
+      </div>
+    </div>
+  )
+}
+
 // ── Main App ───────────────────────────────────────────────────
 export default function HeedApp() {
   const [apiTasks, setApiTasks] = useState([])

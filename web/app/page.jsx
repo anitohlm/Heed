@@ -1849,7 +1849,7 @@ function TodayTab({ tasks, routines, upcomingContexts, onMarkDone, onSkip, onMar
       )}
       <div style={{ marginTop: 28 }}>
         <SectionHeader motif="stem" count={routines.length}>Routines</SectionHeader>
-        {routines.map((r, i) => <RoutineCard key={r.id} routine={r} delay={i * 80} onMarkDone={onMarkRoutineDone} onLighten={onLightenRoutine} onEdit={onEditRoutine} onShare={onShareCard}/>)}
+        {routines.map((r, i) => <RoutineRow key={r.id} routine={r} delay={i * 80} onMarkDone={onMarkRoutineDone} onSkipToday={onSkipRoutineToday} onLighten={onLightenRoutine}/>)}
       </div>
       {otherOverdue.length > 0 && (
         <div style={{ marginTop: 28 }}>

@@ -1950,15 +1950,64 @@ function ContextBanner({ upcomingContexts, onAskHeed }) {
 // ── TodayTab ───────────────────────────────────────────────────
 function TodayTab({ tasks, routines, upcomingContexts, onMarkDone, onSkip, onMarkRoutineDone, onSkipRoutineToday, onLightenRoutine, onEditRoutine, onAskHeed, onMoreOptions, onShareCard }) {
   const overdue = tasks.filter(t => t.overdue != null).sort((a, b) => b.overdue - a.overdue)
-  const heroTask = overdue[0]
-  const otherOverdue = overdue.slice(1)
+  // Hero set: top overdue tasks within 25% of #1's days. So 12d/11d/10d all
+  // become heroes; 12d/3d/2d only promotes the first.
+  const heroSet = (() => {
+    if (overdue.length === 0) return []
+    const top = overdue[0].overdue || 1
+    const cutoff = top * 0.75
+    return overdue.filter(t => (t.overdue || 0) >= cutoff).slice(0, 3)
+  })()
+  const otherOverdue = overdue.slice(heroSet.length)
   const upcoming = tasks.filter(t => t.dueIn !== undefined)
+  // Empty-state momentum: best routine streak + next upcoming context.
+  const bestStreak = (() => {
+    let best = { name: '', count: 0 }
+    for (const r of routines) {
+      const c14 = r.completion14d || []
+      let cur = 0
+      for (let i = c14.length - 1; i >= 0; i--) {
+        if (c14[i]) cur++
+        else break
+      }
+      if (cur > best.count) best = { name: r.name, count: cur }
+    }
+    return best.count > 0 ? best : null
+  })()
+  const nextContext = upcomingContexts && upcomingContexts.length > 0 ? upcomingContexts[0] : null
+  const nextContextDays = nextContext?._startDate
+    ? Math.max(0, Math.ceil((nextContext._startDate - new Date()) / 86400000))
+    : null
   return (
     <div>
       <ContextBanner upcomingContexts={upcomingContexts} onAskHeed={onAskHeed}/>
       <SectionHeader motif="leaf">Top of mind</SectionHeader>
-      {heroTask ? <HeroCard task={heroTask} onMarkDone={onMarkDone} onSkip={onSkip} onMoreOptions={onMoreOptions}/> : (
-        <div style={{ fontSize: 13.5, color: C.inkMute, fontStyle: 'italic', padding: '12px 0' }}>Nothing critical right now. Nice.</div>
+      {heroSet.length > 0 ? (
+        heroSet.map((t, i) => (
+          <div key={t.id} style={{ marginBottom: i < heroSet.length - 1 ? 12 : 0 }}>
+            <HeroCard task={t} onMarkDone={onMarkDone} onSkip={onSkip} onMoreOptions={onMoreOptions}/>
+          </div>
+        ))
+      ) : (
+        <div style={{ background: C.paper, border: `1px solid ${C.border}`, borderRadius: 14, padding: '16px 18px', boxShadow: C.shadowSoft }}>
+          <div style={{ fontSize: 14, color: C.ink, lineHeight: 1.5, marginBottom: 8 }}>
+            Nothing critical right now. Nice.
+          </div>
+          <div style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.6 }}>
+            {bestStreak && <>You're on a <strong style={{ color: C.sage }}>{bestStreak.count}-day</strong> streak with <strong>{bestStreak.name}</strong>. </>}
+            {nextContext && nextContextDays !== null && (
+              <>Next up: <strong>{nextContext.desc || nextContext.type}</strong> in {nextContextDays} day{nextContextDays === 1 ? '' : 's'}.</>
+            )}
+            {!bestStreak && !nextContext && <>Use this calm to plan ahead — what would you regret forgetting?</>}
+          </div>
+          {nextContext?.askQuery && onAskHeed && (
+            <button
+              onClick={() => onAskHeed(nextContext.askQuery)}
+              style={{ marginTop: 12, background: C.warmDark, color: C.cream, border: 'none', padding: '8px 14px', borderRadius: 8, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+              Plan around {nextContext.desc || nextContext.type} →
+            </button>
+          )}
+        </div>
       )}
       <div style={{ marginTop: 28 }}>
         <SectionHeader motif="stem" count={routines.length}>Routines</SectionHeader>
@@ -2284,8 +2333,9 @@ function PlanCard({ plan, delay = 0, onSelectPlan }) {
   const goalPct = plan.type === 'goal' && plan.target > 0
     ? Math.round(plan.current / plan.target * 100)
     : 0
-  const daysUntil = plan.eventDate
-    ? Math.round((plan.eventDate - new Date()) / 86400000)
+  const parsedEventDate = plan.eventDate ? new Date(plan.eventDate) : null
+  const daysUntil = parsedEventDate && !isNaN(parsedEventDate)
+    ? Math.round((parsedEventDate - new Date()) / 86400000)
     : null
   const undone = plan.tasks ? plan.tasks.filter(t => !t.done) : []
 
@@ -5104,6 +5154,15 @@ export default function HeedApp() {
         body { margin: 0; }
       `}</style>
 
+      {activeContext && (() => {
+        const stripeColor = { travel: C.ochre, illness: C.sage, busy: C.warmDark, celebration: C.rust }[activeContext.type] || C.warmDark
+        const emoji = { travel: '🗺️', illness: '🌿', busy: '🌾', celebration: '🌸' }[activeContext.type] || '📍'
+        return (
+          <div style={{ position: 'sticky', top: 0, zIndex: 11, background: stripeColor, color: C.cream, fontSize: 12, fontWeight: 600, padding: '5px 16px', textAlign: 'center', letterSpacing: 0.2 }}>
+            {emoji} {activeContext.label || activeContext.desc || activeContext.type} — Heed is going gentle
+          </div>
+        )
+      })()}
       <header className="heed-header" style={{ borderBottom: `1px solid ${C.hairline}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: `linear-gradient(180deg, ${C.paperHi} 0%, ${C.paper} 100%)`, position: 'sticky', top: 0, zIndex: 10, backdropFilter: 'blur(8px)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <MayaOwl size={40}/>

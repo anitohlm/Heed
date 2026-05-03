@@ -938,12 +938,18 @@ function Bubble({ role, content, streaming: isStreaming, actions, chips, onConfi
           <div style={{ borderTop: `1px solid ${C.hairline}`, marginTop: 12, paddingTop: 10 }}>
             {actions.map((action, i) => {
               if (action.confirmed) {
+                const prevRemove = action.payload?.preview?.remove || []
+                const prevKeep = action.payload?.preview?.keep || []
+                const removeNames = prevRemove.map(x => typeof x === 'object' ? x.name : x)
+                const detailLine = removeNames.length > 0
+                  ? `Removed: ${removeNames.join(', ')}${prevKeep.length > 0 ? ` · Kept: ${prevKeep.join(', ')}` : ''}`
+                  : action.summary
                 return (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: C.sageSoft, borderRadius: 8, marginBottom: 6, animation: 'heed-fadeIn 0.3s ease' }}>
                     <span style={{ color: C.sage, fontSize: 15, flexShrink: 0 }}>✓</span>
                     <div>
                       <div style={{ fontSize: 12.5, color: C.sage, fontWeight: 600 }}>{action.label}</div>
-                      {action.summary && <div style={{ fontSize: 11.5, color: C.inkMute, marginTop: 1 }}>{action.summary}</div>}
+                      {detailLine && <div style={{ fontSize: 11.5, color: C.inkMute, marginTop: 1 }}>{detailLine}</div>}
                     </div>
                   </div>
                 )
@@ -1101,29 +1107,28 @@ function useSwipe(onRight, onLeft, threshold = 80) {
     }
 
     const beginDrag = (clientX, clientY) => {
-      st.startX = clientX; st.startY = clientY; st.decided = null
+      st.startX = clientX; st.startY = clientY; st.active = false
       el.style.transition = 'none'
     }
 
     const moveDrag = (clientX, clientY, evt) => {
       if (st.startX === null) return
       const dx = clientX - st.startX
-      const dy = clientY - st.startY
-      if (!st.decided) {
-        if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return
-        st.decided = Math.abs(dx) >= Math.abs(dy) ? 'h' : 'v'
-      }
-      if (st.decided === 'v') return
+      // Activate on |dx| > 8 regardless of dy — matches swipe-prototype.
+      // touch-action:pan-y already keeps clearly-vertical gestures from reaching JS;
+      // a JS-side dy check rejected valid diagonal swipes (e.g. dx=10 dy=11).
+      if (!st.active && Math.abs(dx) > 8) st.active = true
+      if (!st.active) return
       if (evt && evt.cancelable) evt.preventDefault()
       applyDrag(dx)
     }
 
     const endDrag = (clientX) => {
-      if (st.startX === null) { st.decided = null; return }
+      if (st.startX === null) { st.active = false; return }
       const dx = clientX - st.startX
-      const wasH = st.decided === 'h'
-      st.startX = null; st.startY = null; st.decided = null
-      if (!wasH) { snapBack(); return }
+      const wasActive = st.active
+      st.startX = null; st.startY = null; st.active = false
+      if (!wasActive) { snapBack(); return }
       if (Math.abs(dx) >= cb.current.threshold) flyOff(dx)
       else snapBack()
     }
@@ -1131,7 +1136,7 @@ function useSwipe(onRight, onLeft, threshold = 80) {
     const ts = (e) => beginDrag(e.touches[0].clientX, e.touches[0].clientY)
     const tm = (e) => moveDrag(e.touches[0].clientX, e.touches[0].clientY, e)
     const te = (e) => endDrag(e.changedTouches[0].clientX)
-    const tc = () => { st.startX = null; st.startY = null; st.decided = null; snapBack() }
+    const tc = () => { st.startX = null; st.startY = null; st.active = false; snapBack() }
     const md = (e) => { if (e.button === 0) beginDrag(e.clientX, e.clientY) }
     const mm = (e) => moveDrag(e.clientX, e.clientY, e)
     const mu = (e) => endDrag(e.clientX)

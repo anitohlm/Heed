@@ -2413,8 +2413,8 @@ function ActiveContextCard({ context, onImBetter, onExtend, onClick }) {
         Heed is holding <strong>{context.heldTaskIds.length} tasks</strong> until you're back. Morning &amp; evening routines paused.
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
-        <button onClick={onImBetter} style={{ ...getBtnPrimary(), flex: 1, background: C.sage, padding: '9px 14px' }}>I'm better now</button>
-        <button onClick={onExtend} style={{ ...getBtnGhost(), padding: '9px 14px' }}>Extend 2 days</button>
+        <button onClick={e => { e.stopPropagation(); onImBetter?.() }} style={{ ...getBtnPrimary(), flex: 1, background: C.sage, padding: '9px 14px' }}>I'm better now</button>
+        <button onClick={e => { e.stopPropagation(); onExtend?.() }} style={{ ...getBtnGhost(), padding: '9px 14px' }}>Extend 2 days</button>
       </div>
     </div>
   )
@@ -2744,7 +2744,7 @@ export default function HeedApp() {
         {tab === 'calendar' && <CalendarTab/>}
         {tab === 'ask' && <AskTab prefill={askPrefill}/>}
         {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onMoreOptions={handleMoreOptions}/>}
-        {tab === 'context' && <ContextTab upcoming={apiContexts.upcoming} active={apiContexts.active} activeContext={activeContext} onAddContext={() => setContextModalOpen(true)} onQuickContext={type => setQuickContextType(type)} onImBetter={() => setRecoveryOpen(true)} onExtend={handleExtendContext}/>}
+        {tab === 'context' && <ContextTab allUpcoming={upcomingContexts} activeContext={activeContext} onAddContext={() => setContextModalOpen(true)} onQuickContext={type => setQuickContextType(type)} onImBetter={() => setRecoveryOpen(true)} onExtend={handleExtendContext}/>}
       </main>
 
       <footer style={{ textAlign: 'center', fontSize: 11, color: C.inkMute, padding: '24px', borderTop: `1px solid ${C.hairline}`, fontStyle: 'italic' }}>

@@ -60,6 +60,51 @@ const ROUTINES = [
     weekRate: '6 of 7 last week',
   },
 ]
+
+// ── Share-card helpers ─────────────────────────────────────────
+function computeStreakCount(completion14d) {
+  let count = 0
+  for (let i = completion14d.length - 1; i >= 0; i--) {
+    if (!completion14d[i]) break
+    count++
+  }
+  return count
+}
+function formatStartedDate(streakCount) {
+  const d = new Date(Date.now() - streakCount * 86400000)
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+function computeCompletionPct(completion14d) {
+  return Math.round(completion14d.filter(Boolean).length / 14 * 100)
+}
+
+const SHARE_THEMES = {
+  B: {
+    bg:      'linear-gradient(160deg, #2c1c10 0%, #1a0c08 65%, #221510 100%)',
+    accent:  '#c8a450',
+    text:    '#fdf5e8',
+    divider: 'rgba(255,255,255,0.1)',
+    vertRule: null,
+    owl: { body: '#d4a870', tuft: '#8a5030', eyeRing: '#f5e8d0', pupil: '#2a1510', beak: '#c8a450' },
+  },
+  D: {
+    bg:      'linear-gradient(155deg, #1c3228 0%, #0e1e16 65%, #152820 100%)',
+    accent:  '#a8c5a0',
+    text:    '#e8f0e4',
+    divider: 'rgba(255,255,255,0.1)',
+    vertRule: null,
+    owl: { body: '#c8d4b0', tuft: '#3a5030', eyeRing: '#e8f4e0', pupil: '#1a2818', beak: '#88b070' },
+  },
+  E: {
+    bg:      'linear-gradient(170deg, #f5ede8 0%, #edddd4 55%, #e5d0c0 100%)',
+    accent:  '#8a5444',
+    text:    '#1c1218',
+    divider: '#8a544433',
+    vertRule: 'linear-gradient(180deg, #8a544466, transparent)',
+    owl: { body: '#8a5444', tuft: '#5a2820', eyeRing: '#f0e0d0', pupil: '#1c0808', beak: '#c87850' },
+  },
+}
+
 const CONTEXTS_PAST = [
   {
     type: 'travel', start: 'Dec 20, 2025', end: 'Dec 27, 2025', desc: 'Christmas trip to Baguio', skipped: 9,

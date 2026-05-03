@@ -26,10 +26,10 @@ jobs:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_BRAVE_POND_035757400 }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: "upload"
-          app_location: "/web"
+          app_location: "/web/out"
           api_location: ""
-          output_location: "out"
-          skip_app_build: false
+          output_location: ""
+          skip_app_build: true
         env:
           NEXT_PUBLIC_FUNCTIONS_URL: https://func-heed.azurewebsites.net
 

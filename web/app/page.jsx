@@ -2655,6 +2655,8 @@ export default function HeedApp() {
   const [activeContext, setActiveContext] = useState(null)
   const [recoveryOpen, setRecoveryOpen] = useState(false)
   const [quickContextType, setQuickContextType] = useState(null)
+  const [detailCtx, setDetailCtx] = useState(null)
+  const [detailOpen, setDetailOpen] = useState(false)
 
   useEffect(() => {
     fetch(`${FUNCTIONS_URL}/api/tasks`)
@@ -2833,6 +2835,15 @@ export default function HeedApp() {
     setToast({ message: mode === 'resume' ? "You're back — tasks resumed" : 'Easing you back in — top tasks surfaced' })
   }, [])
 
+  const handleDetailOpen = useCallback((ctx, status) => {
+    setDetailCtx({ ...ctx, _status: status })
+    setDetailOpen(true)
+  }, [])
+
+  const handleDetailClose = useCallback(() => {
+    setDetailOpen(false)
+  }, [])
+
   const handleAddTaskToRoutine = useCallback((task, routineId) => {
     setRoutines(rs => rs.map(r => {
       if (r.id !== routineId) return r
@@ -2905,7 +2916,7 @@ export default function HeedApp() {
         {tab === 'calendar' && <CalendarTab/>}
         {tab === 'ask' && <AskTab prefill={askPrefill}/>}
         {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onMoreOptions={handleMoreOptions}/>}
-        {tab === 'context' && <ContextTab allUpcoming={upcomingContexts} activeContext={activeContext} onAddContext={() => setContextModalOpen(true)} onQuickContext={type => setQuickContextType(type)} onImBetter={() => setRecoveryOpen(true)} onExtend={handleExtendContext}/>}
+        {tab === 'context' && <ContextTab allUpcoming={upcomingContexts} activeContext={activeContext} onAddContext={() => setContextModalOpen(true)} onQuickContext={type => setQuickContextType(type)} onImBetter={() => setRecoveryOpen(true)} onExtend={handleExtendContext} onDetailOpen={handleDetailOpen}/>}
       </main>
 
       <footer style={{ textAlign: 'center', fontSize: 11, color: C.inkMute, padding: '24px', borderTop: `1px solid ${C.hairline}`, fontStyle: 'italic' }}>
@@ -2920,6 +2931,14 @@ export default function HeedApp() {
       <AddToRoutineSheet task={addToRoutineTask} routines={routines} onClose={() => setAddToRoutineTask(null)} onSelect={handleAddTaskToRoutine}/>
       <QuickContextSheet type={quickContextType} onClose={() => setQuickContextType(null)} onActivate={handleQuickContext}/>
       <RecoverySummarySheet open={recoveryOpen} context={activeContext} heldTasks={activeContext ? displayTasks.filter(t => activeContext.heldTaskIds.includes(t.id)) : []} onClose={() => setRecoveryOpen(false)} onResumeAll={() => handleEndContext('resume')} onEaseBack={() => handleEndContext('ease')}/>
+      <ContextDetailSheet
+        open={detailOpen}
+        ctx={detailCtx}
+        heldTasks={detailCtx?._status === 'active' && activeContext ? displayTasks.filter(t => activeContext.heldTaskIds.includes(t.id)) : []}
+        onClose={handleDetailClose}
+        onImBetter={() => { handleDetailClose(); setRecoveryOpen(true) }}
+        onExtend={() => { handleDetailClose(); handleExtendContext() }}
+      />
       {toast && <Toast message={toast.message} onView={toast.showView ? handleToastView : undefined} onUndo={toast.onUndo} onDismiss={() => setToast(null)} />}
       <HeedFAB onAddTask={() => setModalOpen(true)} onAskHeed={() => setAskOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)}/>
     </div>

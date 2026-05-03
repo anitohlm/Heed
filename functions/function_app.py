@@ -219,7 +219,7 @@ def task_by_id(req: func.HttpRequest) -> func.HttpResponse:
             return _error("Task not found", 404)
 
         allowed_fields = {"name", "description", "category", "importance",
-                          "status", "explicit_cadence_days"}
+                          "status", "explicit_cadence_days", "next_due_at"}
         task_dict = task.model_dump(mode="json")
         for field in allowed_fields:
             if field in body:

@@ -4491,18 +4491,20 @@ function AddTaskModal({ open, onClose, onSubmit, onDelete, initialData = null, c
           </div>
           <div style={{ marginBottom: 14 }}>
             <label style={getFieldLabel()}>Category</label>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            <select
+              value={category}
+              onChange={e => setCategory(e.target.value)}
+              style={{ width: '100%', boxSizing: 'border-box', background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '10px 14px', fontSize: 14, color: C.ink, outline: 'none', fontFamily: 'inherit', cursor: 'pointer', appearance: 'none', backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 14px center' }}
+              onFocus={e => { e.target.style.borderColor = C.warmDark }}
+              onBlur={e => { e.target.style.borderColor = C.border }}
+            >
               {Object.keys(CATEGORY).map(cat => (
-                <button key={cat} onClick={() => setCategory(cat)} style={{ background: category === cat ? CATEGORY[cat].bg : C.paper, color: category === cat ? CATEGORY[cat].color : C.inkSoft, border: `1.5px solid ${category === cat ? CATEGORY[cat].color : C.border}`, padding: '6px 12px', borderRadius: 999, fontSize: 12, fontWeight: 600, cursor: 'pointer', textTransform: 'capitalize', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.15s' }}>
-                  <span style={{ fontSize: 13 }}>{CATEGORY[cat].icon}</span>{cat.replace('_',' ')}
-                </button>
+                <option key={cat} value={cat}>{CATEGORY[cat].icon} {cat.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</option>
               ))}
               {customCategories.map(cat => (
-                <button key={cat.id} onClick={() => setCategory(cat.id)} style={{ background: category === cat.id ? cat.bg : C.paper, color: category === cat.id ? cat.color : C.inkSoft, border: `1.5px solid ${category === cat.id ? cat.color : C.border}`, padding: '6px 12px', borderRadius: 999, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.15s' }}>
-                  <span style={{ fontSize: 13 }}>{cat.icon}</span>{cat.name}
-                </button>
+                <option key={cat.id} value={cat.id}>{cat.icon} {cat.name}</option>
               ))}
-            </div>
+            </select>
           </div>
           <div style={{ marginBottom: 14 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, position: 'relative' }} ref={importanceInfoRef}>

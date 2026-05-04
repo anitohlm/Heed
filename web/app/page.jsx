@@ -3307,7 +3307,7 @@ function computeRetrospective(period, { tasks = [], routines = [], contexts = []
   const busyByTask = new Map()
   for (const s of skipsThisPeriod) {
     if (s.reason === 'forgot') forgotByTask.set(s.task_id, (forgotByTask.get(s.task_id) || 0) + 1)
-    else if (s.reason === 'busy') busyByTask.set(s.task_id, (busyByTask.get(s.task_id) || 0) + 1)
+    else if (s.reason === 'too_busy') busyByTask.set(s.task_id, (busyByTask.get(s.task_id) || 0) + 1)
   }
   const seenAttentionIds = new Set(needsAttention.map(a => a.task_id))
   for (const [taskId, count] of forgotByTask) {
@@ -3327,7 +3327,7 @@ function computeRetrospective(period, { tasks = [], routines = [], contexts = []
   }
   for (const [taskId, count] of busyByTask) {
     if (count < 3 || seenAttentionIds.has(taskId)) continue
-    const skip = skipsThisPeriod.find(s => s.task_id === taskId && s.reason === 'busy')
+    const skip = skipsThisPeriod.find(s => s.task_id === taskId && s.reason === 'too_busy')
     if (!skip) continue
     needsAttention.push({
       task_id: taskId,
@@ -4423,7 +4423,7 @@ function AddRoutineModal({ open, onClose, onSubmit, initialData = null, seedTask
                       />
                       {ft.map(task => (
                         <button key={task.id} onClick={() => pickTask(idx, task)} type="button"
-                          style={{ padding: '8px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1px solid ${C.hairline}`, width: '100%', background: 'none', border: 'none', fontFamily: 'inherit', textAlign: 'left' }}>
+                          style={{ padding: '8px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: 'none', borderLeft: 'none', borderRight: 'none', borderBottom: `1px solid ${C.hairline}`, width: '100%', background: 'none', fontFamily: 'inherit', textAlign: 'left' }}>
                           <span style={{ color: C.ink, fontSize: 13 }}>{task.name}</span>
                           <span style={{ color: C.inkMute, fontSize: 11 }}>{task.category}</span>
                         </button>
@@ -5470,9 +5470,11 @@ export default function HeedApp() {
       message: `"${taskName}" skipped — why?`,
       onUndo: () => { setDismissedIds(s => { const n = new Set(s); n.delete(taskId); return n }); setToast(null) },
       reasons: [
-        { value: 'busy',   label: 'Busy' },
-        { value: 'forgot', label: 'Forgot' },
-        { value: 'not_today', label: 'Not today' },
+        // Values must match backend SkipReason enum:
+        // still_fine | not_applicable | forgot | too_busy | other.
+        { value: 'too_busy',   label: 'Busy' },
+        { value: 'forgot',     label: 'Forgot' },
+        { value: 'still_fine', label: 'Not today' },
       ],
       onReason: recordSkip,
     })

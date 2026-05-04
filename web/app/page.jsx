@@ -2136,8 +2136,9 @@ function SwipeHint({ onDismiss }) {
 }
 
 // ── TaskCard ───────────────────────────────────────────────────
-function TaskCard({ task, delay = 0, onMarkDone, onSkip, onMoreOptions, showHint = false, onHintDismiss }) {
+function TaskCard({ task, delay = 0, onMarkDone, onSkip, onEdit, onAddToRoutine, onBuildRoutine, showHint = false, onHintDismiss }) {
   const [completing, setCompleting] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
   const completingRef = useRef(false)
   const timerRef = useRef(null)
   const handleDone = useCallback(() => {
@@ -2148,13 +2149,43 @@ function TaskCard({ task, delay = 0, onMarkDone, onSkip, onMoreOptions, showHint
   }, [onMarkDone, task])
   useEffect(() => () => clearTimeout(timerRef.current), [])
   const { ref: swipeRef } = useSwipe(handleDone, () => onSkip?.(task))
-  const handleCardClick = (e) => {
-    if (e.target.closest('button, a, input, textarea, select')) return
-    onMoreOptions?.(task)
-  }
   const c = CATEGORY[task.category] || CATEGORY.admin
   const isOverdue = task.overdue != null
   const isCritical = isOverdue && task.overdue >= 7
+
+  const menuItems = [
+    {
+      label: 'Mark done',
+      color: C.sage,
+      icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M5 12l5 5L19 7" stroke={C.sage} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+      action: () => { handleDone(); setMenuOpen(false) },
+    },
+    {
+      label: 'Skip',
+      color: C.ochre,
+      icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M13 17l5-5-5-5" stroke={C.ochre} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M6 17l5-5-5-5" stroke={C.ochre} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+      action: () => { onSkip?.(task); setMenuOpen(false) },
+    },
+    {
+      label: 'Edit task',
+      color: C.inkSoft,
+      icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke={C.inkSoft} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke={C.inkSoft} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+      action: () => { onEdit?.(task); setMenuOpen(false) },
+    },
+    {
+      label: 'Add to a routine',
+      color: C.inkSoft,
+      icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="3" stroke={C.inkSoft} strokeWidth="1.8"/><path d="M12 8v8M8 12h8" stroke={C.inkSoft} strokeWidth="1.8" strokeLinecap="round"/></svg>,
+      action: () => { onAddToRoutine?.(task); setMenuOpen(false) },
+    },
+    {
+      label: 'Build a routine',
+      color: C.inkSoft,
+      icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M17 2l4 4-4 4" stroke={C.inkSoft} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M3 11V9a4 4 0 014-4h14" stroke={C.inkSoft} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M7 22l-4-4 4-4" stroke={C.inkSoft} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M21 13v2a4 4 0 01-4 4H3" stroke={C.inkSoft} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+      action: () => { onBuildRoutine?.(task); setMenuOpen(false) },
+    },
+  ]
+
   return (
     <div style={{
       position: 'relative',
@@ -2165,6 +2196,7 @@ function TaskCard({ task, delay = 0, onMarkDone, onSkip, onMoreOptions, showHint
         overflow: 'hidden',
       } : { marginBottom: 10 }),
     }}>
+      {menuOpen && <div onClick={() => setMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 49 }}/>}
       <div style={{
         position: 'absolute', inset: 0, borderRadius: 12,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 18px',
@@ -2176,7 +2208,6 @@ function TaskCard({ task, delay = 0, onMarkDone, onSkip, onMoreOptions, showHint
       <div
         ref={swipeRef}
         className="heed-card"
-        onClick={handleCardClick}
         style={{
           background: `linear-gradient(180deg, ${C.paperHi} 0%, ${C.paper} 100%)`,
           border: `1.5px solid ${isCritical ? C.rust + '44' : C.border}`,
@@ -2213,13 +2244,65 @@ function TaskCard({ task, delay = 0, onMarkDone, onSkip, onMoreOptions, showHint
               <div style={{ fontSize: 12, color: C.inkSoft, fontStyle: 'italic', marginTop: 4, lineHeight: 1.4 }}>{task.description}</div>
             )}
           </div>
-          <div style={{ textAlign: 'right', flexShrink: 0, minWidth: 64 }}>
-            {isOverdue && (<>
-              <div style={{ fontFamily: 'Lora, serif', fontSize: 22, fontWeight: 600, color: isCritical ? C.rust : C.ochre, lineHeight: 1 }}>{task.overdue}d</div>
-              <div style={{ fontSize: 10, color: C.inkMute, fontWeight: 600, letterSpacing: 0.4, textTransform: 'uppercase', marginTop: 2 }}>overdue</div>
-            </>)}
-            {!isOverdue && task.dueIn === 0 && <Pill tone="sage">today</Pill>}
-            {!isOverdue && task.dueIn > 0 && <div style={{ fontSize: 12.5, color: C.inkMute }}>{formatRelativeDays(task.dueIn)}</div>}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
+            <div style={{ textAlign: 'right', minWidth: 64 }}>
+              {isOverdue && (<>
+                <div style={{ fontFamily: 'Lora, serif', fontSize: 22, fontWeight: 600, color: isCritical ? C.rust : C.ochre, lineHeight: 1 }}>{task.overdue}d</div>
+                <div style={{ fontSize: 10, color: C.inkMute, fontWeight: 600, letterSpacing: 0.4, textTransform: 'uppercase', marginTop: 2 }}>overdue</div>
+              </>)}
+              {!isOverdue && task.dueIn === 0 && <Pill tone="sage">today</Pill>}
+              {!isOverdue && task.dueIn > 0 && <div style={{ fontSize: 12.5, color: C.inkMute }}>{formatRelativeDays(task.dueIn)}</div>}
+            </div>
+            {/* ⋮ menu button */}
+            <div style={{ position: 'relative' }}>
+              <button
+                onClick={e => { e.stopPropagation(); setMenuOpen(m => !m) }}
+                aria-label="Task options"
+                style={{ width: 32, height: 32, background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', touchAction: 'manipulation', flexShrink: 0, marginRight: -6 }}
+              >
+                <span style={{
+                  width: 26, height: 26, borderRadius: '50%',
+                  background: menuOpen ? C.bellySoft : 'transparent',
+                  border: `1px solid ${menuOpen ? C.border : 'transparent'}`,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  transition: 'all 0.15s',
+                }}
+                  onMouseEnter={e => { if (!menuOpen) { e.currentTarget.style.background = C.bellySoft; e.currentTarget.style.borderColor = C.border } }}
+                  onMouseLeave={e => { if (!menuOpen) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent' } }}
+                >
+                  <svg width="3" height="13" viewBox="0 0 3 13" fill="none">
+                    <circle cx="1.5" cy="1.5" r="1.4" fill={C.inkSoft}/>
+                    <circle cx="1.5" cy="6.5" r="1.4" fill={C.inkSoft}/>
+                    <circle cx="1.5" cy="11.5" r="1.4" fill={C.inkSoft}/>
+                  </svg>
+                </span>
+              </button>
+              {menuOpen && (
+                <div style={{
+                  position: 'absolute', top: 'calc(100% + 2px)', right: 0, zIndex: 50,
+                  background: C.paperHi, border: `1px solid ${C.border}`, borderRadius: 12,
+                  boxShadow: '0 8px 24px rgba(44,24,16,0.15)', minWidth: 172, overflow: 'hidden',
+                  animation: 'heed-fadeIn 0.15s ease',
+                }}>
+                  {menuItems.map((item, i) => (
+                    <button key={i} onClick={item.action} style={{
+                      width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '0 14px', minHeight: 42, background: 'transparent', border: 'none',
+                      borderBottom: i < menuItems.length - 1 ? `1px solid ${C.hairline}` : 'none',
+                      fontSize: 13.5, color: item.color === C.sage ? C.sage : item.color === C.ochre ? C.ochre : C.ink,
+                      fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
+                      textAlign: 'left', touchAction: 'manipulation', transition: 'background 0.1s',
+                      boxSizing: 'border-box',
+                    }}
+                      onMouseEnter={e => { e.currentTarget.style.background = C.bellySoft }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                    >
+                      {item.icon}{item.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -2865,7 +2948,7 @@ function ContextBanner({ upcomingContexts, onAskHeed }) {
 }
 
 // ── TodayTab ───────────────────────────────────────────────────
-function TodayTab({ tasks, routines, upcomingContexts, skippedTasks = [], userName = '', efMode = false, onSetEfMode, onMarkDone, onSkip, onUnskip, onMarkRoutineDone, onSkipRoutineToday, onLightenRoutine, onEditRoutine, onAskHeed, onMoreOptions, onShareCard, onAddTask }) {
+function TodayTab({ tasks, routines, upcomingContexts, skippedTasks = [], userName = '', efMode = false, onSetEfMode, onMarkDone, onSkip, onUnskip, onMarkRoutineDone, onSkipRoutineToday, onLightenRoutine, onEditRoutine, onAskHeed, onMoreOptions, onShareCard, onAddTask, onEditTask, onAddToRoutine, onBuildRoutine }) {
   const [showSwipeHint, setShowSwipeHint] = useState(() => {
     if (typeof window === 'undefined') return false
     return !localStorage.getItem('heed.swipe-hint-seen')
@@ -2957,7 +3040,7 @@ function TodayTab({ tasks, routines, upcomingContexts, skippedTasks = [], userNa
           </button>
         </div>
         {oneTask ? (
-          <TaskCard task={oneTask} delay={0} onMarkDone={onMarkDone} onSkip={onSkip} onMoreOptions={onMoreOptions} showHint={showSwipeHint} onHintDismiss={dismissSwipeHint}/>
+          <TaskCard task={oneTask} delay={0} onMarkDone={onMarkDone} onSkip={onSkip} onEdit={onEditTask} onAddToRoutine={onAddToRoutine} onBuildRoutine={onBuildRoutine} showHint={showSwipeHint} onHintDismiss={dismissSwipeHint}/>
         ) : (
           <div style={{ background: C.paper, border: `1px solid ${C.border}`, borderRadius: 14, padding: '20px 18px', boxShadow: C.shadowSoft, textAlign: 'center' }}>
             <div style={{ fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 500, color: C.warmDark, marginBottom: 6 }}>
@@ -3000,7 +3083,7 @@ function TodayTab({ tasks, routines, upcomingContexts, skippedTasks = [], userNa
       <SectionHeader motif="leaf" count={focusTasks.length}>Focus today</SectionHeader>
       {focusTasks.length > 0 ? (
         focusTasks.map((t, i) => (
-          <TaskCard key={t.id} task={t} delay={i * 50} onMarkDone={onMarkDone} onSkip={onSkip} onMoreOptions={onMoreOptions} showHint={i === 0 && showSwipeHint} onHintDismiss={dismissSwipeHint}/>
+          <TaskCard key={t.id} task={t} delay={i * 50} onMarkDone={onMarkDone} onSkip={onSkip} onEdit={onEditTask} onAddToRoutine={onAddToRoutine} onBuildRoutine={onBuildRoutine} showHint={i === 0 && showSwipeHint} onHintDismiss={dismissSwipeHint}/>
         ))
       ) : (
         <div style={{ background: C.paper, border: `1px solid ${C.border}`, borderRadius: 14, padding: '16px 18px', boxShadow: C.shadowSoft }}>
@@ -3052,12 +3135,12 @@ function TodayTab({ tasks, routines, upcomingContexts, skippedTasks = [], userNa
         <div style={{ marginTop: 16 }}>
           {overdueRemaining.length > 0 && (
             <CollapsibleTodaySection motif="thorn" label="Also overdue" count={overdueRemaining.length} defaultOpen={overdueRemaining.length <= 4}>
-              {overdueRemaining.map((t, i) => <TaskCard key={t.id} task={t} delay={i * 50} onMarkDone={onMarkDone} onSkip={onSkip} onMoreOptions={onMoreOptions} showHint={false} onHintDismiss={dismissSwipeHint}/>)}
+              {overdueRemaining.map((t, i) => <TaskCard key={t.id} task={t} delay={i * 50} onMarkDone={onMarkDone} onSkip={onSkip} onEdit={onEditTask} onAddToRoutine={onAddToRoutine} onBuildRoutine={onBuildRoutine} showHint={false} onHintDismiss={dismissSwipeHint}/>)}
             </CollapsibleTodaySection>
           )}
           {upcomingRemaining.length > 0 && (
             <CollapsibleTodaySection motif="berry" label="Coming up" count={upcomingRemaining.length} defaultOpen={upcomingRemaining.length <= 6}>
-              {upcomingRemaining.map((t, i) => <TaskCard key={t.id} task={t} delay={i * 50} onMarkDone={onMarkDone} onSkip={onSkip} onMoreOptions={onMoreOptions} showHint={false} onHintDismiss={dismissSwipeHint}/>)}
+              {upcomingRemaining.map((t, i) => <TaskCard key={t.id} task={t} delay={i * 50} onMarkDone={onMarkDone} onSkip={onSkip} onEdit={onEditTask} onAddToRoutine={onAddToRoutine} onBuildRoutine={onBuildRoutine} showHint={false} onHintDismiss={dismissSwipeHint}/>)}
             </CollapsibleTodaySection>
           )}
         </div>
@@ -3240,7 +3323,7 @@ function SegmentButton({ active, onClick, label, count, accent }) {
   )
 }
 
-function TracksTab({ tasks, routines, onMarkDone, onSkip, onMarkRoutineDone, onLightenRoutine, onEditRoutine, onAddTask, onAddRoutine, onMoreOptions, onShareCard, onMarkRoutineDay }) {
+function TracksTab({ tasks, routines, onMarkDone, onSkip, onMarkRoutineDone, onLightenRoutine, onEditRoutine, onAddTask, onAddRoutine, onMoreOptions, onShareCard, onMarkRoutineDay, onEditTask, onAddToRoutine, onBuildRoutine }) {
   const [subtab, setSubtab] = useState('routines')
   const [filter, setFilter] = useState('all')
   const filteredTasks = filter === 'all' ? tasks : tasks.filter(t => t.category === filter)
@@ -3273,7 +3356,7 @@ function TracksTab({ tasks, routines, onMarkDone, onSkip, onMarkRoutineDone, onL
             <button onClick={onAddTask} style={getBtnPrimary()}>+ Add task</button>
           </div>
           <div>
-            {filteredTasks.map((t, i) => <TaskCard key={t.id} task={t} delay={i * 30} onMarkDone={onMarkDone} onSkip={onSkip} onMoreOptions={onMoreOptions}/>)}
+            {filteredTasks.map((t, i) => <TaskCard key={t.id} task={t} delay={i * 30} onMarkDone={onMarkDone} onSkip={onSkip} onEdit={onEditTask} onAddToRoutine={onAddToRoutine} onBuildRoutine={onBuildRoutine}/>)}
           </div>
           <div style={{ marginTop: 18, fontSize: 12.5, color: C.inkMute, fontStyle: 'italic', textAlign: 'center' }}>✨ = cadence learned by the agent from your behavior</div>
         </div>
@@ -7236,10 +7319,10 @@ export default function HeedApp() {
             replays. Slide-in from a few px right + fade gives a native-feeling
             transition without tracking previous tab for direction. */}
         <div key={tab} style={{ animation: 'heed-tab-in 0.28s cubic-bezier(0.32,0.72,0,1) both', display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
-          {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} upcomingContexts={upcomingContexts} skippedTasks={skippedTasks} userName={userName} efMode={efMode} onSetEfMode={handleSetEfMode} onMarkDone={handleMarkDone} onSkip={handleSkip} onUnskip={handleUnskip} onMarkRoutineDone={handleMarkRoutineDone} onSkipRoutineToday={handleSkipRoutineToday} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAskHeed={handleAskHeed} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onAddTask={() => setModalOpen(true)}/>}
+          {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} upcomingContexts={upcomingContexts} skippedTasks={skippedTasks} userName={userName} efMode={efMode} onSetEfMode={handleSetEfMode} onMarkDone={handleMarkDone} onSkip={handleSkip} onUnskip={handleUnskip} onMarkRoutineDone={handleMarkRoutineDone} onSkipRoutineToday={handleSkipRoutineToday} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAskHeed={handleAskHeed} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onAddTask={() => setModalOpen(true)} onEditTask={handleEditTask} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }}/>}
           {tab === 'calendar' && <CalendarTab tasks={apiTasks} contexts={[...(apiContexts.active||[]), ...(apiContexts.upcoming||[])]} routines={routines} recentSkips={recentSkips} onReschedule={handleReschedule} onMarkDone={handleMarkDone} onSkip={handleSkip} onAddTask={() => setModalOpen(true)} onAddContext={() => setContextModalOpen(true)} onEditRoutine={handleEditRoutine} onApplyRetroSuggestion={handleApplyRetroSuggestion}/>}
           {tab === 'ask' && <AskTab prefill={askPrefill} autoSend={askAutoSend} onAutoSendDone={() => { setAskAutoSend(false); setAskPrefill('') }} onLightenRoutine={handleLightenRoutine} onTaskAdded={() => fetch(`${FUNCTIONS_URL}/api/tasks`).then(r => r.json()).then(d => Array.isArray(d) && setApiTasks(d)).catch(() => {})}/>}
-          {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onMarkRoutineDay={handleMarkRoutineDay}/>}
+          {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onMarkRoutineDay={handleMarkRoutineDay} onEditTask={handleEditTask} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }}/>}
           {tab === 'context' && <LifeTab upcoming={apiContexts.upcoming} active={apiContexts.active} activeContext={activeContext} onAddContext={() => setContextModalOpen(true)} onQuickContext={type => setQuickContextType(type)} onImBetter={() => setRecoveryOpen(true)} onExtend={handleExtendContext} onDetailOpen={handleDetailOpen}/>}
         </div>
       </main>

@@ -637,7 +637,7 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
   const [catName, setCatName] = useState('')
   const [catColor, setCatColor] = useState(PRESET_COLORS[0])
   const [catOpen, setCatOpen] = useState(false)
-  const [evtIcon, setEvtIcon] = useState('📌')
+  const [evtIcon, setEvtIcon] = useState('◈')
   const [evtLabel, setEvtLabel] = useState('')
   const [evtDays, setEvtDays] = useState('3')
   const [evtOpen, setEvtOpen] = useState(false)
@@ -657,78 +657,84 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
   const submitEvent = () => {
     if (!evtLabel.trim()) return
     onAddEventType({ id: `evt_${Date.now()}`, icon: evtIcon, label: evtLabel.trim(), defaultDays: parseInt(evtDays) || 3 })
-    setEvtLabel(''); setEvtIcon('📌'); setEvtDays('3'); setEvtOpen(false)
+    setEvtLabel(''); setEvtIcon('◈'); setEvtDays('3'); setEvtOpen(false)
   }
 
   const inputSt = { width: '100%', boxSizing: 'border-box', background: C.paperHi, border: `1.5px solid ${C.border}`, borderRadius: 9, padding: '10px 12px', fontSize: 14, color: C.ink, outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.15s' }
-  const group = { background: C.paper, border: `1px solid ${C.border}`, borderRadius: 14, overflow: 'hidden', marginBottom: 24 }
-  const fieldLabel = (text) => <label style={{ display: 'block', fontSize: 11, color: C.inkMute, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 6 }}>{text}</label>
+  const group = { background: C.paper, border: `1px solid ${C.border}`, borderRadius: 14, overflow: 'hidden', marginBottom: 8 }
+
+  const fieldLabel = (text, htmlFor) => (
+    <label htmlFor={htmlFor} style={{ display: 'block', fontSize: 11, color: C.inkSoft, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 6 }}>{text}</label>
+  )
   const secLabel = (text, sub) => (
-    <div style={{ marginBottom: 8, paddingLeft: 4 }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, letterSpacing: 0.8, textTransform: 'uppercase' }}>{text}</div>
-      {sub && <div style={{ fontSize: 12, color: C.inkMute, marginTop: 2 }}>{sub}</div>}
+    <div style={{ marginBottom: 6, marginTop: 20, paddingLeft: 4 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: C.inkSoft, letterSpacing: 0.5, textTransform: 'uppercase' }}>{text}</div>
+      {sub && <div style={{ fontSize: 12, color: C.inkSoft, marginTop: 2, lineHeight: 1.4 }}>{sub}</div>}
     </div>
   )
   const iconTile = (icon, bg) => (
     <div style={{ width: 34, height: 34, borderRadius: 10, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>{icon}</div>
   )
 
+  const initials = (nameVal || 'U').split(' ').map(w => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase()
+
   return (
     <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(44,24,16,0.4)', backdropFilter: 'blur(3px)', animation: 'heed-fadeIn 0.2s ease' }}/>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(44,24,16,0.45)', backdropFilter: 'blur(4px)', animation: 'heed-fadeIn 0.2s ease' }}/>
       <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 201, display: 'flex', justifyContent: 'center', animation: 'heed-slideUp 0.3s cubic-bezier(0.16,1,0.3,1)' }}>
-        <div style={{ background: C.paperHi, width: '100%', maxWidth: 520, borderRadius: '20px 20px 0 0', padding: '0 20px 0 20px', boxShadow: '0 -8px 40px rgba(124,83,51,0.25)', border: `1px solid ${C.border}`, maxHeight: '88vh', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ background: C.paperHi, width: '100%', maxWidth: 520, borderRadius: '22px 22px 0 0', padding: '0 16px 0 16px', boxShadow: '0 -12px 48px rgba(124,83,51,0.22)', border: `1px solid ${C.border}`, maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
 
           {/* Handle + Header */}
-          <div style={{ flexShrink: 0, paddingTop: 14, paddingBottom: 18 }}>
-            <div style={{ width: 36, height: 4, borderRadius: 2, background: C.border, margin: '0 auto 20px' }}/>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              {iconTile(
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="7" r="4" stroke={C.warmDark} strokeWidth="1.8"/><path d="M5 21c0-3.9 3.1-7 7-7s7 3.1 7 7" stroke={C.warmDark} strokeWidth="1.8" strokeLinecap="round"/></svg>,
-                C.warmDark + '18'
-              )}
-              <div style={{ flex: 1, fontFamily: 'Lora, Georgia, serif', fontSize: 20, fontWeight: 600, color: C.ink }}>Settings</div>
+          <div style={{ flexShrink: 0, paddingTop: 12, paddingBottom: 16 }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: C.border, margin: '0 auto 18px' }}/>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ flex: 1, fontFamily: 'Lora, Georgia, serif', fontSize: 21, fontWeight: 600, color: C.ink }}>Settings</div>
               <button
                 onClick={onClose}
                 aria-label="Close settings"
-                style={{ width: 44, height: 44, borderRadius: '50%', background: C.paper, border: `1px solid ${C.border}`, color: C.inkSoft, cursor: 'pointer', fontSize: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'inherit', flexShrink: 0, transition: 'background 0.12s' }}
-                onMouseEnter={e => { e.currentTarget.style.background = C.border }}
+                style={{ width: 44, height: 44, borderRadius: '50%', background: C.paper, border: `1px solid ${C.border}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'background 0.12s', touchAction: 'manipulation' }}
+                onMouseEnter={e => { e.currentTarget.style.background = C.bellySoft }}
                 onMouseLeave={e => { e.currentTarget.style.background = C.paper }}
-              >×</button>
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <path d="M1 1l12 12M13 1L1 13" stroke={C.inkSoft} strokeWidth="1.8" strokeLinecap="round"/>
+                </svg>
+              </button>
             </div>
           </div>
 
           {/* Scrollable body */}
-          <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 'calc(env(safe-area-inset-bottom) + 32px)' }}>
+          <div style={{ flex: 1, overflowY: 'auto', overscrollBehavior: 'contain', paddingBottom: 'calc(env(safe-area-inset-bottom) + 40px)' }}>
 
             {/* Profile */}
-            {secLabel('Profile')}
-            <div style={group}>
-              <SettingsRow last>
-                <div style={{ width: 48, height: 48, borderRadius: '50%', background: `linear-gradient(135deg, ${C.warmDark} 0%, ${C.ochre} 100%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Lora, Georgia, serif', fontSize: 16, fontWeight: 700, color: '#fff', flexShrink: 0, letterSpacing: -0.5 }}>
-                  {(nameVal || 'U').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()}
+            <div style={{ ...group, marginTop: 4 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px 16px 16px', borderBottom: `1px solid ${C.hairline}` }}>
+                <div style={{ width: 64, height: 64, borderRadius: '50%', background: `linear-gradient(135deg, ${C.warmDark} 0%, ${C.ochre} 100%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Lora, Georgia, serif', fontSize: 22, fontWeight: 700, color: '#fff', letterSpacing: -0.5, boxShadow: `0 4px 16px ${C.warmDark}33`, marginBottom: 10 }}>
+                  {initials}
                 </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  {fieldLabel('Display name')}
-                  <input
-                    id="settings-name"
-                    value={nameVal}
-                    onChange={e => setNameVal(e.target.value)}
-                    onBlur={e => { e.target.style.borderColor = C.border; onUserName(nameVal) }}
-                    onFocus={e => { e.target.style.borderColor = C.warmDark }}
-                    placeholder="Your name"
-                    style={{ ...inputSt }}
-                    autoComplete="name"
-                  />
-                </div>
-              </SettingsRow>
+                <div style={{ fontSize: 17, fontWeight: 600, color: C.ink, fontFamily: 'Lora, Georgia, serif' }}>{nameVal || 'Your name'}</div>
+              </div>
+              <div style={{ padding: '14px 16px' }}>
+                {fieldLabel('Display name', 'settings-name')}
+                <input
+                  id="settings-name"
+                  value={nameVal}
+                  onChange={e => setNameVal(e.target.value)}
+                  onBlur={e => { e.target.style.borderColor = C.border; onUserName(nameVal) }}
+                  onFocus={e => { e.target.style.borderColor = C.warmDark }}
+                  onKeyDown={e => { if (e.key === 'Enter') e.target.blur() }}
+                  placeholder="Your name"
+                  style={{ ...inputSt }}
+                  autoComplete="name"
+                />
+              </div>
             </div>
 
             {/* Appearance */}
             {secLabel('Appearance')}
             <div style={group}>
-              <SettingsRow last style={{ justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <SettingsRow last>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1 }}>
                   {iconTile(
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="5" stroke={C.ochre} strokeWidth="2"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" stroke={C.ochre} strokeWidth="2" strokeLinecap="round"/></svg>,
                     C.ochre + '20'
@@ -760,25 +766,33 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
                 <div style={{ padding: '16px', borderTop: `1px solid ${C.hairline}`, background: C.paperHi }}>
                   <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
                     <div>
-                      {fieldLabel('Icon')}
-                      <input value={catIcon} onChange={e => setCatIcon(e.target.value)} style={{ ...inputSt, width: 52, textAlign: 'center', padding: '10px 6px' }}/>
+                      {fieldLabel('Icon', 'cat-icon-input')}
+                      <input id="cat-icon-input" value={catIcon} onChange={e => setCatIcon(e.target.value)} style={{ ...inputSt, width: 52, textAlign: 'center', padding: '10px 6px' }}/>
                     </div>
                     <div style={{ flex: 1 }}>
-                      {fieldLabel('Name')}
-                      <input value={catName} onChange={e => setCatName(e.target.value)} placeholder="e.g. Learning" style={{ ...inputSt }} autoFocus/>
+                      {fieldLabel('Name', 'cat-name-input')}
+                      <input id="cat-name-input" value={catName} onChange={e => setCatName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') submitCategory() }} placeholder="e.g. Learning" style={{ ...inputSt }} autoFocus/>
                     </div>
                   </div>
                   <div style={{ marginBottom: 16 }}>
                     {fieldLabel('Color')}
-                    <div style={{ display: 'flex', gap: 8 }}>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                       {PRESET_COLORS.map(c => (
-                        <button key={c} onClick={() => setCatColor(c)} style={{ width: 26, height: 26, borderRadius: '50%', background: c, border: catColor === c ? `3px solid ${C.ink}` : '3px solid transparent', outline: catColor === c ? `2px solid ${c}` : 'none', outlineOffset: 2, cursor: 'pointer', padding: 0, flexShrink: 0 }}/>
+                        <button
+                          key={c}
+                          onClick={() => setCatColor(c)}
+                          aria-label={`Color ${c}`}
+                          aria-pressed={catColor === c}
+                          style={{ width: 36, height: 36, borderRadius: '50%', background: c, border: catColor === c ? `3px solid ${C.ink}` : '3px solid transparent', cursor: 'pointer', padding: 0, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', touchAction: 'manipulation' }}
+                        >
+                          {catColor === c && <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7l3.5 3.5L12 3" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                        </button>
                       ))}
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={submitCategory} style={{ flex: 1, background: C.warmDark, color: '#fff', border: 'none', borderRadius: 10, padding: '12px 0', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Add category</button>
-                    <button onClick={() => setCatOpen(false)} style={{ flex: 1, background: 'transparent', color: C.inkMute, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '12px 0', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
+                    <button onClick={submitCategory} style={{ flex: 1, background: C.warmDark, color: '#fff', border: 'none', borderRadius: 10, padding: '13px 0', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', touchAction: 'manipulation' }}>Add category</button>
+                    <button onClick={() => setCatOpen(false)} style={{ flex: 1, background: 'transparent', color: C.inkSoft, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '13px 0', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit', touchAction: 'manipulation' }}>Cancel</button>
                   </div>
                 </div>
               ) : (
@@ -790,7 +804,7 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
             </div>
 
             {/* Life Event Types */}
-            {secLabel('Life Event Types', 'Modes that hold or adjust your task flow')}
+            {secLabel('Life Event Types', 'Modes that adjust your task flow')}
             <div style={group}>
               {builtinEvents.map((evt, i) => (
                 <SettingsRow key={evt.id} last={i === builtinEvents.length - 1 && customEventTypes.length === 0 && !evtOpen}>
@@ -810,24 +824,24 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
                 <div style={{ padding: '16px', borderTop: `1px solid ${C.hairline}`, background: C.paperHi }}>
                   <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
                     <div>
-                      {fieldLabel('Icon')}
-                      <input value={evtIcon} onChange={e => setEvtIcon(e.target.value)} style={{ ...inputSt, width: 52, textAlign: 'center', padding: '10px 6px' }}/>
+                      {fieldLabel('Icon', 'evt-icon-input')}
+                      <input id="evt-icon-input" value={evtIcon} onChange={e => setEvtIcon(e.target.value)} style={{ ...inputSt, width: 52, textAlign: 'center', padding: '10px 6px' }}/>
                     </div>
                     <div style={{ flex: 1 }}>
-                      {fieldLabel('Name')}
-                      <input value={evtLabel} onChange={e => setEvtLabel(e.target.value)} placeholder="e.g. Vacation" style={{ ...inputSt }} autoFocus/>
+                      {fieldLabel('Name', 'evt-name-input')}
+                      <input id="evt-name-input" value={evtLabel} onChange={e => setEvtLabel(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') submitEvent() }} placeholder="e.g. Vacation" style={{ ...inputSt }} autoFocus/>
                     </div>
                   </div>
                   <div style={{ marginBottom: 16 }}>
-                    {fieldLabel('Default duration')}
+                    {fieldLabel('Default duration', 'evt-days-input')}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <input type="number" min="1" max="60" value={evtDays} onChange={e => setEvtDays(e.target.value)} style={{ ...inputSt, width: 72, textAlign: 'center' }}/>
-                      <span style={{ fontSize: 14, color: C.inkMute }}>days</span>
+                      <input id="evt-days-input" type="number" inputMode="numeric" min="1" max="60" value={evtDays} onChange={e => setEvtDays(e.target.value)} style={{ ...inputSt, width: 80, textAlign: 'center' }}/>
+                      <span style={{ fontSize: 14, color: C.inkSoft }}>days</span>
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={submitEvent} style={{ flex: 1, background: C.warmDark, color: '#fff', border: 'none', borderRadius: 10, padding: '12px 0', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Add event type</button>
-                    <button onClick={() => setEvtOpen(false)} style={{ flex: 1, background: 'transparent', color: C.inkMute, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '12px 0', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
+                    <button onClick={submitEvent} style={{ flex: 1, background: C.warmDark, color: '#fff', border: 'none', borderRadius: 10, padding: '13px 0', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', touchAction: 'manipulation' }}>Add event type</button>
+                    <button onClick={() => setEvtOpen(false)} style={{ flex: 1, background: 'transparent', color: C.inkSoft, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '13px 0', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit', touchAction: 'manipulation' }}>Cancel</button>
                   </div>
                 </div>
               ) : (

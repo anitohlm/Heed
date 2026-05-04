@@ -2713,7 +2713,7 @@ function ContextBanner({ upcomingContexts, onAskHeed }) {
 }
 
 // ── TodayTab ───────────────────────────────────────────────────
-function TodayTab({ tasks, routines, upcomingContexts, skippedTasks = [], onMarkDone, onSkip, onUnskip, onMarkRoutineDone, onSkipRoutineToday, onLightenRoutine, onEditRoutine, onAskHeed, onMoreOptions, onShareCard }) {
+function TodayTab({ tasks, routines, upcomingContexts, skippedTasks = [], onMarkDone, onSkip, onUnskip, onMarkRoutineDone, onSkipRoutineToday, onLightenRoutine, onEditRoutine, onAskHeed, onMoreOptions, onShareCard, onAddTask }) {
   const [showSwipeHint, setShowSwipeHint] = useState(() => {
     if (typeof window === 'undefined') return false
     return !localStorage.getItem('heed.swipe-hint-seen')
@@ -2722,17 +2722,23 @@ function TodayTab({ tasks, routines, upcomingContexts, skippedTasks = [], onMark
     setShowSwipeHint(false)
     try { localStorage.setItem('heed.swipe-hint-seen', '1') } catch (_) {}
   }, [])
-  const overdue = tasks.filter(t => t.overdue != null).sort((a, b) => b.overdue - a.overdue)
-  // Hero set: top overdue tasks within 25% of #1's days. So 12d/11d/10d all
-  // become heroes; 12d/3d/2d only promotes the first.
-  const heroSet = (() => {
-    if (overdue.length === 0) return []
-    const top = overdue[0].overdue || 1
-    const cutoff = top * 0.75
-    return overdue.filter(t => (t.overdue || 0) >= cutoff).slice(0, 3)
-  })()
-  const otherOverdue = overdue.slice(heroSet.length)
-  const upcoming = tasks.filter(t => t.dueIn !== undefined)
+  const [showAllTasks, setShowAllTasks] = useState(false)
+  function scoreTask(task) {
+    let score = 0
+    if (task.overdue != null) score += task.overdue * 3
+    if (task.dueIn !== undefined) score += Math.max(0, 14 - task.dueIn)
+    if (upcomingContexts && upcomingContexts.length > 0) {
+      const contextTypes = upcomingContexts.map(c => (c.type || '').toLowerCase())
+      const cat = (task.category || '').toLowerCase()
+      if (contextTypes.some(ct => cat.includes(ct) || ct.includes(cat))) score += 5
+    }
+    return score
+  }
+  const scoredTasks = tasks.map(t => ({ task: t, score: scoreTask(t) })).sort((a, b) => b.score - a.score)
+  const focusTasks = scoredTasks.slice(0, 3).map(s => s.task)
+  const remainingTasks = scoredTasks.slice(3).map(s => s.task)
+  const overdueRemaining = remainingTasks.filter(t => t.overdue != null)
+  const upcomingRemaining = remainingTasks.filter(t => t.dueIn !== undefined)
   // Empty-state momentum: best routine streak + next upcoming context.
   const bestStreak = (() => {
     let best = { name: '', count: 0 }
@@ -2759,12 +2765,10 @@ function TodayTab({ tasks, routines, upcomingContexts, skippedTasks = [], onMark
         {greeting}.
       </div>
       <ContextBanner upcomingContexts={upcomingContexts} onAskHeed={onAskHeed}/>
-      <SectionHeader motif="leaf">Top of mind</SectionHeader>
-      {heroSet.length > 0 ? (
-        heroSet.map((t, i) => (
-          <div key={t.id} style={{ marginBottom: i < heroSet.length - 1 ? 12 : 0 }}>
-            <HeroCard task={t} onMarkDone={onMarkDone} onSkip={onSkip} onMoreOptions={onMoreOptions}/>
-          </div>
+      <SectionHeader motif="leaf" count={focusTasks.length}>Focus today</SectionHeader>
+      {focusTasks.length > 0 ? (
+        focusTasks.map((t, i) => (
+          <TaskCard key={t.id} task={t} delay={i * 50} onMarkDone={onMarkDone} onSkip={onSkip} onMoreOptions={onMoreOptions} showHint={i === 0 && showSwipeHint} onHintDismiss={dismissSwipeHint}/>
         ))
       ) : (
         <div style={{ background: C.paper, border: `1px solid ${C.border}`, borderRadius: 14, padding: '16px 18px', boxShadow: C.shadowSoft }}>
@@ -2791,22 +2795,40 @@ function TodayTab({ tasks, routines, upcomingContexts, skippedTasks = [], onMark
         <SectionHeader motif="stem" count={routines.length}>Routines</SectionHeader>
         {routines.map((r, i) => <RoutineRow key={r.id} routine={r} delay={i * 80} onMarkDone={onMarkRoutineDone} onSkipToday={onSkipRoutineToday} onLighten={onLightenRoutine}/>)}
       </div>
-      {otherOverdue.length > 0 && (
-        <CollapsibleTodaySection
-          motif="thorn" label="Also overdue" count={otherOverdue.length}
-          // Auto-collapse when there are many — keeps Today scannable on heavy days.
-          defaultOpen={otherOverdue.length <= 4}
-        >
-          {otherOverdue.map((t, i) => <TaskCard key={t.id} task={t} delay={i * 50} onMarkDone={onMarkDone} onSkip={onSkip} onMoreOptions={onMoreOptions} showHint={i === 0 && showSwipeHint} onHintDismiss={dismissSwipeHint}/>)}
-        </CollapsibleTodaySection>
-      )}
-      {upcoming.length > 0 && (
-        <CollapsibleTodaySection
-          motif="berry" label="Coming up" count={upcoming.length}
-          defaultOpen={upcoming.length <= 6}
-        >
-          {upcoming.map((t, i) => <TaskCard key={t.id} task={t} delay={i * 50} onMarkDone={onMarkDone} onSkip={onSkip} onMoreOptions={onMoreOptions} showHint={i === 0 && showSwipeHint && otherOverdue.length === 0} onHintDismiss={dismissSwipeHint}/>)}
-        </CollapsibleTodaySection>
+      <div style={{ marginTop: 22 }}>
+        <div style={{ fontSize: 11.5, fontWeight: 500, color: C.inkMute, textAlign: 'center', marginBottom: 10, fontFamily: 'inherit' }}>Anything else?</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
+          {remainingTasks.length > 0 && (
+            <button onClick={() => setShowAllTasks(t => !t)} type="button"
+              style={{ background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 999, padding: '7px 15px', fontSize: 12.5, color: C.ink, cursor: 'pointer', fontFamily: 'inherit' }}>
+              📋 {showAllTasks ? 'Hide tasks' : 'See all tasks'}
+            </button>
+          )}
+          {onAddTask && (
+            <button onClick={onAddTask} type="button"
+              style={{ background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 999, padding: '7px 15px', fontSize: 12.5, color: C.ink, cursor: 'pointer', fontFamily: 'inherit' }}>
+              + Add a task
+            </button>
+          )}
+          <button onClick={() => onAskHeed && onAskHeed('')} type="button"
+            style={{ background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 999, padding: '7px 15px', fontSize: 12.5, color: C.ink, cursor: 'pointer', fontFamily: 'inherit' }}>
+            ✨ Ask Heed
+          </button>
+        </div>
+      </div>
+      {showAllTasks && (
+        <div style={{ marginTop: 16 }}>
+          {overdueRemaining.length > 0 && (
+            <CollapsibleTodaySection motif="thorn" label="Also overdue" count={overdueRemaining.length} defaultOpen={overdueRemaining.length <= 4}>
+              {overdueRemaining.map((t, i) => <TaskCard key={t.id} task={t} delay={i * 50} onMarkDone={onMarkDone} onSkip={onSkip} onMoreOptions={onMoreOptions} showHint={false} onHintDismiss={dismissSwipeHint}/>)}
+            </CollapsibleTodaySection>
+          )}
+          {upcomingRemaining.length > 0 && (
+            <CollapsibleTodaySection motif="berry" label="Coming up" count={upcomingRemaining.length} defaultOpen={upcomingRemaining.length <= 6}>
+              {upcomingRemaining.map((t, i) => <TaskCard key={t.id} task={t} delay={i * 50} onMarkDone={onMarkDone} onSkip={onSkip} onMoreOptions={onMoreOptions} showHint={false} onHintDismiss={dismissSwipeHint}/>)}
+            </CollapsibleTodaySection>
+          )}
+        </div>
       )}
       {skippedTasks.length > 0 && onUnskip && (
         <div style={{ marginTop: 28, padding: '10px 14px', background: C.bellySoft, border: `1px solid ${C.border}`, borderRadius: 10, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>

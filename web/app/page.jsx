@@ -3526,10 +3526,18 @@ function PlanDetailScreen({ plan, onBack, onCheck, onRename, onAddTask, onDelete
         <button
           onClick={editingPlan ? cancelEditPlan : openEditPlan}
           aria-label={editingPlan ? 'Cancel edit' : 'Edit plan'}
-          style={{ background: 'none', border: `1px solid ${C.border}`, color: C.warmDark, fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: '4px 12px', fontFamily: 'inherit', lineHeight: 1, borderRadius: 999 }}>
-          {editingPlan ? 'Cancel' : '✎ Edit'}
+          style={{ background: 'none', border: `1px solid ${C.border}`, color: C.warmDark, fontSize: 18, fontWeight: 400, cursor: 'pointer', padding: '2px 10px', fontFamily: 'inherit', lineHeight: 1, borderRadius: 999 }}>
+          {editingPlan ? '✕' : '⋯'}
         </button>
       </div>
+
+      {/* due date / event date — shown in normal view */}
+      {!editingPlan && (plan.dueDate || plan.eventDate) && (
+        <div style={{ fontSize: 12, color: C.inkMute, marginBottom: 10, paddingLeft: 2 }}>
+          {plan.type === 'project' && plan.dueDate && `Due: ${plan.dueDate}`}
+          {plan.type === 'event' && plan.eventDate && `Date: ${formatEventDate(plan.eventDate)}`}
+        </div>
+      )}
 
       {/* edit panel */}
       {editingPlan && (
@@ -3588,6 +3596,18 @@ function PlanDetailScreen({ plan, onBack, onCheck, onRename, onAddTask, onDelete
               </div>
             </div>
           )}
+          {/* add task inside edit mode */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, paddingTop: 4, borderTop: `1px solid ${C.hairline}` }}>
+            <span style={{ fontSize: 17, color: C.ochre, fontWeight: 700, lineHeight: 1, flexShrink: 0 }}>+</span>
+            <input
+              placeholder="Add a task…"
+              value={newTaskLabel}
+              onChange={e => setNewTaskLabel(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
+              onBlur={handleAddTask}
+              style={{ flex: 1, border: 'none', borderBottom: `1px solid ${C.hairline}`, outline: 'none', fontSize: 13, color: C.ink, background: 'transparent', padding: '2px 0', fontFamily: 'inherit' }}
+            />
+          </div>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <button onClick={cancelEditPlan} style={{ background: 'none', border: 'none', color: C.inkMute, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', padding: '4px 0' }}>Cancel</button>
             <button onClick={saveEditPlan} style={{ background: 'none', border: 'none', color: C.ochre, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', padding: '4px 0' }}>Save →</button>
@@ -3644,14 +3664,6 @@ function PlanDetailScreen({ plan, onBack, onCheck, onRename, onAddTask, onDelete
                 transition: isDragging ? 'none' : 'transform 0.2s ease',
                 userSelect: 'none',
               }}>
-                {/* drag handle */}
-                <span
-                  data-drag-handle
-                  onPointerDown={e => handleDragPointerDown(e, i)}
-                  onPointerMove={handleDragPointerMove}
-                  onPointerUp={handleDragPointerUp}
-                  style={{ fontSize: 15, color: C.border, cursor: isDragging ? 'grabbing' : 'grab', flexShrink: 0, touchAction: 'none', padding: '0 2px', lineHeight: 1 }}
-                >≡</span>
                 {/* checkbox */}
                 <div
                   onClick={() => {
@@ -3703,18 +3715,6 @@ function PlanDetailScreen({ plan, onBack, onCheck, onRename, onAddTask, onDelete
             </div>
           )
         })}
-        {/* add task row */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', borderTop: `1px solid ${C.hairline}` }}>
-          <span style={{ fontSize: 17, color: C.ochre, fontWeight: 700, lineHeight: 1, flexShrink: 0 }}>+</span>
-          <input
-            placeholder="Add a task…"
-            value={newTaskLabel}
-            onChange={e => setNewTaskLabel(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
-            onBlur={handleAddTask}
-            style={{ flex: 1, border: 'none', borderBottom: `1px solid ${C.hairline}`, outline: 'none', fontSize: 13, color: C.ink, background: 'transparent', padding: '2px 0', fontFamily: 'inherit' }}
-          />
-        </div>
       </div>
       )}
     </div>

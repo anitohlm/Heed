@@ -316,6 +316,22 @@ function suggestCadence(name) {
   return null
 }
 
+// Render a relative day-count into prose so cards, banners, and empty-states
+// all speak the same way: today / tomorrow / in 3 days / in 2 weeks /
+// in 4 months. Pairs with formatCadence below; both return prose.
+function formatRelativeDays(days) {
+  if (days == null) return ''
+  const n = Math.round(Number(days))
+  if (!Number.isFinite(n)) return ''
+  if (n <= 0) return 'today'
+  if (n === 1) return 'tomorrow'
+  if (n < 14) return `in ${n} days`
+  const weeks = Math.round(n / 7)
+  if (weeks <= 8) return `in ${weeks} weeks`
+  const months = Math.round(n / 30)
+  return `in ${months} month${months === 1 ? '' : 's'}`
+}
+
 // Render a cadence in days into something a human reads as natural prose.
 // "33.6 days" reads like a sensor log; "~5 weeks" reads like a friend.
 function formatCadence(days, { learned } = {}) {
@@ -1631,7 +1647,7 @@ function TaskCard({ task, delay = 0, onMarkDone, onSkip, onMoreOptions }) {
               <div style={{ fontSize: 10, color: C.inkMute, fontWeight: 600, letterSpacing: 0.4, textTransform: 'uppercase', marginTop: 2 }}>overdue</div>
             </>)}
             {!isOverdue && task.dueIn === 0 && <Pill tone="sage">today</Pill>}
-            {!isOverdue && task.dueIn > 0 && <div style={{ fontSize: 12.5, color: C.inkMute }}>in {task.dueIn}d</div>}
+            {!isOverdue && task.dueIn > 0 && <div style={{ fontSize: 12.5, color: C.inkMute }}>{formatRelativeDays(task.dueIn)}</div>}
           </div>
         </div>
         {hover && (
@@ -2131,7 +2147,7 @@ function ContextBanner({ upcomingContexts, onAskHeed }) {
 }
 
 // ── TodayTab ───────────────────────────────────────────────────
-function TodayTab({ tasks, routines, upcomingContexts, onMarkDone, onSkip, onMarkRoutineDone, onSkipRoutineToday, onLightenRoutine, onEditRoutine, onAskHeed, onMoreOptions, onShareCard }) {
+function TodayTab({ tasks, routines, upcomingContexts, skippedTasks = [], onMarkDone, onSkip, onUnskip, onMarkRoutineDone, onSkipRoutineToday, onLightenRoutine, onEditRoutine, onAskHeed, onMoreOptions, onShareCard }) {
   const overdue = tasks.filter(t => t.overdue != null).sort((a, b) => b.overdue - a.overdue)
   // Hero set: top overdue tasks within 25% of #1's days. So 12d/11d/10d all
   // become heroes; 12d/3d/2d only promotes the first.
@@ -2202,17 +2218,56 @@ function TodayTab({ tasks, routines, upcomingContexts, onMarkDone, onSkip, onMar
         {routines.map((r, i) => <RoutineRow key={r.id} routine={r} delay={i * 80} onMarkDone={onMarkRoutineDone} onSkipToday={onSkipRoutineToday} onLighten={onLightenRoutine}/>)}
       </div>
       {otherOverdue.length > 0 && (
-        <div style={{ marginTop: 28 }}>
-          <SectionHeader motif="thorn" count={otherOverdue.length}>Also overdue</SectionHeader>
+        <CollapsibleTodaySection
+          motif="thorn" label="Also overdue" count={otherOverdue.length}
+          // Auto-collapse when there are many — keeps Today scannable on heavy days.
+          defaultOpen={otherOverdue.length <= 4}
+        >
           {otherOverdue.map((t, i) => <TaskCard key={t.id} task={t} delay={i * 50} onMarkDone={onMarkDone} onSkip={onSkip} onMoreOptions={onMoreOptions}/>)}
-        </div>
+        </CollapsibleTodaySection>
       )}
       {upcoming.length > 0 && (
-        <div style={{ marginTop: 28 }}>
-          <SectionHeader motif="berry" count={upcoming.length}>Coming up</SectionHeader>
+        <CollapsibleTodaySection
+          motif="berry" label="Coming up" count={upcoming.length}
+          defaultOpen={upcoming.length <= 6}
+        >
           {upcoming.map((t, i) => <TaskCard key={t.id} task={t} delay={i * 50} onMarkDone={onMarkDone} onSkip={onSkip} onMoreOptions={onMoreOptions}/>)}
+        </CollapsibleTodaySection>
+      )}
+      {skippedTasks.length > 0 && onUnskip && (
+        <div style={{ marginTop: 28, padding: '10px 14px', background: C.bellySoft, border: `1px solid ${C.border}`, borderRadius: 10, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, letterSpacing: 0.6, textTransform: 'uppercase' }}>
+            Skipped today · {skippedTasks.length}
+          </span>
+          {skippedTasks.map(s => (
+            <button key={s.id} onClick={() => onUnskip(s.id)}
+              style={{ background: 'transparent', border: `1px dashed ${C.border}`, color: C.inkSoft, padding: '4px 10px', borderRadius: 999, fontSize: 11.5, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              ↻ {s.name}
+            </button>
+          ))}
+          <span style={{ fontSize: 11, color: C.inkMute, fontStyle: 'italic', marginLeft: 'auto' }}>tap to bring back</span>
         </div>
       )}
+    </div>
+  )
+}
+
+// Collapsible section header for Today. Header is a button; tap toggles open.
+function CollapsibleTodaySection({ motif, label, count, defaultOpen = true, children }) {
+  const [open, setOpen] = useState(defaultOpen)
+  return (
+    <div style={{ marginTop: 28 }}>
+      <button onClick={() => setOpen(o => !o)}
+        style={{ display: 'block', width: '100%', background: 'none', border: 'none', padding: 0, textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit' }}
+        aria-expanded={open}>
+        <SectionHeader motif={motif} count={count}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            {label}
+            <span style={{ fontSize: 11, color: C.inkMute, transition: 'transform 0.2s', display: 'inline-block', transform: open ? 'rotate(0deg)' : 'rotate(-90deg)' }}>▾</span>
+          </span>
+        </SectionHeader>
+      </button>
+      {open && children}
     </div>
   )
 }
@@ -3912,6 +3967,8 @@ function AskInlineModal({ open, onClose, onLightenRoutine }) {
 // ── AddTaskModal ───────────────────────────────────────────────
 function AddTaskModal({ open, onClose, onSubmit, onDelete, initialData = null }) {
   const isEdit = !!initialData
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  useEffect(() => { if (!open) setConfirmingDelete(false) }, [open])
   const [name, setName] = useState('')
   const [category, setCategory] = useState('home')
   const [importance, setImportance] = useState('medium')
@@ -4101,11 +4158,7 @@ function AddTaskModal({ open, onClose, onSubmit, onDelete, initialData = null })
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center' }}>
             {isEdit && onDelete && (
               <button
-                onClick={() => {
-                  if (typeof window !== 'undefined' && !window.confirm("Remove this task? This can't be undone.")) return
-                  onDelete(initialData)
-                  onClose()
-                }}
+                onClick={() => setConfirmingDelete(true)}
                 style={{ background: 'transparent', border: `1px solid ${C.rust}66`, color: C.rust, padding: '7px 14px', borderRadius: 8, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', marginRight: 'auto' }}
               >
                 Delete
@@ -4116,6 +4169,29 @@ function AddTaskModal({ open, onClose, onSubmit, onDelete, initialData = null })
           </div>
         </div>
       </div>
+      {confirmingDelete && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 200 }}>
+          <div onClick={() => setConfirmingDelete(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(2px)', animation: 'heed-fadeIn 0.18s ease' }}/>
+          <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, display: 'flex', justifyContent: 'center', animation: 'heed-slideUp 0.28s cubic-bezier(0.16,1,0.3,1)', pointerEvents: 'none' }}>
+            <div style={{ background: C.paperHi, width: '100%', maxWidth: 440, margin: '0 16px 16px 16px', borderRadius: '20px 20px 14px 14px', padding: '22px 22px 18px 22px', boxShadow: '0 -8px 40px rgba(0,0,0,0.35)', border: `1px solid ${C.border}`, pointerEvents: 'auto' }}>
+              <div style={{ fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 600, color: C.warmDark, marginBottom: 6 }}>
+                Remove "{initialData?.name || 'this task'}"?
+              </div>
+              <div style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.5, marginBottom: 18 }}>
+                This can't be undone. The task and its history will be removed.
+              </div>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                <button onClick={() => setConfirmingDelete(false)} style={getBtnGhost()}>Cancel</button>
+                <button
+                  onClick={() => { setConfirmingDelete(false); onDelete(initialData); onClose() }}
+                  style={{ background: C.rust, color: C.cream, border: 'none', padding: '8px 18px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  Remove
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }
@@ -4285,9 +4361,33 @@ function AddRoutineModal({ open, onClose, onSubmit, initialData = null, seedTask
             <div style={{ marginBottom: 14 }}>
               <label style={getFieldLabel()}>Items in this routine</label>
               {items.map((item, idx) => (
-                <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-                  <input value={item.name} onChange={e => updateItem(item.id, e.target.value)} placeholder={`Item ${idx+1} (e.g. ${['Stretch 5 min','Vitamins','Read 10 pages'][idx]||'...'})`} style={inputStyle}/>
-                  <button onClick={() => removeItem(item.id)} disabled={items.length===1} style={{ background: 'transparent', border: 'none', color: items.length===1 ? C.hairline : C.inkMute, cursor: items.length===1 ? 'not-allowed' : 'pointer', fontSize: 16, padding: '0 6px', lineHeight: 1, fontFamily: 'inherit', flexShrink: 0 }}>×</button>
+                <div key={item.id}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: openPickerIndex === idx ? 0 : 6 }}>
+                    <input value={item.name} onChange={e => updateItem(item.id, e.target.value)} placeholder={`Item ${idx+1} (e.g. ${['Stretch 5 min','Vitamins','Read 10 pages'][idx]||'...'})`} style={inputStyle}/>
+                    <button onClick={() => { setOpenPickerIndex(openPickerIndex === idx ? null : idx); setPickerSearch('') }} type="button" style={{ background: 'transparent', border: 'none', color: openPickerIndex === idx ? C.ochre : C.border, cursor: 'pointer', fontSize: 15, padding: '0 4px', lineHeight: 1, fontFamily: 'inherit', flexShrink: 0 }}>📎</button>
+                    <button onClick={() => { setOpenPickerIndex(null); removeItem(item.id) }} disabled={items.length===1} style={{ background: 'transparent', border: 'none', color: items.length===1 ? C.hairline : C.inkMute, cursor: items.length===1 ? 'not-allowed' : 'pointer', fontSize: 16, padding: '0 6px', lineHeight: 1, fontFamily: 'inherit', flexShrink: 0 }}>×</button>
+                  </div>
+                  {openPickerIndex === idx && (
+                    <div style={{ border: `1.5px solid ${C.ochre}`, borderTop: 'none', borderRadius: '0 0 8px 8px', background: C.paperHi, marginBottom: 6, maxHeight: 180, overflowY: 'auto' }}>
+                      <input
+                        autoFocus
+                        value={pickerSearch}
+                        onChange={e => setPickerSearch(e.target.value)}
+                        placeholder="Search tasks…"
+                        style={{ width: '100%', border: 'none', borderBottom: `1px solid ${C.hairline}`, padding: '7px 10px', fontSize: 12.5, outline: 'none', background: C.paper, fontFamily: 'inherit', boxSizing: 'border-box' }}
+                      />
+                      {filteredTasks().map(task => (
+                        <div key={task.id} onClick={() => pickTask(idx, task)}
+                          style={{ padding: '8px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1px solid ${C.hairline}` }}>
+                          <span style={{ color: C.ink, fontSize: 13 }}>{task.name}</span>
+                          <span style={{ color: C.inkMute, fontSize: 11 }}>{task.category}</span>
+                        </div>
+                      ))}
+                      {filteredTasks().length === 0 && (
+                        <div style={{ padding: '10px', color: C.inkMute, fontSize: 12.5, textAlign: 'center' }}>No tasks match</div>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
               <button onClick={addItem} style={{ background: 'transparent', color: C.warmDark, border: `1.5px dashed ${C.border}`, padding: '8px 14px', borderRadius: 8, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', width: '100%', transition: 'all 0.15s' }}
@@ -5151,6 +5251,10 @@ export default function HeedApp() {
   // Last ~200 skip events with reason. Retrospective reads these to detect
   // forgot/busy patterns. Backend completion log will replace this in Phase 1b.
   const [recentSkips, setRecentSkips] = useState([])
+  // Tasks the user skipped via swipe-left today. Renders as a footer on Today
+  // so they can bring one back without searching the API once the toast Undo
+  // window closes.
+  const [skippedTasks, setSkippedTasks] = useState([])
   const [routines, setRoutines] = useState(ROUTINES)
   // Hydrate routines from localStorage on first client render. SSR keeps the
   // ROUTINES default; effect runs only client-side, avoiding a hydration
@@ -5265,6 +5369,7 @@ export default function HeedApp() {
     const taskId = typeof task === 'string' ? task : task.id
     const taskName = typeof task === 'string' ? 'Task' : task.name
     setDismissedIds(s => new Set([...s, taskId]))
+    setSkippedTasks(s => s.find(x => x.id === taskId) ? s : [...s, { id: taskId, name: taskName }])
     // First post records the skip with reason='other'. The toast then offers
     // three reason chips; tapping one fires a follow-up POST that overwrites
     // the reason. Without this, the advisor's slip-pattern logic only ever
@@ -5296,6 +5401,15 @@ export default function HeedApp() {
       onReason: recordSkip,
     })
   }, [FUNCTIONS_URL])
+
+  // Bring a skipped task back into Today's view. Reverses the skip locally;
+  // we don't yet roll back the backend completion event since the user may
+  // genuinely have skipped and is just changing their mind. The backend
+  // sees a skip + no further done event for the day, which is correct.
+  const handleUnskip = useCallback((taskId) => {
+    setDismissedIds(s => { const n = new Set(s); n.delete(taskId); return n })
+    setSkippedTasks(s => s.filter(x => x.id !== taskId))
+  }, [])
 
   const handleReschedule = useCallback(async (taskId, newDate) => {
     const d = new Date(newDate)
@@ -5559,6 +5673,7 @@ export default function HeedApp() {
       <link href="https://fonts.googleapis.com/css2?family=Lora:wght@500;600;700&family=Nunito+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
       <style>{`
         @keyframes heed-fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes heed-tab-in { from { opacity:0; transform:translateX(12px); } to { opacity:1; transform:translateX(0); } }
         @keyframes heed-fadeIn { from { opacity:0; } to { opacity:1; } }
         @keyframes heed-pulse { 0%,100% { opacity:0.4; transform:translateX(-50%) scale(1); } 50% { opacity:1; transform:translateX(-50%) scale(1.4); } }
         @keyframes heed-breathe { 0%,100% { opacity:0.5; transform:scale(1); } 50% { opacity:0.85; transform:scale(1.05); } }
@@ -5619,11 +5734,16 @@ export default function HeedApp() {
       <MobileBottomNav tab={tab} onTab={setTab} onMicAsk={handleMicAsk}/>
 
       <main className="heed-main" style={{ maxWidth: 820, margin: '0 auto', padding: '28px 32px 100px 32px', minHeight: 'calc(100vh - 140px)', display: 'flex', flexDirection: 'column' }}>
-        {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} upcomingContexts={upcomingContexts} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onSkipRoutineToday={handleSkipRoutineToday} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAskHeed={handleAskHeed} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen}/>}
-        {tab === 'calendar' && <CalendarTab tasks={apiTasks} contexts={[...(apiContexts.active||[]), ...(apiContexts.upcoming||[])]} routines={routines} recentSkips={recentSkips} onReschedule={handleReschedule} onMarkDone={handleMarkDone} onSkip={handleSkip} onAddTask={() => setModalOpen(true)} onAddContext={() => setContextModalOpen(true)} onEditRoutine={handleEditRoutine} onApplyRetroSuggestion={handleApplyRetroSuggestion}/>}
-        {tab === 'ask' && <AskTab prefill={askPrefill} autoSend={askAutoSend} onAutoSendDone={() => { setAskAutoSend(false); setAskPrefill('') }} onLightenRoutine={handleLightenRoutine}/>}
-        {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onMarkRoutineDay={handleMarkRoutineDay}/>}
-        {tab === 'context' && <LifeTab upcoming={apiContexts.upcoming} active={apiContexts.active} activeContext={activeContext} onAddContext={() => setContextModalOpen(true)} onQuickContext={type => setQuickContextType(type)} onImBetter={() => setRecoveryOpen(true)} onExtend={handleExtendContext} onDetailOpen={handleDetailOpen}/>}
+        {/* keyed wrapper so React remounts subtree on tab change → CSS animation
+            replays. Slide-in from a few px right + fade gives a native-feeling
+            transition without tracking previous tab for direction. */}
+        <div key={tab} style={{ animation: 'heed-tab-in 0.28s cubic-bezier(0.32,0.72,0,1) both', display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+          {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} upcomingContexts={upcomingContexts} skippedTasks={skippedTasks} onMarkDone={handleMarkDone} onSkip={handleSkip} onUnskip={handleUnskip} onMarkRoutineDone={handleMarkRoutineDone} onSkipRoutineToday={handleSkipRoutineToday} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAskHeed={handleAskHeed} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen}/>}
+          {tab === 'calendar' && <CalendarTab tasks={apiTasks} contexts={[...(apiContexts.active||[]), ...(apiContexts.upcoming||[])]} routines={routines} recentSkips={recentSkips} onReschedule={handleReschedule} onMarkDone={handleMarkDone} onSkip={handleSkip} onAddTask={() => setModalOpen(true)} onAddContext={() => setContextModalOpen(true)} onEditRoutine={handleEditRoutine} onApplyRetroSuggestion={handleApplyRetroSuggestion}/>}
+          {tab === 'ask' && <AskTab prefill={askPrefill} autoSend={askAutoSend} onAutoSendDone={() => { setAskAutoSend(false); setAskPrefill('') }} onLightenRoutine={handleLightenRoutine}/>}
+          {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onMarkRoutineDay={handleMarkRoutineDay}/>}
+          {tab === 'context' && <LifeTab upcoming={apiContexts.upcoming} active={apiContexts.active} activeContext={activeContext} onAddContext={() => setContextModalOpen(true)} onQuickContext={type => setQuickContextType(type)} onImBetter={() => setRecoveryOpen(true)} onExtend={handleExtendContext} onDetailOpen={handleDetailOpen}/>}
+        </div>
       </main>
 
       <footer style={{ textAlign: 'center', fontSize: 11, color: C.inkMute, padding: '24px', borderTop: `1px solid ${C.hairline}`, fontStyle: 'italic' }}>

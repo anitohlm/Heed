@@ -1450,6 +1450,9 @@ function TaskCard({ task, delay = 0, onMarkDone, onSkip, onMoreOptions }) {
               {task.importance && <ImportanceBadge importance={task.importance}/>}
             </div>
             <div style={{ fontSize: 12.5, color: C.inkMute }}>{task.cadence} · last done {task.lastDone}</div>
+            {task.description && (
+              <div style={{ fontSize: 12, color: C.inkSoft, fontStyle: 'italic', marginTop: 4, lineHeight: 1.4 }}>{task.description}</div>
+            )}
           </div>
           <div style={{ textAlign: 'right', flexShrink: 0, minWidth: 64 }}>
             {isOverdue && (<>
@@ -1469,6 +1472,10 @@ function TaskCard({ task, delay = 0, onMarkDone, onSkip, onMoreOptions }) {
             </button>
           </div>
         )}
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 6px 0', pointerEvents: 'none' }}>
+        <span style={{ fontSize: 10, color: C.inkMute, fontStyle: 'italic' }}>← skip</span>
+        <span style={{ fontSize: 10, color: C.inkMute, fontStyle: 'italic' }}>done →</span>
       </div>
     </div>
   )
@@ -1987,8 +1994,13 @@ function TodayTab({ tasks, routines, upcomingContexts, onMarkDone, onSkip, onMar
   const nextContextDays = nextContext?._startDate
     ? Math.max(0, Math.ceil((nextContext._startDate - new Date()) / 86400000))
     : null
+  const hour = new Date().getHours()
+  const greeting = hour < 5 ? 'Late night' : hour < 12 ? 'Morning' : hour < 17 ? 'Afternoon' : hour < 22 ? 'Evening' : 'Late evening'
   return (
     <div>
+      <div style={{ fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 500, color: C.warmDark, marginBottom: 14, letterSpacing: -0.2 }}>
+        {greeting}.
+      </div>
       <ContextBanner upcomingContexts={upcomingContexts} onAskHeed={onAskHeed}/>
       <SectionHeader motif="leaf">Top of mind</SectionHeader>
       {heroSet.length > 0 ? (
@@ -2105,7 +2117,7 @@ function MicButton({ listening, onToggle, disabled }) {
 function AskTab({ prefill = '', autoSend = false, onAutoSendDone, onLightenRoutine }) {
   const { messages, input, setInput, thinking, streaming, busy, send, executeAction } = useChat({ onLightenRoutine })
   const scrollRef = useRef(null)
-  const { listening, toggle: toggleMic, supported: micSupported } = useMic(useCallback((text) => setInput(text), [setInput]))
+  const { listening, toggle: toggleMic, supported: micSupported } = useMic(useCallback((text, isFinal) => { if (isFinal) send(text) }, [send]))
   useEffect(() => {
     if (!prefill) return
     if (autoSend) {
@@ -3666,7 +3678,7 @@ function AskInlineModal({ open, onClose, onLightenRoutine }) {
   const { messages, input, setInput, thinking, streaming, busy, send, executeAction } = useChat({ onLightenRoutine })
   const scrollRef = useRef(null)
   const inputRef = useRef(null)
-  const { listening, toggle: toggleMic, supported: micSupported } = useMic(useCallback((text) => setInput(text), [setInput]))
+  const { listening, toggle: toggleMic, supported: micSupported } = useMic(useCallback((text, isFinal) => { if (isFinal) send(text) }, [send]))
   useEffect(() => { if (open && inputRef.current) setTimeout(() => inputRef.current?.focus(), 100) }, [open])
   useEffect(() => {
     if (!open) return
@@ -3741,6 +3753,7 @@ function AddTaskModal({ open, onClose, onSubmit, onDelete, initialData = null })
   const [cadenceTouched, setCadenceTouched] = useState(false)
   const [dueDate, setDueDate] = useState('')
   const [dueTime, setDueTime] = useState('')
+  const [description, setDescription] = useState('')
   const inputRef = useRef(null)
   useEffect(() => {
     if (!open) return
@@ -3754,8 +3767,9 @@ function AddTaskModal({ open, onClose, onSubmit, onDelete, initialData = null })
       setCadenceTouched(true)  // existing task — don't override
       setDueDate(initialData.dueDate || '')
       setDueTime(initialData.dueTime || '')
+      setDescription(initialData.description || '')
     } else {
-      setName(''); setCategory('home'); setImportance('medium'); setCadenceMode('learn'); setCadenceDays(7); setDueDate(''); setDueTime('')
+      setName(''); setCategory('home'); setImportance('medium'); setCadenceMode('learn'); setCadenceDays(7); setDueDate(''); setDueTime(''); setDescription('')
       setCadenceTouched(false)
     }
     if (inputRef.current) setTimeout(() => inputRef.current?.focus(), 50)
@@ -3784,6 +3798,7 @@ function AddTaskModal({ open, onClose, onSubmit, onDelete, initialData = null })
       explicit_cadence_days: cadenceMode === 'set' ? cadenceDays : null,
       dueDate: dueDate || null,
       dueTime: dueTime || null,
+      description: description.trim() || null,
     }
     if (isEdit) payload.id = initialData.id
     onSubmit(payload)
@@ -3824,15 +3839,15 @@ function AddTaskModal({ open, onClose, onSubmit, onDelete, initialData = null })
             <label style={getFieldLabel()}>How important?</label>
             <div style={{ display: 'flex', gap: 8 }}>
               {[
-                { v: 'low',    tone: C.sage  },
-                { v: 'medium', tone: C.ochre },
-                { v: 'high',   tone: C.rust  },
-              ].map(({ v, tone }) => (
+                { v: 'low',    tone: C.sage,  caption: 'when you have a window' },
+                { v: 'medium', tone: C.ochre, caption: 'this week' },
+                { v: 'high',   tone: C.rust,  caption: 'must happen' },
+              ].map(({ v, tone, caption }) => (
                 <button key={v} onClick={() => setImportance(v)}
                   style={{
-                    flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                    flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4,
                     background: tone, color: C.cream,
-                    padding: '11px 8px', borderRadius: 10, minHeight: 44,
+                    padding: '10px 6px', borderRadius: 10, minHeight: 56,
                     fontSize: 13,
                     fontWeight: v === 'high' ? 700 : v === 'medium' ? 500 : 400,
                     border: importance === v ? `2.5px solid ${C.cream}` : '2.5px solid transparent',
@@ -3842,22 +3857,25 @@ function AddTaskModal({ open, onClose, onSubmit, onDelete, initialData = null })
                     opacity: importance === v ? 1 : 0.5,
                     cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
                   }}>
-                  {v === 'low' && (
-                    <svg width="13" height="13" viewBox="0 0 13 13" aria-hidden="true">
-                      <circle cx="6.5" cy="6.5" r="5" fill="none" stroke={C.cream} strokeWidth="2"/>
-                    </svg>
-                  )}
-                  {v === 'medium' && (
-                    <svg width="13" height="13" viewBox="0 0 13 13" aria-hidden="true">
-                      <polygon points="6.5,1.5 11.5,6.5 6.5,11.5 1.5,6.5" fill={C.cream}/>
-                    </svg>
-                  )}
-                  {v === 'high' && (
-                    <svg width="13" height="13" viewBox="0 0 13 13" aria-hidden="true">
-                      <circle cx="6.5" cy="6.5" r="5.5" fill={C.cream}/>
-                    </svg>
-                  )}
-                  {v.charAt(0).toUpperCase() + v.slice(1)}
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    {v === 'low' && (
+                      <svg width="13" height="13" viewBox="0 0 13 13" aria-hidden="true">
+                        <circle cx="6.5" cy="6.5" r="5" fill="none" stroke={C.cream} strokeWidth="2"/>
+                      </svg>
+                    )}
+                    {v === 'medium' && (
+                      <svg width="13" height="13" viewBox="0 0 13 13" aria-hidden="true">
+                        <polygon points="6.5,1.5 11.5,6.5 6.5,11.5 1.5,6.5" fill={C.cream}/>
+                      </svg>
+                    )}
+                    {v === 'high' && (
+                      <svg width="13" height="13" viewBox="0 0 13 13" aria-hidden="true">
+                        <circle cx="6.5" cy="6.5" r="5.5" fill={C.cream}/>
+                      </svg>
+                    )}
+                    {v.charAt(0).toUpperCase() + v.slice(1)}
+                  </span>
+                  <span style={{ fontSize: 10, fontWeight: 500, opacity: 0.85, lineHeight: 1.1, textAlign: 'center' }}>{caption}</span>
                 </button>
               ))}
             </div>
@@ -3903,6 +3921,15 @@ function AddTaskModal({ open, onClose, onSubmit, onDelete, initialData = null })
             {(dueDate || dueTime) && (
               <button onClick={() => { setDueDate(''); setDueTime('') }} style={{ background: 'none', border: 'none', color: C.inkMute, fontSize: 11.5, cursor: 'pointer', padding: '4px 0', fontFamily: 'inherit' }}>Clear</button>
             )}
+          </div>
+          <div style={{ marginBottom: 18 }}>
+            <label style={getFieldLabel()}>Notes <span style={{ fontWeight: 400, color: C.inkMute, fontStyle: 'italic' }}>(optional)</span></label>
+            <textarea value={description} onChange={e => setDescription(e.target.value)}
+              placeholder="Anything to remember about this — supplier, account number, why it matters…"
+              rows={2}
+              style={{ width: '100%', boxSizing: 'border-box', background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '9px 12px', fontSize: 13, color: C.ink, outline: 'none', fontFamily: 'inherit', resize: 'vertical', minHeight: 56, transition: 'border-color 0.15s' }}
+              onFocus={e => { e.target.style.borderColor = C.warmDark }} onBlur={e => { e.target.style.borderColor = C.border }}
+            />
           </div>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center' }}>
             {isEdit && onDelete && (
@@ -4904,6 +4931,23 @@ export default function HeedApp() {
   // forgot/busy patterns. Backend completion log will replace this in Phase 1b.
   const [recentSkips, setRecentSkips] = useState([])
   const [routines, setRoutines] = useState(ROUTINES)
+  // Hydrate routines from localStorage on first client render. SSR keeps the
+  // ROUTINES default; effect runs only client-side, avoiding a hydration
+  // mismatch warning. Skipping if the persisted shape isn't an array.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const raw = window.localStorage.getItem('heed.routines.v1')
+      if (!raw) return
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed) && parsed.length > 0) setRoutines(parsed)
+    } catch (_) { /* ignore corrupted storage */ }
+  }, [])
+  // Persist on every change. Cheap; runs after each setRoutines.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try { window.localStorage.setItem('heed.routines.v1', JSON.stringify(routines)) } catch (_) {}
+  }, [routines])
   const [tab, setTab] = useState('today')
   const [theme, setTheme] = useState(DEFAULT_THEME)
   setThemeState(theme)
@@ -5055,7 +5099,7 @@ export default function HeedApp() {
   }, [])
 
   const handleAddTask = useCallback(async (data) => {
-    const body = { name: data.name, category: data.category, importance: data.importance, explicit_cadence_days: data.explicit_cadence_days || null }
+    const body = { name: data.name, category: data.category, importance: data.importance, explicit_cadence_days: data.explicit_cadence_days || null, description: data.description || null }
     const isEdit = !!data.id
     try {
       const resp = await fetch(
@@ -5308,7 +5352,10 @@ export default function HeedApp() {
       })()}
       <header className="heed-header" style={{ borderBottom: `1px solid ${C.hairline}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: `linear-gradient(180deg, ${C.paperHi} 0%, ${C.paper} 100%)`, position: 'sticky', top: 0, zIndex: 10, backdropFilter: 'blur(8px)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <MayaOwl size={40}/>
+          {/* Owl mood reflects state: worried if anything is severely overdue,
+              else calm. Animates 'speaking' during streaming chat (handled by
+              the Ask sheet's own MayaOwl). */}
+          <MayaOwl size={40} mood={displayTasks.some(t => (t.overdue || 0) >= 7) ? 'worried' : 'calm'}/>
           <div>
             <div style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 24, fontWeight: 700, color: C.warmDark, letterSpacing: -0.7, lineHeight: 1 }}>Heed</div>
             <div className="heed-header-subtitle" style={{ fontSize: 11.5, color: C.inkMute, fontStyle: 'italic', marginTop: 3, letterSpacing: 0.2 }}>The agent that remembers what you forget.</div>

@@ -2981,6 +2981,57 @@ function AddPlanSheet({ onClose, onAdd }) {
   )
 }
 
+// ── GoalUpdateSheet ────────────────────────────────────────────────
+function GoalUpdateSheet({ plan, onClose, onSave }) {
+  const [val, setVal] = useState(String(plan.current ?? 0))
+  const pct = plan.target > 0 ? Math.min(100, Math.round((parseFloat(val) || 0) / plan.target * 100)) : 0
+  const remaining = Math.max(0, plan.target - (parseFloat(val) || 0))
+  const submit = () => {
+    const n = parseFloat(val)
+    if (isNaN(n) || n < 0) return
+    onSave(n)
+  }
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 200 }} onClick={onClose}>
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(2px)' }}/>
+      <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: C.paper, borderRadius: '20px 20px 0 0', padding: `22px 22px calc(22px + env(safe-area-inset-bottom)) 22px`, animation: 'heed-slideUp 0.28s cubic-bezier(0.32,0.72,0,1)', boxShadow: '0 -8px 32px rgba(0,0,0,0.12)' }}>
+        <div style={{ width: 40, height: 4, borderRadius: 2, background: C.border, margin: '0 auto 18px' }}/>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+          <div style={{ width: 36, height: 36, borderRadius: 9, background: '#f5f0d8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>{plan.icon}</div>
+          <div>
+            <div style={{ fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 600, color: C.warmDark }}>{plan.title}</div>
+            <div style={{ fontSize: 12, color: C.inkMute, marginTop: 2 }}>Target: {plan.unit}{(plan.target ?? 0).toLocaleString()} · {plan.targetDate}</div>
+          </div>
+        </div>
+        <div style={{ height: 6, background: C.bellySoft, borderRadius: 3, marginBottom: 6, overflow: 'hidden' }}>
+          <div style={{ height: '100%', borderRadius: 3, background: C.ochre, width: `${pct}%`, transition: 'width 0.3s ease' }}/>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, color: C.inkMute, marginBottom: 18 }}>
+          <span>{pct}% saved</span>
+          <span>{plan.unit}{remaining.toLocaleString()} to go</span>
+        </div>
+        <label style={{ fontSize: 12, fontWeight: 600, color: C.inkMute, display: 'block', marginBottom: 6 }}>
+          Current amount ({plan.unit})
+        </label>
+        <input
+          type="number"
+          value={val}
+          onChange={e => setVal(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && submit()}
+          autoFocus
+          style={{ width: '100%', boxSizing: 'border-box', background: C.paperHi, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '11px 14px', fontSize: 16, color: C.ink, outline: 'none', fontFamily: 'inherit', marginBottom: 14 }}
+          onFocus={e => { e.target.style.borderColor = C.warmDark }}
+          onBlur={e => { e.target.style.borderColor = C.border }}
+        />
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={submit} style={{ ...getBtnPrimary(), flex: 1, padding: '12px 0', fontSize: 14 }}>Save progress</button>
+          <button onClick={onClose} style={{ ...getBtnGhost(), flex: 1, padding: '12px 0', fontSize: 14 }}>Cancel</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── PlansPanel ───────────────────────────────────────────────────
 function PlansPanel({ plans, checkTask, renameTask, addTask, deleteTask, reorderTasks, addPlan, updatePlan }) {
   const [addOpen, setAddOpen] = useState(false)
@@ -2988,7 +3039,7 @@ function PlansPanel({ plans, checkTask, renameTask, addTask, deleteTask, reorder
 
   const selectedPlan = plans.find(p => p.id === selectedPlanId) ?? null
 
-  if (selectedPlan) {
+  if (selectedPlan && selectedPlan.type !== 'goal') {
     return (
       <PlanDetailScreen
         plan={selectedPlan}
@@ -3018,10 +3069,17 @@ function PlansPanel({ plans, checkTask, renameTask, addTask, deleteTask, reorder
           key={p.id}
           plan={p}
           delay={i * 50}
-          onSelectPlan={(p.type === 'project' || p.type === 'event') ? (id) => setSelectedPlanId(id) : undefined}
+          onSelectPlan={(id) => setSelectedPlanId(id)}
         />
       ))}
       {addOpen && <AddPlanSheet onClose={() => setAddOpen(false)} onAdd={p => { addPlan(p); setAddOpen(false) }}/>}
+      {selectedPlan && selectedPlan.type === 'goal' && (
+        <GoalUpdateSheet
+          plan={selectedPlan}
+          onClose={() => setSelectedPlanId(null)}
+          onSave={(newVal) => { updatePlan(selectedPlan.id, { current: newVal }); setSelectedPlanId(null) }}
+        />
+      )}
     </div>
   )
 }

@@ -469,10 +469,12 @@ function useChat({ onLightenRoutine, onTaskAdded } = {}) {
     setBusy(true)
     setThinking([])
 
-    let thinkingSteps = []
+    // Live event accumulators — written into React state as chunks arrive.
+    const thinkingSteps = []
     let finalText = ''
-    let pendingActions = []
+    const pendingActions = []
     let pendingChips = []
+    let gotAnything = false
 
     try {
       const resp = await fetch(`${FUNCTIONS_URL}/api/advisor_stream`, {
@@ -481,41 +483,76 @@ function useChat({ onLightenRoutine, onTaskAdded } = {}) {
         body: JSON.stringify({ message: trimmed, history: snapshot }),
       })
       if (!resp.ok) throw new Error(`${resp.status}`)
-      const ndjson = await resp.text()
-      const events = ndjson.trim().split('\n').filter(Boolean).map(line => {
-        try { return JSON.parse(line) } catch { return null }
-      }).filter(Boolean)
-      thinkingSteps = events.filter(e => e.type === 'thinking').map(e => e.step)
-      pendingActions = events
-        .filter(e => e.type === 'action')
-        .map(({ type, ...rest }) => rest)
-      const chipsEvent = events.find(e => e.type === 'chips')
-      pendingChips = chipsEvent?.chips || []
-      const done = events.find(e => e.type === 'done')
-      finalText = done?.final_text || events.filter(e => e.type === 'delta').map(e => e.text).join('') || ''
-      if (!finalText) throw new Error('empty')
+      if (!resp.body) throw new Error('no body')
+
+      // Read NDJSON chunks as they arrive. On Flex Consumption the body is
+      // chunked end-to-end so thinking and delta events update the UI in
+      // real time. On the older buffered runtime the same loop runs once
+      // with the full payload — same correctness, just no incrementality.
+      const reader = resp.body.getReader()
+      const decoder = new TextDecoder()
+      let buf = ''
+      const handleEvent = (ev) => {
+        if (!ev || typeof ev !== 'object') return
+        if (ev.type === 'thinking') {
+          thinkingSteps.push(ev.step)
+          setThinking([...thinkingSteps])
+        } else if (ev.type === 'delta') {
+          if (typeof ev.text === 'string') {
+            finalText += ev.text
+            setThinking(null)  // first delta means thinking phase is over
+            setStreaming(finalText)
+            gotAnything = true
+          }
+        } else if (ev.type === 'action') {
+          const { type, ...rest } = ev
+          pendingActions.push(rest)
+        } else if (ev.type === 'chips') {
+          pendingChips = ev.chips || []
+        } else if (ev.type === 'done') {
+          if (typeof ev.final_text === 'string' && ev.final_text.length > 0) {
+            finalText = ev.final_text
+            setStreaming(finalText)
+            gotAnything = true
+          }
+        } else if (ev.type === 'error') {
+          throw new Error(ev.error || 'agent error')
+        }
+      }
+      // Stream loop
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buf += decoder.decode(value, { stream: true })
+        let nl
+        while ((nl = buf.indexOf('\n')) !== -1) {
+          const line = buf.slice(0, nl).trim()
+          buf = buf.slice(nl + 1)
+          if (!line) continue
+          let ev = null
+          try { ev = JSON.parse(line) } catch { ev = null }
+          if (ev) handleEvent(ev)
+        }
+      }
+      // Flush any trailing line without a newline
+      if (buf.trim()) {
+        try { handleEvent(JSON.parse(buf.trim())) } catch {}
+      }
+      if (!gotAnything) throw new Error('empty')
     } catch {
+      // Fall back to scripted response so a network blip still shows
+      // something useful in the demo.
       const scripted = SCRIPTED_RESPONSES[trimmed] || FALLBACK_RESPONSE
-      thinkingSteps = scripted.thinking
       finalText = scripted.answer
-      pendingActions = scripted.actions || []
+      pendingActions.length = 0
+      ;(scripted.actions || []).forEach(a => pendingActions.push(a))
       pendingChips = scripted.chips || []
+      setThinking(null)
+      setStreaming(finalText)
     }
 
-    for (let i = 0; i < thinkingSteps.length; i++) {
-      setThinking(thinkingSteps.slice(0, i + 1))
-      await new Promise(r => setTimeout(r, 120 + Math.random() * 80))
-    }
     setThinking(null)
-
-    const words = finalText.split(' ')
-    let acc = ''
-    for (let i = 0; i < words.length; i++) {
-      acc += (i > 0 ? ' ' : '') + words[i]
-      setStreaming(acc)
-      await new Promise(r => setTimeout(r, 8 + Math.random() * 8))
-    }
-    setMessages(m => [...m, { role: 'assistant', content: acc, actions: pendingActions, chips: pendingChips }])
+    setMessages(m => [...m, { role: 'assistant', content: finalText, actions: pendingActions, chips: pendingChips }])
     setStreaming('')
     setBusy(false)
   }, [busy, messages])

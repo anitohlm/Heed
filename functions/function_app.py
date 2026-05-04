@@ -78,16 +78,19 @@ def _run_async(coro):
 # ── advisor_stream ─────────────────────────────────────────────────────────────
 
 @app.route(route="advisor_stream", methods=["POST", "OPTIONS"])
-def advisor_stream(req: func.HttpRequest) -> func.HttpResponse:
+async def advisor_stream(req: func.HttpRequest) -> func.HttpResponse:
     """
     POST /api/advisor_stream
     Body: {"message": "...", "history": [...]}
 
-    Collects all agent SSE events and returns them as newline-delimited JSON.
-    The Next.js /api/agent/stream route re-streams them to the browser as SSE.
+    Streams agent events as newline-delimited JSON. Each line is a complete
+    JSON event ({"type": "thinking|delta|action|chips|done|error", ...}).
 
-    Azure Functions consumption plan does not support true chunked streaming,
-    so we collect the full agent run and return it in one response.
+    On Flex Consumption the body is yielded chunk-by-chunk to the browser as
+    the agent produces events — first token typically lands ~400-700ms after
+    the request. On the older Consumption plan the runtime buffers the whole
+    response, so the same code degrades to the previous behaviour without
+    breaking the frontend reader.
     """
     if req.method == "OPTIONS":
         return func.HttpResponse(
@@ -113,25 +116,26 @@ def advisor_stream(req: func.HttpRequest) -> func.HttpResponse:
     if len(message) > 4000:
         return _error("Message too long (max 4000 chars)", 413)
 
-    async def collect_events():
-        events = []
-        async for event in stream_response(USER_ID, message, history):
-            events.append(event)
-        return events
+    async def event_stream():
+        try:
+            async for event in stream_response(USER_ID, message, history):
+                yield (json.dumps(event, default=str) + "\n").encode("utf-8")
+        except Exception as e:
+            logging.exception("advisor_stream agent failed")
+            err = json.dumps({"type": "error", "error": str(e)}, default=str)
+            yield (err + "\n").encode("utf-8")
 
-    try:
-        events = _run_async(collect_events())
-        # Return as newline-delimited JSON — Next.js parses and re-streams
-        ndjson = "\n".join(json.dumps(e, default=str) for e in events)
-        return func.HttpResponse(
-            ndjson,
-            status_code=200,
-            mimetype="application/x-ndjson",
-            headers={"Access-Control-Allow-Origin": "*"},
-        )
-    except Exception as e:
-        logging.exception("advisor_stream failed")
-        return _error(f"Agent error: {str(e)}", 500)
+    return func.HttpResponse(
+        body=event_stream(),
+        status_code=200,
+        mimetype="application/x-ndjson",
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            # Hint to any proxy / CDN in front not to buffer the response.
+            "Cache-Control": "no-cache, no-transform",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 # ── tasks ──────────────────────────────────────────────────────────────────────

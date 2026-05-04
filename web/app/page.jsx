@@ -3602,6 +3602,9 @@ function PlanCard({ plan, delay = 0, onSelectPlan }) {
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 14, fontWeight: 600, color: C.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{plan.title}</div>
+          {plan.description ? (
+            <div style={{ fontSize: 11.5, color: C.inkSoft, fontStyle: 'italic', marginTop: 2, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{plan.description}</div>
+          ) : null}
           <div style={{ fontSize: 11.5, color: C.inkMute, marginTop: 2 }}>{subtitle}</div>
         </div>
         {badge}

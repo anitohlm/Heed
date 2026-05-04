@@ -1592,8 +1592,8 @@ function TaskCard({ task, delay = 0, onMarkDone, onSkip, onMoreOptions }) {
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 18px',
         pointerEvents: 'none',
       }}>
-        <span data-badge="done" style={{ fontSize: 18, color: C.sage, opacity: 0 }}>✓</span>
-        <span data-badge="skip" style={{ fontSize: 18, color: C.ochre, opacity: 0 }}>↷</span>
+        <span data-badge="done" style={{ fontSize: 18, color: C.sage, opacity: 0, display: 'inline-flex', alignItems: 'center', gap: 5 }}>✓ <span style={{ fontSize: 12, fontWeight: 700 }}>Done</span></span>
+        <span data-badge="skip" style={{ fontSize: 18, color: C.ochre, opacity: 0, display: 'inline-flex', alignItems: 'center', gap: 5 }}><span style={{ fontSize: 12, fontWeight: 700 }}>Skip</span> ↷</span>
       </div>
       <div
         ref={swipeRef}
@@ -1643,10 +1643,6 @@ function TaskCard({ task, delay = 0, onMarkDone, onSkip, onMoreOptions }) {
             </button>
           </div>
         )}
-      </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 6px 0', pointerEvents: 'none' }}>
-        <span style={{ fontSize: 10, color: C.inkMute, fontStyle: 'italic' }}>← skip</span>
-        <span style={{ fontSize: 10, color: C.inkMute, fontStyle: 'italic' }}>done →</span>
       </div>
     </div>
   )

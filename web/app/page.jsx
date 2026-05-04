@@ -4071,6 +4071,7 @@ function AddPlanSheet({ onClose, onAdd }) {
   const [unit, setUnit]               = useState('₱')
   const [targetDate, setTargetDate]   = useState('')
   const [eventDate, setEventDate]     = useState('')
+  const [description, setDescription] = useState('')
   const [suggestDismissed, setSuggestDismissed] = useState(false)
   const [addedSuggestions, setAddedSuggestions] = useState([])
   // AI-generated suggestions, when the user opts in via "Smarter suggestions".
@@ -4194,13 +4195,13 @@ function AddPlanSheet({ onClose, onAdd }) {
     const parsedTasks = tasksText.split('\n').map(s => s.trim()).filter(Boolean).map(label => ({ label, done: false }))
     const planType = PLAN_TYPES.find(p => p.type === type)
     if (!planType) return
-    const plan = { id: `plan-${Date.now()}`, type, icon: planType.icon, title: title.trim() }
+    const plan = { id: `plan-${Date.now()}`, type, icon: planType.icon, title: title.trim(), description: description.trim() }
     if (type === 'project') { plan.dueDate = dueDate || 'No due date'; plan.tasks = parsedTasks }
     if (type === 'goal' && goalKind === 'milestone') { plan.goalKind = 'milestone'; plan.targetDate = targetDate || 'No date set'; plan.achieved = false }
     if (type === 'goal' && goalKind === 'numeric')   { plan.goalKind = 'numeric'; plan.current = 0; plan.target = parseFloat(targetAmt) || 0; plan.unit = unit || ''; plan.targetDate = targetDate || 'No target date' }
     if (type === 'event')   { plan.eventDate = eventDate ? new Date(eventDate) : null; plan.tasks = parsedTasks }
     onAdd(plan)
-    setStep('pick'); setType(null); setTitle(''); setDueDate(''); setTasksText(''); setTargetAmt(''); setUnit('₱'); setTargetDate(''); setEventDate(''); setGoalKind('milestone')
+    setStep('pick'); setType(null); setTitle(''); setDescription(''); setDueDate(''); setTasksText(''); setTargetAmt(''); setUnit('₱'); setTargetDate(''); setEventDate(''); setGoalKind('milestone')
   }
 
   return (
@@ -4238,6 +4239,9 @@ function AddPlanSheet({ onClose, onAdd }) {
 
             <label style={labelStyle}>Name *</label>
             <input style={inputStyle} placeholder="e.g. Move apartments" value={title} onChange={e => setTitle(e.target.value)} autoFocus/>
+
+            <label style={labelStyle}>Description <span style={{ fontWeight: 400, color: C.inkMute }}>(optional)</span></label>
+            <textarea style={{ ...inputStyle, minHeight: 60, resize: 'vertical' }} placeholder="What's this plan for?" value={description} onChange={e => setDescription(e.target.value)}/>
 
             {type === 'project' && (
               <>

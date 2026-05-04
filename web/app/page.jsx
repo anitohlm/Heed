@@ -914,29 +914,46 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
                   </svg>,
                   C.warmDark + '18'
                 )}
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 15, color: C.ink, fontWeight: 500 }}>Just one thing</div>
-                  <div style={{ fontSize: 12, color: C.inkMute, marginTop: 2, lineHeight: 1.4 }}>Today shows only the single most important task. For crash days when a full list overwhelms.</div>
+                  <div style={{ fontSize: 13, color: C.inkSoft, marginTop: 3, lineHeight: 1.45 }}>
+                    Today shows only the single most important task. For crash days when a full list overwhelms.
+                  </div>
                 </div>
-                {/* iOS-style toggle pill */}
-                <span aria-hidden="true" style={{
+                {/* Switch — 46×28 pill (was 38×22). On=sage (semantic positive
+                    state, matches streaks / ✓ accents). Wrapped in a 44pt
+                    hit-area so tap target meets iOS HIG / Material even though
+                    the visible pill is narrower. role="switch" + aria-checked
+                    so screen readers announce on/off (was aria-hidden before). */}
+                <span style={{
                   flexShrink: 0,
-                  width: 38, height: 22,
-                  borderRadius: 999,
-                  background: efMode ? C.warmDark : C.border,
-                  position: 'relative',
-                  transition: 'background 0.18s',
+                  display: 'inline-flex',
+                  alignItems: 'center', justifyContent: 'center',
+                  minWidth: 56, height: 44,
+                  marginRight: -8,
                 }}>
-                  <span style={{
-                    position: 'absolute',
-                    top: 2,
-                    left: efMode ? 18 : 2,
-                    width: 18, height: 18,
-                    borderRadius: '50%',
-                    background: C.cream,
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.25)',
-                    transition: 'left 0.18s',
-                  }}/>
+                  <span
+                    role="switch"
+                    aria-checked={efMode ? 'true' : 'false'}
+                    aria-label={`Just one thing mode${efMode ? ', on' : ', off'}`}
+                    style={{
+                      width: 46, height: 28,
+                      borderRadius: 999,
+                      background: efMode ? C.sage : C.border,
+                      position: 'relative',
+                      transition: 'background 0.18s',
+                    }}>
+                    <span aria-hidden="true" style={{
+                      position: 'absolute',
+                      top: 3,
+                      left: efMode ? 21 : 3,
+                      width: 22, height: 22,
+                      borderRadius: '50%',
+                      background: C.cream,
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.28)',
+                      transition: 'left 0.18s cubic-bezier(0.32,0.72,0,1)',
+                    }}/>
+                  </span>
                 </span>
               </SettingsRow>
             </div>
@@ -7235,7 +7252,7 @@ export default function HeedApp() {
       <AddRoutineModal open={routineModalOpen} onClose={() => { setRoutineModalOpen(false); setEditingRoutine(null); setBuildRoutineTask(null) }} onSubmit={handleAddRoutine} initialData={editingRoutine} seedTask={buildRoutineTask} tasks={displayTasks}/>
       <AddContextModal open={contextModalOpen} onClose={() => setContextModalOpen(false)} onSubmit={handleAddContext}/>
       <AskInlineModal open={askOpen} onClose={() => setAskOpen(false)} onLightenRoutine={handleLightenRoutine}/>
-      <TaskOptionsSheet task={taskOptionsTask} onClose={() => setTaskOptionsTask(null)} onEdit={handleEditTask} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }}/>
+      <TaskOptionsSheet task={taskOptionsTask} onClose={() => setTaskOptionsTask(null)} onMarkDone={handleMarkDone} onSkip={handleSkip} onEdit={handleEditTask} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }}/>
       <AddToRoutineSheet task={addToRoutineTask} routines={routines} onClose={() => setAddToRoutineTask(null)} onSelect={handleAddTaskToRoutine}/>
       <QuickContextSheet type={quickContextType} onClose={() => setQuickContextType(null)} onActivate={handleQuickContext}/>
       <RecoverySummarySheet open={recoveryOpen} context={activeContext} heldTasks={activeContext ? displayTasks.filter(t => activeContext.heldTaskIds.includes(t.id)) : []} onClose={() => setRecoveryOpen(false)} onResumeAll={() => handleEndContext('resume')} onEaseBack={() => handleEndContext('ease')}/>

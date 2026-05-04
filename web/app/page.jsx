@@ -3226,31 +3226,6 @@ function TodayTab({ tasks, routines, plans = [], upcomingContexts, skippedTasks 
   const nextContextDays = nextContext?._startDate
     ? Math.max(0, Math.ceil((nextContext._startDate - new Date()) / 86400000))
     : null
-  const hour = new Date().getHours()
-  const greetingTime = hour < 5 ? 'Late night' : hour < 12 ? 'Morning' : hour < 17 ? 'Afternoon' : hour < 22 ? 'Evening' : 'Late evening'
-  // Use the user's first name if they set one. Skip the comma if no name —
-  // "Afternoon." reads cleaner than "Afternoon, ." in that case.
-  const firstName = (userName || '').trim().split(/\s+/)[0]
-  const greetingHeadline = firstName ? `${greetingTime}, ${firstName}.` : `${greetingTime}.`
-  // Sub-line picks the most relevant fact about the user's day so the greeting
-  // feels like Heed *knows* them, not just a clock readout. Priority order:
-  //   1. Critical (7+ day) overdue → "X needs your attention today."
-  //   2. Focus count → "N things on your mind today."
-  //   3. Best routine streak ≥ 3 days → "On a N-day {routine} streak."
-  //   4. Upcoming context → "{Trip} in N days."
-  //   5. Quiet day → "Nothing pressing right now. Good day for what's been waiting."
-  const greetingSub = (() => {
-    const critical = tasks.filter(t => (t.overdue || 0) >= 7).sort((a, b) => (b.overdue || 0) - (a.overdue || 0))[0]
-    if (critical) return `${critical.name} has been waiting ${critical.overdue} days.`
-    if (focusTasks.length > 0) return focusTasks.length === 1
-      ? `One thing on your plate today.`
-      : `${focusTasks.length} things on your plate today.`
-    if (bestStreak && bestStreak.count >= 3) return `On a ${bestStreak.count}-day ${bestStreak.name.toLowerCase()} streak — keep it going.`
-    if (nextContext && nextContextDays !== null && nextContextDays <= 14) {
-      return `${nextContext.desc || nextContext.type} ${nextContextDays === 0 ? 'starts today.' : nextContextDays === 1 ? 'starts tomorrow.' : `in ${nextContextDays} days.`}`
-    }
-    return `Nothing pressing right now. Good day for what's been waiting.`
-  })()
   // EF (executive-function) mode — render-time short-circuit. When on, Today
   // shows ONLY the single highest-priority task, no banner, no routines, no
   // coming-up. Designed for crash days when seeing a long list causes
@@ -3259,15 +3234,7 @@ function TodayTab({ tasks, routines, plans = [], upcomingContexts, skippedTasks 
     const oneTask = focusTasks[0]
     return (
       <div>
-        <div style={{ marginBottom: 18, display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontFamily: 'Lora, serif', fontSize: 20, fontWeight: 600, color: C.warmDark, lineHeight: 1.15, letterSpacing: -0.3 }}>
-              {greetingHeadline}
-            </div>
-            <div style={{ fontSize: 12.5, color: C.inkSoft, marginTop: 4, fontStyle: 'italic', lineHeight: 1.5 }}>
-              Just one thing. Easy day.
-            </div>
-          </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 14 }}>
           <button onClick={() => onSetEfMode?.(false)}
             style={{ background: 'transparent', border: `1px solid ${C.border}`, color: C.inkSoft, padding: '5px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}>
             Show all
@@ -3291,28 +3258,6 @@ function TodayTab({ tasks, routines, plans = [], upcomingContexts, skippedTasks 
 
   return (
     <div>
-      <div style={{ marginBottom: 18, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontFamily: 'Lora, serif', fontSize: 22, fontWeight: 600, color: C.warmDark, lineHeight: 1.15, letterSpacing: -0.4 }}>
-            {greetingHeadline}
-          </div>
-          <div style={{ fontSize: 13, color: C.inkSoft, marginTop: 4, fontStyle: 'italic', lineHeight: 1.5 }}>
-            {greetingSub}
-          </div>
-        </div>
-        {onSetEfMode && (
-          <button
-            onClick={() => onSetEfMode(true)}
-            aria-label="Switch to Just one thing mode"
-            title="Just one thing — show only the top task"
-            style={{ background: 'transparent', border: `1px solid ${C.border}`, color: C.inkSoft, padding: '6px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true">
-              <circle cx="5.5" cy="5.5" r="3" fill={C.warmDark}/>
-            </svg>
-            Just one
-          </button>
-        )}
-      </div>
       <ContextBanner upcomingContexts={upcomingContexts} onAskHeed={onAskHeed}/>
       <SectionHeader motif="leaf" count={focusTasks.length}>Focus today</SectionHeader>
       {focusTasks.length > 0 ? (
@@ -4598,6 +4543,129 @@ function AddPlanSheet({ onClose, onAdd }) {
   )
 }
 
+// ── GoalDetailScreen ───────────────────────────────────────────────
+function GoalDetailScreen({ plan, onBack, onUpdatePlan }) {
+  const [editingPlan, setEditingPlan] = useState(false)
+  const [editDraft, setEditDraft] = useState({ icon: '', title: '', targetDate: '', description: '' })
+  const isMilestone = plan.goalKind === 'milestone'
+  const [val, setVal] = useState(String(plan.current ?? 0))
+  useEffect(() => { if (!isMilestone) setVal(String(plan.current ?? 0)) }, [plan.current, isMilestone])
+
+  const pct = isMilestone
+    ? (plan.achieved ? 100 : 0)
+    : plan.target > 0 ? Math.min(100, Math.round((plan.current ?? 0) / plan.target * 100)) : 0
+  const remaining = isMilestone ? 0 : Math.max(0, plan.target - (plan.current ?? 0))
+
+  function openEditPlan() {
+    setEditDraft({ icon: plan.icon, title: plan.title, targetDate: plan.targetDate ?? '', description: plan.description ?? '' })
+    setEditingPlan(true)
+  }
+  function cancelEditPlan() { setEditingPlan(false) }
+  function saveEditPlan() {
+    onUpdatePlan?.(plan.id, {
+      icon: editDraft.icon.trim() || plan.icon,
+      title: editDraft.title.trim() || plan.title,
+      targetDate: editDraft.targetDate.trim(),
+      description: editDraft.description.trim(),
+    })
+    setEditingPlan(false)
+  }
+  function submitNumeric() {
+    const n = parseFloat(val)
+    if (isNaN(n) || n < 0) return
+    onUpdatePlan?.(plan.id, { current: n })
+  }
+
+  return (
+    <div style={{ animation: 'heed-fadeIn 0.2s ease' }}>
+      <div style={{ marginBottom: 6 }}>
+        <button onClick={onBack} style={{ background: 'none', border: 'none', color: C.ochre, fontSize: 14, fontWeight: 700, cursor: 'pointer', padding: '2px 0', fontFamily: 'inherit' }}>‹ Plans</button>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: plan.description && !editingPlan ? 6 : 14 }}>
+        <span style={{ fontSize: 20 }}>{plan.icon}</span>
+        <span style={{ flex: 1, fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 600, color: C.warmDark, letterSpacing: -0.2 }}>{plan.title}</span>
+        <button
+          onClick={editingPlan ? cancelEditPlan : openEditPlan}
+          aria-label={editingPlan ? 'Cancel edit' : 'Edit goal'}
+          style={{ background: 'none', border: `1px solid ${C.border}`, color: C.warmDark, fontSize: 18, fontWeight: 400, cursor: 'pointer', padding: '2px 10px', fontFamily: 'inherit', lineHeight: 1, borderRadius: 999 }}>
+          {editingPlan ? '✕' : '⋯'}
+        </button>
+      </div>
+      {plan.description && !editingPlan && (
+        <div style={{ fontSize: 13, color: C.inkSoft, fontStyle: 'italic', marginBottom: 14, lineHeight: 1.5, paddingLeft: 2 }}>
+          {plan.description}
+        </div>
+      )}
+      {!editingPlan && plan.targetDate && plan.targetDate !== 'No date set' && (
+        <div style={{ fontSize: 12, color: C.inkMute, marginBottom: 14, paddingLeft: 2 }}>
+          Target: {plan.targetDate}
+        </div>
+      )}
+
+      {editingPlan && (
+        <div style={{ background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '12px 14px', marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+            <input value={editDraft.icon} onChange={e => setEditDraft(d => ({ ...d, icon: e.target.value }))}
+              style={{ width: 36, height: 36, textAlign: 'center', fontSize: 22, border: 'none', borderBottom: `1.5px solid ${C.ochre}`, outline: 'none', background: 'transparent', fontFamily: 'inherit', flexShrink: 0 }}/>
+            <input value={editDraft.title} onChange={e => setEditDraft(d => ({ ...d, title: e.target.value }))}
+              style={{ flex: 1, fontSize: 14, fontWeight: 600, border: 'none', borderBottom: `1.5px solid ${C.ochre}`, outline: 'none', background: 'transparent', fontFamily: 'inherit', color: C.ink }}/>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+            <span style={{ fontSize: 12, color: C.inkMute, flexShrink: 0 }}>Target date</span>
+            <input value={editDraft.targetDate} onChange={e => setEditDraft(d => ({ ...d, targetDate: e.target.value }))}
+              placeholder="e.g. Dec 2025"
+              style={{ flex: 1, fontSize: 13, border: 'none', borderBottom: `1.5px solid ${C.ochre}`, outline: 'none', background: 'transparent', fontFamily: 'inherit', color: C.ink }}/>
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <span style={{ fontSize: 12, color: C.inkMute }}>Description <span style={{ fontWeight: 400 }}>(optional)</span></span>
+            <textarea value={editDraft.description} onChange={e => setEditDraft(d => ({ ...d, description: e.target.value }))}
+              placeholder="What's this goal about?"
+              rows={2}
+              style={{ display: 'block', width: '100%', marginTop: 4, fontSize: 13, border: 'none', borderBottom: `1.5px solid ${C.ochre}`, outline: 'none', background: 'transparent', fontFamily: 'inherit', color: C.ink, resize: 'none', boxSizing: 'border-box' }}/>
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={saveEditPlan} style={{ ...getBtnPrimary(), flex: 1, padding: '10px 0', fontSize: 13 }}>Save</button>
+            <button onClick={cancelEditPlan} style={{ ...getBtnGhost(), flex: 1, padding: '10px 0', fontSize: 13 }}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {!editingPlan && (
+        <div style={{ background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 12, padding: 16 }}>
+          <div style={{ height: 6, background: C.bellySoft, borderRadius: 3, marginBottom: 6, overflow: 'hidden' }}>
+            <div style={{ height: '100%', borderRadius: 3, background: isMilestone ? C.sage : C.ochre, width: `${pct}%`, transition: 'width 0.4s ease' }}/>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, color: C.inkMute, marginBottom: 16 }}>
+            <span>{pct}%{isMilestone ? (plan.achieved ? ' · Achieved!' : ' · In progress') : ' saved'}</span>
+            {!isMilestone && <span>{plan.unit}{remaining.toLocaleString()} to go</span>}
+          </div>
+          {isMilestone ? (
+            <button onClick={() => onUpdatePlan?.(plan.id, { achieved: !plan.achieved })}
+              style={{ ...getBtnPrimary(), width: '100%', padding: '12px 0', fontSize: 14 }}>
+              {plan.achieved ? 'Mark as in progress' : 'Mark as achieved ✓'}
+            </button>
+          ) : (
+            <>
+              <label style={{ fontSize: 12, fontWeight: 600, color: C.inkMute, display: 'block', marginBottom: 6 }}>
+                Update current amount ({plan.unit})
+              </label>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <input type="number" min="0" value={val}
+                  onChange={e => setVal(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && submitNumeric()}
+                  style={{ flex: 1, background: C.paperHi, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '11px 14px', fontSize: 15, color: C.ink, outline: 'none', fontFamily: 'inherit' }}
+                  onFocus={e => { e.target.style.borderColor = C.warmDark }}
+                  onBlur={e => { e.target.style.borderColor = C.border }}/>
+                <button onClick={submitNumeric} style={{ ...getBtnPrimary(), padding: '11px 18px', fontSize: 14 }}>Save</button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── GoalUpdateSheet ────────────────────────────────────────────────
 function GoalUpdateSheet({ plan, onClose, onSave }) {
   const isMilestone = plan.goalKind === 'milestone'
@@ -4705,6 +4773,16 @@ function PlansPanel({ plans, checkTask, renameTask, addTask, deleteTask, reorder
     )
   }
 
+  if (selectedPlan && selectedPlan.type === 'goal') {
+    return (
+      <GoalDetailScreen
+        plan={selectedPlan}
+        onBack={() => setSelectedPlanId(null)}
+        onUpdatePlan={updatePlan}
+      />
+    )
+  }
+
   return (
     <div style={{ animation: 'heed-fadeIn 0.2s ease' }}>
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
@@ -4724,13 +4802,6 @@ function PlansPanel({ plans, checkTask, renameTask, addTask, deleteTask, reorder
         />
       ))}
       {addOpen && <AddPlanSheet onClose={() => setAddOpen(false)} onAdd={p => { addPlan(p); setAddOpen(false) }}/>}
-      {selectedPlan && selectedPlan.type === 'goal' && (
-        <GoalUpdateSheet
-          plan={selectedPlan}
-          onClose={() => setSelectedPlanId(null)}
-          onSave={(update) => { updatePlan(selectedPlan.id, update); setSelectedPlanId(null) }}
-        />
-      )}
     </div>
   )
 }
@@ -7259,6 +7330,26 @@ export default function HeedApp() {
   })
   const upcomingContexts = enrichedUpcoming.length > 0 ? enrichedUpcoming : CONTEXTS_UPCOMING_DEMO
 
+  // Greeting for the header. Lives at HeedApp (not TodayTab) so it shows on
+  // every tab and the in-page TodayTab title doesn't duplicate it.
+  const headerGreeting = (() => {
+    const hour = new Date().getHours()
+    const time = hour < 5 ? 'Late night'
+               : hour < 12 ? 'Morning'
+               : hour < 17 ? 'Afternoon'
+               : hour < 22 ? 'Evening'
+               : 'Late evening'
+    const first = (userName || '').trim().split(/\s+/)[0]
+    const headline = first ? `${time}, ${first}.` : `${time}.`
+    const todayCount = displayTasks.filter(t => t.overdue != null || t.dueIn === 0).length
+    const overdue = displayTasks.filter(t => (t.overdue || 0) >= 7).length
+    let sub
+    if (overdue > 0) sub = `${overdue} ${overdue === 1 ? 'task needs' : 'tasks need'} your attention today.`
+    else if (todayCount > 0) sub = `${todayCount} ${todayCount === 1 ? 'thing' : 'things'} on your plate today.`
+    else sub = `Nothing pressing right now.`
+    return { headline, sub }
+  })()
+
   const handleMarkDone = useCallback(async (task) => {
     const taskId = typeof task === 'string' ? task : task.id
     const taskName = typeof task === 'string' ? 'Task' : task.name
@@ -7694,9 +7785,9 @@ export default function HeedApp() {
               else calm. Animates 'speaking' during streaming chat (handled by
               the Ask sheet's own MayaOwl). */}
           <MayaOwl size={40} mood={displayTasks.some(t => (t.overdue || 0) >= 7) ? 'worried' : 'calm'}/>
-          <div>
-            <div style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 24, fontWeight: 700, color: C.warmDark, letterSpacing: -0.7, lineHeight: 1 }}>Heed</div>
-            <div className="heed-header-subtitle" style={{ fontSize: 11.5, color: C.inkMute, fontStyle: 'italic', marginTop: 3, letterSpacing: 0.2 }}>The agent that remembers what you forget.</div>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 22, fontWeight: 600, color: C.warmDark, letterSpacing: -0.5, lineHeight: 1.1 }}>{headerGreeting.headline}</div>
+            <div className="heed-header-subtitle" style={{ fontSize: 12, color: C.inkSoft, fontStyle: 'italic', marginTop: 3, lineHeight: 1.4 }}>{headerGreeting.sub}</div>
           </div>
         </div>
         <div className="heed-tab-name" style={{ fontSize: 14, fontWeight: 600, color: C.ink }}>

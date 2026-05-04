@@ -1,5 +1,27 @@
 # Heed — Technical Reference
 
+> **DEPRECATED — moved to a single consolidated tech doc.**
+>
+> All technical documentation is now maintained in **[`docs/Heed_Azure_Setup.docx`](Heed_Azure_Setup.docx)** (Word format).
+>
+> That file is the single source of truth and now covers:
+> - Azure infrastructure provisioning, secrets, and resource inventory
+> - Phase B seed data
+> - Known gaps and next steps
+> - **§9 Security: LLM scope and prompt-injection defense** (new)
+>
+> When you need to update the docs, edit `generate_azure_doc.py` at the repo root and re-run:
+>
+> ```powershell
+> python generate_azure_doc.py
+> ```
+>
+> The content below is kept for historical reference only and may be out of date. Do not edit it — make changes in the generator script instead.
+
+---
+
+# (Historical) Heed — Technical Reference
+
 This is the living technical document for the Heed codebase. It reflects the actual current state, not the original planned architecture. Update it whenever a significant feature ships.
 
 Last updated: 2026-05-04

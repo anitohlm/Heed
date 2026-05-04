@@ -4201,9 +4201,11 @@ function AddContextModal({ open, onClose, onSubmit }) {
 }
 
 // ── AddRoutineModal (simplified) ───────────────────────────────
-function AddRoutineModal({ open, onClose, onSubmit, initialData = null, seedTask = null }) {
+function AddRoutineModal({ open, onClose, onSubmit, initialData = null, seedTask = null, tasks = [] }) {
   const [name, setName] = useState('')
   const [items, setItems] = useState([{ id: 1, name: '' }])
+  const [openPickerIndex, setOpenPickerIndex] = useState(null)
+  const [pickerSearch, setPickerSearch] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const nameRef = useRef(null)
@@ -4246,6 +4248,17 @@ function AddRoutineModal({ open, onClose, onSubmit, initialData = null, seedTask
   }
   if (!open) return null
   const inputStyle = { flex: 1, minWidth: 0, background: C.paper, border: `1px solid ${C.border}`, borderRadius: 6, padding: '7px 10px', fontSize: 13, color: C.ink, outline: 'none', fontFamily: 'inherit' }
+  function filteredTasks() {
+    const q = pickerSearch.toLowerCase()
+    return tasks.filter(t => t.name.toLowerCase().includes(q))
+  }
+
+  function pickTask(idx, task) {
+    setItems(prev => prev.map((it, i) => i === idx ? { ...it, name: task.name } : it))
+    setOpenPickerIndex(null)
+    setPickerSearch('')
+  }
+
   return (
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(44,24,16,0.45)', backdropFilter: 'blur(4px)', animation: 'heed-fadeIn 0.2s ease' }}/>
@@ -5616,7 +5629,7 @@ export default function HeedApp() {
       </footer>
 
       <AddTaskModal open={modalOpen} onClose={() => { setModalOpen(false); setEditingTask(null) }} onSubmit={handleAddTask} onDelete={handleDeleteTask} initialData={editingTask}/>
-      <AddRoutineModal open={routineModalOpen} onClose={() => { setRoutineModalOpen(false); setEditingRoutine(null); setBuildRoutineTask(null) }} onSubmit={handleAddRoutine} initialData={editingRoutine} seedTask={buildRoutineTask}/>
+      <AddRoutineModal open={routineModalOpen} onClose={() => { setRoutineModalOpen(false); setEditingRoutine(null); setBuildRoutineTask(null) }} onSubmit={handleAddRoutine} initialData={editingRoutine} seedTask={buildRoutineTask} tasks={displayTasks}/>
       <AddContextModal open={contextModalOpen} onClose={() => setContextModalOpen(false)} onSubmit={handleAddContext}/>
       <AskInlineModal open={askOpen} onClose={() => setAskOpen(false)} onLightenRoutine={handleLightenRoutine}/>
       <TaskOptionsSheet task={taskOptionsTask} onClose={() => setTaskOptionsTask(null)} onEdit={handleEditTask} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }}/>

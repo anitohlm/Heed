@@ -2756,7 +2756,7 @@ function ContextBanner({ upcomingContexts, onAskHeed }) {
 }
 
 // ── TodayTab ───────────────────────────────────────────────────
-function TodayTab({ tasks, routines, upcomingContexts, skippedTasks = [], onMarkDone, onSkip, onUnskip, onMarkRoutineDone, onSkipRoutineToday, onLightenRoutine, onEditRoutine, onAskHeed, onMoreOptions, onShareCard, onAddTask }) {
+function TodayTab({ tasks, routines, upcomingContexts, skippedTasks = [], userName = '', onMarkDone, onSkip, onUnskip, onMarkRoutineDone, onSkipRoutineToday, onLightenRoutine, onEditRoutine, onAskHeed, onMoreOptions, onShareCard, onAddTask }) {
   const [showSwipeHint, setShowSwipeHint] = useState(() => {
     if (typeof window === 'undefined') return false
     return !localStorage.getItem('heed.swipe-hint-seen')
@@ -2801,11 +2801,39 @@ function TodayTab({ tasks, routines, upcomingContexts, skippedTasks = [], onMark
     ? Math.max(0, Math.ceil((nextContext._startDate - new Date()) / 86400000))
     : null
   const hour = new Date().getHours()
-  const greeting = hour < 5 ? 'Late night' : hour < 12 ? 'Morning' : hour < 17 ? 'Afternoon' : hour < 22 ? 'Evening' : 'Late evening'
+  const greetingTime = hour < 5 ? 'Late night' : hour < 12 ? 'Morning' : hour < 17 ? 'Afternoon' : hour < 22 ? 'Evening' : 'Late evening'
+  // Use the user's first name if they set one. Skip the comma if no name —
+  // "Afternoon." reads cleaner than "Afternoon, ." in that case.
+  const firstName = (userName || '').trim().split(/\s+/)[0]
+  const greetingHeadline = firstName ? `${greetingTime}, ${firstName}.` : `${greetingTime}.`
+  // Sub-line picks the most relevant fact about the user's day so the greeting
+  // feels like Heed *knows* them, not just a clock readout. Priority order:
+  //   1. Critical (7+ day) overdue → "X needs your attention today."
+  //   2. Focus count → "N things on your mind today."
+  //   3. Best routine streak ≥ 3 days → "On a N-day {routine} streak."
+  //   4. Upcoming context → "{Trip} in N days."
+  //   5. Quiet day → "Nothing pressing right now. Good day for what's been waiting."
+  const greetingSub = (() => {
+    const critical = tasks.filter(t => (t.overdue || 0) >= 7).sort((a, b) => (b.overdue || 0) - (a.overdue || 0))[0]
+    if (critical) return `${critical.name} has been waiting ${critical.overdue} days.`
+    if (focusTasks.length > 0) return focusTasks.length === 1
+      ? `One thing on your plate today.`
+      : `${focusTasks.length} things on your plate today.`
+    if (bestStreak && bestStreak.count >= 3) return `On a ${bestStreak.count}-day ${bestStreak.name.toLowerCase()} streak — keep it going.`
+    if (nextContext && nextContextDays !== null && nextContextDays <= 14) {
+      return `${nextContext.desc || nextContext.type} ${nextContextDays === 0 ? 'starts today.' : nextContextDays === 1 ? 'starts tomorrow.' : `in ${nextContextDays} days.`}`
+    }
+    return `Nothing pressing right now. Good day for what's been waiting.`
+  })()
   return (
     <div>
-      <div style={{ fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 500, color: C.warmDark, marginBottom: 14, letterSpacing: -0.2 }}>
-        {greeting}.
+      <div style={{ marginBottom: 18 }}>
+        <div style={{ fontFamily: 'Lora, serif', fontSize: 22, fontWeight: 600, color: C.warmDark, lineHeight: 1.15, letterSpacing: -0.4 }}>
+          {greetingHeadline}
+        </div>
+        <div style={{ fontSize: 13, color: C.inkSoft, marginTop: 4, fontStyle: 'italic', lineHeight: 1.5 }}>
+          {greetingSub}
+        </div>
       </div>
       <ContextBanner upcomingContexts={upcomingContexts} onAskHeed={onAskHeed}/>
       <SectionHeader motif="leaf" count={focusTasks.length}>Focus today</SectionHeader>
@@ -6998,7 +7026,7 @@ export default function HeedApp() {
             replays. Slide-in from a few px right + fade gives a native-feeling
             transition without tracking previous tab for direction. */}
         <div key={tab} style={{ animation: 'heed-tab-in 0.28s cubic-bezier(0.32,0.72,0,1) both', display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
-          {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} upcomingContexts={upcomingContexts} skippedTasks={skippedTasks} onMarkDone={handleMarkDone} onSkip={handleSkip} onUnskip={handleUnskip} onMarkRoutineDone={handleMarkRoutineDone} onSkipRoutineToday={handleSkipRoutineToday} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAskHeed={handleAskHeed} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onAddTask={() => setModalOpen(true)}/>}
+          {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} upcomingContexts={upcomingContexts} skippedTasks={skippedTasks} userName={userName} onMarkDone={handleMarkDone} onSkip={handleSkip} onUnskip={handleUnskip} onMarkRoutineDone={handleMarkRoutineDone} onSkipRoutineToday={handleSkipRoutineToday} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAskHeed={handleAskHeed} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onAddTask={() => setModalOpen(true)}/>}
           {tab === 'calendar' && <CalendarTab tasks={apiTasks} contexts={[...(apiContexts.active||[]), ...(apiContexts.upcoming||[])]} routines={routines} recentSkips={recentSkips} onReschedule={handleReschedule} onMarkDone={handleMarkDone} onSkip={handleSkip} onAddTask={() => setModalOpen(true)} onAddContext={() => setContextModalOpen(true)} onEditRoutine={handleEditRoutine} onApplyRetroSuggestion={handleApplyRetroSuggestion}/>}
           {tab === 'ask' && <AskTab prefill={askPrefill} autoSend={askAutoSend} onAutoSendDone={() => { setAskAutoSend(false); setAskPrefill('') }} onLightenRoutine={handleLightenRoutine} onTaskAdded={() => fetch(`${FUNCTIONS_URL}/api/tasks`).then(r => r.json()).then(d => Array.isArray(d) && setApiTasks(d)).catch(() => {})}/>}
           {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onMarkRoutineDay={handleMarkRoutineDay}/>}

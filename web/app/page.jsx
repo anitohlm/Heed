@@ -654,6 +654,8 @@ function SettingsRow({ children, last = false, onClick }) {
 
 function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, customCategories, onAddCategory, customEventTypes, onAddEventType, onResetAllData, efMode, onSetEfMode }) {
   const [nameVal, setNameVal] = useState(userName)
+  const [nameSaved, setNameSaved] = useState(false)
+  const [pendingTheme, setPendingTheme] = useState(theme)
   const [catIcon, setCatIcon] = useState('✦')
   const [catName, setCatName] = useState('')
   const [catColor, setCatColor] = useState(PRESET_COLORS[0])
@@ -663,7 +665,13 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
   const [evtDays, setEvtDays] = useState('3')
   const [evtOpen, setEvtOpen] = useState(false)
 
-  useEffect(() => { if (open) setNameVal(userName) }, [open, userName])
+  useEffect(() => {
+    if (open) {
+      setNameVal(userName)
+      setNameSaved(false)
+      setPendingTheme(theme)
+    }
+  }, [open, userName, theme])
 
   if (!open) return null
 
@@ -740,14 +748,24 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
                 <input
                   id="settings-name"
                   value={nameVal}
-                  onChange={e => setNameVal(e.target.value)}
-                  onBlur={e => { e.target.style.borderColor = C.border; onUserName(nameVal) }}
+                  onChange={e => { setNameVal(e.target.value); setNameSaved(false) }}
+                  onBlur={e => { e.target.style.borderColor = C.border }}
                   onFocus={e => { e.target.style.borderColor = C.warmDark }}
-                  onKeyDown={e => { if (e.key === 'Enter') e.target.blur() }}
+                  onKeyDown={e => { if (e.key === 'Enter') { onUserName(nameVal); setNameSaved(true) } }}
                   placeholder="Your name"
                   style={{ ...inputSt }}
                   autoComplete="name"
                 />
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
+                  {nameSaved
+                    ? <span style={{ fontSize: 12.5, color: C.sage, fontWeight: 600 }}>✓ Saved</span>
+                    : <button
+                        onClick={() => { onUserName(nameVal); setNameSaved(true) }}
+                        disabled={!nameVal.trim()}
+                        style={{ ...getBtnPrimary(), opacity: !nameVal.trim() ? 0.45 : 1 }}
+                      >Save</button>
+                  }
+                </div>
               </div>
             </div>
 
@@ -762,7 +780,16 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
                   )}
                   <span style={{ fontSize: 15, color: C.ink, fontWeight: 500 }}>Theme</span>
                 </div>
-                <ThemeSwitcher theme={theme} onTheme={onTheme}/>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <ThemeSwitcher theme={pendingTheme} onTheme={setPendingTheme}/>
+                  {pendingTheme === theme
+                    ? <span style={{ fontSize: 12.5, color: C.sage, fontWeight: 600, minWidth: 54, textAlign: 'right' }}>✓ Saved</span>
+                    : <button
+                        onClick={() => onTheme(pendingTheme)}
+                        style={{ ...getBtnPrimary() }}
+                      >Save</button>
+                  }
+                </div>
               </SettingsRow>
             </div>
 
@@ -2093,7 +2120,6 @@ function SwipeHint({ onDismiss }) {
 
 // ── TaskCard ───────────────────────────────────────────────────
 function TaskCard({ task, delay = 0, onMarkDone, onSkip, onMoreOptions, showHint = false, onHintDismiss }) {
-  const [hover, setHover] = useState(false)
   const [completing, setCompleting] = useState(false)
   const completingRef = useRef(false)
   const timerRef = useRef(null)
@@ -2134,13 +2160,11 @@ function TaskCard({ task, delay = 0, onMarkDone, onSkip, onMoreOptions, showHint
         ref={swipeRef}
         className="heed-card"
         onClick={handleCardClick}
-        onMouseEnter={() => setHover(true)}
-        onMouseLeave={() => setHover(false)}
         style={{
           background: `linear-gradient(180deg, ${C.paperHi} 0%, ${C.paper} 100%)`,
           border: `1.5px solid ${isCritical ? C.rust + '44' : C.border}`,
           borderRadius: 12, padding: '14px 16px 14px 20px',
-          boxShadow: hover ? C.shadowMed : C.shadowSoft,
+          boxShadow: C.shadowSoft,
           position: 'relative',
           animation: completing ? 'heed-done-flash 0.22s ease forwards' : 'heed-fadeUp 0.5s ease both',
           animationDelay: completing ? undefined : `${delay}ms`,
@@ -2181,15 +2205,6 @@ function TaskCard({ task, delay = 0, onMarkDone, onSkip, onMoreOptions, showHint
             {!isOverdue && task.dueIn > 0 && <div style={{ fontSize: 12.5, color: C.inkMute }}>{formatRelativeDays(task.dueIn)}</div>}
           </div>
         </div>
-        {hover && (
-          <div className="heed-task-actions" style={{ marginTop: 10, display: 'flex', gap: 6, alignItems: 'center', animation: 'heed-fadeIn 0.2s ease' }}>
-            <button style={getBtnPrimary()} onClick={handleDone}>Mark done</button>
-            <button style={getBtnGhost()} onClick={() => onSkip?.(task)}>Skip</button>
-            <button aria-label="More options" style={{ ...getBtnGhost(), marginLeft: 'auto', width: 32, height: 32, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 7, flexShrink: 0 }} onClick={() => onMoreOptions?.(task)}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="5" cy="12" r="1.5" fill="currentColor"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/><circle cx="19" cy="12" r="1.5" fill="currentColor"/></svg>
-            </button>
-          </div>
-        )}
       </div>
     </div>
   )
@@ -6054,7 +6069,7 @@ function RetrospectiveSheet({ retrospective, onClose, onApplySuggestion }) {
 }
 
 // ── TaskOptionsSheet ───────────────────────────────────────────
-function TaskOptionsSheet({ task, onClose, onEdit, onAddToRoutine, onBuildRoutine }) {
+function TaskOptionsSheet({ task, onClose, onMarkDone, onSkip, onEdit, onAddToRoutine, onBuildRoutine }) {
   if (!task) return null
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 200 }} onClick={onClose}>
@@ -6078,6 +6093,19 @@ function TaskOptionsSheet({ task, onClose, onEdit, onAddToRoutine, onBuildRoutin
         </div>
         <div style={{ height: 1, background: C.hairline, marginBottom: 16 }}/>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {/* primary actions */}
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={() => { onMarkDone?.(task); onClose() }}
+              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '13px 16px', background: C.sage + '18', border: `1.5px solid ${C.sage}55`, borderRadius: 12, cursor: 'pointer', fontFamily: 'inherit' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke={C.sage} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              <span style={{ fontSize: 14, fontWeight: 600, color: C.sage }}>Mark done</span>
+            </button>
+            <button onClick={() => { onSkip?.(task); onClose() }}
+              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '13px 16px', background: C.ochre + '15', border: `1.5px solid ${C.ochre}44`, borderRadius: 12, cursor: 'pointer', fontFamily: 'inherit' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M13 17l5-5-5-5" stroke={C.ochre} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M6 17l5-5-5-5" stroke={C.ochre} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              <span style={{ fontSize: 14, fontWeight: 600, color: C.ochre }}>Skip</span>
+            </button>
+          </div>
           {onEdit && (
             <button onClick={() => { onEdit(task); onClose() }}
               style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', background: C.bellySoft, border: `1.5px solid ${C.border}`, borderRadius: 12, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', transition: 'all 0.15s' }}

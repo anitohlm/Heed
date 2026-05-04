@@ -873,10 +873,44 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
               )}
             </div>
 
-            {/* Data */}
-            {secLabel('Data')}
-            <div style={group}>
-              <SettingsRow last
+            {/* Danger zone — pulled out of the standard list group so the
+                destructive action has visual weight, breathing room, and a
+                clear "this is different" treatment. */}
+            {secLabel('Danger zone')}
+            <div style={{
+              background: C.paper,
+              border: `1px solid ${C.rust}55`,
+              borderRadius: 14,
+              padding: '20px 18px',
+              marginTop: 8,
+              boxShadow: `0 0 0 1px ${C.rust}11 inset`,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 16 }}>
+                <div style={{
+                  flexShrink: 0,
+                  width: 44, height: 44, borderRadius: 11,
+                  background: C.rust + '22',
+                  border: `1px solid ${C.rust}33`,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6" stroke={C.rust} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 600, color: C.ink, marginBottom: 4, letterSpacing: -0.1 }}>
+                    Reset all data
+                  </div>
+                  <div style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.5 }}>
+                    Permanently removes your tasks, routines, plans, contexts, completions, and chat history — on this device and on the server. You'll start with a fresh app.
+                  </div>
+                  <div style={{ fontSize: 11.5, color: C.rust, fontStyle: 'italic', marginTop: 6 }}>
+                    This cannot be undone.
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
                 onClick={() => {
                   if (typeof window === 'undefined') return
                   const ok = window.confirm(
@@ -887,18 +921,26 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
                   )
                   if (!ok) return
                   onResetAllData?.()
-                }}>
-                {iconTile(
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-                    <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" stroke={C.rust} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>,
-                  C.rust + '18'
-                )}
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 15, color: C.rust, fontWeight: 600 }}>Reset all data</div>
-                  <div style={{ fontSize: 12, color: C.inkMute, marginTop: 2 }}>Wipes tasks, routines, plans, and contexts on this device and the server.</div>
-                </div>
-              </SettingsRow>
+                }}
+                style={{
+                  width: '100%',
+                  background: 'transparent',
+                  border: `1.5px solid ${C.rust}88`,
+                  color: C.rust,
+                  padding: '11px 14px',
+                  borderRadius: 10,
+                  fontSize: 13.5,
+                  fontWeight: 700,
+                  fontFamily: 'inherit',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                  letterSpacing: 0.2,
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = C.rust; e.currentTarget.style.color = C.cream }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = C.rust }}
+              >
+                Reset everything
+              </button>
             </div>
 
             {/* About */}

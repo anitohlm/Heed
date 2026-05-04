@@ -4028,7 +4028,7 @@ function AskInlineModal({ open, onClose, onLightenRoutine }) {
 }
 
 // ── AddTaskModal ───────────────────────────────────────────────
-function AddTaskModal({ open, onClose, onSubmit, onDelete, initialData = null }) {
+function AddTaskModal({ open, onClose, onSubmit, onDelete, initialData = null, customCategories = [] }) {
   const isEdit = !!initialData
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   useEffect(() => { if (!open) setConfirmingDelete(false) }, [open])
@@ -4118,6 +4118,11 @@ function AddTaskModal({ open, onClose, onSubmit, onDelete, initialData = null })
               {Object.keys(CATEGORY).map(cat => (
                 <button key={cat} onClick={() => setCategory(cat)} style={{ background: category === cat ? CATEGORY[cat].bg : C.paper, color: category === cat ? CATEGORY[cat].color : C.inkSoft, border: `1.5px solid ${category === cat ? CATEGORY[cat].color : C.border}`, padding: '6px 12px', borderRadius: 999, fontSize: 12, fontWeight: 600, cursor: 'pointer', textTransform: 'capitalize', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.15s' }}>
                   <span style={{ fontSize: 13 }}>{CATEGORY[cat].icon}</span>{cat.replace('_',' ')}
+                </button>
+              ))}
+              {customCategories.map(cat => (
+                <button key={cat.id} onClick={() => setCategory(cat.id)} style={{ background: category === cat.id ? cat.bg : C.paper, color: category === cat.id ? cat.color : C.inkSoft, border: `1.5px solid ${category === cat.id ? cat.color : C.border}`, padding: '6px 12px', borderRadius: 999, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.15s' }}>
+                  <span style={{ fontSize: 13 }}>{cat.icon}</span>{cat.name}
                 </button>
               ))}
             </div>
@@ -5388,8 +5393,19 @@ export default function HeedApp() {
     setUserName(name)
     try { localStorage.setItem('heed-username', name) } catch (_) {}
   }, [])
-  const [customCategories, setCustomCategories] = useState([])
+  const [customCategories, setCustomCategories] = useState(() => {
+    if (typeof window === 'undefined') return []
+    try {
+      const raw = localStorage.getItem('heed.categories.v1')
+      return raw ? JSON.parse(raw) : []
+    } catch { return [] }
+  })
   const [customEventTypes, setCustomEventTypes] = useState([])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try { localStorage.setItem('heed.categories.v1', JSON.stringify(customCategories)) } catch (_) {}
+  }, [customCategories])
 
   useEffect(() => {
     fetch(`${FUNCTIONS_URL}/api/tasks`)
@@ -5827,7 +5843,7 @@ export default function HeedApp() {
         Heed — CWB Hackathon 2026 · Azure OpenAI + Cosmos DB + AI Search
       </footer>
 
-      <AddTaskModal open={modalOpen} onClose={() => { setModalOpen(false); setEditingTask(null) }} onSubmit={handleAddTask} onDelete={handleDeleteTask} initialData={editingTask}/>
+      <AddTaskModal open={modalOpen} onClose={() => { setModalOpen(false); setEditingTask(null) }} onSubmit={handleAddTask} onDelete={handleDeleteTask} initialData={editingTask} customCategories={customCategories}/>
       <AddRoutineModal open={routineModalOpen} onClose={() => { setRoutineModalOpen(false); setEditingRoutine(null); setBuildRoutineTask(null) }} onSubmit={handleAddRoutine} initialData={editingRoutine} seedTask={buildRoutineTask} tasks={displayTasks}/>
       <AddContextModal open={contextModalOpen} onClose={() => setContextModalOpen(false)} onSubmit={handleAddContext}/>
       <AskInlineModal open={askOpen} onClose={() => setAskOpen(false)} onLightenRoutine={handleLightenRoutine}/>

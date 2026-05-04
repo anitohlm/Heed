@@ -5718,6 +5718,7 @@ function AddContextModal({ open, onClose, onSubmit }) {
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [description, setDescription] = useState('')
+  const [notes, setNotes] = useState('')
   const descRef = useRef(null)
   useEffect(() => { if (open && descRef.current) setTimeout(() => descRef.current?.focus(), 50) }, [open])
   useEffect(() => {
@@ -5730,8 +5731,8 @@ function AddContextModal({ open, onClose, onSubmit }) {
   const isValid = description.trim() && startDate && endDate && (new Date(endDate) >= new Date(startDate))
   const submit = () => {
     if (!isValid) return
-    onSubmit({ type, description: description.trim(), startDate, endDate })
-    setType('travel'); setStartDate(''); setEndDate(''); setDescription('')
+    onSubmit({ type, description: description.trim(), notes: notes.trim() || null, startDate, endDate })
+    setType('travel'); setStartDate(''); setEndDate(''); setDescription(''); setNotes('')
     onClose()
   }
   if (!open) return null
@@ -5772,7 +5773,7 @@ function AddContextModal({ open, onClose, onSubmit }) {
               style={inputStyle} onFocus={e=>{e.target.style.borderColor=C.warmDark}} onBlur={e=>{e.target.style.borderColor=C.border}}
             />
           </div>
-          <div style={{ marginBottom: 18, display: 'flex', gap: 10 }}>
+          <div style={{ marginBottom: 14, display: 'flex', gap: 10 }}>
             <div style={{ flex: 1 }}>
               <label style={getFieldLabel()}>From</label>
               <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={{ ...inputStyle, colorScheme: 'dark' }}/>
@@ -5781,6 +5782,14 @@ function AddContextModal({ open, onClose, onSubmit }) {
               <label style={getFieldLabel()}>To</label>
               <input type="date" value={endDate} min={startDate || undefined} onChange={e => setEndDate(e.target.value)} style={{ ...inputStyle, colorScheme: 'dark' }}/>
             </div>
+          </div>
+          <div style={{ marginBottom: 18 }}>
+            <label style={getFieldLabel()}>Notes <span style={{ fontWeight: 400, color: C.inkMute, fontStyle: 'italic' }}>(optional)</span></label>
+            <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Any extra details…"
+              rows={2}
+              style={{ ...inputStyle, resize: 'vertical' }}
+              onFocus={e=>{e.target.style.borderColor=C.warmDark}} onBlur={e=>{e.target.style.borderColor=C.border}}
+            />
           </div>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             <button onClick={onClose} style={getBtnGhost()}>Cancel</button>

@@ -2796,7 +2796,7 @@ function TodayTab({ tasks, routines, upcomingContexts, skippedTasks = [], userNa
   const focusTasks = scoredTasks.slice(0, 3).map(s => s.task)
   const remainingTasks = scoredTasks.slice(3).map(s => s.task)
   const overdueRemaining = remainingTasks.filter(t => t.overdue != null)
-  const upcomingRemaining = remainingTasks.filter(t => t.dueIn !== undefined)
+  const upcomingRemaining = remainingTasks.filter(t => t.dueIn !== undefined && t.dueIn > 0)
   // Empty-state momentum: best routine streak + next upcoming context.
   const bestStreak = (() => {
     let best = { name: '', count: 0 }
@@ -3188,11 +3188,16 @@ const CONTEXT_CHIPS = [
 ]
 
 // ── usePlans — localStorage-backed plan state with backend write-through ──
+function normalizePlan(p) {
+  if (p.type === 'goal' && !p.goalKind) return { ...p, goalKind: 'numeric' }
+  return p
+}
+
 function usePlans(initialPlans) {
   const [plans, setPlans] = useState(() => {
     try {
       const saved = localStorage.getItem('heed_plans')
-      return saved ? JSON.parse(saved) : initialPlans
+      return saved ? JSON.parse(saved).map(normalizePlan) : initialPlans
     } catch {
       return initialPlans
     }
@@ -3206,7 +3211,7 @@ function usePlans(initialPlans) {
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         const items = data && Array.isArray(data.items) ? data.items : null
-        if (items && items.length > 0) setPlans(items)
+        if (items && items.length > 0) setPlans(items.map(normalizePlan))
         else {
           // Backend empty — push current local copy up so a future device finds it.
           let cur
@@ -3913,9 +3918,12 @@ function AddPlanSheet({ onClose, onAdd }) {
 
   const handleSubmit = () => {
     if (!title.trim()) return
-    if (type === 'goal' && goalKind === 'numeric' && (parseFloat(targetAmt) || 0) <= 0) return
+    if (!type) return
+    if (type === 'goal' && goalKind === 'numeric' && (parseFloat(targetAmt) || 0) < 1) return
     const parsedTasks = tasksText.split('\n').map(s => s.trim()).filter(Boolean).map(label => ({ label, done: false }))
-    const plan = { id: `plan-${Date.now()}`, type, icon: PLAN_TYPES.find(p => p.type === type).icon, title: title.trim() }
+    const planType = PLAN_TYPES.find(p => p.type === type)
+    if (!planType) return
+    const plan = { id: `plan-${Date.now()}`, type, icon: planType.icon, title: title.trim() }
     if (type === 'project') { plan.dueDate = dueDate || 'No due date'; plan.tasks = parsedTasks }
     if (type === 'goal' && goalKind === 'milestone') { plan.goalKind = 'milestone'; plan.targetDate = targetDate || 'No date set'; plan.achieved = false }
     if (type === 'goal' && goalKind === 'numeric')   { plan.goalKind = 'numeric'; plan.current = 0; plan.target = parseFloat(targetAmt) || 0; plan.unit = unit || ''; plan.targetDate = targetDate || 'No target date' }
@@ -3986,7 +3994,7 @@ function AddPlanSheet({ onClose, onAdd }) {
                     <label style={labelStyle}>Target amount *</label>
                     <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
                       <input style={{ ...inputStyle, width: 64, marginTop: 0 }} placeholder="₱" value={unit} onChange={e => setUnit(e.target.value)}/>
-                      <input type="number" style={{ ...inputStyle, flex: 1, marginTop: 0 }} placeholder="50000" value={targetAmt} onChange={e => setTargetAmt(e.target.value)}/>
+                      <input type="number" min="1" style={{ ...inputStyle, flex: 1, marginTop: 0 }} placeholder="50000" value={targetAmt} onChange={e => setTargetAmt(e.target.value)}/>
                     </div>
                   </>
                 )}
@@ -4080,6 +4088,7 @@ function GoalUpdateSheet({ plan, onClose, onSave }) {
             </label>
             <input
               type="number"
+              min="0"
               value={val}
               onChange={e => setVal(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && submitNumeric()}
@@ -5098,7 +5107,7 @@ function AskInlineModal({ open, onClose, onLightenRoutine }) {
 function AddTaskModal({ open, onClose, onSubmit, onDelete, initialData = null, customCategories = [] }) {
   const isEdit = !!initialData
   const [confirmingDelete, setConfirmingDelete] = useState(false)
-  useEffect(() => { if (!open) setConfirmingDelete(false) }, [open])
+  useEffect(() => { if (!open) { setConfirmingDelete(false); setShowImportanceInfo(false) } }, [open])
   const [name, setName] = useState('')
   const [category, setCategory] = useState('home')
   const [importance, setImportance] = useState('medium')

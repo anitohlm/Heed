@@ -240,6 +240,85 @@ def task_by_id(req: func.HttpRequest) -> func.HttpResponse:
         return _json_response(task_dict)
 
 
+# ── suggest_tasks ──────────────────────────────────────────────────────────────
+
+@app.route(route="suggest_tasks", methods=["POST", "OPTIONS"])
+def suggest_tasks(req: func.HttpRequest) -> func.HttpResponse:
+    """
+    POST /api/suggest_tasks
+    Body: {"title": "Cook nilaga", "type": "project" | "event"}
+    Returns: {"tasks": ["Find a nilaga recipe", "List ingredients", ...]}
+
+    Lightweight one-shot LLM call (no tools, no streaming). Used when the
+    user taps "✨ Smarter suggestions" while creating a plan. Falls back to
+    the heuristic suggester on the frontend if this fails.
+    """
+    if req.method == "OPTIONS":
+        return func.HttpResponse(status_code=204, headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type",
+        })
+
+    try:
+        body = req.get_json()
+    except ValueError:
+        return _error("Invalid JSON body")
+
+    title = (body.get("title") or "").strip()
+    plan_type = (body.get("type") or "project").strip().lower()
+    if not title:
+        return _error("title required")
+    if len(title) > 200:
+        return _error("title too long", 413)
+    if plan_type not in ("project", "event", "goal"):
+        plan_type = "project"
+
+    system = (
+        "You are a planning assistant for Heed, a personal task app. The user "
+        "is creating a new {kind}. Suggest 5-7 concrete, specific tasks they "
+        "should consider. Each task: a short imperative phrase (3-8 words). "
+        "Match the user's exact domain — if they say 'Cook nilaga', suggest "
+        "Filipino-cooking-specific tasks like 'Buy beef shank' or 'Prep tomatoes "
+        "and onions', not generic 'Plan dish'. If 'Learn guitar', music-learning "
+        "tasks. Be specific to the actual subject named. No corporate phases "
+        "('Define scope', 'Execute first steps') — those are useless. "
+        'Output strict JSON only: {"tasks": ["...", "..."]}.'
+    ).format(kind=plan_type)
+
+    try:
+        from openai import AzureOpenAI
+        client = AzureOpenAI(
+            azure_endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],
+            api_key=os.environ["AZURE_OPENAI_KEY"],
+            api_version="2024-08-01-preview",
+        )
+        deployment = os.environ.get("OPENAI_DEPLOYMENT_ADVISOR", "heed-advisor")
+        resp = client.chat.completions.create(
+            model=deployment,
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": f'{plan_type.capitalize()}: "{title}"'},
+            ],
+            response_format={"type": "json_object"},
+            max_tokens=400,
+            temperature=0.7,
+        )
+        text = resp.choices[0].message.content or "{}"
+        parsed = json.loads(text)
+        tasks_raw = parsed.get("tasks", [])
+        tasks = [
+            t.strip() for t in tasks_raw
+            if isinstance(t, str) and t.strip() and len(t.strip()) <= 80
+        ][:7]
+        if not tasks:
+            return _error("No suggestions returned", 502)
+        return _json_response({"tasks": tasks})
+    except Exception as e:
+        logging.exception("suggest_tasks failed")
+        return _error(f"LLM error: {str(e)}", 502)
+
+
 # ── completions ────────────────────────────────────────────────────────────────
 
 @app.route(route="completions", methods=["POST", "OPTIONS"])

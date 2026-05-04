@@ -3659,14 +3659,45 @@ function AddPlanSheet({ onClose, onAdd }) {
   const [eventDate, setEventDate]     = useState('')
   const [suggestDismissed, setSuggestDismissed] = useState(false)
   const [addedSuggestions, setAddedSuggestions] = useState([])
+  // AI-generated suggestions, when the user opts in via "Smarter suggestions".
+  // null = haven't asked, [] = asked and got nothing (fall back), array = use these
+  const [aiSuggestions, setAiSuggestions] = useState(null)
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiError, setAiError] = useState(null)
 
   const inputStyle = { width: '100%', background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '9px 12px', fontSize: 14, color: C.ink, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box', marginTop: 4 }
   const labelStyle = { fontSize: 12, fontWeight: 600, color: C.inkMute, display: 'block', marginTop: 12 }
 
-  const suggestions = (type === 'project' || type === 'event') && title.trim().length >= 3
+  // Reset AI suggestions whenever the title or type changes — they're stale.
+  useEffect(() => { setAiSuggestions(null); setAiError(null) }, [title, type])
+
+  const heuristicSuggestions = (type === 'project' || type === 'event') && title.trim().length >= 3
     ? getSuggestedTasks(type, title)
     : []
+  const suggestions = aiSuggestions && aiSuggestions.length > 0 ? aiSuggestions : heuristicSuggestions
   const showSuggest = suggestions.length > 0 && !suggestDismissed
+
+  const fetchSmarterSuggestions = async () => {
+    if (!title.trim() || aiLoading) return
+    setAiLoading(true); setAiError(null)
+    try {
+      const resp = await fetch(`${FUNCTIONS_URL}/api/suggest_tasks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: title.trim(), type }),
+      })
+      if (!resp.ok) throw new Error('Request failed')
+      const data = await resp.json()
+      const tasks = Array.isArray(data?.tasks) ? data.tasks.filter(t => typeof t === 'string' && t.trim()).slice(0, 8) : []
+      if (tasks.length === 0) throw new Error('No suggestions returned')
+      setAiSuggestions(tasks)
+      setAddedSuggestions(prev => prev.filter(item => tasks.includes(item)))
+    } catch (err) {
+      setAiError("Couldn't reach Heed — keeping the basic suggestions.")
+    } finally {
+      setAiLoading(false)
+    }
+  }
 
   const addSuggestion = (item) => {
     if (addedSuggestions.includes(item)) return
@@ -3706,6 +3737,39 @@ function AddPlanSheet({ onClose, onAdd }) {
           )
         })}
       </div>
+      {/* Smarter suggestions — opt-in LLM call. Shown only when AI hasn't
+          replaced the chips yet. After it succeeds, the button hides
+          (chips above are now AI-generated). */}
+      {!aiSuggestions && (
+        <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button
+            type="button"
+            onClick={fetchSmarterSuggestions}
+            disabled={aiLoading || !title.trim()}
+            style={{
+              background: 'transparent',
+              border: `1px dashed ${C.warmDark}66`,
+              color: C.warmDark,
+              padding: '5px 11px',
+              borderRadius: 999,
+              fontSize: 11.5,
+              fontWeight: 600,
+              cursor: aiLoading || !title.trim() ? 'default' : 'pointer',
+              fontFamily: 'inherit',
+              opacity: aiLoading || !title.trim() ? 0.5 : 1,
+              display: 'inline-flex', alignItems: 'center', gap: 5,
+              transition: 'all 0.15s',
+            }}>
+            {aiLoading
+              ? <><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', border: `1.5px solid ${C.warmDark}33`, borderTopColor: C.warmDark, animation: 'heed-spin 0.8s linear infinite' }}/> Thinking…</>
+              : <>✨ Smarter suggestions</>
+            }
+          </button>
+          {aiError && (
+            <span style={{ fontSize: 11, color: C.rust, fontStyle: 'italic' }}>{aiError}</span>
+          )}
+        </div>
+      )}
     </div>
   )
 
@@ -6702,6 +6766,7 @@ export default function HeedApp() {
         @keyframes heed-dropdown { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
         @keyframes heed-tab-in { from { opacity:0; transform:translateX(12px); } to { opacity:1; transform:translateX(0); } }
         @keyframes heed-toast-up { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes heed-spin { from { transform:rotate(0deg); } to { transform:rotate(360deg); } }
         @keyframes heed-fadeIn { from { opacity:0; } to { opacity:1; } }
         @keyframes heed-pulse { 0%,100% { opacity:0.4; transform:translateX(-50%) scale(1); } 50% { opacity:1; transform:translateX(-50%) scale(1.4); } }
         @keyframes heed-breathe { 0%,100% { opacity:0.5; transform:scale(1); } 50% { opacity:0.85; transform:scale(1.05); } }

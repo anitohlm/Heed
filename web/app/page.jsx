@@ -3413,7 +3413,7 @@ function TodayTab({ tasks, routines, plans = [], upcomingContexts, skippedTasks 
           <div style={{ marginTop: 28 }}>
             <SectionHeader motif="branch" count={inProgress.length}>Plans</SectionHeader>
             {inProgress.map((p, i) => (
-              <PlanCard key={p.id} plan={p} delay={i * 50} onSelectPlan={onNavigateToPlans ? () => onNavigateToPlans() : undefined}/>
+              <TodayPlanCard key={p.id} plan={p} delay={i * 50} onSelect={onNavigateToPlans ? () => onNavigateToPlans() : undefined}/>
             ))}
           </div>
         )
@@ -3954,6 +3954,166 @@ function PlanCard({ plan, delay = 0, onSelectPlan }) {
         </div>
       )}
 
+    </div>
+  )
+}
+
+// ── TodayPlanCard ──────────────────────────────────────────────
+// Compact, glanceable plan card for the Today tab. Distinct from the full
+// PlanCard used on Life: smaller footprint, accent-colored type stripe on
+// the left, and a circular progress ring on the right (instead of a linear
+// bar) so the eye lands on completion immediately. Tap → Life tab via the
+// onSelect callback.
+function TodayPlanCard({ plan, delay = 0, onSelect }) {
+  const accent = plan.type === 'project' ? C.rust
+                : plan.type === 'goal'    ? C.ochre
+                :                            C.sage
+  // Type-specific computed fields.
+  const data = (() => {
+    if (plan.type === 'project') {
+      const tasks = plan.tasks || []
+      const done = tasks.filter(t => t.done).length
+      const total = tasks.length
+      const pct = total > 0 ? Math.round(done / total * 100) : 0
+      const nextTask = tasks.find(t => !t.done)
+      return {
+        pct,
+        showRing: true,
+        line2: nextTask ? `Next — ${nextTask.label}` : 'All tasks done',
+      }
+    }
+    if (plan.type === 'goal') {
+      if (plan.goalKind === 'milestone') {
+        return {
+          pct: plan.achieved ? 100 : 0,
+          showRing: false,
+          line2: plan.achieved ? '✓ Achieved' : (plan.targetDate && plan.targetDate !== 'No date set' ? `Target ${plan.targetDate}` : 'In progress'),
+          milestone: true,
+        }
+      }
+      const cur = plan.current ?? 0
+      const tgt = plan.target ?? 0
+      const pct = tgt > 0 ? Math.round(cur / tgt * 100) : 0
+      const remaining = Math.max(0, tgt - cur)
+      return {
+        pct,
+        showRing: true,
+        line2: `${plan.unit || ''}${remaining.toLocaleString()} to go`,
+      }
+    }
+    // event
+    const date = plan.eventDate ? new Date(plan.eventDate) : null
+    const days = date && !isNaN(date) ? Math.round((date - new Date()) / 86400000) : null
+    const undone = (plan.tasks || []).filter(t => !t.done).length
+    let line2
+    if (days === null) line2 = 'No date set'
+    else if (days <= 0) line2 = 'Today!'
+    else if (days === 1) line2 = 'Tomorrow'
+    else line2 = `in ${days} days`
+    return {
+      pct: 0,
+      showRing: false,
+      line2,
+      eventBadge: undone > 0 ? `${undone} to do` : '✓ Ready',
+      days,
+    }
+  })()
+
+  return (
+    <div
+      onClick={onSelect}
+      role={onSelect ? 'button' : undefined}
+      tabIndex={onSelect ? 0 : undefined}
+      onKeyDown={onSelect ? (e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect() } }) : undefined}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 14,
+        padding: '12px 14px 12px 16px',
+        background: `linear-gradient(180deg, ${C.paperHi} 0%, ${C.paper} 100%)`,
+        border: `1px solid ${C.border}`,
+        borderLeft: `3px solid ${accent}`,
+        borderRadius: 12,
+        marginBottom: 10,
+        cursor: onSelect ? 'pointer' : 'default',
+        animation: 'heed-fadeUp 0.5s ease both',
+        animationDelay: `${delay}ms`,
+        boxShadow: C.shadowSoft,
+        userSelect: 'none',
+      }}
+    >
+      <div style={{
+        width: 38, height: 38, borderRadius: 10,
+        background: `${accent}1f`,
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 18, flexShrink: 0,
+      }}>{plan.icon || '📌'}</div>
+
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{
+          fontFamily: 'Lora, serif',
+          fontSize: 14.5, fontWeight: 600,
+          color: C.ink,
+          letterSpacing: -0.2,
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+        }}>{plan.title}</div>
+        <div style={{
+          fontSize: 11.5, color: C.inkMute, marginTop: 2, fontStyle: 'italic',
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+        }}>{data.line2}</div>
+      </div>
+
+      {data.showRing ? (
+        <div style={{ position: 'relative', width: 38, height: 38, flexShrink: 0 }} aria-label={`${data.pct} percent complete`}>
+          <svg width="38" height="38" viewBox="0 0 38 38">
+            <circle cx="19" cy="19" r="15.5" fill="none" stroke={C.border} strokeWidth="2.5"/>
+            <circle
+              cx="19" cy="19" r="15.5" fill="none"
+              stroke={accent} strokeWidth="2.5"
+              strokeDasharray={`${(data.pct / 100) * 97.39} 97.39`}
+              strokeLinecap="round"
+              transform="rotate(-90 19 19)"
+              style={{ transition: 'stroke-dasharray 0.45s cubic-bezier(0.4, 0, 0.2, 1)' }}
+            />
+          </svg>
+          <div style={{
+            position: 'absolute', inset: 0, display: 'flex',
+            alignItems: 'center', justifyContent: 'center',
+            fontSize: 10.5, fontWeight: 700, color: accent,
+            letterSpacing: -0.3,
+          }}>{data.pct}%</div>
+        </div>
+      ) : data.milestone ? (
+        <span style={{
+          fontSize: 11, fontWeight: 700,
+          color: data.pct === 100 ? C.sage : C.ochre,
+          background: data.pct === 100 ? C.sageSoft : C.ochreSoft,
+          border: `1px solid ${(data.pct === 100 ? C.sage : C.ochre)}40`,
+          borderRadius: 999,
+          padding: '4px 10px',
+          flexShrink: 0,
+          whiteSpace: 'nowrap',
+        }}>{data.pct === 100 ? 'Done' : 'In progress'}</span>
+      ) : (
+        // event — show pill with days or "to do" count
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
+          {data.days !== null && data.days >= 0 && data.days <= 7 && (
+            <span style={{
+              fontFamily: 'Lora, serif',
+              fontSize: 18, fontWeight: 600, color: accent, lineHeight: 1, letterSpacing: -0.4,
+            }}>{data.days === 0 ? '!' : `${data.days}d`}</span>
+          )}
+          <span style={{
+            fontSize: 10.5, fontWeight: 600,
+            color: accent,
+            background: `${accent}1a`,
+            border: `1px solid ${accent}40`,
+            borderRadius: 999,
+            padding: '2px 8px',
+            whiteSpace: 'nowrap',
+          }}>{data.eventBadge}</span>
+        </div>
+      )}
     </div>
   )
 }

@@ -708,6 +708,181 @@ def reset_user_data(req: func.HttpRequest) -> func.HttpResponse:
     return _json_response({"ok": True, "wiped": wiped})
 
 
+# ── seed (load curated demo data so judges see Focus Today populated) ─────────
+
+@app.route(route="seed", methods=["POST", "OPTIONS"])
+def seed_demo_data(req: func.HttpRequest) -> func.HttpResponse:
+    """
+    POST /api/seed
+    Wipes the demo user's data, then inserts a curated demo set —
+    daily-cadence tasks due today, a couple of overdue items, a few
+    upcoming, two routines, and three plans. Designed so a fresh
+    judge opening the app sees Focus Today populated and the rest
+    of the surfaces realistic.
+    """
+    if req.method == "OPTIONS":
+        return func.HttpResponse(status_code=204, headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type",
+        })
+
+    from datetime import datetime, timezone, timedelta
+    import uuid
+
+    db = cosmos_tool._get_database()
+
+    # 1) Wipe — same set as /api/reset.
+    for cname in ("tasks", "completions", "user_context", _USER_STATE_CONTAINER_NAME):
+        try:
+            container = db.get_container_client(cname)
+            for item in container.query_items(
+                query="SELECT c.id, c.user_id FROM c WHERE c.user_id = @uid",
+                parameters=[{"name": "@uid", "value": USER_ID}],
+                enable_cross_partition_query=True,
+            ):
+                try:
+                    container.delete_item(item=item["id"], partition_key=item.get("user_id", USER_ID))
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+    # 2) Seed tasks. Mix of:
+    #    - 3 daily tasks due today (dueIn === 0) → drives Focus Today
+    #    - 2 overdue (will also land in Focus Today)
+    #    - 3 upcoming (drop into "Also upcoming" behind See-all)
+    now = datetime.now(timezone.utc)
+    def iso(d): return d.isoformat().replace("+00:00", "Z")
+    def days(n): return now + timedelta(days=n)
+
+    seed_tasks = [
+        # Due today
+        {"name": "Take vitamins",          "category": "health",        "importance": "high",   "explicit_cadence_days": 1,  "next_due_at": iso(days(0)),  "last_done_at": iso(days(-1))},
+        {"name": "Drink 8 cups of water",  "category": "health",        "importance": "medium", "explicit_cadence_days": 1,  "next_due_at": iso(days(0)),  "last_done_at": iso(days(-1))},
+        {"name": "Quick journal",          "category": "health",        "importance": "low",    "explicit_cadence_days": 1,  "next_due_at": iso(days(0)),  "last_done_at": iso(days(-1))},
+        # Overdue
+        {"name": "Pay electricity bill",   "category": "finance",       "importance": "high",   "explicit_cadence_days": 30, "next_due_at": iso(days(-3)), "last_done_at": iso(days(-33))},
+        {"name": "Call Mom",               "category": "relationships", "importance": "high",   "learned_cadence_days": 7,   "next_due_at": iso(days(-2)), "last_done_at": iso(days(-9))},
+        # Upcoming
+        {"name": "Refill water dispenser", "category": "home",          "importance": "medium", "explicit_cadence_days": 14, "next_due_at": iso(days(2)),  "last_done_at": iso(days(-12))},
+        {"name": "Clean bathroom",         "category": "home",          "importance": "medium", "explicit_cadence_days": 14, "next_due_at": iso(days(4)),  "last_done_at": iso(days(-10))},
+        {"name": "Back up photos",         "category": "admin",         "importance": "low",    "explicit_cadence_days": 30, "next_due_at": iso(days(7)),  "last_done_at": iso(days(-23))},
+    ]
+
+    tasks_container = db.get_container_client("tasks")
+    for t in seed_tasks:
+        task_doc = {
+            "id": f"task_seed_{uuid.uuid4().hex[:10]}",
+            "user_id": USER_ID,
+            "name": t["name"],
+            "description": t.get("description"),
+            "category": t["category"],
+            "importance": t["importance"],
+            "status": "active",
+            "created_at": iso(days(-30)),
+            "explicit_cadence_days": t.get("explicit_cadence_days"),
+            "learned_cadence_days": t.get("learned_cadence_days"),
+            "learned_confidence": 0.85 if t.get("learned_cadence_days") else None,
+            "last_done_at": t.get("last_done_at"),
+            "next_due_at": t["next_due_at"],
+        }
+        try:
+            tasks_container.create_item(body=task_doc)
+        except Exception:
+            logging.exception(f"seed task insert failed: {t['name']}")
+
+    # 3) Seed routines — single doc in user_state.
+    state_container = _ensure_user_state_container()
+    routines = [
+        {
+            "id": "morning",
+            "name": "Morning routine",
+            "schedule": "Weekdays, ~7:00 AM",
+            "items": ["Stretch (5 min)", "Vitamin D + B-complex", "Make coffee", "Quick journal"],
+            "completion14d": [True, True, True, True, False, False, True, True, True, False, True, True, False, False],
+        },
+        {
+            "id": "evening",
+            "name": "Evening wind-down",
+            "schedule": "Daily, ~10:00 PM",
+            "items": ["Phone away", "Read 10 pages", "Lights out by 11"],
+            "completion14d": [True, True, True, True, True, True, True, True, True, True, True, True, True, False],
+        },
+    ]
+    try:
+        state_container.upsert_item({
+            "id": f"{USER_ID}__routines",
+            "user_id": USER_ID,
+            "kind": "routines",
+            "items": routines,
+        })
+    except Exception:
+        logging.exception("seed routines upsert failed")
+
+    # 4) Seed plans.
+    plans = [
+        {
+            "id": "plan_demo_project",
+            "type": "project",
+            "icon": "🍳",
+            "title": "Cook nilaga this weekend",
+            "description": "Sunday family lunch",
+            "dueDate": iso(days(3))[:10],
+            "tasks": [
+                {"label": "Find a nilaga recipe", "done": True},
+                {"label": "List ingredients", "done": True},
+                {"label": "Buy beef + vegetables", "done": False},
+                {"label": "Prep mise en place", "done": False},
+                {"label": "Cook and serve", "done": False},
+            ],
+        },
+        {
+            "id": "plan_demo_goal",
+            "type": "goal",
+            "goalKind": "numeric",
+            "icon": "💰",
+            "title": "Save for Singapore trip",
+            "description": "Jun 5 — Jun 9 trip",
+            "target": 50000,
+            "current": 32500,
+            "unit": "₱",
+            "targetDate": iso(days(32))[:10],
+            "tasks": [],
+        },
+        {
+            "id": "plan_demo_event",
+            "type": "event",
+            "icon": "🎂",
+            "title": "Maya's birthday",
+            "description": "Plan a small dinner",
+            "eventDate": iso(days(12)),
+            "tasks": [
+                {"label": "Pick a venue", "done": True},
+                {"label": "Order cake", "done": False},
+                {"label": "Send invites", "done": False},
+                {"label": "Buy gift", "done": False},
+            ],
+        },
+    ]
+    try:
+        state_container.upsert_item({
+            "id": f"{USER_ID}__plans",
+            "user_id": USER_ID,
+            "kind": "plans",
+            "items": plans,
+        })
+    except Exception:
+        logging.exception("seed plans upsert failed")
+
+    return _json_response({
+        "ok": True,
+        "tasks": len(seed_tasks),
+        "routines": len(routines),
+        "plans": len(plans),
+    })
+
+
 @app.timer_trigger(
     schedule="0 0 */6 * * *",  # every 6 hours
     arg_name="timer",

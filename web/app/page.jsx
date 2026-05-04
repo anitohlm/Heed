@@ -652,7 +652,7 @@ function SettingsRow({ children, last = false, onClick }) {
   )
 }
 
-function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, customCategories, onAddCategory, customEventTypes, onAddEventType, onResetAllData, efMode, onSetEfMode }) {
+function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, customCategories, onAddCategory, customEventTypes, onAddEventType, onResetAllData, onLoadDemoData, efMode, onSetEfMode }) {
   const [nameVal, setNameVal] = useState(userName)
   const [nameSaved, setNameSaved] = useState(false)
   const [pendingTheme, setPendingTheme] = useState(theme)
@@ -957,6 +957,79 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
                 </span>
               </SettingsRow>
             </div>
+
+            {/* Demo data — replaces existing data with a curated seed.
+                Useful for hackathon judges or for resetting to a known
+                "everything populated" state for screenshots. */}
+            {onLoadDemoData && secLabel('Demo data')}
+            {onLoadDemoData && (
+              <div style={{
+                background: C.paper,
+                border: `1px solid ${C.sage}55`,
+                borderRadius: 14,
+                padding: '20px 18px',
+                marginTop: 8,
+                boxShadow: `0 0 0 1px ${C.sage}11 inset`,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 16 }}>
+                  <div style={{
+                    flexShrink: 0,
+                    width: 44, height: 44, borderRadius: 11,
+                    background: C.sage + '22',
+                    border: `1px solid ${C.sage}33`,
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path d="M12 3v18M3 12h18" stroke={C.sage} strokeWidth="1.8" strokeLinecap="round"/>
+                      <circle cx="12" cy="12" r="9" stroke={C.sage} strokeWidth="1.8"/>
+                    </svg>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 600, color: C.ink, marginBottom: 4, letterSpacing: -0.1 }}>
+                      Load demo data
+                    </div>
+                    <div style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.5 }}>
+                      Replaces everything with a curated demo set: tasks due today, two routines, three plans. Designed so a fresh look at the app shows Focus Today populated.
+                    </div>
+                    <div style={{ fontSize: 11.5, color: C.ochre, fontStyle: 'italic', marginTop: 6 }}>
+                      Overwrites your current tasks, routines, and plans.
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (typeof window === 'undefined') return
+                    const ok = window.confirm(
+                      'Load demo data?\n\n' +
+                      'This wipes your current tasks, routines, plans, and chat history, ' +
+                      'then loads a curated demo set so Focus Today is populated. ' +
+                      'Use this if you want a fresh, judge-ready view.'
+                    )
+                    if (!ok) return
+                    onLoadDemoData()
+                  }}
+                  style={{
+                    width: '100%',
+                    background: 'transparent',
+                    border: `1.5px solid ${C.sage}99`,
+                    color: C.sage,
+                    padding: '11px 14px',
+                    borderRadius: 10,
+                    fontSize: 13.5,
+                    fontWeight: 700,
+                    fontFamily: 'inherit',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                    letterSpacing: 0.2,
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = C.sage; e.currentTarget.style.color = C.cream }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = C.sage }}
+                >
+                  Load demo data
+                </button>
+              </div>
+            )}
 
             {/* Danger zone — pulled out of the standard list group so the
                 destructive action has visual weight, breathing room, and a
@@ -3071,7 +3144,7 @@ function ContextBanner({ upcomingContexts, onAskHeed }) {
 }
 
 // ── TodayTab ───────────────────────────────────────────────────
-function TodayTab({ tasks, routines, upcomingContexts, skippedTasks = [], userName = '', efMode = false, onSetEfMode, onMarkDone, onSkip, onUnskip, onMarkRoutineDone, onSkipRoutineToday, onLightenRoutine, onEditRoutine, onAskHeed, onMoreOptions, onShareCard, onAddTask, onEditTask, onAddToRoutine, onBuildRoutine }) {
+function TodayTab({ tasks, routines, plans = [], upcomingContexts, skippedTasks = [], userName = '', efMode = false, onSetEfMode, onMarkDone, onSkip, onUnskip, onMarkRoutineDone, onSkipRoutineToday, onLightenRoutine, onEditRoutine, onAskHeed, onMoreOptions, onShareCard, onAddTask, onEditTask, onAddToRoutine, onBuildRoutine, onNavigateToPlans }) {
   const [showSwipeHint, setShowSwipeHint] = useState(() => {
     if (typeof window === 'undefined') return false
     return !localStorage.getItem('heed.swipe-hint-seen')
@@ -3236,6 +3309,30 @@ function TodayTab({ tasks, routines, upcomingContexts, skippedTasks = [], userNa
         <SectionHeader motif="stem" count={routines.length}>Routines</SectionHeader>
         {routines.map((r, i) => <RoutineRow key={r.id} routine={r} delay={i * 80} onMarkDone={onMarkRoutineDone} onSkipToday={onSkipRoutineToday} onLighten={onLightenRoutine}/>)}
       </div>
+      {(() => {
+        // Show plans that are still in progress: projects with undone tasks,
+        // numeric goals not yet hit, milestone goals not yet achieved, and
+        // any future event. Cap at 3 so Today stays glanceable.
+        const inProgress = plans.filter(p => {
+          if (p.type === 'project') return Array.isArray(p.tasks) && p.tasks.some(t => !t.done)
+          if (p.type === 'goal') return p.goalKind === 'milestone' ? !p.achieved : (p.current ?? 0) < (p.target ?? 0)
+          if (p.type === 'event') {
+            if (!p.eventDate) return true
+            const d = new Date(p.eventDate)
+            return !isNaN(d) && d >= new Date(new Date().toDateString())
+          }
+          return true
+        }).slice(0, 3)
+        if (inProgress.length === 0) return null
+        return (
+          <div style={{ marginTop: 28 }}>
+            <SectionHeader motif="branch" count={inProgress.length}>Plans</SectionHeader>
+            {inProgress.map((p, i) => (
+              <PlanCard key={p.id} plan={p} delay={i * 50} onSelectPlan={onNavigateToPlans ? () => onNavigateToPlans() : undefined}/>
+            ))}
+          </div>
+        )
+      })()}
       <div style={{ marginTop: 22 }}>
         <div style={{ fontSize: 11.5, fontWeight: 500, color: C.inkMute, textAlign: 'center', marginBottom: 10, fontFamily: 'inherit' }}>Anything else?</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
@@ -4630,9 +4727,8 @@ function LifeEventsPanel({ allUpcoming, activeContext, onAddContext, onQuickCont
 }
 
 // ── LifeTab ──────────────────────────────────────────────────────
-function LifeTab({ upcoming, active, activeContext, onAddContext, onQuickContext, onImBetter, onExtend, onDetailOpen }) {
+function LifeTab({ upcoming, active, activeContext, plansHook, onAddContext, onQuickContext, onImBetter, onExtend, onDetailOpen }) {
   const [subtab, setSubtab] = useState('plans')
-  const plansHook = usePlans(DEMO_PLANS)
   const allUpcoming = [...(active || []).map(mapApiContext), ...(upcoming || []).map(mapApiContext)]
   return (
     <div>
@@ -5432,7 +5528,7 @@ function HeedFAB({ onAddTask, onAskHeed, onAddRoutine }) {
     <>
       {open && <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 49, background: 'rgba(44,24,16,0.18)', animation: 'heed-fadeIn 0.18s ease' }}/>}
       {open && (
-        <div style={{ position: 'fixed', bottom: 110, right: 28, zIndex: 51, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10 }}>
+        <div style={{ position: 'fixed', bottom: 96, right: 28, zIndex: 51, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10 }}>
           <SpeedDialItem label="Add a task" sublabel="Track something new" icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="3.5" stroke="currentColor" strokeWidth="1.9"/><path d="M12 8v8M8 12h8" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"/></svg>} iconBg={C.ochre} iconFg={C.warmDeep} onClick={() => { setOpen(false); onAddTask() }} delay={0}/>
           <SpeedDialItem label="Build a routine" sublabel="A cluster of things together" icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M17 2l4 4-4 4" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"/><path d="M3 11V9a4 4 0 0 1 4-4h14" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"/><path d="M7 22l-4-4 4-4" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"/><path d="M21 13v2a4 4 0 0 1-4 4H3" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"/></svg>} iconBg={C.sage} iconFg={C.cream} onClick={() => { setOpen(false); onAddRoutine() }} delay={50}/>
           <SpeedDialItem label="Ask Heed" sublabel="Get answers from anywhere" icon={<MayaOwl size={22} idle={false}/>} iconBg={C.bellySoft} iconFg={C.warmDark} onClick={() => { setOpen(false); onAskHeed() }} delay={100}/>
@@ -5440,11 +5536,11 @@ function HeedFAB({ onAddTask, onAskHeed, onAddRoutine }) {
       )}
       <button className="heed-fab-btn" onClick={() => setOpen(o => !o)} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
         aria-label={open ? 'Close menu' : 'Open Heed menu'} aria-expanded={open}
-        style={{ position: 'fixed', bottom: 28, right: 28, width: 64, height: 64, borderRadius: '50%', border: 'none', background: `radial-gradient(circle at 35% 30%, ${C.warm} 0%, ${C.warmDark} 70%, ${C.warmDeep} 100%)`, cursor: 'pointer', boxShadow: (hover || open) ? '0 12px 32px rgba(124,83,51,0.35), 0 0 0 6px rgba(212,162,76,0.15)' : '0 6px 18px rgba(124,83,51,0.30)', transform: open ? 'rotate(45deg) scale(1.05)' : hover ? 'translateY(-3px) scale(1.05)' : 'none', transition: 'all 0.3s cubic-bezier(0.34,1.56,0.64,1)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, zIndex: 52 }}>
+        style={{ position: 'fixed', bottom: 28, right: 28, width: 52, height: 52, borderRadius: '50%', border: 'none', background: `radial-gradient(circle at 35% 30%, ${C.warm} 0%, ${C.warmDark} 70%, ${C.warmDeep} 100%)`, cursor: 'pointer', boxShadow: (hover || open) ? '0 12px 32px rgba(124,83,51,0.35), 0 0 0 6px rgba(212,162,76,0.15)' : '0 6px 18px rgba(124,83,51,0.30)', transform: open ? 'rotate(45deg) scale(1.05)' : hover ? 'translateY(-3px) scale(1.05)' : 'none', transition: 'all 0.3s cubic-bezier(0.34,1.56,0.64,1)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, zIndex: 52 }}>
         <div style={{ position: 'relative', animation: (hover && !open) ? 'heed-bob 0.6s ease-in-out infinite' : 'none', transform: open ? 'rotate(-45deg)' : 'none', transition: 'transform 0.3s cubic-bezier(0.34,1.56,0.64,1)' }}>
-          <MayaOwl size={42} idle={false}/>
+          <MayaOwl size={32} idle={false}/>
         </div>
-        <div style={{ position: 'absolute', top: 4, right: 4, width: 20, height: 20, borderRadius: '50%', background: open ? C.rust : C.ochre, color: open ? C.cream : C.warmDeep, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 700, lineHeight: 1, boxShadow: '0 2px 6px rgba(0,0,0,0.2)', border: `2px solid ${C.cream}`, transition: 'background 0.2s' }}>+</div>
+        <div style={{ position: 'absolute', top: 2, right: 2, width: 16, height: 16, borderRadius: '50%', background: open ? C.rust : C.ochre, color: open ? C.cream : C.warmDeep, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, lineHeight: 1, boxShadow: '0 2px 6px rgba(0,0,0,0.2)', border: `2px solid ${C.cream}`, transition: 'background 0.2s' }}>+</div>
       </button>
     </>
   )
@@ -6985,6 +7081,9 @@ export default function HeedApp() {
       body: JSON.stringify({ items: routines }),
     }).catch(() => {})
   }, [routines, FUNCTIONS_URL])
+  // Plans live at HeedApp level so both Today (read-only summary) and Life
+  // (full management surface) share one source of truth.
+  const plansHook = usePlans(DEMO_PLANS)
   const [tab, setTab] = useState('today')
   const [theme, setTheme] = useState(DEFAULT_THEME)
   setThemeState(theme)
@@ -7282,6 +7381,27 @@ export default function HeedApp() {
     }
   }, [FUNCTIONS_URL])
 
+  // Calls the backend /api/seed which wipes the demo user and inserts a
+  // curated demo set. Then we reload — the fresh fetch picks up the new
+  // tasks/routines/plans cleanly and localStorage no longer has stale
+  // copies that would override the seeded backend state.
+  const handleLoadDemoData = useCallback(async () => {
+    try {
+      await fetch(`${FUNCTIONS_URL}/api/seed`, { method: 'POST' })
+    } catch (_) {}
+    if (typeof window !== 'undefined') {
+      try {
+        const keysToWipe = []
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i)
+          if (k && (k.startsWith('heed.') || k.startsWith('heed_'))) keysToWipe.push(k)
+        }
+        keysToWipe.forEach(k => localStorage.removeItem(k))
+      } catch (_) {}
+      window.location.reload()
+    }
+  }, [FUNCTIONS_URL])
+
   // succeeded so the sheet can mark it as ✓. Phase 2 wires adjust_cadence
   // (PATCH /api/tasks/{id}); other action_types fall through to no-op.
   const handleApplyRetroSuggestion = useCallback(async (suggestion) => {
@@ -7542,11 +7662,11 @@ export default function HeedApp() {
             replays. Slide-in from a few px right + fade gives a native-feeling
             transition without tracking previous tab for direction. */}
         <div key={tab} style={{ animation: 'heed-tab-in 0.28s cubic-bezier(0.32,0.72,0,1) both', display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
-          {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} upcomingContexts={upcomingContexts} skippedTasks={skippedTasks} userName={userName} efMode={efMode} onSetEfMode={handleSetEfMode} onMarkDone={handleMarkDone} onSkip={handleSkip} onUnskip={handleUnskip} onMarkRoutineDone={handleMarkRoutineDone} onSkipRoutineToday={handleSkipRoutineToday} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAskHeed={handleAskHeed} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onAddTask={() => setModalOpen(true)} onEditTask={handleEditTask} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }}/>}
+          {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} plans={plansHook.plans} upcomingContexts={upcomingContexts} skippedTasks={skippedTasks} userName={userName} efMode={efMode} onSetEfMode={handleSetEfMode} onMarkDone={handleMarkDone} onSkip={handleSkip} onUnskip={handleUnskip} onMarkRoutineDone={handleMarkRoutineDone} onSkipRoutineToday={handleSkipRoutineToday} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAskHeed={handleAskHeed} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onAddTask={() => setModalOpen(true)} onEditTask={handleEditTask} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }} onNavigateToPlans={() => setTab('context')}/>}
           {tab === 'calendar' && <CalendarTab tasks={apiTasks} contexts={[...(apiContexts.active||[]), ...(apiContexts.upcoming||[])]} routines={routines} recentSkips={recentSkips} onReschedule={handleReschedule} onMarkDone={handleMarkDone} onSkip={handleSkip} onAddTask={() => setModalOpen(true)} onAddContext={() => setContextModalOpen(true)} onEditRoutine={handleEditRoutine} onApplyRetroSuggestion={handleApplyRetroSuggestion}/>}
           {tab === 'ask' && <AskTab prefill={askPrefill} autoSend={askAutoSend} onAutoSendDone={() => { setAskAutoSend(false); setAskPrefill('') }} onLightenRoutine={handleLightenRoutine} onTaskAdded={() => fetch(`${FUNCTIONS_URL}/api/tasks`).then(r => r.json()).then(d => Array.isArray(d) && setApiTasks(d)).catch(() => {})}/>}
           {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onMarkRoutineDay={handleMarkRoutineDay} onEditTask={handleEditTask} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }}/>}
-          {tab === 'context' && <LifeTab upcoming={apiContexts.upcoming} active={apiContexts.active} activeContext={activeContext} onAddContext={() => setContextModalOpen(true)} onQuickContext={type => setQuickContextType(type)} onImBetter={() => setRecoveryOpen(true)} onExtend={handleExtendContext} onDetailOpen={handleDetailOpen}/>}
+          {tab === 'context' && <LifeTab upcoming={apiContexts.upcoming} active={apiContexts.active} activeContext={activeContext} plansHook={plansHook} onAddContext={() => setContextModalOpen(true)} onQuickContext={type => setQuickContextType(type)} onImBetter={() => setRecoveryOpen(true)} onExtend={handleExtendContext} onDetailOpen={handleDetailOpen}/>}
         </div>
       </main>
 
@@ -7572,7 +7692,7 @@ export default function HeedApp() {
         onAskHeed={handleAskHeed}
       />
       <ShareCardSheet routine={shareCtx} onClose={handleShareClose}/>
-      <SettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} userName={userName} onUserName={handleUserName} theme={theme} onTheme={handleSetTheme} customCategories={customCategories} onAddCategory={cat => setCustomCategories(cs => [...cs, cat])} customEventTypes={customEventTypes} onAddEventType={evt => setCustomEventTypes(es => [...es, evt])} onResetAllData={handleResetAllData} efMode={efMode} onSetEfMode={handleSetEfMode}/>
+      <SettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} userName={userName} onUserName={handleUserName} theme={theme} onTheme={handleSetTheme} customCategories={customCategories} onAddCategory={cat => setCustomCategories(cs => [...cs, cat])} customEventTypes={customEventTypes} onAddEventType={evt => setCustomEventTypes(es => [...es, evt])} onResetAllData={handleResetAllData} onLoadDemoData={handleLoadDemoData} efMode={efMode} onSetEfMode={handleSetEfMode}/>
       {toast && <Toast message={toast.message} onView={toast.showView ? handleToastView : undefined} onUndo={toast.onUndo} onDismiss={() => setToast(null)} reasons={toast.reasons} onReason={toast.onReason}/>}
       <HeedFAB onAddTask={() => setModalOpen(true)} onAskHeed={() => setAskOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)}/>
     </div>

@@ -4413,7 +4413,7 @@ function AddRoutineModal({ open, onClose, onSubmit, initialData = null, seedTask
                     <button onClick={() => { setOpenPickerIndex(null); removeItem(item.id) }} disabled={items.length===1} style={{ background: 'transparent', border: 'none', color: items.length===1 ? C.hairline : C.inkMute, cursor: items.length===1 ? 'not-allowed' : 'pointer', fontSize: 16, padding: '0 6px', lineHeight: 1, fontFamily: 'inherit', flexShrink: 0 }}>×</button>
                   </div>
                   {openPickerIndex === idx && (
-                    <div style={{ border: `1.5px solid ${C.ochre}`, borderTop: 'none', borderRadius: '0 0 8px 8px', background: C.paperHi, marginBottom: 6, maxHeight: 180, overflowY: 'auto' }}>
+                    <div style={{ border: `1.5px solid ${C.ochre}`, borderTop: 'none', borderRadius: '0 0 8px 8px', background: C.paperHi, marginBottom: 6, maxHeight: 180, overflowY: 'auto', animation: 'heed-dropdown 0.15s ease' }}>
                       <input
                         autoFocus
                         value={pickerSearch}
@@ -5751,6 +5751,7 @@ export default function HeedApp() {
       <link href="https://fonts.googleapis.com/css2?family=Lora:wght@500;600;700&family=Nunito+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
       <style>{`
         @keyframes heed-fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes heed-dropdown { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
         @keyframes heed-tab-in { from { opacity:0; transform:translateX(12px); } to { opacity:1; transform:translateX(0); } }
         @keyframes heed-toast-up { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
         @keyframes heed-fadeIn { from { opacity:0; } to { opacity:1; } }

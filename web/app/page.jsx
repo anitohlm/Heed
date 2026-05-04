@@ -3650,9 +3650,13 @@ function PlanDetailScreen({ plan, onBack, onCheck, onRename, onAddTask, onDelete
                 {/* checkbox */}
                 <div
                   onClick={() => {
-                    if (completingIdx === i || task.done) return
+                    if (completingIdx === i) return
                     setSwipedIndex(null)
                     setEditingIndex(null)
+                    if (task.done) {
+                      onCheck(plan.id, i)
+                      return
+                    }
                     setCompletingIdx(i)
                     setTimeout(() => {
                       onCheck(plan.id, i)
@@ -3661,9 +3665,10 @@ function PlanDetailScreen({ plan, onBack, onCheck, onRename, onAddTask, onDelete
                   }}
                   style={{
                     width: 16, height: 16, borderRadius: 4, flexShrink: 0, cursor: 'pointer',
-                    border: `1.5px solid ${(task.done || completingIdx === i) ? C.rust : C.border}`,
-                    background: completingIdx === i ? '#4a7c59' : (task.done ? C.rust : 'transparent'),
+                    border: `1.5px solid ${completingIdx === i ? C.sage : task.done ? C.sage + '99' : C.border}`,
+                    background: completingIdx === i ? C.sage : task.done ? C.sage + '33' : 'transparent',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'all 0.15s',
                     ...(completingIdx === i ? { animation: 'heed-done-check 0.22s ease forwards' } : {}),
                   }}
                 >

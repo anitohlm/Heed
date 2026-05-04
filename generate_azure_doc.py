@@ -40,6 +40,36 @@ def add_code_block(doc, code_text):
     return p
 
 
+def add_screenshot(doc, filename, caption, width_inches=6.0):
+    """
+    Insert a screenshot from docs/screenshots/<filename>. If the file is
+    missing, leave a styled placeholder block so the document still
+    builds — the author can drop the PNG in later and re-run the script.
+    """
+    img_path = Path(__file__).parent / "docs" / "screenshots" / filename
+    if img_path.exists():
+        p = doc.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p.add_run().add_picture(str(img_path), width=Inches(width_inches))
+    else:
+        p = doc.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        run = p.add_run(f"[ Screenshot placeholder — drop {filename} into docs/screenshots/ ]")
+        run.italic = True
+        run.font.size = Pt(9)
+        run.font.color.rgb = RGBColor(0x99, 0x66, 0x33)
+        shading = OxmlElement("w:shd")
+        shading.set(qn("w:val"), "clear")
+        shading.set(qn("w:fill"), "FFF6E5")
+        p._p.get_or_add_pPr().append(shading)
+    cap = doc.add_paragraph()
+    cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    cap_run = cap.add_run(f"Figure: {caption}")
+    cap_run.italic = True
+    cap_run.font.size = Pt(9)
+    cap_run.font.color.rgb = RGBColor(0x55, 0x55, 0x55)
+
+
 def add_status_row(table, step, resource, status, notes):
     row = table.add_row()
     row.cells[0].text = step
@@ -95,6 +125,17 @@ toc_items = [
     ("7", "Secrets in Key Vault"),
     ("8", "Known Gaps and Next Steps"),
     ("9", "Security: LLM Scope and Prompt-Injection Defense"),
+    ("10", "Migration to Flex Consumption (Problems and Solutions)"),
+    ("    10.1", "Why Migrate"),
+    ("    10.2", "Migration Procedure"),
+    ("    10.3", "Problem 1 — Empty Function App After Migration"),
+    ("    10.4", "Problem 2 — Endpoint Returned 404 After Deploy"),
+    ("    10.5", "Problem 3 — Wrong URL Convention"),
+    ("    10.6", "Problem 4 — Live Site Falling Back to Scripted Responses"),
+    ("    10.7", "Problem 5 — advisor_stream Returned 500"),
+    ("    10.8", "Problem 6 — Agent Couldn't Answer 'Latest Task'"),
+    ("    10.9", "Outcome and Open Items"),
+    ("11", "Operational Tips Specific to Flex Consumption"),
 ]
 for num, item in toc_items:
     p = doc.add_paragraph(style="List Bullet" if num.startswith("    ") else "Normal")
@@ -637,6 +678,428 @@ for ref_title, ref_body in refs:
     r.font.name = "Consolas"
     r.font.size = Pt(9)
     doc.add_paragraph(ref_body)
+
+# ── 10. Migration to Flex Consumption ─────────────────────────────────────────
+
+doc.add_page_break()
+doc.add_heading("10. Migration to Flex Consumption (Problems and Solutions)", 1)
+doc.add_paragraph(
+    "Heed's backend originally ran on the Azure Functions Linux Consumption "
+    "plan (SKU Y1). During hackathon work the chat experience was upgraded to "
+    "stream agent output progressively to the browser; this required moving "
+    "off Consumption because that plan buffers HTTP responses. The migration "
+    "was executed in-place via az functionapp flex-migration start, but it "
+    "exposed several plan-specific quirks worth documenting for anyone "
+    "redoing the steps."
+)
+
+doc.add_heading("10.1 Why Migrate", 2)
+why_bullets = [
+    "Linux Consumption reaches end-of-life on 30 September 2028; Microsoft surfaces a "
+    "migration banner inside the Function App overview pane prompting the move.",
+    "Consumption buffers entire HTTP responses before sending — the advisor_stream "
+    "endpoint emitted NDJSON events but the runtime collected them all and returned "
+    "one body, so first-token latency was 3–8s.",
+    "Flex Consumption supports HTTP response streaming, has the same per-execution "
+    "billing shape, and on the $200 free credit costs effectively nothing for hackathon "
+    "traffic (~$1–2 per few hundred chat calls).",
+]
+for b in why_bullets:
+    doc.add_paragraph(b, style="List Bullet")
+
+add_screenshot(
+    doc,
+    "10-old-app-y1-with-eol-banner.png",
+    "func-heed on Linux Consumption (Y1) with the Sept-2028 EOL banner that surfaces the "
+    "Migrate-to-Flex action.",
+)
+
+doc.add_heading("10.2 Migration Procedure", 2)
+doc.add_paragraph(
+    "The portal banner offers three migration paths: GitHub Copilot, Azure CLI, "
+    "and Azure portal. The CLI was the fastest and is reproducible. The "
+    "command below creates a new Flex Consumption app alongside the existing "
+    "Consumption app and copies all configuration (env vars, App Insights, "
+    "storage)."
+)
+add_code_block(
+    doc,
+    "az functionapp flex-migration start \\\n"
+    "  --source-name func-heed \\\n"
+    "  --source-resource-group heed \\\n"
+    "  --name func-heed-flex \\\n"
+    "  --resource-group heed",
+)
+doc.add_paragraph(
+    "The command exits in seconds; the new app is provisioned but contains no "
+    "function code yet. The OLD app keeps running unchanged so traffic isn't "
+    "interrupted during the cutover window."
+)
+add_screenshot(
+    doc,
+    "10-flex-app-essentials.png",
+    "func-heed-flex created in Southeast Asia. Plan type: Flex Consumption. "
+    "Functions list is empty — the migration copies configuration, not code.",
+)
+
+doc.add_heading("10.3 Problem 1 — Empty Function App After Migration", 2)
+doc.add_paragraph(
+    "Symptom: az functionapp function list returned no functions on the new "
+    "app; the portal showed the 'Create functions in your preferred "
+    "environment' default screen."
+)
+doc.add_paragraph("Cause:", style="Intense Quote")
+doc.add_paragraph(
+    "flex-migration start copies the App Service Plan, app settings, and "
+    "environment variables, but does NOT migrate function code. The new app "
+    "is a freshly-provisioned shell."
+)
+doc.add_paragraph("Solution:", style="Intense Quote")
+doc.add_paragraph(
+    "Re-run the existing deploy script with the new app name. The script "
+    "(functions/deploy_functions.ps1) was edited to target func-heed-flex, "
+    "and func azure functionapp publish was given the --build remote flag "
+    "(see Problem 2 below for why that flag is critical)."
+)
+add_code_block(
+    doc,
+    "Set-Location $functionsDir\n"
+    "func azure functionapp publish func-heed-flex --python --build remote",
+)
+
+doc.add_heading("10.4 Problem 2 — Endpoint Returned 404 After Deploy", 2)
+doc.add_paragraph(
+    "Symptom: After the publish step appeared to complete and "
+    "az functionapp function list reported all 13 functions registered, "
+    "every HTTP request to /api/* returned 404 Not Found. The root URL "
+    "(/) returned 200 with the standard 'Your Azure Function App is up and "
+    "running' page."
+)
+doc.add_paragraph("Cause:", style="Intense Quote")
+doc.add_paragraph(
+    "On Flex Consumption with the Python v2 programming model, the function "
+    "indexer needs the package to be built on the server. Locally-built "
+    "packages register function metadata (so they appear in the management "
+    "plane) but the worker can't load them at runtime — every request gets "
+    "404'd because no route handler is wired up."
+)
+doc.add_paragraph("Solution:", style="Intense Quote")
+doc.add_paragraph(
+    "Pass --build remote to func azure functionapp publish. This uploads "
+    "the source and runs pip install + indexing in the cloud where the "
+    "Flex Python worker lives. The publish step then takes 3–5 minutes "
+    "instead of 30 seconds, but routes work immediately afterwards."
+)
+add_screenshot(
+    doc,
+    "10-publish-output-with-invoke-urls.png",
+    "Successful --build remote publish output. Each function is listed with its "
+    "exact Invoke URL — the URLs are derived from the @app.route(route=\"…\") "
+    "decorator, NOT from the Python function name (see Problem 3).",
+)
+
+doc.add_heading("10.5 Problem 3 — Wrong URL Convention", 2)
+doc.add_paragraph(
+    "Symptom: even after the --build remote redeploy, smoke-test curl "
+    "commands hitting URLs like /api/today_view, /api/seed_demo_data, and "
+    "/api/reset_user_data still returned 404, despite the functions being "
+    "listed under those names."
+)
+doc.add_paragraph("Cause:", style="Intense Quote")
+doc.add_paragraph(
+    "Python v2 model exposes two separate identifiers per function: the "
+    "Python function name (e.g. today_view) and the HTTP route from the "
+    "decorator (e.g. @app.route(route=\"today\")). az functionapp function list "
+    "reports the Python function name; the actual URL uses the route. When "
+    "they differ, the function-list output is misleading."
+)
+doc.add_paragraph("Real URLs from the publish output (route ≠ name in three cases):")
+url_pairs = [
+    ("today_view", "/api/today"),
+    ("seed_demo_data", "/api/seed"),
+    ("reset_user_data", "/api/reset"),
+    ("advisor_stream", "/api/advisor_stream"),
+    ("tasks", "/api/tasks"),
+    ("user_state", "/api/user_state/{kind}"),
+    ("task_by_id", "/api/tasks/{task_id}"),
+]
+table = doc.add_table(rows=1, cols=2)
+table.style = "Light Grid Accent 1"
+hdr = table.rows[0].cells
+hdr[0].text = "Python function name"
+hdr[1].text = "HTTP route"
+for fn, url in url_pairs:
+    row = table.add_row().cells
+    row[0].text = fn
+    row[1].text = url
+doc.add_paragraph("Solution:", style="Intense Quote")
+doc.add_paragraph(
+    "Always read the Invoke URL from the publish output rather than guessing "
+    "from the Python function name. The publish step prints the canonical URL "
+    "for every function on success. For verification scripts, prefer URLs "
+    "from `func azure functionapp publish` output over `az functionapp "
+    "function list`."
+)
+
+doc.add_heading("10.6 Problem 4 — Live Site Falling Back to Scripted Responses", 2)
+doc.add_paragraph(
+    "Symptom: After the frontend was rebuilt with the new "
+    "NEXT_PUBLIC_FUNCTIONS_URL pointing to func-heed-flex, every chat "
+    "message rendered the FALLBACK_RESPONSE in the UI ('I'm reaching out to "
+    "your personal agent now…'). Direct curl against the new endpoint "
+    "succeeded, but the browser fetch failed."
+)
+doc.add_paragraph("Cause:", style="Intense Quote")
+doc.add_paragraph(
+    "Azure Function Apps have an app-level CORS configuration in addition "
+    "to whatever headers the function code returns. A freshly-created Flex "
+    "Consumption app starts with allowedOrigins: [], which causes the "
+    "runtime to reject the browser's CORS preflight (OPTIONS) before it "
+    "ever reaches the Python handler. The frontend's fetch threw, the "
+    "useChat hook's catch block fired, and the scripted fallback rendered."
+)
+doc.add_paragraph("Solution:", style="Intense Quote")
+add_code_block(
+    doc,
+    "az functionapp cors add --name func-heed-flex --resource-group heed \\\n"
+    "  --allowed-origins \\\n"
+    "    \"https://brave-pond-035757400.7.azurestaticapps.net\" \\\n"
+    "    \"http://localhost:3000\" \\\n"
+    "    \"*\"\n"
+    "\n"
+    "# Verify\n"
+    "az functionapp cors show --name func-heed-flex --resource-group heed",
+)
+doc.add_paragraph(
+    "After CORS is configured, the browser preflight returns 204 with the "
+    "correct Access-Control-Allow-Origin header. The wildcard \"*\" is fine "
+    "for hackathon use; for production tighten to the specific SWA "
+    "origin(s)."
+)
+add_screenshot(
+    doc,
+    "10-cors-configured.png",
+    "az functionapp cors add output — allowedOrigins now lists the SWA domain, "
+    "localhost dev, and a wildcard.",
+)
+
+doc.add_heading("10.7 Problem 5 — advisor_stream Returned 500", 2)
+doc.add_paragraph(
+    "Symptom: With CORS fixed, all endpoints returned 200 except "
+    "/api/advisor_stream, which consistently returned 500 Internal Server "
+    "Error. The Python worker logs showed the route was matched and the "
+    "handler started, then failed silently."
+)
+doc.add_paragraph("Cause:", style="Intense Quote")
+doc.add_paragraph(
+    "The streaming refactor returned func.HttpResponse(body=event_stream()) "
+    "where event_stream was an async generator yielding bytes. The "
+    "azure-functions Python SDK's HttpResponse signature accepts "
+    "Union[str, bytes, bytearray, BinaryIO, None] for body — it does NOT "
+    "accept generators. The generator was passed through, the runtime tried "
+    "to serialize it, and threw."
+)
+doc.add_paragraph("Solution (interim, deployed):", style="Intense Quote")
+doc.add_paragraph(
+    "Reverted the streaming pattern to a buffered NDJSON body: collect all "
+    "events from stream_response into a list, join with newlines, return a "
+    "single string. The frontend reader (using response.body.getReader() "
+    "and parsing line-by-line) still works — it just receives the full "
+    "payload at once instead of incrementally. End-to-end behaviour matches "
+    "the pre-migration Consumption plan."
+)
+add_code_block(
+    doc,
+    "chunks: list[str] = []\n"
+    "try:\n"
+    "    async for event in stream_response(USER_ID, message, history):\n"
+    "        chunks.append(json.dumps(event, default=str))\n"
+    "except Exception as e:\n"
+    "    chunks.append(json.dumps({\"type\": \"error\", \"error\": str(e)}, default=str))\n"
+    "\n"
+    "return func.HttpResponse(\n"
+    "    body=\"\\n\".join(chunks),\n"
+    "    status_code=200,\n"
+    "    mimetype=\"application/x-ndjson\",\n"
+    "    headers={\"Access-Control-Allow-Origin\": \"*\"},\n"
+    ")",
+)
+doc.add_paragraph("Solution (final, deferred):", style="Intense Quote")
+doc.add_paragraph(
+    "True chunked streaming on Flex Python requires either: (a) the "
+    "experimental httpResponseStream binding with a typed yield contract, "
+    "or (b) replacing the v2 decorator handler with an ASGI app "
+    "(FastAPI/Starlette) wrapped via azure.functions.AsgiFunctionApp and "
+    "using StreamingResponse. Both are bigger refactors than fit the "
+    "hackathon timeline. The savings (1–2 seconds of perceived latency on "
+    "a 5–10 second agent run) didn't justify the risk pre-demo."
+)
+add_screenshot(
+    doc,
+    "10-flex-log-stream-success.png",
+    "func-heed-flex Log stream after the revert — Functions.advisor_stream "
+    "executes successfully (Duration ~5–10s), chained calls to Azure OpenAI "
+    "return 200, no Python exceptions in the worker log.",
+)
+
+doc.add_heading("10.8 Problem 6 — Agent Couldn't Answer 'Latest Task'", 2)
+doc.add_paragraph(
+    "Symptom: After a successful chat round-trip, the user asked "
+    "'what's the latest task I added?' and Heed responded honestly with "
+    "'I can't tell confidently from the data I have' — even though Cosmos "
+    "stores created_at on every task."
+)
+doc.add_paragraph("Cause:", style="Intense Quote")
+doc.add_paragraph(
+    "The advisor's tool surface (TOOLS array in agents/advisor.py) was "
+    "intentionally narrow. get_today_view returns only overdue/today/"
+    "upcoming slices; search_task_memory does semantic ranking over names "
+    "and notes but doesn't surface created_at. The agent had no chronological "
+    "lookup tool, so it correctly refused to invent an answer. This was a "
+    "design gap, not a bug."
+)
+doc.add_paragraph("Solution:", style="Intense Quote")
+doc.add_paragraph(
+    "Added a list_recent_tasks tool that pulls the user's active tasks, "
+    "sorts by created_at descending, and returns up to N (capped at 30) "
+    "with id, name, category, importance, created_at, and next_due_at. The "
+    "tool description nudges the model to use it for any 'newest / latest "
+    "/ when did I add' question."
+)
+add_code_block(
+    doc,
+    "elif name == \"list_recent_tasks\":\n"
+    "    limit = max(1, min(int(arguments.get(\"limit\", 10) or 10), 30))\n"
+    "    tasks = cosmos_tool.get_active_tasks(user_id)\n"
+    "    sortable = sorted(\n"
+    "        tasks,\n"
+    "        key=lambda t: (t.created_at or datetime.min.replace(tzinfo=timezone.utc)),\n"
+    "        reverse=True,\n"
+    "    )[:limit]\n"
+    "    return json.dumps({\"tasks\": [...]}, default=str)",
+)
+
+doc.add_heading("10.9 Outcome and Open Items", 2)
+status_table = doc.add_table(rows=1, cols=2)
+status_table.style = "Light Grid Accent 1"
+hdr = status_table.rows[0].cells
+hdr[0].text = "Status"
+hdr[1].text = "Item"
+outcome_rows = [
+    ("Done", "Function App migrated to Flex Consumption (Southeast Asia)."),
+    ("Done", "All 13 HTTP/timer triggers indexed and reachable."),
+    ("Done", "CORS configured for SWA origin + localhost + wildcard."),
+    ("Done", "Frontend cut over to func-heed-flex.azurewebsites.net."),
+    ("Done", "advisor_stream restored to working state (buffered)."),
+    ("Done", "list_recent_tasks tool added — 'latest task' queries answered."),
+    ("Open", "True chunked HTTP streaming (ASGI/StreamingResponse refactor)."),
+    ("Open", "Decommission OLD func-heed app once new one is verified stable."),
+    ("Open", "Tighten CORS — drop the \"*\" entry, keep only the specific origins."),
+]
+for status, item in outcome_rows:
+    row_cells = status_table.add_row().cells
+    row_cells[0].text = status
+    row_cells[1].text = item
+    color = "C6EFCE" if status == "Done" else "FFEB9C"
+    for cell in row_cells:
+        tcPr = cell._tc.get_or_add_tcPr()
+        shd = OxmlElement("w:shd")
+        shd.set(qn("w:val"), "clear")
+        shd.set(qn("w:fill"), color)
+        tcPr.append(shd)
+
+
+# ── 11. Operational Tips Specific to Flex Consumption ─────────────────────────
+
+doc.add_page_break()
+doc.add_heading("11. Operational Tips Specific to Flex Consumption", 1)
+doc.add_paragraph(
+    "Several developer-experience details differ between Consumption and "
+    "Flex Consumption. Recording them here saves the next person on the "
+    "project the same hour of debugging."
+)
+
+doc.add_heading("11.1 Log Streaming", 2)
+doc.add_paragraph(
+    "az webapp log tail does NOT work on Flex Consumption — the SCM "
+    "(Kudu) endpoint that command depends on is intentionally not exposed. "
+    "Attempts return 404 Not Found from *.scm.azurewebsites.net."
+)
+doc.add_paragraph("Use one of these instead:")
+log_options = [
+    ("Portal Log Stream", "Function App → Monitoring → Log stream. Real-time host + "
+     "function logs in the browser. Best for live debugging."),
+    ("Per-function Invocations tab", "Function App → Functions → click function → "
+     "Invocations. Shows each invocation with status, duration, and a drill-down to "
+     "trace logs."),
+    ("Application Insights", "Function App → Application Insights → Live Metrics "
+     "(real-time) or Logs (KQL queries against historical data). Best for "
+     "post-incident analysis."),
+]
+for label, body in log_options:
+    p = doc.add_paragraph(style="List Bullet")
+    r = p.add_run(f"{label}: ")
+    r.bold = True
+    p.add_run(body)
+
+doc.add_heading("11.2 Code + Test Pane Requires CORS Allowlist", 2)
+doc.add_paragraph(
+    "The portal's Test/Run panel calls the function from a browser session "
+    "at portal.azure.com. With Flex's empty default CORS list, every "
+    "Test/Run returns 'Failed to fetch / Unknown HTTP error'. Add the "
+    "portal origin once and the in-portal tester works:"
+)
+add_code_block(
+    doc,
+    "az functionapp cors add --name func-heed-flex --resource-group heed \\\n"
+    "  --allowed-origins \"https://portal.azure.com\"",
+)
+
+doc.add_heading("11.3 Deployment Always Uses Remote Build", 2)
+doc.add_paragraph(
+    "On Flex Consumption Python, never rely on local builds. The deploy "
+    "script must pass --build remote to func azure functionapp publish. "
+    "Without it, the Python v2 indexer registers function metadata but the "
+    "worker can't load the code at runtime, leading to silent 404s on "
+    "every route."
+)
+
+doc.add_heading("11.4 Cold Starts and Always-Ready Instances", 2)
+doc.add_paragraph(
+    "Flex Consumption defaults to 0 always-ready instances; the first "
+    "request after idle takes 1–3 seconds to spin up a worker. For "
+    "demo-quality latency (e.g. live judging), set 1 always-ready instance "
+    "in Function App → Settings → Scale and concurrency. Cost: roughly "
+    "$5–10/month per always-ready instance — an order of magnitude less "
+    "than Premium plan minimums."
+)
+
+doc.add_heading("11.5 GitHub Actions Spend on Frequent Pushes", 2)
+doc.add_paragraph(
+    "The default Azure SWA workflow runs on every push to main, including "
+    "documentation-only commits. Heed's workflow was tightened to: (a) "
+    "filter pushes by paths so only web/, app, or workflow changes "
+    "trigger a deploy, and (b) use a concurrency group with "
+    "cancel-in-progress so older runs are cancelled when newer pushes "
+    "arrive in quick succession. Together they cut Actions minutes by "
+    "about 60% during active development sessions."
+)
+add_code_block(
+    doc,
+    "concurrency:\n"
+    "  group: swa-deploy-${{ github.ref }}\n"
+    "  cancel-in-progress: true\n"
+    "\n"
+    "on:\n"
+    "  push:\n"
+    "    branches: [main]\n"
+    "    paths:\n"
+    "      - 'web/out/**'\n"
+    "      - 'web/app/**'\n"
+    "      - 'web/**/*.{js,jsx,ts,tsx,css,json}'\n"
+    "      - '.github/workflows/**'",
+)
+
 
 # ── Save ──────────────────────────────────────────────────────────────────────
 out_path = Path(__file__).parent / "docs" / "Heed_Technical_Doc.docx"

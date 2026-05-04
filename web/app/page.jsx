@@ -2734,78 +2734,152 @@ function RoutineRow({ routine, delay = 0, onMarkDone, onSkipToday, onLighten }) 
   const isAttention = routine.suggestion != null
   const isLightened = !!routine.lightenedItems?.length
   const borderColor = isLightened ? `${C.sage}73` : isAttention ? `${C.ochre}73` : C.border
-  const [justDone, setJustDone] = useState(false)
-  const justDoneRef = useRef(false)
-  const justDoneTimerRef = useRef(null)
-  const handleDone = useCallback(() => {
-    if (justDoneRef.current) return
-    justDoneRef.current = true
-    setJustDone(true)
-    justDoneTimerRef.current = setTimeout(() => {
-      onMarkDone?.(routine.id)
-      setJustDone(false)
-      justDoneRef.current = false
-    }, 450)
-  }, [onMarkDone, routine.id])
-  useEffect(() => () => clearTimeout(justDoneTimerRef.current), [])
-  const { ref: swipeRef } = useSwipe(handleDone, () => onSkipToday?.(routine.id))
+  const items = routine.items || []
+  // Per-item ticked state. Visual only — when all are ticked (or the user
+  // taps Mark all done) the routine fires onMarkDone for the day. We don't
+  // persist individual items because the data model only tracks the routine
+  // as a whole (completion14d = one bool per day).
+  const [checkedItems, setCheckedItems] = useState(() => new Set())
+  const [completing, setCompleting] = useState(false)
+  const completingRef = useRef(false)
+  const triggerComplete = useCallback(() => {
+    if (completingRef.current) return
+    completingRef.current = true
+    setCheckedItems(new Set(items.map((_, i) => i)))
+    setTimeout(() => setCompleting(true), 320)
+    setTimeout(() => onMarkDone?.(routine.id), 700)
+  }, [items, onMarkDone, routine.id])
+  const toggleItem = (idx) => {
+    if (completingRef.current) return
+    setCheckedItems(s => {
+      const n = new Set(s)
+      if (n.has(idx)) n.delete(idx)
+      else n.add(idx)
+      // Auto-complete when every item is ticked. Defer the trigger so we
+      // don't call setState during a setState updater.
+      if (n.size === items.length && items.length > 0) {
+        setTimeout(() => triggerComplete(), 200)
+      }
+      return n
+    })
+  }
   return (
-    <div style={{ position: 'relative', marginBottom: 8, touchAction: 'pan-y', userSelect: 'none' }}>
-      <div style={{ position: 'absolute', inset: 0, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', pointerEvents: 'none' }}>
-        <span data-badge="done" style={{ fontSize: 16, color: C.sage, opacity: 0 }}>✓</span>
-        <span data-badge="skip" style={{ fontSize: 16, color: C.ochre, opacity: 0 }}>↷</span>
+    <div style={{
+      background: C.paperHi,
+      border: `1px solid ${borderColor}`,
+      borderRadius: 12,
+      padding: '14px 16px',
+      marginBottom: 10,
+      animation: completing ? 'heed-done-out 0.38s cubic-bezier(0.4,0,0.8,0.2) forwards' : 'heed-fadeUp 0.5s ease both',
+      animationDelay: completing ? undefined : `${delay}ms`,
+      overflow: 'hidden',
+      userSelect: 'none',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+        <span style={{ flex: 1, fontSize: 14.5, fontWeight: 600, color: C.ink }}>{routine.name}</span>
+        <span style={{ fontSize: 11, fontWeight: 700, color: isHealthy ? C.sage : C.ochre, whiteSpace: 'nowrap' }}>
+          {isHealthy ? '✓' : '⚠'} {thisWeekCount}/7 this week
+        </span>
       </div>
-      <div
-        ref={swipeRef}
-        className="heed-card"
+
+      {items.length > 0 && (
+        <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 10px 0' }}>
+          {items.map((item, i) => {
+            const checked = checkedItems.has(i)
+            return (
+              <li key={i}>
+                <button
+                  type="button"
+                  onClick={() => toggleItem(i)}
+                  aria-pressed={checked}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    width: '100%',
+                    padding: '7px 0',
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    textAlign: 'left',
+                    touchAction: 'manipulation',
+                    WebkitTapHighlightColor: 'transparent',
+                  }}
+                >
+                  <span aria-hidden="true" style={{
+                    width: 22, height: 22, flexShrink: 0,
+                    borderRadius: 6,
+                    border: `2px solid ${checked ? C.sage : C.border}`,
+                    background: checked ? C.sage : 'transparent',
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'all 0.18s cubic-bezier(0.4, 0, 0.2, 1)',
+                  }}>
+                    {checked && (
+                      <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
+                        <path d="M3 7l3 3 5-6" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                  </span>
+                  <span style={{
+                    fontSize: 13.5,
+                    color: checked ? C.inkMute : C.ink,
+                    textDecoration: checked ? 'line-through' : 'none',
+                    flex: 1,
+                    minWidth: 0,
+                    transition: 'color 0.18s, text-decoration 0.18s',
+                  }}>{item}</span>
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+
+      <button
+        type="button"
+        onClick={triggerComplete}
+        disabled={completing}
         style={{
-          background: C.paperHi,
-          border: `1px solid ${borderColor}`,
-          borderRadius: 10,
-          padding: '11px 14px',
-          position: 'relative',
-          animation: justDone ? 'heed-done-flash 0.22s ease forwards' : 'heed-fadeUp 0.5s ease both',
-          animationDelay: justDone ? undefined : `${delay}ms`,
+          width: '100%',
+          background: completing ? C.sage : 'transparent',
+          color: completing ? C.cream : C.sage,
+          border: `1.5px solid ${C.sage}`,
+          padding: '9px 14px',
+          borderRadius: 8,
+          fontSize: 12.5,
+          fontWeight: 700,
+          cursor: completing ? 'default' : 'pointer',
+          fontFamily: 'inherit',
+          letterSpacing: 0.2,
+          transition: 'all 0.18s',
+          opacity: completing ? 0.7 : 1,
         }}
+        onMouseEnter={e => { if (!completing) { e.currentTarget.style.background = C.sage; e.currentTarget.style.color = C.cream } }}
+        onMouseLeave={e => { if (!completing) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = C.sage } }}
       >
-        {justDone && (
-          <div style={{
-            position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)',
-            width: 24, height: 24, borderRadius: '50%', background: '#4a7c59',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            animation: 'heed-done-check 0.22s ease forwards',
-            zIndex: 2,
-          }}>
-            <span style={{ color: 'white', fontSize: 13, lineHeight: 1 }}>✓</span>
-          </div>
-        )}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
-          <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: C.ink }}>{routine.name}</span>
-          <span style={{ fontSize: 11, fontWeight: 700, color: isHealthy ? C.sage : C.ochre }}>
-            {isHealthy ? '✓' : '⚠'} {thisWeekCount}/7 this week
+        ✓ Mark all done
+      </button>
+
+      <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 3, alignItems: 'center', flex: 1 }}>
+          {last7.map((done, i) => (
+            <span key={i} style={{ width: 6, height: 6, borderRadius: '50%', display: 'inline-block', background: done ? C.sage : C.border }}/>
+          ))}
+          <span style={{ marginLeft: 6, fontSize: 10, color: C.inkMute, fontStyle: 'italic' }}>last 7 days</span>
+        </div>
+        {isLightened && (
+          <span style={{ fontSize: 10.5, fontWeight: 600, color: C.sage, background: C.sageSoft, border: `1px solid ${C.sage}4d`, borderRadius: 999, padding: '2px 9px' }}>
+            {routine.lightenedItems.length} items optional
           </span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
-            {last7.map((done, i) => (
-              <span key={i} style={{ width: 6, height: 6, borderRadius: '50%', display: 'inline-block', background: done ? C.sage : C.border }}/>
-            ))}
-            <span style={{ marginLeft: 4, fontSize: 10, color: C.inkMute, fontStyle: 'italic' }}>today →</span>
-          </div>
-          {isLightened && (
-            <span style={{ fontSize: 10.5, fontWeight: 600, color: C.sage, background: C.sageSoft, border: `1px solid ${C.sage}4d`, borderRadius: 999, padding: '2px 9px' }}>
-              {routine.lightenedItems.length} items optional
-            </span>
-          )}
-          {isAttention && !isLightened && (
-            <span
-              onClick={() => onLighten?.(routine.id)}
-              style={{ fontSize: 10.5, fontWeight: 600, color: C.ochre, background: C.ochreSoft, border: `1px solid ${C.ochre}40`, borderRadius: 999, padding: '2px 9px', cursor: 'pointer' }}
-            >
-              Lighten this week →
-            </span>
-          )}
-        </div>
+        )}
+        {isAttention && !isLightened && (
+          <button
+            type="button"
+            onClick={() => onLighten?.(routine.id)}
+            style={{ fontSize: 10.5, fontWeight: 600, color: C.ochre, background: C.ochreSoft, border: `1px solid ${C.ochre}40`, borderRadius: 999, padding: '2px 9px', cursor: 'pointer', fontFamily: 'inherit' }}
+          >
+            Lighten this week →
+          </button>
+        )}
       </div>
     </div>
   )

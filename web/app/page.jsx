@@ -395,12 +395,30 @@ function mapApiContext(ctx) {
 }
 
 // ── useChat hook ───────────────────────────────────────────────
-function useChat({ onLightenRoutine } = {}) {
-  const [messages, setMessages] = useState([])
+function useChat({ onLightenRoutine, onTaskAdded } = {}) {
+  const [messages, setMessages] = useState(() => {
+    if (typeof window === 'undefined') return []
+    try {
+      const raw = localStorage.getItem('heed.chat-history.v1')
+      if (!raw) return []
+      const parsed = JSON.parse(raw)
+      if (!Array.isArray(parsed)) return []
+      return parsed
+        .map(m => ({ role: m.role, content: m.content }))
+        .filter(m => (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.length > 0)
+    } catch { return [] }
+  })
   const [input, setInput] = useState('')
   const [thinking, setThinking] = useState(null)
   const [streaming, setStreaming] = useState('')
   const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    try {
+      const toSave = messages.slice(-20).map(m => ({ role: m.role, content: m.content }))
+      localStorage.setItem('heed.chat-history.v1', JSON.stringify(toSave))
+    } catch (_) {}
+  }, [messages])
 
   const send = useCallback(async (text) => {
     if (busy) return
@@ -488,6 +506,9 @@ function useChat({ onLightenRoutine } = {}) {
           displaySummary = `Removed: ${itemsToStrike.join(', ')}${keep.length > 0 ? ` · Kept: ${keep.join(', ')}` : ''}`
         }
         onLightenRoutine?.(action.routine_id, itemsToStrike.length > 0 ? itemsToStrike : null)
+      }
+      if (action.action_type === 'add_task' && result.ok) {
+        onTaskAdded?.()
       }
       setMessages(msgs => msgs.map((m, i) => {
         if (i !== messageIndex) return m
@@ -1711,8 +1732,28 @@ function HeroCard({ task, onMarkDone, onSkip, onMoreOptions }) {
   )
 }
 
+// ── SwipeHint ──────────────────────────────────────────────────
+function SwipeHint({ onDismiss }) {
+  useEffect(() => {
+    const t = setTimeout(onDismiss, 2800)
+    return () => clearTimeout(t)
+  }, [onDismiss])
+  return (
+    <div style={{ position: 'absolute', inset: 0, zIndex: 10, borderRadius: 12, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', animation: 'heed-fadeIn 0.4s ease' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: `${C.sage}ee`, borderRadius: 8, padding: '5px 10px' }}>
+        <span style={{ fontSize: 13 }}>→</span>
+        <span style={{ fontSize: 11, fontWeight: 700, color: C.cream }}>Done</span>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: `${C.ochre}ee`, borderRadius: 8, padding: '5px 10px' }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: C.cream }}>Skip</span>
+        <span style={{ fontSize: 13 }}>←</span>
+      </div>
+    </div>
+  )
+}
+
 // ── TaskCard ───────────────────────────────────────────────────
-function TaskCard({ task, delay = 0, onMarkDone, onSkip, onMoreOptions }) {
+function TaskCard({ task, delay = 0, onMarkDone, onSkip, onMoreOptions, showHint = false, onHintDismiss }) {
   const [hover, setHover] = useState(false)
   const { ref: swipeRef } = useSwipe(
     () => onMarkDone?.(task),
@@ -1751,6 +1792,7 @@ function TaskCard({ task, delay = 0, onMarkDone, onSkip, onMoreOptions }) {
           animationDelay: `${delay}ms`,
         }}
       >
+        {showHint && <SwipeHint onDismiss={onHintDismiss}/>}
         <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: isCritical ? C.rust : c.color, borderRadius: '3px 0 0 3px' }}/>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 14 }}>
           <CategoryBadge category={task.category}/>
@@ -2272,6 +2314,14 @@ function ContextBanner({ upcomingContexts, onAskHeed }) {
 
 // ── TodayTab ───────────────────────────────────────────────────
 function TodayTab({ tasks, routines, upcomingContexts, skippedTasks = [], onMarkDone, onSkip, onUnskip, onMarkRoutineDone, onSkipRoutineToday, onLightenRoutine, onEditRoutine, onAskHeed, onMoreOptions, onShareCard }) {
+  const [showSwipeHint, setShowSwipeHint] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return !localStorage.getItem('heed.swipe-hint-seen')
+  })
+  const dismissSwipeHint = useCallback(() => {
+    setShowSwipeHint(false)
+    try { localStorage.setItem('heed.swipe-hint-seen', '1') } catch (_) {}
+  }, [])
   const overdue = tasks.filter(t => t.overdue != null).sort((a, b) => b.overdue - a.overdue)
   // Hero set: top overdue tasks within 25% of #1's days. So 12d/11d/10d all
   // become heroes; 12d/3d/2d only promotes the first.
@@ -2347,7 +2397,7 @@ function TodayTab({ tasks, routines, upcomingContexts, skippedTasks = [], onMark
           // Auto-collapse when there are many — keeps Today scannable on heavy days.
           defaultOpen={otherOverdue.length <= 4}
         >
-          {otherOverdue.map((t, i) => <TaskCard key={t.id} task={t} delay={i * 50} onMarkDone={onMarkDone} onSkip={onSkip} onMoreOptions={onMoreOptions}/>)}
+          {otherOverdue.map((t, i) => <TaskCard key={t.id} task={t} delay={i * 50} onMarkDone={onMarkDone} onSkip={onSkip} onMoreOptions={onMoreOptions} showHint={i === 0 && showSwipeHint} onHintDismiss={dismissSwipeHint}/>)}
         </CollapsibleTodaySection>
       )}
       {upcoming.length > 0 && (
@@ -2355,7 +2405,7 @@ function TodayTab({ tasks, routines, upcomingContexts, skippedTasks = [], onMark
           motif="berry" label="Coming up" count={upcoming.length}
           defaultOpen={upcoming.length <= 6}
         >
-          {upcoming.map((t, i) => <TaskCard key={t.id} task={t} delay={i * 50} onMarkDone={onMarkDone} onSkip={onSkip} onMoreOptions={onMoreOptions}/>)}
+          {upcoming.map((t, i) => <TaskCard key={t.id} task={t} delay={i * 50} onMarkDone={onMarkDone} onSkip={onSkip} onMoreOptions={onMoreOptions} showHint={i === 0 && showSwipeHint && otherOverdue.length === 0} onHintDismiss={dismissSwipeHint}/>)}
         </CollapsibleTodaySection>
       )}
       {skippedTasks.length > 0 && onUnskip && (
@@ -2460,8 +2510,8 @@ function MicButton({ listening, onToggle, disabled }) {
   )
 }
 
-function AskTab({ prefill = '', autoSend = false, onAutoSendDone, onLightenRoutine }) {
-  const { messages, input, setInput, thinking, streaming, busy, send, executeAction } = useChat({ onLightenRoutine })
+function AskTab({ prefill = '', autoSend = false, onAutoSendDone, onLightenRoutine, onTaskAdded }) {
+  const { messages, input, setInput, thinking, streaming, busy, send, executeAction } = useChat({ onLightenRoutine, onTaskAdded })
   const scrollRef = useRef(null)
   const { listening, toggle: toggleMic, supported: micSupported } = useMic(useCallback((text, isFinal) => { if (isFinal) send(text) }, [send]))
   useEffect(() => {
@@ -3137,6 +3187,57 @@ function AddPlanSheet({ onClose, onAdd }) {
   )
 }
 
+// ── GoalUpdateSheet ────────────────────────────────────────────────
+function GoalUpdateSheet({ plan, onClose, onSave }) {
+  const [val, setVal] = useState(String(plan.current ?? 0))
+  const pct = plan.target > 0 ? Math.min(100, Math.round((parseFloat(val) || 0) / plan.target * 100)) : 0
+  const remaining = Math.max(0, plan.target - (parseFloat(val) || 0))
+  const submit = () => {
+    const n = parseFloat(val)
+    if (isNaN(n) || n < 0) return
+    onSave(n)
+  }
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 200 }} onClick={onClose}>
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(2px)' }}/>
+      <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: C.paper, borderRadius: '20px 20px 0 0', padding: `22px 22px calc(22px + env(safe-area-inset-bottom)) 22px`, animation: 'heed-slideUp 0.28s cubic-bezier(0.32,0.72,0,1)', boxShadow: '0 -8px 32px rgba(0,0,0,0.12)' }}>
+        <div style={{ width: 40, height: 4, borderRadius: 2, background: C.border, margin: '0 auto 18px' }}/>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+          <div style={{ width: 36, height: 36, borderRadius: 9, background: '#f5f0d8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>{plan.icon}</div>
+          <div>
+            <div style={{ fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 600, color: C.warmDark }}>{plan.title}</div>
+            <div style={{ fontSize: 12, color: C.inkMute, marginTop: 2 }}>Target: {plan.unit}{(plan.target ?? 0).toLocaleString()} · {plan.targetDate}</div>
+          </div>
+        </div>
+        <div style={{ height: 6, background: C.bellySoft, borderRadius: 3, marginBottom: 6, overflow: 'hidden' }}>
+          <div style={{ height: '100%', borderRadius: 3, background: C.ochre, width: `${pct}%`, transition: 'width 0.3s ease' }}/>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, color: C.inkMute, marginBottom: 18 }}>
+          <span>{pct}% saved</span>
+          <span>{plan.unit}{remaining.toLocaleString()} to go</span>
+        </div>
+        <label style={{ fontSize: 12, fontWeight: 600, color: C.inkMute, display: 'block', marginBottom: 6 }}>
+          Current amount ({plan.unit})
+        </label>
+        <input
+          type="number"
+          value={val}
+          onChange={e => setVal(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && submit()}
+          autoFocus
+          style={{ width: '100%', boxSizing: 'border-box', background: C.paperHi, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '11px 14px', fontSize: 16, color: C.ink, outline: 'none', fontFamily: 'inherit', marginBottom: 14 }}
+          onFocus={e => { e.target.style.borderColor = C.warmDark }}
+          onBlur={e => { e.target.style.borderColor = C.border }}
+        />
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={submit} style={{ ...getBtnPrimary(), flex: 1, padding: '12px 0', fontSize: 14 }}>Save progress</button>
+          <button onClick={onClose} style={{ ...getBtnGhost(), flex: 1, padding: '12px 0', fontSize: 14 }}>Cancel</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── PlansPanel ───────────────────────────────────────────────────
 function PlansPanel({ plans, checkTask, renameTask, addTask, deleteTask, reorderTasks, addPlan, updatePlan }) {
   const [addOpen, setAddOpen] = useState(false)
@@ -3144,7 +3245,7 @@ function PlansPanel({ plans, checkTask, renameTask, addTask, deleteTask, reorder
 
   const selectedPlan = plans.find(p => p.id === selectedPlanId) ?? null
 
-  if (selectedPlan) {
+  if (selectedPlan && selectedPlan.type !== 'goal') {
     return (
       <PlanDetailScreen
         plan={selectedPlan}
@@ -3174,10 +3275,17 @@ function PlansPanel({ plans, checkTask, renameTask, addTask, deleteTask, reorder
           key={p.id}
           plan={p}
           delay={i * 50}
-          onSelectPlan={(p.type === 'project' || p.type === 'event') ? (id) => setSelectedPlanId(id) : undefined}
+          onSelectPlan={(id) => setSelectedPlanId(id)}
         />
       ))}
       {addOpen && <AddPlanSheet onClose={() => setAddOpen(false)} onAdd={p => { addPlan(p); setAddOpen(false) }}/>}
+      {selectedPlan && selectedPlan.type === 'goal' && (
+        <GoalUpdateSheet
+          plan={selectedPlan}
+          onClose={() => setSelectedPlanId(null)}
+          onSave={(newVal) => { updatePlan(selectedPlan.id, { current: newVal }); setSelectedPlanId(null) }}
+        />
+      )}
     </div>
   )
 }
@@ -4126,7 +4234,7 @@ function AskInlineModal({ open, onClose, onLightenRoutine }) {
 }
 
 // ── AddTaskModal ───────────────────────────────────────────────
-function AddTaskModal({ open, onClose, onSubmit, onDelete, initialData = null }) {
+function AddTaskModal({ open, onClose, onSubmit, onDelete, initialData = null, customCategories = [] }) {
   const isEdit = !!initialData
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   useEffect(() => { if (!open) setConfirmingDelete(false) }, [open])
@@ -4216,6 +4324,11 @@ function AddTaskModal({ open, onClose, onSubmit, onDelete, initialData = null })
               {Object.keys(CATEGORY).map(cat => (
                 <button key={cat} onClick={() => setCategory(cat)} style={{ background: category === cat ? CATEGORY[cat].bg : C.paper, color: category === cat ? CATEGORY[cat].color : C.inkSoft, border: `1.5px solid ${category === cat ? CATEGORY[cat].color : C.border}`, padding: '6px 12px', borderRadius: 999, fontSize: 12, fontWeight: 600, cursor: 'pointer', textTransform: 'capitalize', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.15s' }}>
                   <span style={{ fontSize: 13 }}>{CATEGORY[cat].icon}</span>{cat.replace('_',' ')}
+                </button>
+              ))}
+              {customCategories.map(cat => (
+                <button key={cat.id} onClick={() => setCategory(cat.id)} style={{ background: category === cat.id ? cat.bg : C.paper, color: category === cat.id ? cat.color : C.inkSoft, border: `1.5px solid ${category === cat.id ? cat.color : C.border}`, padding: '6px 12px', borderRadius: 999, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.15s' }}>
+                  <span style={{ fontSize: 13 }}>{cat.icon}</span>{cat.name}
                 </button>
               ))}
             </div>
@@ -5505,8 +5618,19 @@ export default function HeedApp() {
     setUserName(name)
     try { localStorage.setItem('heed-username', name) } catch (_) {}
   }, [])
-  const [customCategories, setCustomCategories] = useState([])
+  const [customCategories, setCustomCategories] = useState(() => {
+    if (typeof window === 'undefined') return []
+    try {
+      const raw = localStorage.getItem('heed.categories.v1')
+      return raw ? JSON.parse(raw) : []
+    } catch { return [] }
+  })
   const [customEventTypes, setCustomEventTypes] = useState([])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try { localStorage.setItem('heed.categories.v1', JSON.stringify(customCategories)) } catch (_) {}
+  }, [customCategories])
 
   useEffect(() => {
     fetch(`${FUNCTIONS_URL}/api/tasks`)
@@ -5938,7 +6062,7 @@ export default function HeedApp() {
         <div key={tab} style={{ animation: 'heed-tab-in 0.28s cubic-bezier(0.32,0.72,0,1) both', display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
           {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} upcomingContexts={upcomingContexts} skippedTasks={skippedTasks} onMarkDone={handleMarkDone} onSkip={handleSkip} onUnskip={handleUnskip} onMarkRoutineDone={handleMarkRoutineDone} onSkipRoutineToday={handleSkipRoutineToday} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAskHeed={handleAskHeed} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen}/>}
           {tab === 'calendar' && <CalendarTab tasks={apiTasks} contexts={[...(apiContexts.active||[]), ...(apiContexts.upcoming||[])]} routines={routines} recentSkips={recentSkips} onReschedule={handleReschedule} onMarkDone={handleMarkDone} onSkip={handleSkip} onAddTask={() => setModalOpen(true)} onAddContext={() => setContextModalOpen(true)} onEditRoutine={handleEditRoutine} onApplyRetroSuggestion={handleApplyRetroSuggestion}/>}
-          {tab === 'ask' && <AskTab prefill={askPrefill} autoSend={askAutoSend} onAutoSendDone={() => { setAskAutoSend(false); setAskPrefill('') }} onLightenRoutine={handleLightenRoutine}/>}
+          {tab === 'ask' && <AskTab prefill={askPrefill} autoSend={askAutoSend} onAutoSendDone={() => { setAskAutoSend(false); setAskPrefill('') }} onLightenRoutine={handleLightenRoutine} onTaskAdded={() => fetch(`${FUNCTIONS_URL}/api/tasks`).then(r => r.json()).then(d => Array.isArray(d) && setApiTasks(d)).catch(() => {})}/>}
           {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onMarkRoutineDay={handleMarkRoutineDay}/>}
           {tab === 'context' && <LifeTab upcoming={apiContexts.upcoming} active={apiContexts.active} activeContext={activeContext} onAddContext={() => setContextModalOpen(true)} onQuickContext={type => setQuickContextType(type)} onImBetter={() => setRecoveryOpen(true)} onExtend={handleExtendContext} onDetailOpen={handleDetailOpen}/>}
         </div>
@@ -5948,7 +6072,7 @@ export default function HeedApp() {
         Heed — CWB Hackathon 2026 · Azure OpenAI + Cosmos DB + AI Search
       </footer>
 
-      <AddTaskModal open={modalOpen} onClose={() => { setModalOpen(false); setEditingTask(null) }} onSubmit={handleAddTask} onDelete={handleDeleteTask} initialData={editingTask}/>
+      <AddTaskModal open={modalOpen} onClose={() => { setModalOpen(false); setEditingTask(null) }} onSubmit={handleAddTask} onDelete={handleDeleteTask} initialData={editingTask} customCategories={customCategories}/>
       <AddRoutineModal open={routineModalOpen} onClose={() => { setRoutineModalOpen(false); setEditingRoutine(null); setBuildRoutineTask(null) }} onSubmit={handleAddRoutine} initialData={editingRoutine} seedTask={buildRoutineTask} tasks={displayTasks}/>
       <AddContextModal open={contextModalOpen} onClose={() => setContextModalOpen(false)} onSubmit={handleAddContext}/>
       <AskInlineModal open={askOpen} onClose={() => setAskOpen(false)} onLightenRoutine={handleLightenRoutine}/>

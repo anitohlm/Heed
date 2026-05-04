@@ -142,7 +142,7 @@ TOOLS = [
                 "properties": {
                     "action_type": {
                         "type": "string",
-                        "enum": ["mark_done", "skip", "defer", "lighten_routine", "add_context"],
+                        "enum": ["mark_done", "skip", "defer", "lighten_routine", "add_context", "add_task"],
                     },
                     "task_id": {"type": "string"},
                     "routine_id": {"type": "string"},
@@ -152,7 +152,9 @@ TOOLS = [
                             "Action-specific payload. For lighten_routine: { preview: { remove: "
                             "[{name: string}], keep: [string] }, duration_days?: number }. For defer: "
                             "{ defer_until: 'YYYY-MM-DD' }. For add_context: { context_type, "
-                            "start_date, end_date, description }."
+                            "start_date, end_date, description }. "
+                            "For add_task: { name, category, importance, explicit_cadence_days? } — "
+                            "category must be one of: relationships, finance, admin, home, health, work, self_care."
                         ),
                     },
                     "requires_confirmation": {"type": "boolean", "default": True},
@@ -252,6 +254,7 @@ _ACTION_DISPLAY = {
     "defer":           ("Defer",      "→"),
     "lighten_routine": ("Lighten it", "🪶"),
     "add_context":     ("Add context","📍"),
+    "add_task":        ("Add task",   "＋"),
 }
 
 

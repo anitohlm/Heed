@@ -2246,10 +2246,21 @@ function RoutineRow({ routine, delay = 0, onMarkDone, onSkipToday, onLighten }) 
   const isAttention = routine.suggestion != null
   const isLightened = !!routine.lightenedItems?.length
   const borderColor = isLightened ? `${C.sage}73` : isAttention ? `${C.ochre}73` : C.border
-  const { ref: swipeRef } = useSwipe(
-    () => onMarkDone?.(routine.id),
-    () => onSkipToday?.(routine.id),
-  )
+  const [justDone, setJustDone] = useState(false)
+  const justDoneRef = useRef(false)
+  const justDoneTimerRef = useRef(null)
+  const handleDone = useCallback(() => {
+    if (justDoneRef.current) return
+    justDoneRef.current = true
+    setJustDone(true)
+    justDoneTimerRef.current = setTimeout(() => {
+      onMarkDone?.(routine.id)
+      setJustDone(false)
+      justDoneRef.current = false
+    }, 450)
+  }, [onMarkDone, routine.id])
+  useEffect(() => () => clearTimeout(justDoneTimerRef.current), [])
+  const { ref: swipeRef } = useSwipe(handleDone, () => onSkipToday?.(routine.id))
   return (
     <div style={{ position: 'relative', marginBottom: 8, touchAction: 'pan-y', userSelect: 'none' }}>
       <div style={{ position: 'absolute', inset: 0, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', pointerEvents: 'none' }}>
@@ -2264,10 +2275,22 @@ function RoutineRow({ routine, delay = 0, onMarkDone, onSkipToday, onLighten }) 
           border: `1px solid ${borderColor}`,
           borderRadius: 10,
           padding: '11px 14px',
-          animation: 'heed-fadeUp 0.5s ease both',
-          animationDelay: `${delay}ms`,
+          position: 'relative',
+          animation: justDone ? 'heed-done-flash 0.22s ease forwards' : 'heed-fadeUp 0.5s ease both',
+          animationDelay: justDone ? undefined : `${delay}ms`,
         }}
       >
+        {justDone && (
+          <div style={{
+            position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)',
+            width: 24, height: 24, borderRadius: '50%', background: '#4a7c59',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            animation: 'heed-done-check 0.22s ease forwards',
+            zIndex: 2,
+          }}>
+            <span style={{ color: 'white', fontSize: 13, lineHeight: 1 }}>✓</span>
+          </div>
+        )}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
           <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: C.ink }}>{routine.name}</span>
           <span style={{ fontSize: 11, fontWeight: 700, color: isHealthy ? C.sage : C.ochre }}>

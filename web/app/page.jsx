@@ -3227,6 +3227,7 @@ function PlanDetailScreen({ plan, onBack, onCheck, onRename, onAddTask, onDelete
   const editDragRef = useRef({ dragIndex: null, dropIndex: null })
   const [editDragIndex, setEditDragIndex] = useState(null)
   const [editDropIndex, setEditDropIndex] = useState(null)
+  const [completingIdx, setCompletingIdx] = useState(null)
 
   const doneCount = plan.tasks.filter(t => t.done).length
   const totalCount = plan.tasks.length
@@ -3504,10 +3505,25 @@ function PlanDetailScreen({ plan, onBack, onCheck, onRename, onAddTask, onDelete
                 >≡</span>
                 {/* checkbox */}
                 <div
-                  onClick={() => { setSwipedIndex(null); setEditingIndex(null); onCheck(plan.id, i) }}
-                  style={{ width: 16, height: 16, borderRadius: 4, flexShrink: 0, cursor: 'pointer', border: `1.5px solid ${task.done ? C.rust : C.border}`, background: task.done ? C.rust : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  onClick={() => {
+                    if (completingIdx === i || task.done) return
+                    setSwipedIndex(null)
+                    setEditingIndex(null)
+                    setCompletingIdx(i)
+                    setTimeout(() => {
+                      onCheck(plan.id, i)
+                      setCompletingIdx(null)
+                    }, 350)
+                  }}
+                  style={{
+                    width: 16, height: 16, borderRadius: 4, flexShrink: 0, cursor: 'pointer',
+                    border: `1.5px solid ${(task.done || completingIdx === i) ? C.rust : C.border}`,
+                    background: completingIdx === i ? '#4a7c59' : (task.done ? C.rust : 'transparent'),
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    ...(completingIdx === i ? { animation: 'heed-done-check 0.22s ease forwards' } : {}),
+                  }}
                 >
-                  {task.done && <span style={{ color: 'white', fontSize: 10, lineHeight: 1 }}>✓</span>}
+                  {(task.done || completingIdx === i) && <span style={{ color: 'white', fontSize: 10, lineHeight: 1 }}>✓</span>}
                 </div>
                 {/* label or edit input */}
                 {isEditing ? (

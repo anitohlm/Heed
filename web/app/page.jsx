@@ -1303,6 +1303,122 @@ function CategoryBadge({ category }) {
   )
 }
 
+// Themed dropdown: looks and behaves like a native <select> trigger but
+// opens a custom-styled list panel so hover/selected states use brand
+// colors instead of the OS-default highlight (blue band on Chrome/Android).
+// Used for the Category field in AddTaskModal. `options` is an array of
+// { id, label, color, bg, icon }.
+function CategoryDropdown({ value, options, onChange }) {
+  const [open, setOpen] = useState(false)
+  const wrapRef = useRef(null)
+  const selected = options.find(o => o.id === value) || options[0]
+  // Close on outside click and Escape.
+  useEffect(() => {
+    if (!open) return
+    const onDoc = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false) }
+    const onKey = (e) => { if (e.key === 'Escape') setOpen(false) }
+    document.addEventListener('mousedown', onDoc)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDoc)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+  return (
+    <div ref={wrapRef} style={{ position: 'relative' }}>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        style={{
+          width: '100%', boxSizing: 'border-box',
+          background: C.paper,
+          border: `1.5px solid ${open ? C.warmDark : C.border}`,
+          borderRadius: 10,
+          padding: '8px 14px 8px 10px',
+          minHeight: 44,
+          display: 'flex', alignItems: 'center', gap: 10,
+          fontSize: 14, color: C.ink,
+          fontFamily: 'inherit',
+          cursor: 'pointer',
+          textAlign: 'left',
+          transition: 'border-color 0.15s',
+        }}>
+        {selected && (
+          <span style={{
+            width: 24, height: 24, borderRadius: 6,
+            background: selected.bg,
+            color: selected.color,
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 13, lineHeight: 1, flexShrink: 0,
+          }}>{selected.icon}</span>
+        )}
+        <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {selected ? selected.label : 'Pick a category'}
+        </span>
+        <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" style={{ flexShrink: 0, transition: 'transform 0.18s', transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+          <path d="M2 4l4 4 4-4" stroke={C.inkMute} strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
+      {open && (
+        <div role="listbox" style={{
+          position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0,
+          background: C.paperHi,
+          border: `1px solid ${C.border}`,
+          borderRadius: 10,
+          padding: 4,
+          boxShadow: '0 8px 28px rgba(0,0,0,0.35)',
+          zIndex: 200,
+          maxHeight: 280, overflowY: 'auto',
+          animation: 'heed-fadeUp 0.16s cubic-bezier(0.32,0.72,0,1)',
+        }}>
+          {options.map(opt => {
+            const isSel = opt.id === value
+            return (
+              <button
+                key={opt.id}
+                type="button"
+                role="option"
+                aria-selected={isSel}
+                onClick={() => { onChange(opt.id); setOpen(false) }}
+                onMouseEnter={e => { if (!isSel) e.currentTarget.style.background = opt.bg }}
+                onMouseLeave={e => { if (!isSel) e.currentTarget.style.background = 'transparent' }}
+                style={{
+                  width: '100%', boxSizing: 'border-box',
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '8px 10px',
+                  borderRadius: 7,
+                  background: isSel ? opt.bg : 'transparent',
+                  border: 'none',
+                  color: isSel ? opt.color : C.ink,
+                  fontSize: 13.5,
+                  fontWeight: isSel ? 700 : 500,
+                  fontFamily: 'inherit',
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  transition: 'background 0.12s',
+                  minHeight: 40,
+                }}>
+                <span style={{
+                  width: 22, height: 22, borderRadius: 6,
+                  background: isSel ? opt.color : opt.bg,
+                  color: isSel ? C.cream : opt.color,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 12.5, lineHeight: 1, flexShrink: 0,
+                  transition: 'background 0.12s, color 0.12s',
+                }}>{opt.icon}</span>
+                <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{opt.label}</span>
+                {isSel && <span aria-hidden="true" style={{ color: opt.color, fontSize: 12, fontWeight: 700, flexShrink: 0 }}>✓</span>}
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── BotanicalDivider ───────────────────────────────────────────
 function BotanicalDivider({ type = 'leaf' }) {
   const color = C.inkMute
@@ -4491,12 +4607,10 @@ function AddTaskModal({ open, onClose, onSubmit, onDelete, initialData = null, c
           </div>
           <div style={{ marginBottom: 14 }}>
             <label style={getFieldLabel()}>Category</label>
-            {/* Chip grid replaces native <select>. Each option uses its own
-                color token from CATEGORY for visual identity; selection
-                shows via a tinted background, full-color border, bolder
-                label, and a ✓ check (not color alone — passes color-not-only). */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 8 }}>
-              {[
+            <CategoryDropdown
+              value={category}
+              onChange={setCategory}
+              options={[
                 ...Object.keys(CATEGORY).map(id => ({
                   id,
                   label: id.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()),
@@ -4511,50 +4625,8 @@ function AddTaskModal({ open, onClose, onSubmit, onDelete, initialData = null, c
                   bg: (cat.color || C.warmDark) + '22',
                   icon: cat.icon,
                 })),
-              ].map(opt => {
-                const selected = category === opt.id
-                return (
-                  <button key={opt.id}
-                    onClick={() => setCategory(opt.id)}
-                    aria-pressed={selected}
-                    style={{
-                      position: 'relative',
-                      display: 'flex', alignItems: 'center', gap: 9,
-                      minHeight: 44,
-                      padding: '8px 12px',
-                      borderRadius: 10,
-                      background: selected ? opt.bg : 'transparent',
-                      border: selected ? `1.5px solid ${opt.color}` : `1px solid ${C.border}`,
-                      color: selected ? opt.color : C.inkSoft,
-                      cursor: 'pointer',
-                      fontFamily: 'inherit',
-                      fontSize: 13,
-                      fontWeight: selected ? 700 : 500,
-                      textAlign: 'left',
-                      transition: 'all 0.18s cubic-bezier(0.32,0.72,0,1)',
-                      outline: 'none',
-                    }}
-                  >
-                    <span style={{
-                      flexShrink: 0,
-                      width: 26, height: 26,
-                      borderRadius: 7,
-                      background: selected ? opt.color : opt.bg,
-                      color: selected ? C.cream : opt.color,
-                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 14, lineHeight: 1,
-                      transition: 'background 0.18s, color 0.18s',
-                    }}>
-                      {opt.icon}
-                    </span>
-                    <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{opt.label}</span>
-                    {selected && (
-                      <span aria-hidden="true" style={{ position: 'absolute', top: 5, right: 7, fontSize: 11, color: opt.color, lineHeight: 1, fontWeight: 700 }}>✓</span>
-                    )}
-                  </button>
-                )
-              })}
-            </div>
+              ]}
+            />
           </div>
           <div style={{ marginBottom: 14 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, position: 'relative' }} ref={importanceInfoRef}>

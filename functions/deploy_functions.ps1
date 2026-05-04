@@ -21,9 +21,13 @@ if (Test-Path $agentsDst) {
 }
 Copy-Item $agentsSrc $agentsDst -Recurse
 
-Write-Host "Publishing func-heed..."
+Write-Host "Publishing func-heed-flex..."
 Set-Location $functionsDir
-func azure functionapp publish func-heed --python
+# --build remote: Flex Consumption + Python v2 needs the package built on
+# the server, not locally. Without this flag the deploy "succeeds" and
+# functions show in `az functionapp function list`, but every HTTP route
+# 404s because the worker can't load the indexed functions.
+func azure functionapp publish func-heed-flex --python --build remote
 
 Write-Host "Cleaning up temporary agents/ copy..."
 Remove-Item $agentsDst -Recurse -Force

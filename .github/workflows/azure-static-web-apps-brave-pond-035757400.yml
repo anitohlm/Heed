@@ -4,10 +4,29 @@ on:
   push:
     branches:
       - main
+    # Only run when something that affects the static deploy changes.
+    # Pushes that only touch docs / memory / config don't burn Actions
+    # minutes anymore.
+    paths:
+      - 'web/out/**'
+      - 'web/app/**'
+      - 'web/**/*.json'
+      - 'web/**/*.js'
+      - 'web/**/*.jsx'
+      - 'web/**/*.ts'
+      - 'web/**/*.tsx'
+      - 'web/**/*.css'
+      - '.github/workflows/**'
   pull_request:
-    types: [opened, synchronize, reopened, closed]
+    types: [opened, reopened, closed]
     branches:
       - main
+
+# Cancel in-flight runs when a new push lands on the same ref. Saves
+# minutes when we push several commits in quick succession.
+concurrency:
+  group: swa-deploy-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build_and_deploy_job:
@@ -31,7 +50,7 @@ jobs:
           output_location: ""
           skip_app_build: true
         env:
-          NEXT_PUBLIC_FUNCTIONS_URL: https://func-heed.azurewebsites.net
+          NEXT_PUBLIC_FUNCTIONS_URL: https://func-heed-flex.azurewebsites.net
 
   close_pull_request_job:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'

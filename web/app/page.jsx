@@ -197,7 +197,7 @@ const DEMO_PLANS = [
     ],
   },
   {
-    id: 'plan-3', type: 'goal', icon: '🎯', title: 'Save ₱50,000',
+    id: 'plan-3', type: 'goal', goalKind: 'numeric', icon: '🎯', title: 'Save ₱50,000',
     current: 31500, target: 50000, unit: '₱', targetDate: 'Aug 2026',
   },
 ]
@@ -2950,8 +2950,10 @@ function PlanCard({ plan, delay = 0, onSelectPlan }) {
   const doneCount = plan.tasks ? plan.tasks.filter(t => t.done).length : 0
   const totalCount = plan.tasks ? plan.tasks.length : 0
   const pct = totalCount > 0 ? Math.round(doneCount / totalCount * 100) : 0
-  const goalPct = plan.type === 'goal' && plan.target > 0
-    ? Math.round(plan.current / plan.target * 100)
+  const goalPct = plan.type === 'goal'
+    ? (plan.goalKind === 'milestone'
+        ? (plan.achieved ? 100 : 0)
+        : plan.target > 0 ? Math.round(plan.current / plan.target * 100) : 0)
     : 0
   const parsedEventDate = plan.eventDate ? new Date(plan.eventDate) : null
   const daysUntil = parsedEventDate && !isNaN(parsedEventDate)
@@ -2962,7 +2964,9 @@ function PlanCard({ plan, delay = 0, onSelectPlan }) {
   const subtitle = plan.type === 'project'
     ? `${doneCount} of ${totalCount} tasks · Due ${plan.dueDate}`
     : plan.type === 'goal'
-    ? `${plan.unit}${(plan.current ?? 0).toLocaleString()} saved · Target ${plan.targetDate}`
+    ? (plan.goalKind === 'milestone'
+        ? (plan.targetDate && plan.targetDate !== 'No date set' ? `Target: ${plan.targetDate}` : 'No date set')
+        : `${plan.unit}${(plan.current ?? 0).toLocaleString()} saved · Target ${plan.targetDate}`)
     : daysUntil === null ? 'No date set'
     : daysUntil <= 0    ? 'Today!'
     : daysUntil === 1   ? 'Tomorrow'
@@ -2970,7 +2974,9 @@ function PlanCard({ plan, delay = 0, onSelectPlan }) {
 
   const badge = {
     project: <div style={{ fontSize: 13, fontWeight: 700, color: C.rust, flexShrink: 0 }}>{pct}%</div>,
-    goal:    <div style={{ fontSize: 13, fontWeight: 700, color: C.ochre, flexShrink: 0 }}>{goalPct}%</div>,
+    goal:    plan.goalKind === 'milestone'
+               ? (plan.achieved ? <div style={{ background: '#d4edda', color: '#2d6a4f', borderRadius: 999, padding: '2px 9px', fontSize: 11, fontWeight: 600, flexShrink: 0 }}>Done ✓</div> : null)
+               : <div style={{ fontSize: 13, fontWeight: 700, color: C.ochre, flexShrink: 0 }}>{goalPct}%</div>,
     event:   undone.length > 0
                ? <div style={{ background: '#e8f0e8', color: '#3a6840', borderRadius: 999, padding: '2px 9px', fontSize: 11, fontWeight: 600, flexShrink: 0 }}>{undone.length} left</div>
                : null,
@@ -2995,7 +3001,7 @@ function PlanCard({ plan, delay = 0, onSelectPlan }) {
         </div>
       )}
 
-      {plan.type === 'goal' && (
+      {plan.type === 'goal' && plan.goalKind !== 'milestone' && (
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           <span style={{ background: '#f5f0d8', color: '#7a6a20', borderRadius: 999, padding: '2px 9px', fontSize: 11, fontWeight: 600 }}>
             {plan.unit}{((plan.target ?? 0) - (plan.current ?? 0)).toLocaleString()} to go
@@ -3366,6 +3372,7 @@ function AddPlanSheet({ onClose, onAdd }) {
   const [title, setTitle] = useState('')
   const [dueDate, setDueDate]         = useState('')
   const [tasksText, setTasksText]     = useState('')
+  const [goalKind, setGoalKind]       = useState('milestone')  // 'milestone' | 'numeric'
   const [targetAmt, setTargetAmt]     = useState('')
   const [unit, setUnit]               = useState('₱')
   const [targetDate, setTargetDate]   = useState('')
@@ -3376,14 +3383,15 @@ function AddPlanSheet({ onClose, onAdd }) {
 
   const handleSubmit = () => {
     if (!title.trim()) return
-    if (type === 'goal' && (parseFloat(targetAmt) || 0) <= 0) return
+    if (type === 'goal' && goalKind === 'numeric' && (parseFloat(targetAmt) || 0) <= 0) return
     const parsedTasks = tasksText.split('\n').map(s => s.trim()).filter(Boolean).map(label => ({ label, done: false }))
     const plan = { id: `plan-${Date.now()}`, type, icon: PLAN_TYPES.find(p => p.type === type).icon, title: title.trim() }
     if (type === 'project') { plan.dueDate = dueDate || 'No due date'; plan.tasks = parsedTasks }
-    if (type === 'goal')    { plan.current = 0; plan.target = parseFloat(targetAmt) || 0; plan.unit = unit || ''; plan.targetDate = targetDate || 'No target date' }
+    if (type === 'goal' && goalKind === 'milestone') { plan.goalKind = 'milestone'; plan.targetDate = targetDate || 'No date set'; plan.achieved = false }
+    if (type === 'goal' && goalKind === 'numeric')   { plan.goalKind = 'numeric'; plan.current = 0; plan.target = parseFloat(targetAmt) || 0; plan.unit = unit || ''; plan.targetDate = targetDate || 'No target date' }
     if (type === 'event')   { plan.eventDate = eventDate ? new Date(eventDate) : null; plan.tasks = parsedTasks }
     onAdd(plan)
-    setStep('pick'); setType(null); setTitle(''); setDueDate(''); setTasksText(''); setTargetAmt(''); setUnit('₱'); setTargetDate(''); setEventDate('')
+    setStep('pick'); setType(null); setTitle(''); setDueDate(''); setTasksText(''); setTargetAmt(''); setUnit('₱'); setTargetDate(''); setEventDate(''); setGoalKind('milestone')
   }
 
   return (
@@ -3433,11 +3441,24 @@ function AddPlanSheet({ onClose, onAdd }) {
 
             {type === 'goal' && (
               <>
-                <label style={labelStyle}>Target amount *</label>
-                <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                  <input style={{ ...inputStyle, width: 64, marginTop: 0 }} placeholder="₱" value={unit} onChange={e => setUnit(e.target.value)}/>
-                  <input type="number" style={{ ...inputStyle, flex: 1, marginTop: 0 }} placeholder="50000" value={targetAmt} onChange={e => setTargetAmt(e.target.value)}/>
+                <label style={labelStyle}>Goal type</label>
+                <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                  {[{ k: 'milestone', label: 'Milestone', sub: 'Text-based' }, { k: 'numeric', label: 'Numeric', sub: 'Track amount' }].map(({ k, label, sub }) => (
+                    <button key={k} onClick={() => setGoalKind(k)} style={{ flex: 1, background: goalKind === k ? C.bellySoft : C.paper, border: `1.5px solid ${goalKind === k ? C.warmDark + '66' : C.border}`, borderRadius: 10, padding: '8px 10px', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: goalKind === k ? C.warmDark : C.ink }}>{label}</div>
+                      <div style={{ fontSize: 11, color: C.inkMute, marginTop: 1 }}>{sub}</div>
+                    </button>
+                  ))}
                 </div>
+                {goalKind === 'numeric' && (
+                  <>
+                    <label style={labelStyle}>Target amount *</label>
+                    <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                      <input style={{ ...inputStyle, width: 64, marginTop: 0 }} placeholder="₱" value={unit} onChange={e => setUnit(e.target.value)}/>
+                      <input type="number" style={{ ...inputStyle, flex: 1, marginTop: 0 }} placeholder="50000" value={targetAmt} onChange={e => setTargetAmt(e.target.value)}/>
+                    </div>
+                  </>
+                )}
                 <label style={labelStyle}>Target date (optional)</label>
                 <input style={inputStyle} placeholder="e.g. Aug 2026" value={targetDate} onChange={e => setTargetDate(e.target.value)}/>
               </>
@@ -3464,13 +3485,14 @@ function AddPlanSheet({ onClose, onAdd }) {
 
 // ── GoalUpdateSheet ────────────────────────────────────────────────
 function GoalUpdateSheet({ plan, onClose, onSave }) {
+  const isMilestone = plan.goalKind === 'milestone'
   const [val, setVal] = useState(String(plan.current ?? 0))
-  const pct = plan.target > 0 ? Math.min(100, Math.round((parseFloat(val) || 0) / plan.target * 100)) : 0
-  const remaining = Math.max(0, plan.target - (parseFloat(val) || 0))
-  const submit = () => {
+  const pct = !isMilestone && plan.target > 0 ? Math.min(100, Math.round((parseFloat(val) || 0) / plan.target * 100)) : 0
+  const remaining = !isMilestone ? Math.max(0, plan.target - (parseFloat(val) || 0)) : 0
+  const submitNumeric = () => {
     const n = parseFloat(val)
     if (isNaN(n) || n < 0) return
-    onSave(n)
+    onSave({ current: n })
   }
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 200 }} onClick={onClose}>
@@ -3481,33 +3503,65 @@ function GoalUpdateSheet({ plan, onClose, onSave }) {
           <div style={{ width: 36, height: 36, borderRadius: 9, background: '#f5f0d8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>{plan.icon}</div>
           <div>
             <div style={{ fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 600, color: C.warmDark }}>{plan.title}</div>
-            <div style={{ fontSize: 12, color: C.inkMute, marginTop: 2 }}>Target: {plan.unit}{(plan.target ?? 0).toLocaleString()} · {plan.targetDate}</div>
+            <div style={{ fontSize: 12, color: C.inkMute, marginTop: 2 }}>
+              {isMilestone
+                ? (plan.targetDate && plan.targetDate !== 'No date set' ? `Target: ${plan.targetDate}` : 'No date set')
+                : `Target: ${plan.unit}${(plan.target ?? 0).toLocaleString()} · ${plan.targetDate}`}
+            </div>
           </div>
         </div>
-        <div style={{ height: 6, background: C.bellySoft, borderRadius: 3, marginBottom: 6, overflow: 'hidden' }}>
-          <div style={{ height: '100%', borderRadius: 3, background: C.ochre, width: `${pct}%`, transition: 'width 0.3s ease' }}/>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, color: C.inkMute, marginBottom: 18 }}>
-          <span>{pct}% saved</span>
-          <span>{plan.unit}{remaining.toLocaleString()} to go</span>
-        </div>
-        <label style={{ fontSize: 12, fontWeight: 600, color: C.inkMute, display: 'block', marginBottom: 6 }}>
-          Current amount ({plan.unit})
-        </label>
-        <input
-          type="number"
-          value={val}
-          onChange={e => setVal(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && submit()}
-          autoFocus
-          style={{ width: '100%', boxSizing: 'border-box', background: C.paperHi, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '11px 14px', fontSize: 16, color: C.ink, outline: 'none', fontFamily: 'inherit', marginBottom: 14 }}
-          onFocus={e => { e.target.style.borderColor = C.warmDark }}
-          onBlur={e => { e.target.style.borderColor = C.border }}
-        />
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={submit} style={{ ...getBtnPrimary(), flex: 1, padding: '12px 0', fontSize: 14 }}>Save progress</button>
-          <button onClick={onClose} style={{ ...getBtnGhost(), flex: 1, padding: '12px 0', fontSize: 14 }}>Cancel</button>
-        </div>
+
+        {isMilestone ? (
+          <>
+            <div style={{ background: plan.achieved ? '#d4edda' : C.bellySoft, borderRadius: 12, padding: '14px 16px', marginBottom: 18, display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ fontSize: 24 }}>{plan.achieved ? '✓' : '◯'}</div>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: plan.achieved ? '#2d6a4f' : C.inkMute }}>
+                  {plan.achieved ? 'Achieved!' : 'Not yet achieved'}
+                </div>
+                <div style={{ fontSize: 11.5, color: C.inkMute, marginTop: 2 }}>
+                  {plan.achieved ? 'Tap below to mark as still in progress.' : 'Tap below when you\'ve reached this goal.'}
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={() => onSave({ achieved: !plan.achieved })}
+                style={{ ...getBtnPrimary(), flex: 1, padding: '12px 0', fontSize: 14 }}
+              >
+                {plan.achieved ? 'Mark as in progress' : 'Mark as achieved ✓'}
+              </button>
+              <button onClick={onClose} style={{ ...getBtnGhost(), flex: 1, padding: '12px 0', fontSize: 14 }}>Cancel</button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div style={{ height: 6, background: C.bellySoft, borderRadius: 3, marginBottom: 6, overflow: 'hidden' }}>
+              <div style={{ height: '100%', borderRadius: 3, background: C.ochre, width: `${pct}%`, transition: 'width 0.3s ease' }}/>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, color: C.inkMute, marginBottom: 18 }}>
+              <span>{pct}% saved</span>
+              <span>{plan.unit}{remaining.toLocaleString()} to go</span>
+            </div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: C.inkMute, display: 'block', marginBottom: 6 }}>
+              Current amount ({plan.unit})
+            </label>
+            <input
+              type="number"
+              value={val}
+              onChange={e => setVal(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && submitNumeric()}
+              autoFocus
+              style={{ width: '100%', boxSizing: 'border-box', background: C.paperHi, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '11px 14px', fontSize: 16, color: C.ink, outline: 'none', fontFamily: 'inherit', marginBottom: 14 }}
+              onFocus={e => { e.target.style.borderColor = C.warmDark }}
+              onBlur={e => { e.target.style.borderColor = C.border }}
+            />
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={submitNumeric} style={{ ...getBtnPrimary(), flex: 1, padding: '12px 0', fontSize: 14 }}>Save progress</button>
+              <button onClick={onClose} style={{ ...getBtnGhost(), flex: 1, padding: '12px 0', fontSize: 14 }}>Cancel</button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   )
@@ -3558,7 +3612,7 @@ function PlansPanel({ plans, checkTask, renameTask, addTask, deleteTask, reorder
         <GoalUpdateSheet
           plan={selectedPlan}
           onClose={() => setSelectedPlanId(null)}
-          onSave={(newVal) => { updatePlan(selectedPlan.id, { current: newVal }); setSelectedPlanId(null) }}
+          onSave={(update) => { updatePlan(selectedPlan.id, update); setSelectedPlanId(null) }}
         />
       )}
     </div>

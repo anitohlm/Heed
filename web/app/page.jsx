@@ -4365,11 +4365,13 @@ function AddRoutineModal({ open, onClose, onSubmit, initialData = null, seedTask
             </div>
             <div style={{ marginBottom: 14 }}>
               <label style={getFieldLabel()}>Items in this routine</label>
-              {items.map((item, idx) => (
+              {items.map((item, idx) => {
+                const ft = openPickerIndex === idx ? filteredTasks() : []
+                return (
                 <div key={item.id}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: openPickerIndex === idx ? 0 : 6 }}>
                     <input value={item.name} onChange={e => updateItem(item.id, e.target.value)} placeholder={`Item ${idx+1} (e.g. ${['Stretch 5 min','Vitamins','Read 10 pages'][idx]||'...'})`} style={inputStyle}/>
-                    <button onClick={() => { setOpenPickerIndex(openPickerIndex === idx ? null : idx); setPickerSearch('') }} type="button" style={{ background: 'transparent', border: 'none', color: openPickerIndex === idx ? C.ochre : C.border, cursor: 'pointer', fontSize: 15, padding: '0 4px', lineHeight: 1, fontFamily: 'inherit', flexShrink: 0 }}>📎</button>
+                    <button onClick={() => { setOpenPickerIndex(openPickerIndex === idx ? null : idx); setPickerSearch('') }} type="button" aria-label={openPickerIndex === idx ? 'Close task picker' : 'Pick a task'} style={{ background: 'transparent', border: 'none', color: openPickerIndex === idx ? C.ochre : C.border, cursor: 'pointer', fontSize: 15, padding: '0 4px', lineHeight: 1, fontFamily: 'inherit', flexShrink: 0 }}>📎</button>
                     <button onClick={() => { setOpenPickerIndex(null); removeItem(item.id) }} disabled={items.length===1} style={{ background: 'transparent', border: 'none', color: items.length===1 ? C.hairline : C.inkMute, cursor: items.length===1 ? 'not-allowed' : 'pointer', fontSize: 16, padding: '0 6px', lineHeight: 1, fontFamily: 'inherit', flexShrink: 0 }}>×</button>
                   </div>
                   {openPickerIndex === idx && (
@@ -4379,22 +4381,23 @@ function AddRoutineModal({ open, onClose, onSubmit, initialData = null, seedTask
                         value={pickerSearch}
                         onChange={e => setPickerSearch(e.target.value)}
                         placeholder="Search tasks…"
-                        style={{ width: '100%', border: 'none', borderBottom: `1px solid ${C.hairline}`, padding: '7px 10px', fontSize: 12.5, outline: 'none', background: C.paper, fontFamily: 'inherit', boxSizing: 'border-box' }}
+                        style={{ width: '100%', border: 'none', borderBottom: `1px solid ${C.hairline}`, padding: '7px 10px', fontSize: 12.5, outline: 'none', background: C.paper, fontFamily: 'inherit', boxSizing: 'border-box', position: 'sticky', top: 0 }}
                       />
-                      {filteredTasks().map(task => (
-                        <div key={task.id} onClick={() => pickTask(idx, task)}
-                          style={{ padding: '8px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1px solid ${C.hairline}` }}>
+                      {ft.map(task => (
+                        <button key={task.id} onClick={() => pickTask(idx, task)} type="button"
+                          style={{ padding: '8px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1px solid ${C.hairline}`, width: '100%', background: 'none', border: 'none', fontFamily: 'inherit', textAlign: 'left' }}>
                           <span style={{ color: C.ink, fontSize: 13 }}>{task.name}</span>
                           <span style={{ color: C.inkMute, fontSize: 11 }}>{task.category}</span>
-                        </div>
+                        </button>
                       ))}
-                      {filteredTasks().length === 0 && (
+                      {ft.length === 0 && (
                         <div style={{ padding: '10px', color: C.inkMute, fontSize: 12.5, textAlign: 'center' }}>No tasks match</div>
                       )}
                     </div>
                   )}
                 </div>
-              ))}
+                )
+              })}
               <button onClick={addItem} style={{ background: 'transparent', color: C.warmDark, border: `1.5px dashed ${C.border}`, padding: '8px 14px', borderRadius: 8, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', width: '100%', transition: 'all 0.15s' }}
                 onMouseEnter={e=>{e.currentTarget.style.borderColor=C.warmDark;e.currentTarget.style.background=C.bellySoft}}
                 onMouseLeave={e=>{e.currentTarget.style.borderColor=C.border;e.currentTarget.style.background='transparent'}}
@@ -4431,43 +4434,59 @@ function AddRoutineModal({ open, onClose, onSubmit, initialData = null, seedTask
 // ── Toast ──────────────────────────────────────────────────────
 function Toast({ message, onView, onUndo, onDismiss, reasons, onReason }) {
   const [picked, setPicked] = useState(null)
+  const hasSecondRow = (reasons && reasons.length > 0) || onUndo || onView
+  // Outer wrapper handles centering (translateX(-50%) on a fixed element).
+  // Inner wrapper runs the slide-up animation. Splitting them is required
+  // because the keyframe animates `transform`, which would otherwise wipe
+  // out the centering — making the toast slide in from the right edge then
+  // snap to center when the animation ends.
   return (
     <div style={{
       position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
-      background: '#222B33', border: '1px solid #2A3540', borderLeft: `3px solid ${C.sage}`,
-      borderRadius: 10, padding: '10px 16px', display: 'flex', alignItems: 'center',
-      gap: 10, boxShadow: '0 6px 22px rgba(0,0,0,0.45)', zIndex: 9999,
-      animation: 'heed-slideUp 0.4s cubic-bezier(0.16,1,0.3,1)', whiteSpace: 'nowrap',
-      flexWrap: 'wrap', maxWidth: 'calc(100vw - 32px)',
+      zIndex: 9999, maxWidth: 'calc(100vw - 32px)',
     }}>
-      <span style={{ fontSize: 16 }}>✓</span>
-      <span style={{ fontSize: 13, color: '#e8e0d0', fontWeight: 500 }}>{message}</span>
-      {reasons && reasons.length > 0 && (
-        <div style={{ display: 'flex', gap: 5 }}>
-          {reasons.map(r => {
-            const isPicked = picked === r.value
-            return (
-              <button key={r.value} onClick={() => { if (picked) return; setPicked(r.value); onReason?.(r.value) }}
-                style={{
-                  background: isPicked ? C.sage + '33' : 'transparent',
-                  border: `1px solid ${isPicked ? C.sage : C.inkMute}`,
-                  color: isPicked ? C.sage : C.inkSoft,
-                  padding: '3px 9px', borderRadius: 999, fontSize: 11,
-                  cursor: picked ? 'default' : 'pointer', fontWeight: 600, fontFamily: 'inherit',
-                }}>
-                {isPicked ? '✓ ' : ''}{r.label}
-              </button>
-            )
-          })}
+      <div style={{
+        background: '#222B33', border: '1px solid #2A3540', borderLeft: `3px solid ${C.sage}`,
+        borderRadius: 10, padding: '10px 14px',
+        boxShadow: '0 6px 22px rgba(0,0,0,0.45)',
+        animation: 'heed-toast-up 0.32s cubic-bezier(0.16,1,0.3,1)',
+        display: 'flex', flexDirection: 'column', gap: 8,
+        minWidth: 240,
+      }}>
+        {/* Row 1 — message + dismiss */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 15, lineHeight: 1, flexShrink: 0 }}>✓</span>
+          <span style={{ fontSize: 13, color: '#e8e0d0', fontWeight: 500, flex: 1 }}>{message}</span>
+          <button onClick={onDismiss} aria-label="Dismiss" style={{ background: 'none', border: 'none', color: C.inkMute, fontSize: 18, cursor: 'pointer', lineHeight: 1, padding: 0, flexShrink: 0 }}>×</button>
         </div>
-      )}
-      {onUndo && (
-        <button onClick={onUndo} style={{ marginLeft: 4, background: 'transparent', border: `1px solid ${C.inkMute}`, color: C.inkSoft, padding: '4px 10px', borderRadius: 6, fontSize: 11, cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>Undo</button>
-      )}
-      {onView && (
-        <button onClick={onView} style={{ marginLeft: 4, background: 'transparent', border: `1px solid ${C.sage}`, color: C.sage, padding: '4px 10px', borderRadius: 6, fontSize: 11, cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>View Tracks</button>
-      )}
-      <button onClick={onDismiss} aria-label="Dismiss" style={{ marginLeft: 4, background: 'none', border: 'none', color: C.inkMute, fontSize: 18, cursor: 'pointer', lineHeight: 1, padding: 0 }}>×</button>
+        {/* Row 2 — chips + Undo/View, when present */}
+        {hasSecondRow && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'nowrap' }}>
+            {reasons && reasons.length > 0 && reasons.map(r => {
+              const isPicked = picked === r.value
+              return (
+                <button key={r.value} onClick={() => { if (picked) return; setPicked(r.value); onReason?.(r.value) }}
+                  style={{
+                    background: isPicked ? C.sage + '33' : 'transparent',
+                    border: `1px solid ${isPicked ? C.sage : C.inkMute}`,
+                    color: isPicked ? C.sage : C.inkSoft,
+                    padding: '3px 9px', borderRadius: 999, fontSize: 11,
+                    cursor: picked ? 'default' : 'pointer', fontWeight: 600, fontFamily: 'inherit',
+                    whiteSpace: 'nowrap',
+                  }}>
+                  {isPicked ? '✓ ' : ''}{r.label}
+                </button>
+              )
+            })}
+            {onUndo && (
+              <button onClick={onUndo} style={{ marginLeft: 'auto', background: 'transparent', border: `1px solid ${C.inkMute}`, color: C.inkSoft, padding: '3px 10px', borderRadius: 6, fontSize: 11, cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit', whiteSpace: 'nowrap' }}>Undo</button>
+            )}
+            {onView && (
+              <button onClick={onView} style={{ marginLeft: onUndo ? 4 : 'auto', background: 'transparent', border: `1px solid ${C.sage}`, color: C.sage, padding: '3px 10px', borderRadius: 6, fontSize: 11, cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit', whiteSpace: 'nowrap' }}>View Tracks</button>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -5693,6 +5712,7 @@ export default function HeedApp() {
       <style>{`
         @keyframes heed-fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
         @keyframes heed-tab-in { from { opacity:0; transform:translateX(12px); } to { opacity:1; transform:translateX(0); } }
+        @keyframes heed-toast-up { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
         @keyframes heed-fadeIn { from { opacity:0; } to { opacity:1; } }
         @keyframes heed-pulse { 0%,100% { opacity:0.4; transform:translateX(-50%) scale(1); } 50% { opacity:1; transform:translateX(-50%) scale(1.4); } }
         @keyframes heed-breathe { 0%,100% { opacity:0.5; transform:scale(1); } 50% { opacity:0.85; transform:scale(1.05); } }

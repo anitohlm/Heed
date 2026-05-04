@@ -609,6 +609,26 @@ function AvatarButton({ name, onClick }) {
   )
 }
 
+function SettingsRow({ children, last = false, onClick }) {
+  const [hover, setHover] = useState(false)
+  return (
+    <div
+      onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        display: 'flex', alignItems: 'center', padding: '0 16px', minHeight: 52, gap: 12,
+        borderBottom: last ? 'none' : `1px solid ${C.hairline}`,
+        background: hover && onClick ? C.bellySoft : 'transparent',
+        transition: 'background 0.12s',
+        cursor: onClick ? 'pointer' : 'default',
+      }}
+    >
+      {children}
+    </div>
+  )
+}
+
 function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, customCategories, onAddCategory, customEventTypes, onAddEventType }) {
   const [nameVal, setNameVal] = useState(userName)
   const [catIcon, setCatIcon] = useState('✦')
@@ -638,13 +658,18 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
     setEvtLabel(''); setEvtIcon('📌'); setEvtDays('3'); setEvtOpen(false)
   }
 
-  const secLabel = (text) => (
-    <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 8, paddingLeft: 4 }}>{text}</div>
-  )
-  const inputSt = { width: '100%', boxSizing: 'border-box', background: C.paperHi, border: `1.5px solid ${C.border}`, borderRadius: 8, padding: '9px 12px', fontSize: 13, color: C.ink, outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.15s' }
+  const inputSt = { width: '100%', boxSizing: 'border-box', background: C.paperHi, border: `1.5px solid ${C.border}`, borderRadius: 9, padding: '10px 12px', fontSize: 14, color: C.ink, outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.15s' }
   const group = { background: C.paper, border: `1px solid ${C.border}`, borderRadius: 14, overflow: 'hidden', marginBottom: 24 }
-  const row = { display: 'flex', alignItems: 'center', padding: '13px 16px', borderBottom: `1px solid ${C.hairline}` }
-  const rowLast = { display: 'flex', alignItems: 'center', padding: '13px 16px' }
+  const fieldLabel = (text) => <label style={{ display: 'block', fontSize: 11, color: C.inkMute, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 6 }}>{text}</label>
+  const secLabel = (text, sub) => (
+    <div style={{ marginBottom: 8, paddingLeft: 4 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, letterSpacing: 0.8, textTransform: 'uppercase' }}>{text}</div>
+      {sub && <div style={{ fontSize: 12, color: C.inkMute, marginTop: 2 }}>{sub}</div>}
+    </div>
+  )
+  const iconTile = (icon, bg) => (
+    <div style={{ width: 34, height: 34, borderRadius: 10, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>{icon}</div>
+  )
 
   return (
     <>
@@ -653,138 +678,183 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
         <div style={{ background: C.paperHi, width: '100%', maxWidth: 520, borderRadius: '20px 20px 0 0', padding: '0 20px 0 20px', boxShadow: '0 -8px 40px rgba(124,83,51,0.25)', border: `1px solid ${C.border}`, maxHeight: '88vh', display: 'flex', flexDirection: 'column' }}>
 
           {/* Handle + Header */}
-          <div style={{ flexShrink: 0, paddingTop: 14, paddingBottom: 16 }}>
-            <div style={{ width: 36, height: 4, borderRadius: 2, background: C.border, margin: '0 auto 18px' }}/>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ width: 32, height: 32, borderRadius: 10, background: C.warmDark + '18', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke={C.warmDark} strokeWidth="1.8"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke={C.warmDark} strokeWidth="1.8" strokeLinecap="round"/></svg>
-              </div>
-              <div style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 19, fontWeight: 600, color: C.ink, flex: 1 }}>Settings</div>
-              <button onClick={onClose} style={{ width: 30, height: 30, borderRadius: '50%', background: C.border + '88', border: 'none', color: C.inkMute, cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, fontFamily: 'inherit' }}>×</button>
+          <div style={{ flexShrink: 0, paddingTop: 14, paddingBottom: 18 }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: C.border, margin: '0 auto 20px' }}/>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              {iconTile(
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="7" r="4" stroke={C.warmDark} strokeWidth="1.8"/><path d="M5 21c0-3.9 3.1-7 7-7s7 3.1 7 7" stroke={C.warmDark} strokeWidth="1.8" strokeLinecap="round"/></svg>,
+                C.warmDark + '18'
+              )}
+              <div style={{ flex: 1, fontFamily: 'Lora, Georgia, serif', fontSize: 20, fontWeight: 600, color: C.ink }}>Settings</div>
+              <button
+                onClick={onClose}
+                aria-label="Close settings"
+                style={{ width: 44, height: 44, borderRadius: '50%', background: C.paper, border: `1px solid ${C.border}`, color: C.inkSoft, cursor: 'pointer', fontSize: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'inherit', flexShrink: 0, transition: 'background 0.12s' }}
+                onMouseEnter={e => { e.currentTarget.style.background = C.border }}
+                onMouseLeave={e => { e.currentTarget.style.background = C.paper }}
+              >×</button>
             </div>
           </div>
 
           {/* Scrollable body */}
-          <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 'calc(env(safe-area-inset-bottom) + 24px)' }}>
+          <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 'calc(env(safe-area-inset-bottom) + 32px)' }}>
 
             {/* Profile */}
             {secLabel('Profile')}
             <div style={group}>
-              <div style={{ ...row, gap: 14 }}>
-                <div style={{ width: 46, height: 46, borderRadius: '50%', background: `linear-gradient(135deg, ${C.warmDark} 0%, ${C.ochre} 100%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Lora, Georgia, serif', fontSize: 15, fontWeight: 700, color: '#fff', flexShrink: 0, letterSpacing: -0.5 }}>
+              <SettingsRow last>
+                <div style={{ width: 48, height: 48, borderRadius: '50%', background: `linear-gradient(135deg, ${C.warmDark} 0%, ${C.ochre} 100%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Lora, Georgia, serif', fontSize: 16, fontWeight: 700, color: '#fff', flexShrink: 0, letterSpacing: -0.5 }}>
                   {(nameVal || 'U').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()}
                 </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 11, color: C.inkMute, marginBottom: 5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>Display name</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  {fieldLabel('Display name')}
                   <input
+                    id="settings-name"
                     value={nameVal}
                     onChange={e => setNameVal(e.target.value)}
-                    onBlur={() => onUserName(nameVal)}
-                    placeholder="Your name"
-                    style={{ ...inputSt, padding: '7px 10px', fontSize: 14, fontWeight: 500 }}
+                    onBlur={e => { e.target.style.borderColor = C.border; onUserName(nameVal) }}
                     onFocus={e => { e.target.style.borderColor = C.warmDark }}
+                    placeholder="Your name"
+                    style={{ ...inputSt }}
+                    autoComplete="name"
                   />
                 </div>
-              </div>
+              </SettingsRow>
             </div>
 
             {/* Appearance */}
             {secLabel('Appearance')}
             <div style={group}>
-              <div style={{ ...rowLast, justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ width: 30, height: 30, borderRadius: 8, background: C.ochre + '22', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="5" stroke={C.ochre} strokeWidth="2"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" stroke={C.ochre} strokeWidth="2" strokeLinecap="round"/></svg>
-                  </div>
-                  <span style={{ fontSize: 14, color: C.ink, fontWeight: 500 }}>Theme</span>
+              <SettingsRow last style={{ justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  {iconTile(
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="5" stroke={C.ochre} strokeWidth="2"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" stroke={C.ochre} strokeWidth="2" strokeLinecap="round"/></svg>,
+                    C.ochre + '20'
+                  )}
+                  <span style={{ fontSize: 15, color: C.ink, fontWeight: 500 }}>Theme</span>
                 </div>
                 <ThemeSwitcher theme={theme} onTheme={onTheme}/>
-              </div>
+              </SettingsRow>
             </div>
 
             {/* Task Categories */}
-            {secLabel('Task Categories')}
+            {secLabel('Task Categories', 'Used to tag and group your tasks')}
             <div style={group}>
-              {builtinCategories.map(cat => (
-                <div key={cat.id} style={{ ...row, gap: 12 }}>
-                  <div style={{ width: 30, height: 30, borderRadius: 8, background: cat.bg || cat.color + '22', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>{cat.icon}</div>
-                  <span style={{ fontSize: 14, color: C.ink, textTransform: 'capitalize', flex: 1 }}>{cat.name}</span>
-                  <span style={{ fontSize: 11, color: C.inkMute, fontWeight: 600 }}>Built-in</span>
-                </div>
+              {builtinCategories.map((cat, i) => (
+                <SettingsRow key={cat.id} last={i === builtinCategories.length - 1 && customCategories.length === 0 && !catOpen}>
+                  {iconTile(<span style={{ color: cat.color }}>{cat.icon}</span>, cat.color + '20')}
+                  <span style={{ fontSize: 15, color: C.ink, textTransform: 'capitalize', flex: 1 }}>{cat.name}</span>
+                  <span style={{ fontSize: 10, color: C.inkMute, fontWeight: 700, background: C.hairline, borderRadius: 999, padding: '2px 8px', textTransform: 'uppercase', letterSpacing: 0.4 }}>Built-in</span>
+                </SettingsRow>
               ))}
-              {customCategories.map(cat => (
-                <div key={cat.id} style={{ ...row, gap: 12 }}>
-                  <div style={{ width: 30, height: 30, borderRadius: 8, background: cat.color + '22', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>{cat.icon}</div>
-                  <span style={{ fontSize: 14, color: C.ink, flex: 1 }}>{cat.name}</span>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: cat.color, display: 'inline-block' }}/>
-                </div>
+              {customCategories.map((cat, i) => (
+                <SettingsRow key={cat.id} last={i === customCategories.length - 1 && !catOpen}>
+                  {iconTile(<span style={{ color: cat.color }}>{cat.icon}</span>, cat.color + '20')}
+                  <span style={{ fontSize: 15, color: C.ink, flex: 1 }}>{cat.name}</span>
+                  <span style={{ width: 10, height: 10, borderRadius: '50%', background: cat.color, display: 'inline-block', flexShrink: 0 }}/>
+                </SettingsRow>
               ))}
               {catOpen ? (
-                <div style={{ padding: '14px 16px', borderTop: `1px solid ${C.hairline}` }}>
-                  <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-                    <input value={catIcon} onChange={e => setCatIcon(e.target.value)} placeholder="✦" style={{ ...inputSt, width: 44, textAlign: 'center', padding: '8px 6px' }}/>
-                    <input value={catName} onChange={e => setCatName(e.target.value)} placeholder="Category name" style={{ ...inputSt, flex: 1 }} autoFocus/>
+                <div style={{ padding: '16px', borderTop: `1px solid ${C.hairline}`, background: C.paperHi }}>
+                  <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
+                    <div>
+                      {fieldLabel('Icon')}
+                      <input value={catIcon} onChange={e => setCatIcon(e.target.value)} style={{ ...inputSt, width: 52, textAlign: 'center', padding: '10px 6px' }}/>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      {fieldLabel('Name')}
+                      <input value={catName} onChange={e => setCatName(e.target.value)} placeholder="e.g. Learning" style={{ ...inputSt }} autoFocus/>
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
-                    {PRESET_COLORS.map(c => (
-                      <button key={c} onClick={() => setCatColor(c)} style={{ width: 22, height: 22, borderRadius: '50%', background: c, border: catColor === c ? `2.5px solid ${C.ink}` : '2.5px solid transparent', outline: catColor === c ? `2px solid ${c}` : 'none', outlineOffset: 2, cursor: 'pointer', padding: 0, flexShrink: 0 }}/>
-                    ))}
+                  <div style={{ marginBottom: 16 }}>
+                    {fieldLabel('Color')}
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      {PRESET_COLORS.map(c => (
+                        <button key={c} onClick={() => setCatColor(c)} style={{ width: 26, height: 26, borderRadius: '50%', background: c, border: catColor === c ? `3px solid ${C.ink}` : '3px solid transparent', outline: catColor === c ? `2px solid ${c}` : 'none', outlineOffset: 2, cursor: 'pointer', padding: 0, flexShrink: 0 }}/>
+                      ))}
+                    </div>
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={submitCategory} style={{ flex: 1, background: C.warmDark, color: '#fff', border: 'none', borderRadius: 8, padding: '9px 0', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Add</button>
-                    <button onClick={() => setCatOpen(false)} style={{ flex: 1, background: 'transparent', color: C.inkMute, border: `1px solid ${C.border}`, borderRadius: 8, padding: '9px 0', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
+                    <button onClick={submitCategory} style={{ flex: 1, background: C.warmDark, color: '#fff', border: 'none', borderRadius: 10, padding: '12px 0', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Add category</button>
+                    <button onClick={() => setCatOpen(false)} style={{ flex: 1, background: 'transparent', color: C.inkMute, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '12px 0', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
                   </div>
                 </div>
               ) : (
-                <button onClick={() => setCatOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '13px 16px', background: 'transparent', border: 'none', borderTop: `1px solid ${C.hairline}`, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
-                  <div style={{ width: 30, height: 30, borderRadius: 8, background: C.sage + '22', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke={C.sage} strokeWidth="2.2" strokeLinecap="round"/></svg>
-                  </div>
-                  <span style={{ fontSize: 14, color: C.sage, fontWeight: 600 }}>Add category</span>
-                </button>
+                <SettingsRow last onClick={() => setCatOpen(true)}>
+                  {iconTile(<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke={C.sage} strokeWidth="2.2" strokeLinecap="round"/></svg>, C.sage + '22')}
+                  <span style={{ fontSize: 15, color: C.sage, fontWeight: 600 }}>Add category</span>
+                </SettingsRow>
               )}
             </div>
 
             {/* Life Event Types */}
-            {secLabel('Life Event Types')}
+            {secLabel('Life Event Types', 'Modes that hold or adjust your task flow')}
             <div style={group}>
-              {builtinEvents.map(evt => (
-                <div key={evt.id} style={{ ...row, gap: 12 }}>
-                  <div style={{ width: 30, height: 30, borderRadius: 8, background: C.ochre + '18', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>{evt.icon}</div>
-                  <span style={{ fontSize: 14, color: C.ink, flex: 1 }}>{evt.label.split(' —')[0]}</span>
-                  <span style={{ fontSize: 11, color: C.inkMute, fontWeight: 600 }}>{evt.defaultDays}d</span>
-                </div>
+              {builtinEvents.map((evt, i) => (
+                <SettingsRow key={evt.id} last={i === builtinEvents.length - 1 && customEventTypes.length === 0 && !evtOpen}>
+                  {iconTile(evt.icon, C.ochre + '18')}
+                  <span style={{ fontSize: 15, color: C.ink, flex: 1 }}>{evt.label.split(' —')[0]}</span>
+                  <span style={{ fontSize: 12, color: C.inkMute, fontWeight: 600 }}>{evt.defaultDays}d</span>
+                </SettingsRow>
               ))}
-              {customEventTypes.map(evt => (
-                <div key={evt.id} style={{ ...row, gap: 12 }}>
-                  <div style={{ width: 30, height: 30, borderRadius: 8, background: C.border, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>{evt.icon}</div>
-                  <span style={{ fontSize: 14, color: C.ink, flex: 1 }}>{evt.label}</span>
-                  <span style={{ fontSize: 11, color: C.inkMute, fontWeight: 600 }}>{evt.defaultDays}d</span>
-                </div>
+              {customEventTypes.map((evt, i) => (
+                <SettingsRow key={evt.id} last={i === customEventTypes.length - 1 && !evtOpen}>
+                  {iconTile(evt.icon, C.border)}
+                  <span style={{ fontSize: 15, color: C.ink, flex: 1 }}>{evt.label}</span>
+                  <span style={{ fontSize: 12, color: C.inkMute, fontWeight: 600 }}>{evt.defaultDays}d</span>
+                </SettingsRow>
               ))}
               {evtOpen ? (
-                <div style={{ padding: '14px 16px', borderTop: `1px solid ${C.hairline}` }}>
-                  <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-                    <input value={evtIcon} onChange={e => setEvtIcon(e.target.value)} placeholder="📌" style={{ ...inputSt, width: 44, textAlign: 'center', padding: '8px 6px' }}/>
-                    <input value={evtLabel} onChange={e => setEvtLabel(e.target.value)} placeholder="Event type name" style={{ ...inputSt, flex: 1 }} autoFocus/>
+                <div style={{ padding: '16px', borderTop: `1px solid ${C.hairline}`, background: C.paperHi }}>
+                  <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
+                    <div>
+                      {fieldLabel('Icon')}
+                      <input value={evtIcon} onChange={e => setEvtIcon(e.target.value)} style={{ ...inputSt, width: 52, textAlign: 'center', padding: '10px 6px' }}/>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      {fieldLabel('Name')}
+                      <input value={evtLabel} onChange={e => setEvtLabel(e.target.value)} placeholder="e.g. Vacation" style={{ ...inputSt }} autoFocus/>
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12 }}>
-                    <span style={{ fontSize: 13, color: C.inkMute, flex: 1 }}>Default duration (days)</span>
-                    <input type="number" min="1" max="60" value={evtDays} onChange={e => setEvtDays(e.target.value)} style={{ ...inputSt, width: 64, textAlign: 'center' }}/>
+                  <div style={{ marginBottom: 16 }}>
+                    {fieldLabel('Default duration')}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <input type="number" min="1" max="60" value={evtDays} onChange={e => setEvtDays(e.target.value)} style={{ ...inputSt, width: 72, textAlign: 'center' }}/>
+                      <span style={{ fontSize: 14, color: C.inkMute }}>days</span>
+                    </div>
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={submitEvent} style={{ flex: 1, background: C.warmDark, color: '#fff', border: 'none', borderRadius: 8, padding: '9px 0', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Add</button>
-                    <button onClick={() => setEvtOpen(false)} style={{ flex: 1, background: 'transparent', color: C.inkMute, border: `1px solid ${C.border}`, borderRadius: 8, padding: '9px 0', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
+                    <button onClick={submitEvent} style={{ flex: 1, background: C.warmDark, color: '#fff', border: 'none', borderRadius: 10, padding: '12px 0', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Add event type</button>
+                    <button onClick={() => setEvtOpen(false)} style={{ flex: 1, background: 'transparent', color: C.inkMute, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '12px 0', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
                   </div>
                 </div>
               ) : (
-                <button onClick={() => setEvtOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '13px 16px', background: 'transparent', border: 'none', borderTop: `1px solid ${C.hairline}`, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
-                  <div style={{ width: 30, height: 30, borderRadius: 8, background: C.sage + '22', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke={C.sage} strokeWidth="2.2" strokeLinecap="round"/></svg>
-                  </div>
-                  <span style={{ fontSize: 14, color: C.sage, fontWeight: 600 }}>Add event type</span>
-                </button>
+                <SettingsRow last onClick={() => setEvtOpen(true)}>
+                  {iconTile(<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke={C.sage} strokeWidth="2.2" strokeLinecap="round"/></svg>, C.sage + '22')}
+                  <span style={{ fontSize: 15, color: C.sage, fontWeight: 600 }}>Add event type</span>
+                </SettingsRow>
               )}
+            </div>
+
+            {/* About */}
+            {secLabel('About')}
+            <div style={group}>
+              <SettingsRow>
+                {iconTile(
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 22c5.52 0 10-4.48 10-10S17.52 2 12 2 2 6.48 2 12s4.48 10 10 10z" stroke={C.warmDark} strokeWidth="1.8"/><path d="M12 11v5M12 8h.01" stroke={C.warmDark} strokeWidth="1.8" strokeLinecap="round"/></svg>,
+                  C.warmDark + '18'
+                )}
+                <span style={{ fontSize: 15, color: C.ink, fontWeight: 500, flex: 1 }}>Heed</span>
+                <span style={{ fontSize: 13, color: C.inkMute }}>v1.0</span>
+              </SettingsRow>
+              <SettingsRow last>
+                {iconTile(
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke={C.ochre} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+                  C.ochre + '18'
+                )}
+                <span style={{ fontSize: 15, color: C.ink, fontWeight: 500, flex: 1 }}>Made with intention</span>
+                <span style={{ fontSize: 13, color: C.inkMute }}>anitohlm</span>
+              </SettingsRow>
             </div>
 
           </div>

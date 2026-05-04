@@ -2354,8 +2354,19 @@ function RoutineRow({ routine, delay = 0, onMarkDone, onSkipToday, onLighten }) 
 function RoutineCard({ routine, delay = 0, onMarkDone, onLighten, onEdit, onShare, onMarkDay }) {
   const [hover, setHover] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [statsOpen, setStatsOpen] = useState(false)
   const completionRate = routine.completion14d.filter(Boolean).length / routine.completion14d.length
+  const doneDays = routine.completion14d.filter(Boolean).length
+  const totalDays = routine.completion14d.length
+  const lastWeekDone = routine.completion14d.slice(-7).filter(Boolean).length
   const isAttentionWorthy = routine.suggestion !== null
+  // Close popover on outside click / Escape
+  useEffect(() => {
+    if (!statsOpen) return
+    const onKey = (e) => { if (e.key === 'Escape') setStatsOpen(false) }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [statsOpen])
 
   const menuItems = [
     {
@@ -2409,18 +2420,52 @@ function RoutineCard({ routine, delay = 0, onMarkDone, onLighten, onEdit, onShar
         </div>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 2, flexShrink: 0 }}>
           <div style={{ position: 'relative', width: 52, height: 52 }}>
-            <svg width="52" height="52" style={{ transform: 'rotate(-90deg)' }}>
-              <circle cx="26" cy="26" r="22" fill="none" stroke={C.hairline} strokeWidth="3"/>
-              <circle cx="26" cy="26" r="22" fill="none"
-                stroke={completionRate > 0.8 ? C.sage : completionRate > 0.5 ? C.ochre : C.rust}
-                strokeWidth="3" strokeLinecap="round"
-                strokeDasharray={`${completionRate * 138} 138`}
-                style={{ transition: 'stroke-dasharray 0.6s ease' }}
-              />
-            </svg>
-            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: C.warmDark }}>
-              {Math.round(completionRate * 100)}%
-            </div>
+            <button
+              type="button"
+              onClick={e => { e.stopPropagation(); setStatsOpen(o => !o); setMenuOpen(false) }}
+              aria-haspopup="dialog"
+              aria-expanded={statsOpen}
+              aria-label={`Completion rate: ${Math.round(completionRate * 100)}%. Tap for breakdown.`}
+              style={{ position: 'absolute', inset: 0, background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', borderRadius: '50%' }}
+            >
+              <svg width="52" height="52" style={{ transform: 'rotate(-90deg)' }}>
+                <circle cx="26" cy="26" r="22" fill="none" stroke={C.hairline} strokeWidth="3"/>
+                <circle cx="26" cy="26" r="22" fill="none"
+                  stroke={completionRate > 0.8 ? C.sage : completionRate > 0.5 ? C.ochre : C.rust}
+                  strokeWidth="3" strokeLinecap="round"
+                  strokeDasharray={`${completionRate * 138} 138`}
+                  style={{ transition: 'stroke-dasharray 0.6s ease' }}
+                />
+              </svg>
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: C.warmDark }}>
+                {Math.round(completionRate * 100)}%
+              </div>
+            </button>
+            {statsOpen && (
+              <>
+                {/* invisible scrim to close on outside tap */}
+                <div onClick={() => setStatsOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 49 }}/>
+                <div role="dialog" aria-label="Completion breakdown" style={{
+                  position: 'absolute', top: 'calc(100% + 6px)', right: 0,
+                  background: C.paperHi,
+                  border: `1px solid ${C.border}`,
+                  borderRadius: 10,
+                  padding: '10px 14px',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
+                  zIndex: 50,
+                  minWidth: 180,
+                  animation: 'heed-fadeUp 0.18s cubic-bezier(0.32,0.72,0,1)',
+                }}>
+                  <div style={{ fontSize: 10.5, fontWeight: 700, color: C.inkMute, letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 6 }}>
+                    Completion rate
+                  </div>
+                  <div style={{ fontSize: 13, color: C.ink, lineHeight: 1.5 }}>
+                    <div><strong style={{ color: C.warmDark }}>{doneDays} of {totalDays} days</strong> · last 2 weeks</div>
+                    <div><strong style={{ color: C.warmDark }}>{lastWeekDone} of 7 days</strong> · last week</div>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
           <div style={{ position: 'relative' }}>
             <button
@@ -3518,6 +3563,45 @@ const PLAN_TYPES = [
   { type: 'event',   icon: '📅', label: 'Event',    desc: 'A date you\'re preparing for' },
 ]
 
+function getSuggestedTasks(type, title) {
+  const t = title.toLowerCase()
+  if (type === 'project') {
+    if (/mov(e|ing)|apartment|flat|reloc/.test(t))
+      return ['Book moving truck', 'Notify landlord', 'Pack bedroom', 'Pack kitchen', 'Update address with bank', 'Arrange utilities transfer', 'Clean old place']
+    if (/launch|startup|product release/.test(t))
+      return ['Define scope and goals', 'Design mockups', 'Build MVP', 'Write documentation', 'Plan launch day', 'Gather early feedback']
+    if (/website|web app|site|landing page/.test(t))
+      return ['Write copy', 'Design layouts', 'Set up hosting', 'Configure domain', 'Test on mobile', 'Go live']
+    if (/wedding|marry|engagement/.test(t))
+      return ['Book venue', 'Send invitations', 'Arrange catering', 'Book photographer', 'Order flowers', 'Plan honeymoon']
+    if (/renovate|renovation|remodel/.test(t))
+      return ['Get contractor quotes', 'Choose materials', 'Clear the space', 'Order supplies', 'Schedule inspections', 'Final walkthrough']
+    if (/hire|recruit|onboard/.test(t))
+      return ['Write job description', 'Post to job boards', 'Screen applications', 'Schedule interviews', 'Make offer', 'Onboarding plan']
+    if (/book|write|publish/.test(t))
+      return ['Outline chapters', 'Write first draft', 'Edit and revise', 'Design cover', 'Proofread', 'Publish or share']
+    return ['Define goal and scope', 'Research and plan', 'Break into milestones', 'Execute first steps', 'Review and adjust']
+  }
+  if (type === 'event') {
+    if (/interview/.test(t))
+      return ['Research the company', 'Prepare answers for common questions', 'Iron outfit', 'Plan route and commute', 'Arrive 10 min early', 'Prepare questions to ask']
+    if (/present|talk|speak|conference/.test(t))
+      return ['Outline key points', 'Create slides', 'Practice 3 times', 'Prepare for Q&A', 'Test equipment', 'Arrive early to set up']
+    if (/trip|travel|fly|vacation|holiday/.test(t))
+      return ['Book flights', 'Book accommodation', 'Pack essentials', 'Check passport and visa', 'Notify bank', 'Plan itinerary']
+    if (/birthday|party|celebrat/.test(t))
+      return ['Set guest list', 'Send invites', 'Order cake', 'Prepare venue', 'Plan activities', 'Get decorations']
+    if (/exam|test|quiz|review/.test(t))
+      return ['Review notes', 'Do practice tests', 'Get good sleep before', 'Prepare materials', 'Arrive early']
+    if (/meet|meeting|workshop/.test(t))
+      return ['Prepare agenda', 'Review relevant materials', 'Confirm attendees', 'Book room or send link', 'Send follow-up after']
+    if (/dinner|lunch|date|gather/.test(t))
+      return ['Confirm guest list', 'Book restaurant or prepare menu', 'Send reminder', 'Prepare conversation topics']
+    return ['Confirm details', 'Prepare materials', 'Check logistics', 'Arrive on time', 'Follow up after']
+  }
+  return []
+}
+
 function AddPlanSheet({ onClose, onAdd }) {
   const [step, setStep]   = useState('pick')   // 'pick' | 'form'
   const [type, setType]   = useState(null)
@@ -3529,9 +3613,30 @@ function AddPlanSheet({ onClose, onAdd }) {
   const [unit, setUnit]               = useState('₱')
   const [targetDate, setTargetDate]   = useState('')
   const [eventDate, setEventDate]     = useState('')
+  const [suggestDismissed, setSuggestDismissed] = useState(false)
 
   const inputStyle = { width: '100%', background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '9px 12px', fontSize: 14, color: C.ink, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box', marginTop: 4 }
   const labelStyle = { fontSize: 12, fontWeight: 600, color: C.inkMute, display: 'block', marginTop: 12 }
+
+  const showSuggest = (type === 'project' || type === 'event') && title.trim().length >= 3 && !suggestDismissed && tasksText.trim() === ''
+  const applySuggestions = () => {
+    setTasksText(getSuggestedTasks(type, title).join('\n'))
+    setSuggestDismissed(true)
+  }
+
+  const suggestPrompt = showSuggest && (
+    <div style={{ background: C.bellySoft, border: `1px solid ${C.belly}`, borderRadius: 10, padding: '10px 14px', marginTop: 12, display: 'flex', alignItems: 'center', gap: 10, animation: 'heed-fadeIn 0.25s ease' }}>
+      <MayaOwl size={26} idle={true}/>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: C.warmDark }}>Want me to suggest some tasks?</div>
+        <div style={{ fontSize: 11.5, color: C.inkMute, marginTop: 1 }}>Based on "{title.trim().slice(0, 28)}{title.trim().length > 28 ? '…' : ''}"</div>
+      </div>
+      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+        <button onClick={applySuggestions} style={{ fontSize: 12, fontWeight: 600, color: C.warmDark, background: C.belly, border: 'none', borderRadius: 7, padding: '6px 12px', cursor: 'pointer', fontFamily: 'inherit', touchAction: 'manipulation' }}>Suggest →</button>
+        <button onClick={() => setSuggestDismissed(true)} style={{ fontSize: 12, color: C.inkMute, background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'inherit', touchAction: 'manipulation', padding: '6px 6px' }}>✕</button>
+      </div>
+    </div>
+  )
 
   const handleSubmit = () => {
     if (!title.trim()) return
@@ -3586,6 +3691,7 @@ function AddPlanSheet({ onClose, onAdd }) {
               <>
                 <label style={labelStyle}>Due date (optional)</label>
                 <input type="date" style={inputStyle} value={dueDate} onChange={e => setDueDate(e.target.value)}/>
+                {suggestPrompt}
                 <label style={labelStyle}>Tasks (one per line, optional)</label>
                 <textarea style={{ ...inputStyle, minHeight: 80, resize: 'vertical' }} placeholder={"Book moving truck\nPack bedroom\nNotify landlord"} value={tasksText} onChange={e => setTasksText(e.target.value)}/>
               </>
@@ -3620,6 +3726,7 @@ function AddPlanSheet({ onClose, onAdd }) {
               <>
                 <label style={labelStyle}>Event date *</label>
                 <input type="date" style={inputStyle} value={eventDate} onChange={e => setEventDate(e.target.value)}/>
+                {suggestPrompt}
                 <label style={labelStyle}>Prep tasks (one per line, optional)</label>
                 <textarea style={{ ...inputStyle, minHeight: 80, resize: 'vertical' }} placeholder={"Research the company\nIron outfit"} value={tasksText} onChange={e => setTasksText(e.target.value)}/>
               </>

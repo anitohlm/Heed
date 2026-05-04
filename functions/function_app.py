@@ -83,14 +83,14 @@ async def advisor_stream(req: func.HttpRequest) -> func.HttpResponse:
     POST /api/advisor_stream
     Body: {"message": "...", "history": [...]}
 
-    Streams agent events as newline-delimited JSON. Each line is a complete
-    JSON event ({"type": "thinking|delta|action|chips|done|error", ...}).
+    Returns the agent run as newline-delimited JSON. Each line is a complete
+    event ({"type": "thinking|delta|action|chips|done|error", ...}).
 
-    On Flex Consumption the body is yielded chunk-by-chunk to the browser as
-    the agent produces events — first token typically lands ~400-700ms after
-    the request. On the older Consumption plan the runtime buffers the whole
-    response, so the same code degrades to the previous behaviour without
-    breaking the frontend reader.
+    Currently buffered: collects all events and returns one body. The frontend
+    reader still parses NDJSON line by line so the streaming code path on the
+    client side works either way. To upgrade to true chunk-by-chunk streaming
+    on Flex Consumption requires a different SDK pattern (the simple generator
+    body isn't accepted by func.HttpResponse). Left as a follow-up.
     """
     if req.method == "OPTIONS":
         return func.HttpResponse(
@@ -116,24 +116,21 @@ async def advisor_stream(req: func.HttpRequest) -> func.HttpResponse:
     if len(message) > 4000:
         return _error("Message too long (max 4000 chars)", 413)
 
-    async def event_stream():
-        try:
-            async for event in stream_response(USER_ID, message, history):
-                yield (json.dumps(event, default=str) + "\n").encode("utf-8")
-        except Exception as e:
-            logging.exception("advisor_stream agent failed")
-            err = json.dumps({"type": "error", "error": str(e)}, default=str)
-            yield (err + "\n").encode("utf-8")
+    chunks: list[str] = []
+    try:
+        async for event in stream_response(USER_ID, message, history):
+            chunks.append(json.dumps(event, default=str))
+    except Exception as e:
+        logging.exception("advisor_stream agent failed")
+        chunks.append(json.dumps({"type": "error", "error": str(e)}, default=str))
 
     return func.HttpResponse(
-        body=event_stream(),
+        body="\n".join(chunks),
         status_code=200,
         mimetype="application/x-ndjson",
         headers={
             "Access-Control-Allow-Origin": "*",
-            # Hint to any proxy / CDN in front not to buffer the response.
             "Cache-Control": "no-cache, no-transform",
-            "X-Accel-Buffering": "no",
         },
     )
 

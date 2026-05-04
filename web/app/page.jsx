@@ -569,6 +569,177 @@ function ThemeSwitcher({ theme, onTheme }) {
   )
 }
 
+// ── Settings ──────────────────────────────────────────────────
+const PRESET_COLORS = ['#C9854A','#8FB89A','#D4A24C','#5B8DB8','#9B7BB8','#E8714C','#7A8EA0','#8A9460']
+
+function AvatarButton({ name, onClick }) {
+  const initials = (name || 'U').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
+  return (
+    <button
+      onClick={onClick}
+      aria-label="Settings"
+      style={{
+        width: 36, height: 36, borderRadius: '50%', background: C.warmDark,
+        border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center',
+        justifyContent: 'center', flexShrink: 0,
+        fontFamily: 'Lora, Georgia, serif', fontSize: 14, fontWeight: 600, color: C.cream,
+        letterSpacing: 0.3, transition: 'opacity 0.15s',
+      }}
+      onMouseEnter={e => { e.currentTarget.style.opacity = '0.82' }}
+      onMouseLeave={e => { e.currentTarget.style.opacity = '1' }}
+    >
+      {initials}
+    </button>
+  )
+}
+
+function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, customCategories, onAddCategory, customEventTypes, onAddEventType }) {
+  const [nameVal, setNameVal] = useState(userName)
+  const [catIcon, setCatIcon] = useState('✦')
+  const [catName, setCatName] = useState('')
+  const [catColor, setCatColor] = useState(PRESET_COLORS[0])
+  const [catOpen, setCatOpen] = useState(false)
+  const [evtIcon, setEvtIcon] = useState('📌')
+  const [evtLabel, setEvtLabel] = useState('')
+  const [evtDays, setEvtDays] = useState('3')
+  const [evtOpen, setEvtOpen] = useState(false)
+
+  useEffect(() => { if (open) setNameVal(userName) }, [open, userName])
+
+  if (!open) return null
+
+  const builtinCategories = Object.entries(CATEGORY).map(([id, v]) => ({ id, ...v, name: id.replace('_', ' ') }))
+  const builtinEvents = Object.entries(QUICK_CONTEXT_CONFIG).map(([id, v]) => ({ id, icon: v.icon, label: v.label, defaultDays: v.defaultDays }))
+
+  const submitCategory = () => {
+    if (!catName.trim()) return
+    onAddCategory({ id: `cat_${Date.now()}`, icon: catIcon, name: catName.trim(), color: catColor, bg: catColor + '22' })
+    setCatName(''); setCatIcon('✦'); setCatColor(PRESET_COLORS[0]); setCatOpen(false)
+  }
+  const submitEvent = () => {
+    if (!evtLabel.trim()) return
+    onAddEventType({ id: `evt_${Date.now()}`, icon: evtIcon, label: evtLabel.trim(), defaultDays: parseInt(evtDays) || 3 })
+    setEvtLabel(''); setEvtIcon('📌'); setEvtDays('3'); setEvtOpen(false)
+  }
+
+  const sectionLabel = (text) => (
+    <div style={{ fontSize: 10, fontWeight: 700, color: C.inkMute, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 10 }}>{text}</div>
+  )
+  const divider = <div style={{ height: 1, background: C.hairline, margin: '18px 0' }}/>
+  const inputSt = { width: '100%', boxSizing: 'border-box', background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 8, padding: '9px 12px', fontSize: 13, color: C.ink, outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.15s' }
+
+  return (
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(44,24,16,0.4)', backdropFilter: 'blur(3px)', animation: 'heed-fadeIn 0.2s ease' }}/>
+      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 201, display: 'flex', justifyContent: 'center', animation: 'heed-slideUp 0.3s cubic-bezier(0.16,1,0.3,1)' }}>
+        <div style={{ background: C.paperHi, width: '100%', maxWidth: 520, margin: '0 0 0 0', borderRadius: '20px 20px 0 0', padding: '20px 22px 0 22px', boxShadow: '0 -8px 40px rgba(124,83,51,0.25)', border: `1px solid ${C.border}`, maxHeight: '88vh', display: 'flex', flexDirection: 'column' }}>
+          {/* Header */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexShrink: 0 }}>
+            <div style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 18, fontWeight: 600, color: C.warmDark }}>Settings</div>
+            <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: C.inkMute, cursor: 'pointer', fontSize: 22, padding: '0 4px', lineHeight: 1, fontFamily: 'inherit' }}>×</button>
+          </div>
+          {/* Scrollable body */}
+          <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 'calc(env(safe-area-inset-bottom) + 20px)' }}>
+            {/* Profile */}
+            {sectionLabel('Profile')}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+              <div style={{ width: 44, height: 44, borderRadius: '50%', background: C.warmDark, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Lora, Georgia, serif', fontSize: 16, fontWeight: 600, color: C.cream, flexShrink: 0 }}>
+                {(nameVal || 'U').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()}
+              </div>
+              <input
+                value={nameVal}
+                onChange={e => setNameVal(e.target.value)}
+                onBlur={() => onUserName(nameVal)}
+                placeholder="Your name"
+                style={{ ...inputSt, flex: 1 }}
+                onFocus={e => { e.target.style.borderColor = C.warmDark }}
+              />
+            </div>
+            {divider}
+            {/* Appearance */}
+            {sectionLabel('Appearance')}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+              <div style={{ fontSize: 13, color: C.inkSoft }}>Theme</div>
+              <ThemeSwitcher theme={theme} onTheme={onTheme}/>
+            </div>
+            {divider}
+            {/* Task Categories */}
+            {sectionLabel('Task Categories')}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+              {builtinCategories.map(cat => (
+                <div key={cat.id} style={{ display: 'flex', alignItems: 'center', gap: 4, background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 999, padding: '4px 10px', fontSize: 12 }}>
+                  <span>{cat.icon}</span>
+                  <span style={{ color: C.inkSoft, textTransform: 'capitalize' }}>{cat.name}</span>
+                </div>
+              ))}
+              {customCategories.map(cat => (
+                <div key={cat.id} style={{ display: 'flex', alignItems: 'center', gap: 4, background: C.paper, border: `1.5px solid ${cat.color}44`, borderRadius: 999, padding: '4px 10px', fontSize: 12 }}>
+                  <span>{cat.icon}</span>
+                  <span style={{ color: cat.color }}>{cat.name}</span>
+                </div>
+              ))}
+            </div>
+            {!catOpen ? (
+              <button onClick={() => setCatOpen(true)} style={{ background: 'transparent', color: C.warmDark, border: `1.5px dashed ${C.border}`, padding: '7px 14px', borderRadius: 8, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', width: '100%', marginBottom: 4 }}>+ Add category</button>
+            ) : (
+              <div style={{ background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 12, padding: 14, marginBottom: 4 }}>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+                  <input value={catIcon} onChange={e => setCatIcon(e.target.value)} placeholder="✦" style={{ ...inputSt, width: 44, textAlign: 'center', padding: '9px 6px' }}/>
+                  <input value={catName} onChange={e => setCatName(e.target.value)} placeholder="Category name" style={{ ...inputSt, flex: 1 }}/>
+                </div>
+                <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+                  {PRESET_COLORS.map(c => (
+                    <button key={c} onClick={() => setCatColor(c)} style={{ width: 20, height: 20, borderRadius: '50%', background: c, border: catColor === c ? `2px solid ${C.ink}` : '2px solid transparent', outline: catColor === c ? `2px solid ${c}` : 'none', outlineOffset: 2, cursor: 'pointer', padding: 0, flexShrink: 0 }}/>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={submitCategory} style={{ flex: 1, background: C.warmDark, color: C.cream, border: 'none', borderRadius: 8, padding: '8px 0', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Add</button>
+                  <button onClick={() => setCatOpen(false)} style={{ flex: 1, background: 'transparent', color: C.inkMute, border: `1px solid ${C.border}`, borderRadius: 8, padding: '8px 0', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
+                </div>
+              </div>
+            )}
+            {divider}
+            {/* Life Event Types */}
+            {sectionLabel('Life Event Types')}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+              {builtinEvents.map(evt => (
+                <div key={evt.id} style={{ display: 'flex', alignItems: 'center', gap: 4, background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 999, padding: '4px 10px', fontSize: 12 }}>
+                  <span>{evt.icon}</span>
+                  <span style={{ color: C.inkSoft }}>{evt.label.split(' —')[0]}</span>
+                </div>
+              ))}
+              {customEventTypes.map(evt => (
+                <div key={evt.id} style={{ display: 'flex', alignItems: 'center', gap: 4, background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 999, padding: '4px 10px', fontSize: 12 }}>
+                  <span>{evt.icon}</span>
+                  <span style={{ color: C.inkSoft }}>{evt.label}</span>
+                </div>
+              ))}
+            </div>
+            {!evtOpen ? (
+              <button onClick={() => setEvtOpen(true)} style={{ background: 'transparent', color: C.warmDark, border: `1.5px dashed ${C.border}`, padding: '7px 14px', borderRadius: 8, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', width: '100%', marginBottom: 4 }}>+ Add event type</button>
+            ) : (
+              <div style={{ background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 12, padding: 14, marginBottom: 4 }}>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+                  <input value={evtIcon} onChange={e => setEvtIcon(e.target.value)} placeholder="📌" style={{ ...inputSt, width: 44, textAlign: 'center', padding: '9px 6px' }}/>
+                  <input value={evtLabel} onChange={e => setEvtLabel(e.target.value)} placeholder="Event type name" style={{ ...inputSt, flex: 1 }}/>
+                </div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10 }}>
+                  <span style={{ fontSize: 12, color: C.inkMute }}>Default days:</span>
+                  <input type="number" min="1" max="60" value={evtDays} onChange={e => setEvtDays(e.target.value)} style={{ ...inputSt, width: 64 }}/>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={submitEvent} style={{ flex: 1, background: C.warmDark, color: C.cream, border: 'none', borderRadius: 8, padding: '8px 0', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Add</button>
+                  <button onClick={() => setEvtOpen(false)} style={{ flex: 1, background: 'transparent', color: C.inkMute, border: `1px solid ${C.border}`, borderRadius: 8, padding: '8px 0', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </>
+  )
+}
+
 // ── MobileBottomNav ────────────────────────────────────────────
 function MobileBottomNav({ tab, onTab, onMicAsk }) {
   const askActive = tab === 'ask'
@@ -5016,6 +5187,17 @@ export default function HeedApp() {
   const [detailCtx, setDetailCtx] = useState(null)
   const [detailOpen, setDetailOpen] = useState(false)
   const [shareCtx, setShareCtx] = useState(null)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [userName, setUserName] = useState(() => {
+    if (typeof window === 'undefined') return 'Maya'
+    return localStorage.getItem('heed-username') || 'Maya'
+  })
+  const handleUserName = useCallback((name) => {
+    setUserName(name)
+    try { localStorage.setItem('heed-username', name) } catch (_) {}
+  }, [])
+  const [customCategories, setCustomCategories] = useState([])
+  const [customEventTypes, setCustomEventTypes] = useState([])
 
   useEffect(() => {
     fetch(`${FUNCTIONS_URL}/api/tasks`)
@@ -5404,14 +5586,14 @@ export default function HeedApp() {
           {tabs.find(t => t.id === tab)?.label}
         </div>
         <div className="heed-header-date" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <ThemeSwitcher theme={theme} onTheme={handleSetTheme}/>
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontSize: 13, color: C.inkSoft, fontWeight: 500 }}>{todayStr}</div>
-            <div style={{ fontSize: 11.5, color: C.inkMute, marginTop: 2 }}>Hi, Maya 👋</div>
+            <div style={{ fontSize: 11.5, color: C.inkMute, marginTop: 2 }}>Hi, {userName} 👋</div>
           </div>
+          <AvatarButton name={userName} onClick={() => setSettingsOpen(true)}/>
         </div>
         <div className="heed-theme-mobile" style={{ alignItems: 'center' }}>
-          <ThemeSwitcher theme={theme} onTheme={handleSetTheme}/>
+          <AvatarButton name={userName} onClick={() => setSettingsOpen(true)}/>
         </div>
       </header>
 
@@ -5455,6 +5637,7 @@ export default function HeedApp() {
         onAskHeed={handleAskHeed}
       />
       <ShareCardSheet routine={shareCtx} onClose={handleShareClose}/>
+      <SettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} userName={userName} onUserName={handleUserName} theme={theme} onTheme={handleSetTheme} customCategories={customCategories} onAddCategory={cat => setCustomCategories(cs => [...cs, cat])} customEventTypes={customEventTypes} onAddEventType={evt => setCustomEventTypes(es => [...es, evt])}/>
       {toast && <Toast message={toast.message} onView={toast.showView ? handleToastView : undefined} onUndo={toast.onUndo} onDismiss={() => setToast(null)} reasons={toast.reasons} onReason={toast.onReason}/>}
       <HeedFAB onAddTask={() => setModalOpen(true)} onAskHeed={() => setAskOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)}/>
     </div>

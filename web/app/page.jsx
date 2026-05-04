@@ -4491,20 +4491,70 @@ function AddTaskModal({ open, onClose, onSubmit, onDelete, initialData = null, c
           </div>
           <div style={{ marginBottom: 14 }}>
             <label style={getFieldLabel()}>Category</label>
-            <select
-              value={category}
-              onChange={e => setCategory(e.target.value)}
-              style={{ width: '100%', boxSizing: 'border-box', background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '10px 14px', fontSize: 14, color: C.ink, outline: 'none', fontFamily: 'inherit', cursor: 'pointer', appearance: 'none', backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 14px center' }}
-              onFocus={e => { e.target.style.borderColor = C.warmDark }}
-              onBlur={e => { e.target.style.borderColor = C.border }}
-            >
-              {Object.keys(CATEGORY).map(cat => (
-                <option key={cat} value={cat}>{CATEGORY[cat].icon} {cat.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</option>
-              ))}
-              {customCategories.map(cat => (
-                <option key={cat.id} value={cat.id}>{cat.icon} {cat.name}</option>
-              ))}
-            </select>
+            {/* Chip grid replaces native <select>. Each option uses its own
+                color token from CATEGORY for visual identity; selection
+                shows via a tinted background, full-color border, bolder
+                label, and a ✓ check (not color alone — passes color-not-only). */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 8 }}>
+              {[
+                ...Object.keys(CATEGORY).map(id => ({
+                  id,
+                  label: id.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                  color: CATEGORY[id].color,
+                  bg: CATEGORY[id].bg,
+                  icon: CATEGORY[id].icon,
+                })),
+                ...customCategories.map(cat => ({
+                  id: cat.id,
+                  label: cat.name,
+                  color: cat.color || C.warmDark,
+                  bg: (cat.color || C.warmDark) + '22',
+                  icon: cat.icon,
+                })),
+              ].map(opt => {
+                const selected = category === opt.id
+                return (
+                  <button key={opt.id}
+                    onClick={() => setCategory(opt.id)}
+                    aria-pressed={selected}
+                    style={{
+                      position: 'relative',
+                      display: 'flex', alignItems: 'center', gap: 9,
+                      minHeight: 44,
+                      padding: '8px 12px',
+                      borderRadius: 10,
+                      background: selected ? opt.bg : 'transparent',
+                      border: selected ? `1.5px solid ${opt.color}` : `1px solid ${C.border}`,
+                      color: selected ? opt.color : C.inkSoft,
+                      cursor: 'pointer',
+                      fontFamily: 'inherit',
+                      fontSize: 13,
+                      fontWeight: selected ? 700 : 500,
+                      textAlign: 'left',
+                      transition: 'all 0.18s cubic-bezier(0.32,0.72,0,1)',
+                      outline: 'none',
+                    }}
+                  >
+                    <span style={{
+                      flexShrink: 0,
+                      width: 26, height: 26,
+                      borderRadius: 7,
+                      background: selected ? opt.color : opt.bg,
+                      color: selected ? C.cream : opt.color,
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 14, lineHeight: 1,
+                      transition: 'background 0.18s, color 0.18s',
+                    }}>
+                      {opt.icon}
+                    </span>
+                    <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{opt.label}</span>
+                    {selected && (
+                      <span aria-hidden="true" style={{ position: 'absolute', top: 5, right: 7, fontSize: 11, color: opt.color, lineHeight: 1, fontWeight: 700 }}>✓</span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
           </div>
           <div style={{ marginBottom: 14 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, position: 'relative' }} ref={importanceInfoRef}>

@@ -1587,8 +1587,28 @@ function HeroCard({ task, onMarkDone, onSkip, onMoreOptions }) {
   )
 }
 
+// ── SwipeHint ──────────────────────────────────────────────────
+function SwipeHint({ onDismiss }) {
+  useEffect(() => {
+    const t = setTimeout(onDismiss, 2800)
+    return () => clearTimeout(t)
+  }, [onDismiss])
+  return (
+    <div style={{ position: 'absolute', inset: 0, zIndex: 10, borderRadius: 12, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', animation: 'heed-fadeIn 0.4s ease' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: `${C.sage}ee`, borderRadius: 8, padding: '5px 10px' }}>
+        <span style={{ fontSize: 13 }}>→</span>
+        <span style={{ fontSize: 11, fontWeight: 700, color: C.cream }}>Done</span>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: `${C.ochre}ee`, borderRadius: 8, padding: '5px 10px' }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: C.cream }}>Skip</span>
+        <span style={{ fontSize: 13 }}>←</span>
+      </div>
+    </div>
+  )
+}
+
 // ── TaskCard ───────────────────────────────────────────────────
-function TaskCard({ task, delay = 0, onMarkDone, onSkip, onMoreOptions }) {
+function TaskCard({ task, delay = 0, onMarkDone, onSkip, onMoreOptions, showHint = false, onHintDismiss }) {
   const [hover, setHover] = useState(false)
   const { ref: swipeRef } = useSwipe(
     () => onMarkDone?.(task),
@@ -1603,6 +1623,7 @@ function TaskCard({ task, delay = 0, onMarkDone, onSkip, onMoreOptions }) {
   const isCritical = isOverdue && task.overdue >= 7
   return (
     <div style={{ position: 'relative', marginBottom: 10, touchAction: 'pan-y', userSelect: 'none' }}>
+      {showHint && <SwipeHint onDismiss={onHintDismiss}/>}
       <div style={{
         position: 'absolute', inset: 0, borderRadius: 12,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 18px',
@@ -2148,6 +2169,14 @@ function ContextBanner({ upcomingContexts, onAskHeed }) {
 
 // ── TodayTab ───────────────────────────────────────────────────
 function TodayTab({ tasks, routines, upcomingContexts, skippedTasks = [], onMarkDone, onSkip, onUnskip, onMarkRoutineDone, onSkipRoutineToday, onLightenRoutine, onEditRoutine, onAskHeed, onMoreOptions, onShareCard }) {
+  const [showSwipeHint, setShowSwipeHint] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return !localStorage.getItem('heed.swipe-hint-seen')
+  })
+  const dismissSwipeHint = useCallback(() => {
+    setShowSwipeHint(false)
+    try { localStorage.setItem('heed.swipe-hint-seen', '1') } catch (_) {}
+  }, [])
   const overdue = tasks.filter(t => t.overdue != null).sort((a, b) => b.overdue - a.overdue)
   // Hero set: top overdue tasks within 25% of #1's days. So 12d/11d/10d all
   // become heroes; 12d/3d/2d only promotes the first.
@@ -2223,7 +2252,7 @@ function TodayTab({ tasks, routines, upcomingContexts, skippedTasks = [], onMark
           // Auto-collapse when there are many — keeps Today scannable on heavy days.
           defaultOpen={otherOverdue.length <= 4}
         >
-          {otherOverdue.map((t, i) => <TaskCard key={t.id} task={t} delay={i * 50} onMarkDone={onMarkDone} onSkip={onSkip} onMoreOptions={onMoreOptions}/>)}
+          {otherOverdue.map((t, i) => <TaskCard key={t.id} task={t} delay={i * 50} onMarkDone={onMarkDone} onSkip={onSkip} onMoreOptions={onMoreOptions} showHint={i === 0 && showSwipeHint} onHintDismiss={dismissSwipeHint}/>)}
         </CollapsibleTodaySection>
       )}
       {upcoming.length > 0 && (

@@ -7381,14 +7381,120 @@ export default function HeedApp() {
     }
   }, [FUNCTIONS_URL])
 
-  // Calls the backend /api/seed which wipes the demo user and inserts a
-  // curated demo set. Then we reload — the fresh fetch picks up the new
-  // tasks/routines/plans cleanly and localStorage no longer has stale
-  // copies that would override the seeded backend state.
+  // Loads a curated demo set so judges see Focus Today populated. Tries the
+  // atomic backend /api/seed first; if that 404s (backend not redeployed
+  // with the seed endpoint yet) falls back to manual multi-call seeding
+  // using the long-deployed /api/reset, /api/tasks, and /api/user_state
+  // endpoints. Either path ends with localStorage wipe + reload so the
+  // fresh API fetch is the source of truth.
   const handleLoadDemoData = useCallback(async () => {
+    let seededViaBackend = false
     try {
-      await fetch(`${FUNCTIONS_URL}/api/seed`, { method: 'POST' })
+      const resp = await fetch(`${FUNCTIONS_URL}/api/seed`, { method: 'POST' })
+      if (resp.ok) seededViaBackend = true
     } catch (_) {}
+
+    if (!seededViaBackend) {
+      try {
+        await fetch(`${FUNCTIONS_URL}/api/reset`, { method: 'POST' })
+      } catch (_) {}
+
+      const seedTasks = [
+        { name: 'Take vitamins',          category: 'health',        importance: 'high',   explicit_cadence_days: 1,  dayOffset: 0  },
+        { name: 'Drink 8 cups of water',  category: 'health',        importance: 'medium', explicit_cadence_days: 1,  dayOffset: 0  },
+        { name: 'Quick journal',          category: 'health',        importance: 'low',    explicit_cadence_days: 1,  dayOffset: 0  },
+        { name: 'Pay electricity bill',   category: 'finance',       importance: 'high',   explicit_cadence_days: 30, dayOffset: -3 },
+        { name: 'Call Mom',               category: 'relationships', importance: 'high',   explicit_cadence_days: 7,  dayOffset: -2 },
+        { name: 'Refill water dispenser', category: 'home',          importance: 'medium', explicit_cadence_days: 14, dayOffset: 2  },
+        { name: 'Clean bathroom',         category: 'home',          importance: 'medium', explicit_cadence_days: 14, dayOffset: 4  },
+        { name: 'Back up photos',         category: 'admin',         importance: 'low',    explicit_cadence_days: 30, dayOffset: 7  },
+      ]
+
+      await Promise.all(seedTasks.map(async s => {
+        try {
+          const created = await fetch(`${FUNCTIONS_URL}/api/tasks`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: s.name,
+              category: s.category,
+              importance: s.importance,
+              explicit_cadence_days: s.explicit_cadence_days,
+            }),
+          }).then(r => r.ok ? r.json() : null)
+          if (created?.id) {
+            const due = new Date()
+            due.setDate(due.getDate() + s.dayOffset)
+            await fetch(`${FUNCTIONS_URL}/api/tasks/${created.id}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ next_due_at: due.toISOString() }),
+            })
+          }
+        } catch (_) {}
+      }))
+
+      const seedRoutines = [
+        {
+          id: 'morning', name: 'Morning routine', schedule: 'Weekdays, ~7:00 AM',
+          items: ['Stretch (5 min)', 'Vitamin D + B-complex', 'Make coffee', 'Quick journal'],
+          completion14d: [true,true,true,true,false,false,true,true,true,false,true,true,false,false],
+        },
+        {
+          id: 'evening', name: 'Evening wind-down', schedule: 'Daily, ~10:00 PM',
+          items: ['Phone away', 'Read 10 pages', 'Lights out by 11'],
+          completion14d: [true,true,true,true,true,true,true,true,true,true,true,true,true,false],
+        },
+      ]
+      const today = new Date()
+      const isoDay = (offset) => {
+        const d = new Date(today); d.setDate(d.getDate() + offset)
+        return d.toISOString().slice(0, 10)
+      }
+      const seedPlans = [
+        {
+          id: 'plan_demo_project', type: 'project', icon: '🍳',
+          title: 'Cook nilaga this weekend', description: 'Sunday family lunch',
+          dueDate: isoDay(3),
+          tasks: [
+            { label: 'Find a nilaga recipe',     done: true  },
+            { label: 'List ingredients',         done: true  },
+            { label: 'Buy beef + vegetables',    done: false },
+            { label: 'Prep mise en place',       done: false },
+            { label: 'Cook and serve',           done: false },
+          ],
+        },
+        {
+          id: 'plan_demo_goal', type: 'goal', goalKind: 'numeric', icon: '💰',
+          title: 'Save for Singapore trip', description: 'Jun 5 — Jun 9 trip',
+          target: 50000, current: 32500, unit: '₱', targetDate: isoDay(32),
+          tasks: [],
+        },
+        {
+          id: 'plan_demo_event', type: 'event', icon: '🎂',
+          title: "Maya's birthday", description: 'Plan a small dinner',
+          eventDate: new Date(today.getTime() + 12 * 86400000).toISOString(),
+          tasks: [
+            { label: 'Pick a venue', done: true  },
+            { label: 'Order cake',   done: false },
+            { label: 'Send invites', done: false },
+            { label: 'Buy gift',     done: false },
+          ],
+        },
+      ]
+
+      await Promise.all([
+        fetch(`${FUNCTIONS_URL}/api/user_state/routines`, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items: seedRoutines }),
+        }).catch(() => {}),
+        fetch(`${FUNCTIONS_URL}/api/user_state/plans`, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items: seedPlans }),
+        }).catch(() => {}),
+      ])
+    }
+
     if (typeof window !== 'undefined') {
       try {
         const keysToWipe = []

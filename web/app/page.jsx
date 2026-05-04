@@ -2091,7 +2091,16 @@ function useSwipe(onRight, onLeft, threshold = 80) {
       const dx = clientX - st.startX
       const wasActive = st.active
       st.startX = null; st.startY = null; st.active = false
-      if (!wasActive) { snapBack(); return }
+      if (!wasActive) {
+        // Plain tap — never modified transform, so don't snapBack. Calling
+        // snapBack here applies translateX(0) which creates a stacking context
+        // on heed-card and traps the ⋯ menu popover below the open-menu
+        // backdrop, eating the menu-item click. Just restore the animation
+        // and transition that beginDrag cleared.
+        el.style.animation = ''
+        el.style.transition = ''
+        return
+      }
       if (Math.abs(dx) >= cb.current.threshold) flyOff(dx)
       else snapBack()
     }

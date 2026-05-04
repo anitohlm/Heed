@@ -61,19 +61,36 @@ const ROUTINES = [
   },
 ]
 
+// TASKS_DEMO is the offline/demo seed used as fallback when the API has no
+// data, AND the source-of-truth when the user clicks "Load demo data" (the
+// heed.use-demo flag is on). The mix is tuned so Focus Today (overdue OR
+// dueIn===0) always has 5 cards: 3 daily today-tasks + 2 overdue.
 const TASKS_DEMO = (() => {
   const ago = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString() }
   const from = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString() }
   return [
-    { id: 'demo_1', status: 'active', name: 'Pay electricity bill',   category: 'finance',       next_due_at: ago(14), last_done_at: ago(44), explicit_cadence_days: 30 },
-    { id: 'demo_2', status: 'active', name: 'Call Mom',               category: 'relationships', next_due_at: ago(8),  last_done_at: ago(15), learned_cadence_days: 7  },
-    { id: 'demo_3', status: 'active', name: 'Refill water dispenser', category: 'home',          next_due_at: ago(5),  last_done_at: ago(19), explicit_cadence_days: 14 },
-    { id: 'demo_4', status: 'active', name: 'Take vitamins',          category: 'health',        next_due_at: ago(3),  last_done_at: ago(3),  explicit_cadence_days: 1  },
-    { id: 'demo_5', status: 'active', name: 'Submit expense report',  category: 'admin',         next_due_at: ago(1),  last_done_at: ago(31), explicit_cadence_days: 30 },
-    { id: 'demo_6', status: 'active', name: 'Clean bathroom',         category: 'home',          next_due_at: from(2), last_done_at: ago(12), explicit_cadence_days: 14 },
-    { id: 'demo_7', status: 'active', name: 'Back up photos',         category: 'admin',         next_due_at: from(5), last_done_at: ago(25), explicit_cadence_days: 30 },
+    // Daily — due today (dueIn === 0)
+    { id: 'demo_today_1', status: 'active', name: 'Take vitamins',         category: 'health', importance: 'high',   next_due_at: ago(0), last_done_at: ago(1), explicit_cadence_days: 1 },
+    { id: 'demo_today_2', status: 'active', name: 'Drink 8 cups of water', category: 'health', importance: 'medium', next_due_at: ago(0), last_done_at: ago(1), explicit_cadence_days: 1 },
+    { id: 'demo_today_3', status: 'active', name: 'Quick journal',         category: 'health', importance: 'low',    next_due_at: ago(0), last_done_at: ago(1), explicit_cadence_days: 1 },
+    // Overdue
+    { id: 'demo_over_1',  status: 'active', name: 'Pay electricity bill',   category: 'finance',       importance: 'high',   next_due_at: ago(3), last_done_at: ago(33), explicit_cadence_days: 30 },
+    { id: 'demo_over_2',  status: 'active', name: 'Call Mom',               category: 'relationships', importance: 'high',   next_due_at: ago(2), last_done_at: ago(9),  learned_cadence_days: 7 },
+    // Upcoming
+    { id: 'demo_up_1',    status: 'active', name: 'Refill water dispenser', category: 'home',          importance: 'medium', next_due_at: from(2), last_done_at: ago(12), explicit_cadence_days: 14 },
+    { id: 'demo_up_2',    status: 'active', name: 'Clean bathroom',         category: 'home',          importance: 'medium', next_due_at: from(4), last_done_at: ago(10), explicit_cadence_days: 14 },
+    { id: 'demo_up_3',    status: 'active', name: 'Back up photos',         category: 'admin',         importance: 'low',    next_due_at: from(7), last_done_at: ago(23), explicit_cadence_days: 30 },
   ]
 })()
+
+// Tracks whether the user has clicked "Load demo data" — when on, the app
+// uses TASKS_DEMO / ROUTINES / DEMO_PLANS as source-of-truth and skips the
+// /api/tasks fetch so the demo never gets overridden by stale Cosmos data.
+// Cleared by Reset all data.
+const isDemoMode = () => {
+  if (typeof window === 'undefined') return false
+  try { return window.localStorage.getItem('heed.use-demo') === '1' } catch { return false }
+}
 
 // ── Share-card helpers ─────────────────────────────────────────
 function computeStreakCount(completion14d) {
@@ -3739,6 +3756,7 @@ function usePlans(initialPlans) {
   useEffect(() => {
     if (typeof window === 'undefined' || _hydrated.current) return
     _hydrated.current = true
+    if (isDemoMode()) return  // demo mode — keep DEMO_PLANS default, skip API
     fetch(`${FUNCTIONS_URL}/api/user_state/plans`)
       .then(r => r.ok ? r.json() : null)
       .then(data => {
@@ -3763,6 +3781,7 @@ function usePlans(initialPlans) {
   useEffect(() => {
     localStorage.setItem('heed_plans', JSON.stringify(plans))
     if (!_hydrated.current) return
+    if (isDemoMode()) return  // demo mode — local-only, don't write to API
     fetch(`${FUNCTIONS_URL}/api/user_state/plans`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -7059,7 +7078,10 @@ function ContextDetailSheet({ open, ctx, heldTasks, onClose, onImBetter, onExten
 export default function HeedApp() {
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
-  const [apiTasks, setApiTasks] = useState([])
+  // When the user has clicked "Load demo data", initialise apiTasks with the
+  // curated TASKS_DEMO seed and skip the /api/tasks fetch (see effect below)
+  // — otherwise stale Cosmos data overrides the demo and Focus Today empties.
+  const [apiTasks, setApiTasks] = useState(() => isDemoMode() ? TASKS_DEMO : [])
   const [apiContexts, setApiContexts] = useState({ active: [], upcoming: [] })
   const [dismissedIds, setDismissedIds] = useState(new Set())
   // Last ~200 skip events with reason. Retrospective reads these to detect
@@ -7090,6 +7112,7 @@ export default function HeedApp() {
         }
       }
     } catch (_) {}
+    if (isDemoMode()) return  // demo mode — keep ROUTINES default, skip API
     fetch(`${FUNCTIONS_URL}/api/user_state/routines`)
       .then(r => r.ok ? r.json() : null)
       .then(data => {
@@ -7113,6 +7136,7 @@ export default function HeedApp() {
     if (typeof window === 'undefined') return
     try { window.localStorage.setItem('heed.routines.v1', JSON.stringify(routines)) } catch (_) {}
     if (!_routinesHydrated.current) return  // skip the very first render
+    if (isDemoMode()) return  // demo mode — local-only, don't write to API
     fetch(`${FUNCTIONS_URL}/api/user_state/routines`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -7186,6 +7210,9 @@ export default function HeedApp() {
   }, [customCategories])
 
   useEffect(() => {
+    // Skip API in demo mode — apiTasks is already seeded with TASKS_DEMO and
+    // a real fetch would clobber it with stale Cosmos data.
+    if (isDemoMode()) return
     fetch(`${FUNCTIONS_URL}/api/tasks`)
       .then(r => r.json())
       .then(data => Array.isArray(data) && setApiTasks(data))
@@ -7414,137 +7441,33 @@ export default function HeedApp() {
           if (k && (k.startsWith('heed.') || k.startsWith('heed_') || k === 'heed-theme')) keysToWipe.push(k)
         }
         keysToWipe.forEach(k => localStorage.removeItem(k))
+        // Defensive: clear the demo flag explicitly even if the prefix loop
+        // already caught it. Reset means real-API mode.
+        localStorage.removeItem('heed.use-demo')
       } catch (_) {}
       window.location.reload()
     }
   }, [FUNCTIONS_URL])
 
-  // Loads a curated demo set so judges see Focus Today populated. Tries the
-  // atomic backend /api/seed first; if that 404s (backend not redeployed
-  // with the seed endpoint yet) falls back to manual multi-call seeding
-  // using the long-deployed /api/reset, /api/tasks, and /api/user_state
-  // endpoints. Either path ends with localStorage wipe + reload so the
-  // fresh API fetch is the source of truth.
-  const handleLoadDemoData = useCallback(async () => {
-    let seededViaBackend = false
+  // Loads a curated demo set so judges see Focus Today populated. Pure
+  // client-side: wipes localStorage, sets the heed.use-demo flag, reloads.
+  // On reload, isDemoMode() is true → apiTasks initial = TASKS_DEMO,
+  // /api/tasks fetch is skipped, routines/plans fall back to their
+  // built-in defaults (ROUTINES, DEMO_PLANS). No backend calls means no
+  // race, no silent failure, no stale Cosmos overwriting the demo.
+  const handleLoadDemoData = useCallback(() => {
+    if (typeof window === 'undefined') return
     try {
-      const resp = await fetch(`${FUNCTIONS_URL}/api/seed`, { method: 'POST' })
-      if (resp.ok) seededViaBackend = true
-    } catch (_) {}
-
-    if (!seededViaBackend) {
-      try {
-        await fetch(`${FUNCTIONS_URL}/api/reset`, { method: 'POST' })
-      } catch (_) {}
-
-      const seedTasks = [
-        { name: 'Take vitamins',          category: 'health',        importance: 'high',   explicit_cadence_days: 1,  dayOffset: 0  },
-        { name: 'Drink 8 cups of water',  category: 'health',        importance: 'medium', explicit_cadence_days: 1,  dayOffset: 0  },
-        { name: 'Quick journal',          category: 'health',        importance: 'low',    explicit_cadence_days: 1,  dayOffset: 0  },
-        { name: 'Pay electricity bill',   category: 'finance',       importance: 'high',   explicit_cadence_days: 30, dayOffset: -3 },
-        { name: 'Call Mom',               category: 'relationships', importance: 'high',   explicit_cadence_days: 7,  dayOffset: -2 },
-        { name: 'Refill water dispenser', category: 'home',          importance: 'medium', explicit_cadence_days: 14, dayOffset: 2  },
-        { name: 'Clean bathroom',         category: 'home',          importance: 'medium', explicit_cadence_days: 14, dayOffset: 4  },
-        { name: 'Back up photos',         category: 'admin',         importance: 'low',    explicit_cadence_days: 30, dayOffset: 7  },
-      ]
-
-      await Promise.all(seedTasks.map(async s => {
-        try {
-          const created = await fetch(`${FUNCTIONS_URL}/api/tasks`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              name: s.name,
-              category: s.category,
-              importance: s.importance,
-              explicit_cadence_days: s.explicit_cadence_days,
-            }),
-          }).then(r => r.ok ? r.json() : null)
-          if (created?.id) {
-            const due = new Date()
-            due.setDate(due.getDate() + s.dayOffset)
-            await fetch(`${FUNCTIONS_URL}/api/tasks/${created.id}`, {
-              method: 'PATCH',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ next_due_at: due.toISOString() }),
-            })
-          }
-        } catch (_) {}
-      }))
-
-      const seedRoutines = [
-        {
-          id: 'morning', name: 'Morning routine', schedule: 'Weekdays, ~7:00 AM',
-          items: ['Stretch (5 min)', 'Vitamin D + B-complex', 'Make coffee', 'Quick journal'],
-          completion14d: [true,true,true,true,false,false,true,true,true,false,true,true,false,false],
-        },
-        {
-          id: 'evening', name: 'Evening wind-down', schedule: 'Daily, ~10:00 PM',
-          items: ['Phone away', 'Read 10 pages', 'Lights out by 11'],
-          completion14d: [true,true,true,true,true,true,true,true,true,true,true,true,true,false],
-        },
-      ]
-      const today = new Date()
-      const isoDay = (offset) => {
-        const d = new Date(today); d.setDate(d.getDate() + offset)
-        return d.toISOString().slice(0, 10)
+      const keysToWipe = []
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i)
+        if (k && (k.startsWith('heed.') || k.startsWith('heed_'))) keysToWipe.push(k)
       }
-      const seedPlans = [
-        {
-          id: 'plan_demo_project', type: 'project', icon: '🍳',
-          title: 'Cook nilaga this weekend', description: 'Sunday family lunch',
-          dueDate: isoDay(3),
-          tasks: [
-            { label: 'Find a nilaga recipe',     done: true  },
-            { label: 'List ingredients',         done: true  },
-            { label: 'Buy beef + vegetables',    done: false },
-            { label: 'Prep mise en place',       done: false },
-            { label: 'Cook and serve',           done: false },
-          ],
-        },
-        {
-          id: 'plan_demo_goal', type: 'goal', goalKind: 'numeric', icon: '💰',
-          title: 'Save for Singapore trip', description: 'Jun 5 — Jun 9 trip',
-          target: 50000, current: 32500, unit: '₱', targetDate: isoDay(32),
-          tasks: [],
-        },
-        {
-          id: 'plan_demo_event', type: 'event', icon: '🎂',
-          title: "Maya's birthday", description: 'Plan a small dinner',
-          eventDate: new Date(today.getTime() + 12 * 86400000).toISOString(),
-          tasks: [
-            { label: 'Pick a venue', done: true  },
-            { label: 'Order cake',   done: false },
-            { label: 'Send invites', done: false },
-            { label: 'Buy gift',     done: false },
-          ],
-        },
-      ]
-
-      await Promise.all([
-        fetch(`${FUNCTIONS_URL}/api/user_state/routines`, {
-          method: 'PUT', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ items: seedRoutines }),
-        }).catch(() => {}),
-        fetch(`${FUNCTIONS_URL}/api/user_state/plans`, {
-          method: 'PUT', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ items: seedPlans }),
-        }).catch(() => {}),
-      ])
-    }
-
-    if (typeof window !== 'undefined') {
-      try {
-        const keysToWipe = []
-        for (let i = 0; i < localStorage.length; i++) {
-          const k = localStorage.key(i)
-          if (k && (k.startsWith('heed.') || k.startsWith('heed_'))) keysToWipe.push(k)
-        }
-        keysToWipe.forEach(k => localStorage.removeItem(k))
-      } catch (_) {}
-      window.location.reload()
-    }
-  }, [FUNCTIONS_URL])
+      keysToWipe.forEach(k => localStorage.removeItem(k))
+      localStorage.setItem('heed.use-demo', '1')
+    } catch (_) {}
+    window.location.reload()
+  }, [])
 
   // succeeded so the sheet can mark it as ✓. Phase 2 wires adjust_cadence
   // (PATCH /api/tasks/{id}); other action_types fall through to no-op.

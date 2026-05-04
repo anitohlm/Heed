@@ -282,17 +282,17 @@ def suggest_tasks(req: func.HttpRequest) -> func.HttpResponse:
         "Filipino-cooking-specific tasks like 'Buy beef shank' or 'Prep tomatoes "
         "and onions', not generic 'Plan dish'. If 'Learn guitar', music-learning "
         "tasks. Be specific to the actual subject named. No corporate phases "
-        "('Define scope', 'Execute first steps') — those are useless. "
-        'Output strict JSON only: {"tasks": ["...", "..."]}.'
+        "('Define scope', 'Execute first steps') — those are useless.\n\n"
+        'Respond with a single JSON object and nothing else. No prose, no '
+        'markdown fences, no explanation. Exact shape:\n'
+        '{"tasks": ["First task", "Second task", "Third task"]}'
     ).format(kind=plan_type)
 
     try:
-        from openai import AzureOpenAI
-        client = AzureOpenAI(
-            azure_endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],
-            api_key=os.environ["AZURE_OPENAI_KEY"],
-            api_version="2024-08-01-preview",
-        )
+        # Reuse the advisor's already-working AzureOpenAI client. Same env
+        # vars, same auth path — if /api/advisor_stream works, this works.
+        from agents.advisor import _client as _advisor_client
+        client = _advisor_client()
         deployment = os.environ.get("OPENAI_DEPLOYMENT_ADVISOR", "heed-advisor")
         resp = client.chat.completions.create(
             model=deployment,
@@ -300,13 +300,33 @@ def suggest_tasks(req: func.HttpRequest) -> func.HttpResponse:
                 {"role": "system", "content": system},
                 {"role": "user", "content": f'{plan_type.capitalize()}: "{title}"'},
             ],
-            response_format={"type": "json_object"},
+            # response_format=json_object intentionally omitted — some Azure
+            # deployments reject it; we instruct via the prompt and parse
+            # defensively below (handles raw JSON, ```json fenced blocks).
             max_tokens=400,
             temperature=0.7,
         )
-        text = resp.choices[0].message.content or "{}"
-        parsed = json.loads(text)
-        tasks_raw = parsed.get("tasks", [])
+        text = (resp.choices[0].message.content or "").strip()
+        # Strip markdown code fences if the model added them anyway.
+        if text.startswith("```"):
+            text = text.strip("`").lstrip()
+            if text.startswith("json"):
+                text = text[4:].lstrip()
+            if text.endswith("```"):
+                text = text[:-3].rstrip()
+        # Handle plain JSON object or raw array.
+        try:
+            parsed = json.loads(text)
+        except json.JSONDecodeError:
+            # Last-resort: extract the first top-level array we can find.
+            import re
+            m = re.search(r"\[[\s\S]*\]", text)
+            if not m:
+                return _error("LLM response not parseable as JSON", 502)
+            parsed = json.loads(m.group(0))
+        tasks_raw = parsed.get("tasks", []) if isinstance(parsed, dict) else parsed
+        if not isinstance(tasks_raw, list):
+            return _error("LLM response missing tasks array", 502)
         tasks = [
             t.strip() for t in tasks_raw
             if isinstance(t, str) and t.strip() and len(t.strip()) <= 80

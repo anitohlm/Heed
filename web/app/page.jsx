@@ -4400,7 +4400,46 @@ function RetrospectiveSheet({ retrospective, onClose, onApplySuggestion }) {
             </div>
           </>
         )}
-        <div style={{ fontSize: 10.5, color: C.inkMute, marginTop: 24, textAlign: 'center', fontStyle: 'italic' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 22 }}>
+          <button
+            onClick={async () => {
+              const lines = []
+              lines.push(`Heed retrospective — ${r.period_label}${r.is_partial ? ' (partial)' : ''}`)
+              lines.push('')
+              lines.push(r.headline)
+              lines.push('')
+              lines.push(`${ratePct}% complete · ${r.completions} done · ${r.skips} skipped`)
+              if (r.routines.length > 0) {
+                lines.push('')
+                lines.push('Routines:')
+                for (const rt of r.routines) lines.push(`  • ${rt.name} — ${rt.days_completed}/${rt.days_due} (${Math.round(rt.completion_rate * 100)}%)`)
+              }
+              if (r.patterns.length > 0) {
+                lines.push('')
+                for (const p of r.patterns) lines.push(`${p.label}: ${p.detail}`)
+              }
+              const text = lines.join('\n')
+              try {
+                if (typeof navigator !== 'undefined' && navigator.share) {
+                  await navigator.share({ title: `Heed: ${r.period_label}`, text })
+                  return
+                }
+              } catch (_) { /* user cancelled or share failed — fall through */ }
+              try {
+                if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                  await navigator.clipboard.writeText(text)
+                }
+              } catch (_) {}
+            }}
+            style={{ background: C.warmDark, color: C.cream, border: 'none', padding: '8px 18px', borderRadius: 999, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7" stroke={C.cream} strokeWidth="2" strokeLinecap="round"/>
+              <path d="M16 6l-4-4-4 4M12 2v14" stroke={C.cream} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            Share retrospective
+          </button>
+        </div>
+        <div style={{ fontSize: 10.5, color: C.inkMute, marginTop: 14, textAlign: 'center', fontStyle: 'italic' }}>
           {r.is_partial ? 'Partial — month still in progress.' : 'Generated from your activity this month.'}
         </div>
       </div>

@@ -2267,7 +2267,7 @@ function MicButton({ listening, onToggle, disabled }) {
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: 0, transition: 'all 0.2s ease',
         boxShadow: listening ? '0 0 0 4px rgba(229,62,62,0.25)' : 'none',
-        animation: listening ? 'heed-breathe 1.2s ease-in-out infinite' : 'none',
+        animation: listening ? 'heed-mic-pulse 1.2s ease-in-out infinite' : 'none',
         opacity: disabled ? 0.4 : 1,
       }}
     >
@@ -2531,7 +2531,7 @@ function PlanCard({ plan, delay = 0, onSelectPlan }) {
     ? `${doneCount} of ${totalCount} tasks · Due ${plan.dueDate}`
     : plan.type === 'goal'
     ? `${plan.unit}${(plan.current ?? 0).toLocaleString()} saved · Target ${plan.targetDate}`
-    : daysUntil === null ? plan.title
+    : daysUntil === null ? 'No date set'
     : daysUntil <= 0    ? 'Today!'
     : daysUntil === 1   ? 'Tomorrow'
     : `in ${daysUntil} days`
@@ -4321,7 +4321,7 @@ function Toast({ message, onView, onUndo, onDismiss, reasons, onReason }) {
       flexWrap: 'wrap', maxWidth: 'calc(100vw - 32px)',
     }}>
       <span style={{ fontSize: 16 }}>✓</span>
-      <span style={{ fontSize: 13, color: C.ink, fontWeight: 500 }}>{message}</span>
+      <span style={{ fontSize: 13, color: '#e8e0d0', fontWeight: 500 }}>{message}</span>
       {reasons && reasons.length > 0 && (
         <div style={{ display: 'flex', gap: 5 }}>
           {reasons.map(r => {
@@ -5606,7 +5606,7 @@ export default function HeedApp() {
       <main className="heed-main" style={{ maxWidth: 820, margin: '0 auto', padding: '28px 32px 100px 32px', minHeight: 'calc(100vh - 140px)', display: 'flex', flexDirection: 'column' }}>
         {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} upcomingContexts={upcomingContexts} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onSkipRoutineToday={handleSkipRoutineToday} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAskHeed={handleAskHeed} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen}/>}
         {tab === 'calendar' && <CalendarTab tasks={apiTasks} contexts={[...(apiContexts.active||[]), ...(apiContexts.upcoming||[])]} routines={routines} recentSkips={recentSkips} onReschedule={handleReschedule} onMarkDone={handleMarkDone} onSkip={handleSkip} onAddTask={() => setModalOpen(true)} onAddContext={() => setContextModalOpen(true)} onEditRoutine={handleEditRoutine} onApplyRetroSuggestion={handleApplyRetroSuggestion}/>}
-        {tab === 'ask' && <AskTab prefill={askPrefill} autoSend={askAutoSend} onAutoSendDone={() => setAskAutoSend(false)} onLightenRoutine={handleLightenRoutine}/>}
+        {tab === 'ask' && <AskTab prefill={askPrefill} autoSend={askAutoSend} onAutoSendDone={() => { setAskAutoSend(false); setAskPrefill('') }} onLightenRoutine={handleLightenRoutine}/>}
         {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onMarkRoutineDay={handleMarkRoutineDay}/>}
         {tab === 'context' && <LifeTab upcoming={apiContexts.upcoming} active={apiContexts.active} activeContext={activeContext} onAddContext={() => setContextModalOpen(true)} onQuickContext={type => setQuickContextType(type)} onImBetter={() => setRecoveryOpen(true)} onExtend={handleExtendContext} onDetailOpen={handleDetailOpen}/>}
       </main>

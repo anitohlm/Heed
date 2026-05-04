@@ -2191,6 +2191,11 @@ function TaskCard({ task, delay = 0, onMarkDone, onSkip, onEdit, onAddToRoutine,
       position: 'relative',
       touchAction: 'pan-y',
       userSelect: 'none',
+      // Lift this card above later siblings while the ⋯ menu is open. Without
+      // this, the popover is z-stacked under the next card's content because
+      // sibling stacking is determined by DOM order when no stacking context
+      // is established. zIndex on a position:relative element creates one.
+      ...(menuOpen ? { zIndex: 60 } : null),
       ...(completing ? {
         animation: 'heed-done-out 0.38s cubic-bezier(0.4,0,0.8,0.2) 0.22s forwards',
         overflow: 'hidden',
@@ -2641,6 +2646,10 @@ function RoutineCard({ routine, delay = 0, onMarkDone, onLighten, onEdit, onShar
         boxShadow: hover ? C.shadowMed : C.shadowSoft,
         transform: hover ? 'translateY(-2px)' : 'none',
         transition: 'all 0.25s ease', position: 'relative',
+        // Lift above later sibling cards while ⋯ menu or stats popover is open
+        // so the absolute-positioned children are not z-stacked under the
+        // next card's content.
+        zIndex: (menuOpen || statsOpen) ? 60 : undefined,
         animation: 'heed-fadeUp 0.5s ease both', animationDelay: `${delay}ms`,
       }}
     >
@@ -3637,7 +3646,7 @@ function PlanDetailScreen({ plan, onBack, onCheck, onRename, onAddTask, onDelete
   const [dragIndex, setDragIndex] = useState(null)
   const [dropIndex, setDropIndex] = useState(null)
   const [editingPlan, setEditingPlan] = useState(false)
-  const [editDraft, setEditDraft] = useState({ icon: '', title: '', date: '' })
+  const [editDraft, setEditDraft] = useState({ icon: '', title: '', date: '', description: '' })
   // Edit-all mode: holds working copies of each task label so Save can persist
   // them in one batch instead of inline-renaming per row.
   const [taskDrafts, setTaskDrafts] = useState([])

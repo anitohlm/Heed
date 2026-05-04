@@ -638,117 +638,155 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
     setEvtLabel(''); setEvtIcon('📌'); setEvtDays('3'); setEvtOpen(false)
   }
 
-  const sectionLabel = (text) => (
-    <div style={{ fontSize: 10, fontWeight: 700, color: C.inkMute, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 10 }}>{text}</div>
+  const secLabel = (text) => (
+    <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 8, paddingLeft: 4 }}>{text}</div>
   )
-  const divider = <div style={{ height: 1, background: C.hairline, margin: '18px 0' }}/>
-  const inputSt = { width: '100%', boxSizing: 'border-box', background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 8, padding: '9px 12px', fontSize: 13, color: C.ink, outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.15s' }
+  const inputSt = { width: '100%', boxSizing: 'border-box', background: C.paperHi, border: `1.5px solid ${C.border}`, borderRadius: 8, padding: '9px 12px', fontSize: 13, color: C.ink, outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.15s' }
+  const group = { background: C.paper, border: `1px solid ${C.border}`, borderRadius: 14, overflow: 'hidden', marginBottom: 24 }
+  const row = { display: 'flex', alignItems: 'center', padding: '13px 16px', borderBottom: `1px solid ${C.hairline}` }
+  const rowLast = { display: 'flex', alignItems: 'center', padding: '13px 16px' }
 
   return (
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(44,24,16,0.4)', backdropFilter: 'blur(3px)', animation: 'heed-fadeIn 0.2s ease' }}/>
       <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 201, display: 'flex', justifyContent: 'center', animation: 'heed-slideUp 0.3s cubic-bezier(0.16,1,0.3,1)' }}>
-        <div style={{ background: C.paperHi, width: '100%', maxWidth: 520, margin: '0 0 0 0', borderRadius: '20px 20px 0 0', padding: '20px 22px 0 22px', boxShadow: '0 -8px 40px rgba(124,83,51,0.25)', border: `1px solid ${C.border}`, maxHeight: '88vh', display: 'flex', flexDirection: 'column' }}>
-          {/* Header */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexShrink: 0 }}>
-            <div style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 18, fontWeight: 600, color: C.warmDark }}>Settings</div>
-            <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: C.inkMute, cursor: 'pointer', fontSize: 22, padding: '0 4px', lineHeight: 1, fontFamily: 'inherit' }}>×</button>
-          </div>
-          {/* Scrollable body */}
-          <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 'calc(env(safe-area-inset-bottom) + 20px)' }}>
-            {/* Profile */}
-            {sectionLabel('Profile')}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-              <div style={{ width: 44, height: 44, borderRadius: '50%', background: C.warmDark, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Lora, Georgia, serif', fontSize: 16, fontWeight: 600, color: C.cream, flexShrink: 0 }}>
-                {(nameVal || 'U').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()}
+        <div style={{ background: C.paperHi, width: '100%', maxWidth: 520, borderRadius: '20px 20px 0 0', padding: '0 20px 0 20px', boxShadow: '0 -8px 40px rgba(124,83,51,0.25)', border: `1px solid ${C.border}`, maxHeight: '88vh', display: 'flex', flexDirection: 'column' }}>
+
+          {/* Handle + Header */}
+          <div style={{ flexShrink: 0, paddingTop: 14, paddingBottom: 16 }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: C.border, margin: '0 auto 18px' }}/>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ width: 32, height: 32, borderRadius: 10, background: C.warmDark + '18', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke={C.warmDark} strokeWidth="1.8"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke={C.warmDark} strokeWidth="1.8" strokeLinecap="round"/></svg>
               </div>
-              <input
-                value={nameVal}
-                onChange={e => setNameVal(e.target.value)}
-                onBlur={() => onUserName(nameVal)}
-                placeholder="Your name"
-                style={{ ...inputSt, flex: 1 }}
-                onFocus={e => { e.target.style.borderColor = C.warmDark }}
-              />
+              <div style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 19, fontWeight: 600, color: C.ink, flex: 1 }}>Settings</div>
+              <button onClick={onClose} style={{ width: 30, height: 30, borderRadius: '50%', background: C.border + '88', border: 'none', color: C.inkMute, cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, fontFamily: 'inherit' }}>×</button>
             </div>
-            {divider}
+          </div>
+
+          {/* Scrollable body */}
+          <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 'calc(env(safe-area-inset-bottom) + 24px)' }}>
+
+            {/* Profile */}
+            {secLabel('Profile')}
+            <div style={group}>
+              <div style={{ ...row, gap: 14 }}>
+                <div style={{ width: 46, height: 46, borderRadius: '50%', background: `linear-gradient(135deg, ${C.warmDark} 0%, ${C.ochre} 100%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Lora, Georgia, serif', fontSize: 15, fontWeight: 700, color: '#fff', flexShrink: 0, letterSpacing: -0.5 }}>
+                  {(nameVal || 'U').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 11, color: C.inkMute, marginBottom: 5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>Display name</div>
+                  <input
+                    value={nameVal}
+                    onChange={e => setNameVal(e.target.value)}
+                    onBlur={() => onUserName(nameVal)}
+                    placeholder="Your name"
+                    style={{ ...inputSt, padding: '7px 10px', fontSize: 14, fontWeight: 500 }}
+                    onFocus={e => { e.target.style.borderColor = C.warmDark }}
+                  />
+                </div>
+              </div>
+            </div>
+
             {/* Appearance */}
-            {sectionLabel('Appearance')}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-              <div style={{ fontSize: 13, color: C.inkSoft }}>Theme</div>
-              <ThemeSwitcher theme={theme} onTheme={onTheme}/>
+            {secLabel('Appearance')}
+            <div style={group}>
+              <div style={{ ...rowLast, justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 30, height: 30, borderRadius: 8, background: C.ochre + '22', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="5" stroke={C.ochre} strokeWidth="2"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" stroke={C.ochre} strokeWidth="2" strokeLinecap="round"/></svg>
+                  </div>
+                  <span style={{ fontSize: 14, color: C.ink, fontWeight: 500 }}>Theme</span>
+                </div>
+                <ThemeSwitcher theme={theme} onTheme={onTheme}/>
+              </div>
             </div>
-            {divider}
+
             {/* Task Categories */}
-            {sectionLabel('Task Categories')}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+            {secLabel('Task Categories')}
+            <div style={group}>
               {builtinCategories.map(cat => (
-                <div key={cat.id} style={{ display: 'flex', alignItems: 'center', gap: 4, background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 999, padding: '4px 10px', fontSize: 12 }}>
-                  <span>{cat.icon}</span>
-                  <span style={{ color: C.inkSoft, textTransform: 'capitalize' }}>{cat.name}</span>
+                <div key={cat.id} style={{ ...row, gap: 12 }}>
+                  <div style={{ width: 30, height: 30, borderRadius: 8, background: cat.bg || cat.color + '22', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>{cat.icon}</div>
+                  <span style={{ fontSize: 14, color: C.ink, textTransform: 'capitalize', flex: 1 }}>{cat.name}</span>
+                  <span style={{ fontSize: 11, color: C.inkMute, fontWeight: 600 }}>Built-in</span>
                 </div>
               ))}
               {customCategories.map(cat => (
-                <div key={cat.id} style={{ display: 'flex', alignItems: 'center', gap: 4, background: C.paper, border: `1.5px solid ${cat.color}44`, borderRadius: 999, padding: '4px 10px', fontSize: 12 }}>
-                  <span>{cat.icon}</span>
-                  <span style={{ color: cat.color }}>{cat.name}</span>
+                <div key={cat.id} style={{ ...row, gap: 12 }}>
+                  <div style={{ width: 30, height: 30, borderRadius: 8, background: cat.color + '22', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>{cat.icon}</div>
+                  <span style={{ fontSize: 14, color: C.ink, flex: 1 }}>{cat.name}</span>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: cat.color, display: 'inline-block' }}/>
                 </div>
               ))}
+              {catOpen ? (
+                <div style={{ padding: '14px 16px', borderTop: `1px solid ${C.hairline}` }}>
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+                    <input value={catIcon} onChange={e => setCatIcon(e.target.value)} placeholder="✦" style={{ ...inputSt, width: 44, textAlign: 'center', padding: '8px 6px' }}/>
+                    <input value={catName} onChange={e => setCatName(e.target.value)} placeholder="Category name" style={{ ...inputSt, flex: 1 }} autoFocus/>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+                    {PRESET_COLORS.map(c => (
+                      <button key={c} onClick={() => setCatColor(c)} style={{ width: 22, height: 22, borderRadius: '50%', background: c, border: catColor === c ? `2.5px solid ${C.ink}` : '2.5px solid transparent', outline: catColor === c ? `2px solid ${c}` : 'none', outlineOffset: 2, cursor: 'pointer', padding: 0, flexShrink: 0 }}/>
+                    ))}
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={submitCategory} style={{ flex: 1, background: C.warmDark, color: '#fff', border: 'none', borderRadius: 8, padding: '9px 0', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Add</button>
+                    <button onClick={() => setCatOpen(false)} style={{ flex: 1, background: 'transparent', color: C.inkMute, border: `1px solid ${C.border}`, borderRadius: 8, padding: '9px 0', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
+                  </div>
+                </div>
+              ) : (
+                <button onClick={() => setCatOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '13px 16px', background: 'transparent', border: 'none', borderTop: `1px solid ${C.hairline}`, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
+                  <div style={{ width: 30, height: 30, borderRadius: 8, background: C.sage + '22', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke={C.sage} strokeWidth="2.2" strokeLinecap="round"/></svg>
+                  </div>
+                  <span style={{ fontSize: 14, color: C.sage, fontWeight: 600 }}>Add category</span>
+                </button>
+              )}
             </div>
-            {!catOpen ? (
-              <button onClick={() => setCatOpen(true)} style={{ background: 'transparent', color: C.warmDark, border: `1.5px dashed ${C.border}`, padding: '7px 14px', borderRadius: 8, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', width: '100%', marginBottom: 4 }}>+ Add category</button>
-            ) : (
-              <div style={{ background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 12, padding: 14, marginBottom: 4 }}>
-                <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-                  <input value={catIcon} onChange={e => setCatIcon(e.target.value)} placeholder="✦" style={{ ...inputSt, width: 44, textAlign: 'center', padding: '9px 6px' }}/>
-                  <input value={catName} onChange={e => setCatName(e.target.value)} placeholder="Category name" style={{ ...inputSt, flex: 1 }}/>
-                </div>
-                <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
-                  {PRESET_COLORS.map(c => (
-                    <button key={c} onClick={() => setCatColor(c)} style={{ width: 20, height: 20, borderRadius: '50%', background: c, border: catColor === c ? `2px solid ${C.ink}` : '2px solid transparent', outline: catColor === c ? `2px solid ${c}` : 'none', outlineOffset: 2, cursor: 'pointer', padding: 0, flexShrink: 0 }}/>
-                  ))}
-                </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button onClick={submitCategory} style={{ flex: 1, background: C.warmDark, color: C.cream, border: 'none', borderRadius: 8, padding: '8px 0', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Add</button>
-                  <button onClick={() => setCatOpen(false)} style={{ flex: 1, background: 'transparent', color: C.inkMute, border: `1px solid ${C.border}`, borderRadius: 8, padding: '8px 0', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
-                </div>
-              </div>
-            )}
-            {divider}
+
             {/* Life Event Types */}
-            {sectionLabel('Life Event Types')}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+            {secLabel('Life Event Types')}
+            <div style={group}>
               {builtinEvents.map(evt => (
-                <div key={evt.id} style={{ display: 'flex', alignItems: 'center', gap: 4, background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 999, padding: '4px 10px', fontSize: 12 }}>
-                  <span>{evt.icon}</span>
-                  <span style={{ color: C.inkSoft }}>{evt.label.split(' —')[0]}</span>
+                <div key={evt.id} style={{ ...row, gap: 12 }}>
+                  <div style={{ width: 30, height: 30, borderRadius: 8, background: C.ochre + '18', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>{evt.icon}</div>
+                  <span style={{ fontSize: 14, color: C.ink, flex: 1 }}>{evt.label.split(' —')[0]}</span>
+                  <span style={{ fontSize: 11, color: C.inkMute, fontWeight: 600 }}>{evt.defaultDays}d</span>
                 </div>
               ))}
               {customEventTypes.map(evt => (
-                <div key={evt.id} style={{ display: 'flex', alignItems: 'center', gap: 4, background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 999, padding: '4px 10px', fontSize: 12 }}>
-                  <span>{evt.icon}</span>
-                  <span style={{ color: C.inkSoft }}>{evt.label}</span>
+                <div key={evt.id} style={{ ...row, gap: 12 }}>
+                  <div style={{ width: 30, height: 30, borderRadius: 8, background: C.border, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>{evt.icon}</div>
+                  <span style={{ fontSize: 14, color: C.ink, flex: 1 }}>{evt.label}</span>
+                  <span style={{ fontSize: 11, color: C.inkMute, fontWeight: 600 }}>{evt.defaultDays}d</span>
                 </div>
               ))}
+              {evtOpen ? (
+                <div style={{ padding: '14px 16px', borderTop: `1px solid ${C.hairline}` }}>
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+                    <input value={evtIcon} onChange={e => setEvtIcon(e.target.value)} placeholder="📌" style={{ ...inputSt, width: 44, textAlign: 'center', padding: '8px 6px' }}/>
+                    <input value={evtLabel} onChange={e => setEvtLabel(e.target.value)} placeholder="Event type name" style={{ ...inputSt, flex: 1 }} autoFocus/>
+                  </div>
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12 }}>
+                    <span style={{ fontSize: 13, color: C.inkMute, flex: 1 }}>Default duration (days)</span>
+                    <input type="number" min="1" max="60" value={evtDays} onChange={e => setEvtDays(e.target.value)} style={{ ...inputSt, width: 64, textAlign: 'center' }}/>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={submitEvent} style={{ flex: 1, background: C.warmDark, color: '#fff', border: 'none', borderRadius: 8, padding: '9px 0', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Add</button>
+                    <button onClick={() => setEvtOpen(false)} style={{ flex: 1, background: 'transparent', color: C.inkMute, border: `1px solid ${C.border}`, borderRadius: 8, padding: '9px 0', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
+                  </div>
+                </div>
+              ) : (
+                <button onClick={() => setEvtOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '13px 16px', background: 'transparent', border: 'none', borderTop: `1px solid ${C.hairline}`, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
+                  <div style={{ width: 30, height: 30, borderRadius: 8, background: C.sage + '22', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke={C.sage} strokeWidth="2.2" strokeLinecap="round"/></svg>
+                  </div>
+                  <span style={{ fontSize: 14, color: C.sage, fontWeight: 600 }}>Add event type</span>
+                </button>
+              )}
             </div>
-            {!evtOpen ? (
-              <button onClick={() => setEvtOpen(true)} style={{ background: 'transparent', color: C.warmDark, border: `1.5px dashed ${C.border}`, padding: '7px 14px', borderRadius: 8, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', width: '100%', marginBottom: 4 }}>+ Add event type</button>
-            ) : (
-              <div style={{ background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 12, padding: 14, marginBottom: 4 }}>
-                <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-                  <input value={evtIcon} onChange={e => setEvtIcon(e.target.value)} placeholder="📌" style={{ ...inputSt, width: 44, textAlign: 'center', padding: '9px 6px' }}/>
-                  <input value={evtLabel} onChange={e => setEvtLabel(e.target.value)} placeholder="Event type name" style={{ ...inputSt, flex: 1 }}/>
-                </div>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10 }}>
-                  <span style={{ fontSize: 12, color: C.inkMute }}>Default days:</span>
-                  <input type="number" min="1" max="60" value={evtDays} onChange={e => setEvtDays(e.target.value)} style={{ ...inputSt, width: 64 }}/>
-                </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button onClick={submitEvent} style={{ flex: 1, background: C.warmDark, color: C.cream, border: 'none', borderRadius: 8, padding: '8px 0', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Add</button>
-                  <button onClick={() => setEvtOpen(false)} style={{ flex: 1, background: 'transparent', color: C.inkMute, border: `1px solid ${C.border}`, borderRadius: 8, padding: '8px 0', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
-                </div>
-              </div>
-            )}
+
           </div>
         </div>
       </div>

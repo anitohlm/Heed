@@ -11,6 +11,7 @@ is the contract for how this agent thinks.
 import os
 import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import AsyncIterator
 from openai import AzureOpenAI
@@ -70,6 +71,24 @@ TOOLS = [
                     "only_overdue": {"type": "boolean", "default": False},
                 },
                 "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_recent_tasks",
+            "description": "List the user's tasks sorted by creation time, newest first. Use this for questions like 'what's the latest task I added', 'what did I just create', 'show me my newest tasks', or any question that needs to know when tasks were added. Returns up to `limit` tasks with their id, name, category, importance, created_at, and next_due_at.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "limit": {
+                        "type": "integer",
+                        "description": "Max tasks to return. Default 10, max 30.",
+                        "default": 10,
+                    },
+                },
+                "required": [],
             },
         },
     },
@@ -208,6 +227,28 @@ def _dispatch_tool(name: str, arguments: dict, user_id: str) -> str:
                 only_overdue=arguments.get("only_overdue", False),
             )
             return json.dumps({"results": results})
+        elif name == "list_recent_tasks":
+            limit = max(1, min(int(arguments.get("limit", 10) or 10), 30))
+            tasks = cosmos_tool.get_active_tasks(user_id)
+            # Sort by created_at desc; tasks without created_at sink to the end.
+            sortable = sorted(
+                tasks,
+                key=lambda t: (t.created_at or datetime.min.replace(tzinfo=timezone.utc)),
+                reverse=True,
+            )[:limit]
+            return json.dumps({
+                "tasks": [
+                    {
+                        "id": t.id,
+                        "name": t.name,
+                        "category": t.category,
+                        "importance": t.importance,
+                        "created_at": t.created_at.isoformat() if t.created_at else None,
+                        "next_due_at": t.next_due_at.isoformat() if t.next_due_at else None,
+                    }
+                    for t in sortable
+                ],
+            }, default=str)
         elif name == "get_task_history":
             completions = cosmos_tool.get_completions(arguments["task_id"], user_id)
             return json.dumps({

@@ -2818,8 +2818,14 @@ function PlanDetailScreen({ plan, onBack, onCheck, onRename, onAddTask, onDelete
   // them in one batch instead of inline-renaming per row.
   const [taskDrafts, setTaskDrafts] = useState([])
   const rowRefs = useRef([])
+  // Separate ref array for the edit-panel rows — they're a different DOM
+  // structure (inputs, not the live list) so we can't share rowRefs.
+  const editRowRefs = useRef([])
   const swipeStart = useRef({ x: null, index: null })
   const dragRef = useRef({ dragIndex: null, dropIndex: null })
+  const editDragRef = useRef({ dragIndex: null, dropIndex: null })
+  const [editDragIndex, setEditDragIndex] = useState(null)
+  const [editDropIndex, setEditDropIndex] = useState(null)
 
   const doneCount = plan.tasks.filter(t => t.done).length
   const totalCount = plan.tasks.length
@@ -2875,6 +2881,50 @@ function PlanDetailScreen({ plan, onBack, onCheck, onRename, onAddTask, onDelete
     setDropIndex(null)
     setEditingIndex(null)
     setEditValue('')
+  }
+
+  // Edit-panel drag handlers — same pattern, but reorder taskDrafts (local
+  // working copy) AND call onReorder so plan.tasks stays in sync. Keeping them
+  // synced means the rename batch on Save can use straight indices.
+  function handleEditDragPointerDown(e, i) {
+    e.currentTarget.setPointerCapture(e.pointerId)
+    editDragRef.current = { dragIndex: i, dropIndex: i }
+    setEditDragIndex(i)
+    setEditDropIndex(i)
+  }
+  function handleEditDragPointerMove(e) {
+    if (editDragRef.current.dragIndex === null) return
+    let nearest = editDragRef.current.dragIndex
+    let minDist = Infinity
+    editRowRefs.current.forEach((el, idx) => {
+      if (!el) return
+      const rect = el.getBoundingClientRect()
+      const mid = rect.top + rect.height / 2
+      const dist = Math.abs(e.clientY - mid)
+      if (dist < minDist) { minDist = dist; nearest = idx }
+    })
+    editDragRef.current.dropIndex = nearest
+    setEditDropIndex(nearest)
+  }
+  function handleEditDragPointerUp() {
+    const { dragIndex: di, dropIndex: dpi } = editDragRef.current
+    if (di !== null && dpi !== null && di !== dpi) {
+      // Move within taskDrafts.
+      setTaskDrafts(arr => {
+        const next = [...arr]
+        const [moved] = next.splice(di, 1)
+        next.splice(dpi, 0, moved)
+        return next
+      })
+      // Mirror into the underlying plan so subsequent renames + checkboxes
+      // line up by index. Persists immediately even if the user later cancels
+      // — but cancel preserving order is acceptable, matching the existing
+      // eager-reorder behavior in non-edit mode.
+      onReorder(plan.id, di, dpi)
+    }
+    editDragRef.current = { dragIndex: null, dropIndex: null }
+    setEditDragIndex(null)
+    setEditDropIndex(null)
   }
 
   function formatEventDate(val) {
@@ -2957,16 +3007,33 @@ function PlanDetailScreen({ plan, onBack, onCheck, onRename, onAddTask, onDelete
           {/* Tasks editor — single edit-all flow */}
           {plan.tasks.length > 0 && (
             <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 6 }}>Tasks</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 6 }}>Tasks <span style={{ fontWeight: 400, color: C.inkMute, fontStyle: 'italic', textTransform: 'none', letterSpacing: 0 }}>· drag ≡ to reorder</span></div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {taskDrafts.map((label, i) => (
-                  <input
-                    key={i}
-                    value={label}
-                    onChange={e => setTaskDrafts(arr => arr.map((v, j) => j === i ? e.target.value : v))}
-                    style={{ width: '100%', boxSizing: 'border-box', fontSize: 13, color: C.ink, background: 'transparent', border: `1px solid ${C.border}`, borderRadius: 6, padding: '6px 10px', outline: 'none', fontFamily: 'inherit' }}
-                  />
-                ))}
+                {taskDrafts.map((label, i) => {
+                  const isDragging = editDragIndex === i
+                  const isDropAbove = editDropIndex === i && editDragIndex !== null && editDragIndex !== i && i <= editDragIndex
+                  const isDropBelow = editDropIndex === i && editDragIndex !== null && editDragIndex !== i && i > editDragIndex
+                  return (
+                    <div key={i} ref={el => { editRowRefs.current[i] = el }}>
+                      {isDropAbove && <div style={{ height: 2, background: C.ochre, marginBottom: 4 }}/>}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, opacity: isDragging ? 0.6 : 1, transition: 'opacity 0.15s' }}>
+                        <span
+                          onPointerDown={e => handleEditDragPointerDown(e, i)}
+                          onPointerMove={handleEditDragPointerMove}
+                          onPointerUp={handleEditDragPointerUp}
+                          style={{ fontSize: 16, color: C.border, cursor: isDragging ? 'grabbing' : 'grab', flexShrink: 0, touchAction: 'none', padding: '0 4px', lineHeight: 1, userSelect: 'none' }}
+                          aria-label="Drag to reorder"
+                        >≡</span>
+                        <input
+                          value={label}
+                          onChange={e => setTaskDrafts(arr => arr.map((v, j) => j === i ? e.target.value : v))}
+                          style={{ flex: 1, boxSizing: 'border-box', fontSize: 13, color: C.ink, background: 'transparent', border: `1px solid ${C.border}`, borderRadius: 6, padding: '6px 10px', outline: 'none', fontFamily: 'inherit' }}
+                        />
+                      </div>
+                      {isDropBelow && <div style={{ height: 2, background: C.ochre, marginTop: 4 }}/>}
+                    </div>
+                  )
+                })}
               </div>
             </div>
           )}
@@ -2977,15 +3044,19 @@ function PlanDetailScreen({ plan, onBack, onCheck, onRename, onAddTask, onDelete
         </div>
       )}
 
-      {/* progress bar */}
+      {/* progress bar + task list — hidden while editing to avoid showing the
+          same tasks twice (the edit panel above already lists them as inputs) */}
+      {!editingPlan && (
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
         <div style={{ flex: 1, height: 5, background: C.bellySoft, borderRadius: 3, overflow: 'hidden' }}>
           <div style={{ height: '100%', borderRadius: 3, background: C.rust, width: `${pct}%`, transition: 'width 0.3s ease' }}/>
         </div>
         <div style={{ fontSize: 11.5, color: C.inkMute, fontWeight: 600, whiteSpace: 'nowrap' }}>{doneCount} / {totalCount} done</div>
       </div>
+      )}
 
       {/* task list */}
+      {!editingPlan && (
       <div style={{ background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
         {plan.tasks.map((task, i) => {
           const isSwiped = swipedIndex === i
@@ -3074,6 +3145,7 @@ function PlanDetailScreen({ plan, onBack, onCheck, onRename, onAddTask, onDelete
           />
         </div>
       </div>
+      )}
     </div>
   )
 }

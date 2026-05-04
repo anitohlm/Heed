@@ -2672,6 +2672,7 @@ function RoutineCard({ routine, delay = 0, onMarkDone, onLighten, onEdit, onShar
             <span style={{ fontFamily: 'Lora, serif', fontSize: 17, fontWeight: 600, color: C.ink, letterSpacing: -0.2 }}>{routine.name}</span>
           </div>
           <div style={{ fontSize: 12, color: C.inkMute }}>{routine.schedule} · {routine.weekRate}</div>
+          {routine.notes && <div style={{ fontSize: 12, color: C.inkSoft, fontStyle: 'italic', marginTop: 3, lineHeight: 1.4 }}>{routine.notes}</div>}
         </div>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 2, flexShrink: 0 }}>
           <div style={{ position: 'relative', width: 52, height: 52 }}>
@@ -5785,6 +5786,7 @@ function AddContextModal({ open, onClose, onSubmit }) {
 // ── AddRoutineModal (simplified) ───────────────────────────────
 function AddRoutineModal({ open, onClose, onSubmit, initialData = null, seedTask = null, tasks = [] }) {
   const [name, setName] = useState('')
+  const [notes, setNotes] = useState('')
   const [items, setItems] = useState([{ id: 1, name: '' }])
   const [openPickerIndex, setOpenPickerIndex] = useState(null)
   const [pickerSearch, setPickerSearch] = useState('')
@@ -5809,15 +5811,17 @@ function AddRoutineModal({ open, onClose, onSubmit, initialData = null, seedTask
     setPickerSearch('')
     if (initialData) {
       setName(initialData.name || '')
+      setNotes(initialData.notes || '')
       setItems(initialData.items?.map((item, i) => ({ id: i + 1, name: item })) || [{ id: 1, name: '' }])
       setStartDate(initialData.startDate || '')
       setEndDate(initialData.endDate || '')
     } else if (seedTask) {
       setName('')
+      setNotes('')
       setItems([{ id: 1, name: seedTask.name }, { id: 2, name: '' }])
       setStartDate(''); setEndDate('')
     } else {
-      setName(''); setItems([{ id: 1, name: '' }]); setStartDate(''); setEndDate('')
+      setName(''); setNotes(''); setItems([{ id: 1, name: '' }]); setStartDate(''); setEndDate('')
     }
     setTimeout(() => nameRef.current?.focus(), 50)
   }, [open])
@@ -5836,9 +5840,9 @@ function AddRoutineModal({ open, onClose, onSubmit, initialData = null, seedTask
     if (!validItems.length) return
     const dateRange = { startDate: startDate || null, endDate: endDate || null }
     if (initialData) {
-      onSubmit({ ...initialData, name: name.trim(), items: validItems.map(i => i.name.trim()), ...dateRange })
+      onSubmit({ ...initialData, name: name.trim(), notes: notes.trim() || null, items: validItems.map(i => i.name.trim()), ...dateRange })
     } else {
-      onSubmit({ id: `custom_${Date.now()}`, name: name.trim(), schedule: 'Custom', items: validItems.map(i => i.name.trim()), completion14d: Array(14).fill(false), insight: 'Just added — building up history.', suggestion: null, weekRate: 'no data yet', ...dateRange })
+      onSubmit({ id: `custom_${Date.now()}`, name: name.trim(), notes: notes.trim() || null, schedule: 'Custom', items: validItems.map(i => i.name.trim()), completion14d: Array(14).fill(false), insight: 'Just added — building up history.', suggestion: null, weekRate: 'no data yet', ...dateRange })
     }
     onClose()
   }
@@ -5861,6 +5865,14 @@ function AddRoutineModal({ open, onClose, onSubmit, initialData = null, seedTask
               <label style={getFieldLabel()}>Routine name</label>
               <input ref={nameRef} value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Morning routine, Sunday reset"
                 style={{ width: '100%', boxSizing: 'border-box', background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '10px 14px', fontSize: 14, color: C.ink, outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.15s' }}
+                onFocus={e=>{e.target.style.borderColor=C.warmDark}} onBlur={e=>{e.target.style.borderColor=C.border}}
+              />
+            </div>
+            <div style={{ marginBottom: 14 }}>
+              <label style={getFieldLabel()}>Notes <span style={{ fontWeight: 400, color: C.inkMute, fontStyle: 'italic' }}>(optional)</span></label>
+              <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Any context or reminders for this routine…"
+                rows={2}
+                style={{ width: '100%', boxSizing: 'border-box', background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '10px 14px', fontSize: 13, color: C.ink, outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.15s', resize: 'vertical' }}
                 onFocus={e=>{e.target.style.borderColor=C.warmDark}} onBlur={e=>{e.target.style.borderColor=C.border}}
               />
             </div>

@@ -1623,7 +1623,6 @@ function TaskCard({ task, delay = 0, onMarkDone, onSkip, onMoreOptions, showHint
   const isCritical = isOverdue && task.overdue >= 7
   return (
     <div style={{ position: 'relative', marginBottom: 10, touchAction: 'pan-y', userSelect: 'none' }}>
-      {showHint && <SwipeHint onDismiss={onHintDismiss}/>}
       <div style={{
         position: 'absolute', inset: 0, borderRadius: 12,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 18px',
@@ -1648,6 +1647,7 @@ function TaskCard({ task, delay = 0, onMarkDone, onSkip, onMoreOptions, showHint
           animationDelay: `${delay}ms`,
         }}
       >
+        {showHint && <SwipeHint onDismiss={onHintDismiss}/>}
         <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: isCritical ? C.rust : c.color, borderRadius: '3px 0 0 3px' }}/>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 14 }}>
           <CategoryBadge category={task.category}/>
@@ -2260,7 +2260,7 @@ function TodayTab({ tasks, routines, upcomingContexts, skippedTasks = [], onMark
           motif="berry" label="Coming up" count={upcoming.length}
           defaultOpen={upcoming.length <= 6}
         >
-          {upcoming.map((t, i) => <TaskCard key={t.id} task={t} delay={i * 50} onMarkDone={onMarkDone} onSkip={onSkip} onMoreOptions={onMoreOptions}/>)}
+          {upcoming.map((t, i) => <TaskCard key={t.id} task={t} delay={i * 50} onMarkDone={onMarkDone} onSkip={onSkip} onMoreOptions={onMoreOptions} showHint={i === 0 && showSwipeHint && otherOverdue.length === 0} onHintDismiss={dismissSwipeHint}/>)}
         </CollapsibleTodaySection>
       )}
       {skippedTasks.length > 0 && onUnskip && (

@@ -1958,9 +1958,20 @@ function Bubble({ role, content, streaming: isStreaming, actions, chips, onConfi
                 )
               }
               const isDefer = action.action_type === 'defer'
+              // Only lighten_routine has a meaningful preview (the items
+              // being removed vs kept). Every other action — add_context,
+              // mark_done, skip, defer, add_task — has all info in the
+              // payload already and the chip tap IS the confirmation.
+              // Going through a preview-then-confirm step for those reads
+              // as "nothing happened" to the user, who has to scroll-find
+              // the second button.
+              const needsPreview = action.action_type === 'lighten_routine' && (action.payload?.preview?.remove?.length > 0)
               return (
                 <button key={i}
-                  onClick={() => setActivePreviewIndex(i)}
+                  onClick={() => {
+                    if (needsPreview) setActivePreviewIndex(i)
+                    else onConfirm && onConfirm(i, action)
+                  }}
                   style={{
                     background: isDefer ? C.bellySoft : C.sageSoft,
                     border: `1.5px solid ${isDefer ? C.ochre : C.sage}`,

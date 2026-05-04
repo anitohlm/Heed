@@ -2335,6 +2335,99 @@ function TaskCard({ task, delay = 0, onMarkDone, onSkip, onEdit, onAddToRoutine,
   )
 }
 
+// ── FocusTaskRow ───────────────────────────────────────────────
+// Stripped-down today-only row: just a checkbox + name. Used in the
+// "Focus today" section on the Today tab. No metadata, no menu — the
+// goal is a clean glanceable list of what needs doing today, not a
+// management surface (that lives on Tracks). Tap anywhere on the row
+// to tick; ticking animates the box to sage with a drawing checkmark,
+// then the row slides+fades out before onMarkDone fires.
+function FocusTaskRow({ task, delay = 0, onMarkDone }) {
+  const [checked, setChecked] = useState(false)
+  const [completing, setCompleting] = useState(false)
+  const completingRef = useRef(false)
+  const handleCheck = useCallback(() => {
+    if (completingRef.current) return
+    completingRef.current = true
+    setChecked(true)
+    // Beat 1 (0–320ms): checkbox fills + check draws.
+    // Beat 2 (320ms+): row slides off via heed-done-out.
+    // Beat 3 (~700ms): parent removes the task from the list.
+    setTimeout(() => setCompleting(true), 320)
+    setTimeout(() => onMarkDone?.(task), 700)
+  }, [task, onMarkDone])
+  return (
+    <div
+      onClick={handleCheck}
+      role="button"
+      tabIndex={0}
+      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleCheck() } }}
+      aria-label={`Mark "${task.name}" done`}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 14,
+        padding: '14px 16px',
+        background: `linear-gradient(180deg, ${C.paperHi} 0%, ${C.paper} 100%)`,
+        border: `1.5px solid ${C.border}`,
+        borderRadius: 12,
+        marginBottom: 10,
+        cursor: 'pointer',
+        animation: completing
+          ? 'heed-done-out 0.38s cubic-bezier(0.4,0,0.8,0.2) forwards'
+          : 'heed-fadeUp 0.5s ease both',
+        animationDelay: completing ? undefined : `${delay}ms`,
+        overflow: 'hidden',
+        userSelect: 'none',
+        WebkitTapHighlightColor: 'transparent',
+        boxShadow: C.shadowSoft,
+      }}
+    >
+      <span aria-hidden="true" style={{
+        width: 24, height: 24, flexShrink: 0,
+        borderRadius: 7,
+        border: `2px solid ${checked ? C.sage : C.border}`,
+        background: checked ? C.sage : 'transparent',
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+      }}>
+        {checked && (
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path
+              d="M3 7l3 3 5-6"
+              stroke="white"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{
+                strokeDasharray: 16,
+                strokeDashoffset: 16,
+                animation: 'heed-check-draw 0.28s cubic-bezier(0.4, 0, 0.2, 1) 0.05s forwards',
+              }}
+            />
+          </svg>
+        )}
+      </span>
+      <span style={{
+        fontSize: 15,
+        fontWeight: 600,
+        color: C.ink,
+        letterSpacing: -0.1,
+        textDecoration: checked ? 'line-through' : 'none',
+        opacity: checked ? 0.5 : 1,
+        transition: 'opacity 0.25s ease, text-decoration 0.25s ease',
+        flex: 1,
+        minWidth: 0,
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
+      }}>
+        {task.name}
+      </span>
+    </div>
+  )
+}
+
 // ── useShareCard ──────────────────────────────────────────────
 function useShareCard() {
   async function captureCard(el) {
@@ -3000,9 +3093,12 @@ function TodayTab({ tasks, routines, upcomingContexts, skippedTasks = [], userNa
     return score
   }
   const scoredTasks = tasks.map(t => ({ task: t, score: scoreTask(t) })).sort((a, b) => b.score - a.score)
-  const focusTasks = scoredTasks.slice(0, 3).map(s => s.task)
-  const remainingTasks = scoredTasks.slice(3).map(s => s.task)
-  const overdueRemaining = remainingTasks.filter(t => t.overdue != null)
+  // Focus today = ONLY tasks for today: overdue (need handling now) or due today.
+  // Future tasks (dueIn > 0) drop into "Also upcoming" under the See-all toggle.
+  const isForToday = (t) => t.overdue != null || t.dueIn === 0
+  const focusTasks = scoredTasks.filter(s => isForToday(s.task)).map(s => s.task)
+  const remainingTasks = scoredTasks.filter(s => !isForToday(s.task)).map(s => s.task)
+  const overdueRemaining = []
   const upcomingRemaining = remainingTasks.filter(t => t.dueIn !== undefined && t.dueIn > 0)
   // Empty-state momentum: best routine streak + next upcoming context.
   const bestStreak = (() => {
@@ -3070,7 +3166,7 @@ function TodayTab({ tasks, routines, upcomingContexts, skippedTasks = [], userNa
           </button>
         </div>
         {oneTask ? (
-          <TaskCard task={oneTask} delay={0} onMarkDone={onMarkDone} onSkip={onSkip} onEdit={onEditTask} onAddToRoutine={onAddToRoutine} onBuildRoutine={onBuildRoutine} showHint={showSwipeHint} onHintDismiss={dismissSwipeHint}/>
+          <FocusTaskRow task={oneTask} delay={0} onMarkDone={onMarkDone}/>
         ) : (
           <div style={{ background: C.paper, border: `1px solid ${C.border}`, borderRadius: 14, padding: '20px 18px', boxShadow: C.shadowSoft, textAlign: 'center' }}>
             <div style={{ fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 500, color: C.warmDark, marginBottom: 6 }}>
@@ -3113,7 +3209,7 @@ function TodayTab({ tasks, routines, upcomingContexts, skippedTasks = [], userNa
       <SectionHeader motif="leaf" count={focusTasks.length}>Focus today</SectionHeader>
       {focusTasks.length > 0 ? (
         focusTasks.map((t, i) => (
-          <TaskCard key={t.id} task={t} delay={i * 50} onMarkDone={onMarkDone} onSkip={onSkip} onEdit={onEditTask} onAddToRoutine={onAddToRoutine} onBuildRoutine={onBuildRoutine} showHint={i === 0 && showSwipeHint} onHintDismiss={dismissSwipeHint}/>
+          <FocusTaskRow key={t.id} task={t} delay={i * 50} onMarkDone={onMarkDone}/>
         ))
       ) : (
         <div style={{ background: C.paper, border: `1px solid ${C.border}`, borderRadius: 14, padding: '16px 18px', boxShadow: C.shadowSoft }}>
@@ -7378,6 +7474,7 @@ export default function HeedApp() {
         @keyframes heed-breathe { 0%,100% { opacity:0.5; transform:scale(1); } 50% { opacity:0.85; transform:scale(1.05); } }
         @keyframes heed-done-flash { from {} to { background: #e8f5ee; } }
         @keyframes heed-done-check { 0% { transform: scale(0); opacity: 0; } 60% { transform: scale(1.25); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+        @keyframes heed-check-draw { to { stroke-dashoffset: 0; } }
         @keyframes heed-done-out { 0% { transform: translateX(0); opacity: 1; max-height: 120px; margin-bottom: 10px; } 50% { transform: translateX(14px); opacity: 0.4; } 100% { transform: translateX(80px); opacity: 0; max-height: 0; margin-bottom: 0; } }
         @keyframes heed-mic-pulse { 0%,100% { box-shadow: 0 0 0 3px #fff3f3, 0 0 0 6px rgba(229,62,62,0.2), 0 -4px 20px rgba(229,62,62,0.2); } 50% { box-shadow: 0 0 0 3px #fff3f3, 0 0 0 11px rgba(229,62,62,0.45), 0 -4px 24px rgba(229,62,62,0.35); } }
         @keyframes heed-blink { 0%,50%,100% { opacity:1; } 25%,75% { opacity:0.3; } }

@@ -403,7 +403,9 @@ function useChat({ onLightenRoutine } = {}) {
       if (!raw) return []
       const parsed = JSON.parse(raw)
       if (!Array.isArray(parsed)) return []
-      return parsed.map(m => ({ role: m.role, content: m.content }))
+      return parsed
+        .map(m => ({ role: m.role, content: m.content }))
+        .filter(m => (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.length > 0)
     } catch { return [] }
   })
   const [input, setInput] = useState('')
@@ -412,7 +414,6 @@ function useChat({ onLightenRoutine } = {}) {
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
-    if (typeof window === 'undefined') return
     try {
       const toSave = messages.slice(-20).map(m => ({ role: m.role, content: m.content }))
       localStorage.setItem('heed.chat-history.v1', JSON.stringify(toSave))

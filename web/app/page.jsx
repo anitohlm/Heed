@@ -1030,6 +1030,21 @@ function MobileBottomNav({ tab, onTab, onMicAsk }) {
           overflow: 'visible',
         }}
       >
+        {/* Opaque "podium" behind the owl. The owl button sits at top:-30 and
+            uses a circular border-radius — so the corners of its bounding box
+            (above the nav top edge) are transparent and let chat content
+            scroll through. This shield is a paper-colored hump (semicircle
+            top, flat bottom) that fills those corners and visually extends
+            the nav surface up around the owl. */}
+        <div aria-hidden="true" style={{
+          position: 'absolute',
+          top: -30, left: '50%', transform: 'translateX(-50%)',
+          width: 84, height: 30,
+          background: C.paper,
+          borderRadius: '42px 42px 0 0',
+          zIndex: 51,
+          pointerEvents: 'none',
+        }}/>
         {/* Owl circle — tap = Ask Heed screen; long-press = mic then auto-send */}
         <button
           onPointerDown={micSupported ? handleOwlDown : undefined}

@@ -275,8 +275,8 @@ def suggest_tasks(req: func.HttpRequest) -> func.HttpResponse:
         plan_type = "project"
 
     system = (
-        "You are a planning assistant for Heed, a personal task app. The user "
-        "is creating a new {kind}. Suggest 5-7 concrete, specific tasks they "
+        f"You are a planning assistant for Heed, a personal task app. The user "
+        f"is creating a new {plan_type}. Suggest 5-7 concrete, specific tasks they "
         "should consider. Each task: a short imperative phrase (3-8 words). "
         "Match the user's exact domain — if they say 'Cook nilaga', suggest "
         "Filipino-cooking-specific tasks like 'Buy beef shank' or 'Prep tomatoes "
@@ -285,8 +285,8 @@ def suggest_tasks(req: func.HttpRequest) -> func.HttpResponse:
         "('Define scope', 'Execute first steps') — those are useless.\n\n"
         'Respond with a single JSON object and nothing else. No prose, no '
         'markdown fences, no explanation. Exact shape:\n'
-        '{"tasks": ["First task", "Second task", "Third task"]}'
-    ).format(kind=plan_type)
+        '{{"tasks": ["First task", "Second task", "Third task"]}}'
+    )
 
     try:
         # Reuse the advisor's already-working AzureOpenAI client. Same env

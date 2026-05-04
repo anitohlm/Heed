@@ -1947,10 +1947,13 @@ function SwipeHint({ onDismiss }) {
 // ── TaskCard ───────────────────────────────────────────────────
 function TaskCard({ task, delay = 0, onMarkDone, onSkip, onMoreOptions, showHint = false, onHintDismiss }) {
   const [hover, setHover] = useState(false)
-  const { ref: swipeRef } = useSwipe(
-    () => onMarkDone?.(task),
-    () => onSkip?.(task),
-  )
+  const [completing, setCompleting] = useState(false)
+  const handleDone = useCallback(() => {
+    if (completing) return
+    setCompleting(true)
+    setTimeout(() => onMarkDone?.(task), 600)
+  }, [completing, onMarkDone, task])
+  const { ref: swipeRef } = useSwipe(handleDone, () => onSkip?.(task))
   const handleCardClick = (e) => {
     if (e.target.closest('button, a, input, textarea, select')) return
     onMoreOptions?.(task)
@@ -1959,7 +1962,15 @@ function TaskCard({ task, delay = 0, onMarkDone, onSkip, onMoreOptions, showHint
   const isOverdue = task.overdue != null
   const isCritical = isOverdue && task.overdue >= 7
   return (
-    <div style={{ position: 'relative', marginBottom: 10, touchAction: 'pan-y', userSelect: 'none' }}>
+    <div style={{
+      position: 'relative',
+      touchAction: 'pan-y',
+      userSelect: 'none',
+      ...(completing ? {
+        animation: 'heed-done-out 0.38s cubic-bezier(0.4,0,0.8,0.2) 0.22s forwards',
+        overflow: 'hidden',
+      } : { marginBottom: 10 }),
+    }}>
       <div style={{
         position: 'absolute', inset: 0, borderRadius: 12,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 18px',
@@ -1980,12 +1991,23 @@ function TaskCard({ task, delay = 0, onMarkDone, onSkip, onMoreOptions, showHint
           borderRadius: 12, padding: '14px 16px 14px 20px',
           boxShadow: hover ? C.shadowMed : C.shadowSoft,
           position: 'relative',
-          animation: 'heed-fadeUp 0.5s ease both',
-          animationDelay: `${delay}ms`,
+          animation: completing ? 'heed-done-flash 0.22s ease forwards' : 'heed-fadeUp 0.5s ease both',
+          animationDelay: completing ? undefined : `${delay}ms`,
         }}
       >
         {showHint && <SwipeHint onDismiss={onHintDismiss}/>}
         <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: isCritical ? C.rust : c.color, borderRadius: '3px 0 0 3px' }}/>
+        {completing && (
+          <div style={{
+            position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)',
+            width: 24, height: 24, borderRadius: '50%', background: '#4a7c59',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            animation: 'heed-done-check 0.22s ease forwards',
+            zIndex: 2,
+          }}>
+            <span style={{ color: 'white', fontSize: 13, lineHeight: 1 }}>✓</span>
+          </div>
+        )}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 14 }}>
           <CategoryBadge category={task.category}/>
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -2010,7 +2032,7 @@ function TaskCard({ task, delay = 0, onMarkDone, onSkip, onMoreOptions, showHint
         </div>
         {hover && (
           <div className="heed-task-actions" style={{ marginTop: 10, display: 'flex', gap: 6, alignItems: 'center', animation: 'heed-fadeIn 0.2s ease' }}>
-            <button style={getBtnPrimary()} onClick={() => onMarkDone?.(task)}>Mark done</button>
+            <button style={getBtnPrimary()} onClick={handleDone}>Mark done</button>
             <button style={getBtnGhost()} onClick={() => onSkip?.(task)}>Skip</button>
             <button aria-label="More options" style={{ ...getBtnGhost(), marginLeft: 'auto', width: 32, height: 32, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 7, flexShrink: 0 }} onClick={() => onMoreOptions?.(task)}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="5" cy="12" r="1.5" fill="currentColor"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/><circle cx="19" cy="12" r="1.5" fill="currentColor"/></svg>
@@ -6694,6 +6716,9 @@ export default function HeedApp() {
         @keyframes heed-fadeIn { from { opacity:0; } to { opacity:1; } }
         @keyframes heed-pulse { 0%,100% { opacity:0.4; transform:translateX(-50%) scale(1); } 50% { opacity:1; transform:translateX(-50%) scale(1.4); } }
         @keyframes heed-breathe { 0%,100% { opacity:0.5; transform:scale(1); } 50% { opacity:0.85; transform:scale(1.05); } }
+        @keyframes heed-done-flash { from {} to { background: #e8f5ee; } }
+        @keyframes heed-done-check { 0% { transform: scale(0); opacity: 0; } 60% { transform: scale(1.25); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+        @keyframes heed-done-out { 0% { transform: translateX(0); opacity: 1; max-height: 120px; margin-bottom: 10px; } 50% { transform: translateX(14px); opacity: 0.4; } 100% { transform: translateX(80px); opacity: 0; max-height: 0; margin-bottom: 0; } }
         @keyframes heed-mic-pulse { 0%,100% { box-shadow: 0 0 0 3px #fff3f3, 0 0 0 6px rgba(229,62,62,0.2), 0 -4px 20px rgba(229,62,62,0.2); } 50% { box-shadow: 0 0 0 3px #fff3f3, 0 0 0 11px rgba(229,62,62,0.45), 0 -4px 24px rgba(229,62,62,0.35); } }
         @keyframes heed-blink { 0%,50%,100% { opacity:1; } 25%,75% { opacity:0.3; } }
         @keyframes heed-bob { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-2px); } }

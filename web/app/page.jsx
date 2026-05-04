@@ -1948,11 +1948,15 @@ function SwipeHint({ onDismiss }) {
 function TaskCard({ task, delay = 0, onMarkDone, onSkip, onMoreOptions, showHint = false, onHintDismiss }) {
   const [hover, setHover] = useState(false)
   const [completing, setCompleting] = useState(false)
+  const completingRef = useRef(false)
+  const timerRef = useRef(null)
   const handleDone = useCallback(() => {
-    if (completing) return
+    if (completingRef.current) return
+    completingRef.current = true
     setCompleting(true)
-    setTimeout(() => onMarkDone?.(task), 600)
-  }, [completing, onMarkDone, task])
+    timerRef.current = setTimeout(() => onMarkDone?.(task), 600)
+  }, [onMarkDone, task])
+  useEffect(() => () => clearTimeout(timerRef.current), [])
   const { ref: swipeRef } = useSwipe(handleDone, () => onSkip?.(task))
   const handleCardClick = (e) => {
     if (e.target.closest('button, a, input, textarea, select')) return

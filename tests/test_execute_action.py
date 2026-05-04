@@ -58,15 +58,18 @@ def test_execute_action_add_task_success():
         })
         resp = execute_action(req)
         body = json.loads(resp.get_body())
+        assert resp.status_code == 201
         assert body["ok"] is True
         assert "Buy groceries" in body["summary"]
         assert body["task"]["name"] == "Buy groceries"
         assert body["task"]["category"] == "home"
+        mock_container.create_item.assert_called_once()
 
 
 def test_execute_action_add_task_missing_name():
     from functions.function_app import execute_action
     req = _make_request({"action_type": "add_task", "payload": {"category": "home"}})
     resp = execute_action(req)
+    assert resp.status_code == 400
     body = json.loads(resp.get_body())
     assert body["ok"] is False

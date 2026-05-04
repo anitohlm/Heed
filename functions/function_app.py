@@ -32,7 +32,8 @@ if _repo_root not in sys.path:
 import json
 import logging
 import asyncio
-from datetime import datetime
+import uuid
+from datetime import datetime, timezone
 import azure.functions as func
 
 from agents.advisor import stream_response
@@ -450,8 +451,6 @@ def execute_action(req: func.HttpRequest) -> func.HttpResponse:
         importance = payload.get("importance", "medium")
         if not name:
             return _json_response({"ok": False, "error": "name is required for add_task"}, 400)
-        import uuid
-        from datetime import datetime, timezone
         task = {
             "id": f"task_{uuid.uuid4().hex[:12]}",
             "user_id": USER_ID,
@@ -468,8 +467,7 @@ def execute_action(req: func.HttpRequest) -> func.HttpResponse:
             "next_due_at": None,
         }
         try:
-            from agents.tools import cosmos_tool as _ct
-            _ct._get_database().get_container_client("tasks").create_item(body=task)
+            cosmos_tool._get_database().get_container_client("tasks").create_item(body=task)
         except Exception as e:
             logging.exception("add_task cosmos write failed")
             return _json_response({"ok": False, "error": str(e)}, 500)

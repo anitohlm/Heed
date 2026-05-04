@@ -652,7 +652,7 @@ function SettingsRow({ children, last = false, onClick }) {
   )
 }
 
-function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, customCategories, onAddCategory, customEventTypes, onAddEventType }) {
+function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, customCategories, onAddCategory, customEventTypes, onAddEventType, onResetAllData }) {
   const [nameVal, setNameVal] = useState(userName)
   const [catIcon, setCatIcon] = useState('✦')
   const [catName, setCatName] = useState('')
@@ -871,6 +871,34 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
                   <span style={{ fontSize: 15, color: C.sage, fontWeight: 600 }}>Add event type</span>
                 </SettingsRow>
               )}
+            </div>
+
+            {/* Data */}
+            {secLabel('Data')}
+            <div style={group}>
+              <SettingsRow last
+                onClick={() => {
+                  if (typeof window === 'undefined') return
+                  const ok = window.confirm(
+                    'Reset all data?\n\n' +
+                    'This permanently removes your tasks, routines, plans, contexts, completions, ' +
+                    'and chat history — both on this device and on the server. ' +
+                    'You will start with a fresh app. This cannot be undone.'
+                  )
+                  if (!ok) return
+                  onResetAllData?.()
+                }}>
+                {iconTile(
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                    <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" stroke={C.rust} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>,
+                  C.rust + '18'
+                )}
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 15, color: C.rust, fontWeight: 600 }}>Reset all data</div>
+                  <div style={{ fontSize: 12, color: C.inkMute, marginTop: 2 }}>Wipes tasks, routines, plans, and contexts on this device and the server.</div>
+                </div>
+              </SettingsRow>
             </div>
 
             {/* About */}
@@ -3074,7 +3102,7 @@ const CONTEXT_CHIPS = [
   { type: 'celebration', label: '🌸 Celebration' },
 ]
 
-// ── usePlans — localStorage-backed plan state ─────────────────
+// ── usePlans — localStorage-backed plan state with backend write-through ──
 function usePlans(initialPlans) {
   const [plans, setPlans] = useState(() => {
     try {
@@ -3085,8 +3113,39 @@ function usePlans(initialPlans) {
     }
   })
 
+  const _hydrated = useRef(false)
+  useEffect(() => {
+    if (typeof window === 'undefined' || _hydrated.current) return
+    _hydrated.current = true
+    fetch(`${FUNCTIONS_URL}/api/user_state/plans`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        const items = data && Array.isArray(data.items) ? data.items : null
+        if (items && items.length > 0) setPlans(items)
+        else {
+          // Backend empty — push current local copy up so a future device finds it.
+          let cur
+          try { cur = JSON.parse(localStorage.getItem('heed_plans') || '[]') } catch { cur = [] }
+          if (Array.isArray(cur) && cur.length > 0) {
+            fetch(`${FUNCTIONS_URL}/api/user_state/plans`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ items: cur }),
+            }).catch(() => {})
+          }
+        }
+      })
+      .catch(() => {})
+  }, [])
+
   useEffect(() => {
     localStorage.setItem('heed_plans', JSON.stringify(plans))
+    if (!_hydrated.current) return
+    fetch(`${FUNCTIONS_URL}/api/user_state/plans`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items: plans }),
+    }).catch(() => {})
   }, [plans])
 
   const checkTask = useCallback((planId, taskIndex) => {
@@ -6322,23 +6381,55 @@ export default function HeedApp() {
   // window closes.
   const [skippedTasks, setSkippedTasks] = useState([])
   const [routines, setRoutines] = useState(ROUTINES)
-  // Hydrate routines from localStorage on first client render. SSR keeps the
-  // ROUTINES default; effect runs only client-side, avoiding a hydration
-  // mismatch warning. Skipping if the persisted shape isn't an array.
+  // Hydrate routines: try backend first, fall back to localStorage, then to
+  // the default ROUTINES seed. localStorage stays the synchronous source of
+  // truth so the UI is never blank waiting on the network. Backend is a
+  // write-through cache so a reinstall / different device finds the user's
+  // real routines instead of the demo seed.
+  const _routinesHydrated = useRef(false)
   useEffect(() => {
-    if (typeof window === 'undefined') return
+    if (typeof window === 'undefined' || _routinesHydrated.current) return
+    _routinesHydrated.current = true
+    let local = null
     try {
       const raw = window.localStorage.getItem('heed.routines.v1')
-      if (!raw) return
-      const parsed = JSON.parse(raw)
-      if (Array.isArray(parsed) && parsed.length > 0) setRoutines(parsed)
-    } catch (_) { /* ignore corrupted storage */ }
-  }, [])
-  // Persist on every change. Cheap; runs after each setRoutines.
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          local = parsed
+          setRoutines(parsed)
+        }
+      }
+    } catch (_) {}
+    fetch(`${FUNCTIONS_URL}/api/user_state/routines`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        const items = data && Array.isArray(data.items) ? data.items : null
+        if (items && items.length > 0) setRoutines(items)
+        else if (local) {
+          // Backend is empty but we have a local copy → push it up so a
+          // future reinstall on the same user finds it.
+          fetch(`${FUNCTIONS_URL}/api/user_state/routines`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ items: local }),
+          }).catch(() => {})
+        }
+      })
+      .catch(() => { /* offline / error — local copy already in state */ })
+  }, [FUNCTIONS_URL])
+  // Persist on every change. localStorage write is synchronous; backend PUT
+  // is fire-and-forget. We don't block UI on the network round-trip.
   useEffect(() => {
     if (typeof window === 'undefined') return
     try { window.localStorage.setItem('heed.routines.v1', JSON.stringify(routines)) } catch (_) {}
-  }, [routines])
+    if (!_routinesHydrated.current) return  // skip the very first render
+    fetch(`${FUNCTIONS_URL}/api/user_state/routines`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items: routines }),
+    }).catch(() => {})
+  }, [routines, FUNCTIONS_URL])
   const [tab, setTab] = useState('today')
   const [theme, setTheme] = useState(DEFAULT_THEME)
   setThemeState(theme)
@@ -6430,16 +6521,38 @@ export default function HeedApp() {
   const handleMarkDone = useCallback(async (task) => {
     const taskId = typeof task === 'string' ? task : task.id
     const taskName = typeof task === 'string' ? 'Task' : task.name
+    // One-time vs recurring: a task with no explicit cadence and no learned
+    // cadence is a one-shot todo (e.g. "Buy gift for Maya"). On done, archive
+    // it locally so it doesn't reappear. Recurring tasks (any cadence set)
+    // roll forward — backend handles the next_due_at recompute on completion.
+    const taskObj = typeof task === 'object' ? task : null
+    const isOneTime = taskObj && !taskObj.explicit_cadence_days && !taskObj.learned_cadence_days
     setDismissedIds(s => new Set([...s, taskId]))
+    if (isOneTime) {
+      setApiTasks(t => t.map(x => x.id === taskId ? { ...x, status: 'archived' } : x))
+    }
     setToast({
       message: `"${taskName}" marked done`,
-      onUndo: () => { setDismissedIds(s => { const n = new Set(s); n.delete(taskId); return n }); setToast(null) },
+      onUndo: () => {
+        setDismissedIds(s => { const n = new Set(s); n.delete(taskId); return n })
+        if (isOneTime) setApiTasks(t => t.map(x => x.id === taskId ? { ...x, status: 'active' } : x))
+        setToast(null)
+      },
     })
     fetch(`${FUNCTIONS_URL}/api/completions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ task_id: taskId, event_type: 'done' }),
     }).catch(() => {})
+    // For one-time tasks, also patch the backend status so the next /api/tasks
+    // GET doesn't bring it back.
+    if (isOneTime) {
+      fetch(`${FUNCTIONS_URL}/api/tasks/${taskId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'archived' }),
+      }).catch(() => {})
+    }
   }, [FUNCTIONS_URL])
 
   const handleSkip = useCallback(async (task) => {
@@ -6567,6 +6680,26 @@ export default function HeedApp() {
   }, [FUNCTIONS_URL])
 
   // Apply a Phase 2 retrospective suggestion. Returns true if the action
+  // Wipe all data — backend tasks/completions/contexts/user_state and every
+  // localStorage key Heed owns. Used by the Reset row in Settings. Reloads
+  // after to make sure no in-memory state survives.
+  const handleResetAllData = useCallback(async () => {
+    try {
+      await fetch(`${FUNCTIONS_URL}/api/reset`, { method: 'POST' })
+    } catch (_) {}
+    if (typeof window !== 'undefined') {
+      try {
+        const keysToWipe = []
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i)
+          if (k && (k.startsWith('heed.') || k.startsWith('heed_') || k === 'heed-theme')) keysToWipe.push(k)
+        }
+        keysToWipe.forEach(k => localStorage.removeItem(k))
+      } catch (_) {}
+      window.location.reload()
+    }
+  }, [FUNCTIONS_URL])
+
   // succeeded so the sheet can mark it as ✓. Phase 2 wires adjust_cadence
   // (PATCH /api/tasks/{id}); other action_types fall through to no-op.
   const handleApplyRetroSuggestion = useCallback(async (suggestion) => {
@@ -6853,7 +6986,7 @@ export default function HeedApp() {
         onAskHeed={handleAskHeed}
       />
       <ShareCardSheet routine={shareCtx} onClose={handleShareClose}/>
-      <SettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} userName={userName} onUserName={handleUserName} theme={theme} onTheme={handleSetTheme} customCategories={customCategories} onAddCategory={cat => setCustomCategories(cs => [...cs, cat])} customEventTypes={customEventTypes} onAddEventType={evt => setCustomEventTypes(es => [...es, evt])}/>
+      <SettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} userName={userName} onUserName={handleUserName} theme={theme} onTheme={handleSetTheme} customCategories={customCategories} onAddCategory={cat => setCustomCategories(cs => [...cs, cat])} customEventTypes={customEventTypes} onAddEventType={evt => setCustomEventTypes(es => [...es, evt])} onResetAllData={handleResetAllData}/>
       {toast && <Toast message={toast.message} onView={toast.showView ? handleToastView : undefined} onUndo={toast.onUndo} onDismiss={() => setToast(null)} reasons={toast.reasons} onReason={toast.onReason}/>}
       <HeedFAB onAddTask={() => setModalOpen(true)} onAskHeed={() => setAskOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)}/>
     </div>

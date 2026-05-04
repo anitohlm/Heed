@@ -578,6 +578,133 @@ def execute_action(req: func.HttpRequest) -> func.HttpResponse:
 
 # ── memory_keeper_timer ────────────────────────────────────────────────────────
 
+# ── user_state (routines + plans, single document per user) ────────────────────
+# Write-through cache pattern: frontend keeps localStorage as source of truth
+# for instant UX, but every change POSTs the full collection to /api/user_state.
+# On mount, frontend GETs and prefers backend if present, falls back to local
+# if the backend is unreachable. Single Cosmos doc per (user, kind) — simpler
+# than per-item CRUD and matches how the data is used (whole-list reads).
+_USER_STATE_CONTAINER_NAME = "user_state"
+
+
+def _ensure_user_state_container():
+    db = cosmos_tool._get_database()
+    try:
+        return db.get_container_client(_USER_STATE_CONTAINER_NAME)
+    except Exception:
+        pass
+    # First request after deploy — create the container with /user_id partition key.
+    try:
+        from azure.cosmos import PartitionKey
+        db.create_container_if_not_exists(
+            id=_USER_STATE_CONTAINER_NAME,
+            partition_key=PartitionKey(path="/user_id"),
+        )
+    except Exception:
+        logging.exception("create user_state container failed")
+    return db.get_container_client(_USER_STATE_CONTAINER_NAME)
+
+
+@app.route(route="user_state/{kind}", methods=["GET", "PUT", "DELETE", "OPTIONS"])
+def user_state(req: func.HttpRequest) -> func.HttpResponse:
+    """
+    GET    /api/user_state/routines  → { items: [...] }
+    GET    /api/user_state/plans     → { items: [...] }
+    PUT    /api/user_state/routines  body: { items: [...] }  (replace all)
+    PUT    /api/user_state/plans     body: { items: [...] }  (replace all)
+    DELETE /api/user_state/routines  → wipe
+    DELETE /api/user_state/plans     → wipe
+
+    Validated kinds: 'routines', 'plans'.
+    """
+    if req.method == "OPTIONS":
+        return func.HttpResponse(status_code=204, headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, PUT, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type",
+        })
+
+    kind = (req.route_params.get("kind") or "").lower()
+    if kind not in ("routines", "plans"):
+        return _error("kind must be 'routines' or 'plans'")
+
+    doc_id = f"{USER_ID}__{kind}"
+    container = _ensure_user_state_container()
+
+    if req.method == "GET":
+        try:
+            doc = container.read_item(item=doc_id, partition_key=USER_ID)
+            return _json_response({"items": doc.get("items", [])})
+        except Exception:
+            # Not found is the common case for first-time users.
+            return _json_response({"items": []})
+
+    if req.method == "DELETE":
+        try:
+            container.delete_item(item=doc_id, partition_key=USER_ID)
+        except Exception:
+            pass  # idempotent — already absent is success
+        return _json_response({"ok": True})
+
+    if req.method == "PUT":
+        try:
+            body = req.get_json()
+        except ValueError:
+            return _error("Invalid JSON body")
+        items = body.get("items")
+        if not isinstance(items, list):
+            return _error("items must be an array")
+        if len(items) > 500:
+            return _error("Too many items (max 500 per kind)", 413)
+        doc = {
+            "id": doc_id,
+            "user_id": USER_ID,
+            "kind": kind,
+            "items": items,
+            "updated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        }
+        container.upsert_item(body=doc)
+        return _json_response({"ok": True, "count": len(items)})
+
+
+# ── reset (wipe everything for the current user) ───────────────────────────────
+
+@app.route(route="reset", methods=["POST", "OPTIONS"])
+def reset_user_data(req: func.HttpRequest) -> func.HttpResponse:
+    """
+    POST /api/reset
+    Wipes the demo user's data: tasks, completions, user_context, user_state.
+    Keeps the user record itself (for theme prefs, etc.).
+    Frontend also clears localStorage in parallel, so a reload starts fresh.
+    """
+    if req.method == "OPTIONS":
+        return func.HttpResponse(status_code=204, headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type",
+        })
+
+    db = cosmos_tool._get_database()
+    wiped = {}
+    for cname in ("tasks", "completions", "user_context", _USER_STATE_CONTAINER_NAME):
+        try:
+            container = db.get_container_client(cname)
+            # Query all docs for this user, then delete each.
+            query = "SELECT c.id, c.user_id FROM c WHERE c.user_id = @uid"
+            params = [{"name": "@uid", "value": USER_ID}]
+            count = 0
+            for item in container.query_items(query=query, parameters=params, enable_cross_partition_query=True):
+                try:
+                    container.delete_item(item=item["id"], partition_key=item.get("user_id", USER_ID))
+                    count += 1
+                except Exception:
+                    pass
+            wiped[cname] = count
+        except Exception:
+            wiped[cname] = "skipped (container missing)"
+    return _json_response({"ok": True, "wiped": wiped})
+
+
 @app.timer_trigger(
     schedule="0 0 */6 * * *",  # every 6 hours
     arg_name="timer",

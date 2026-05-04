@@ -3763,6 +3763,7 @@ function PlanDetailScreen({ plan, onBack, onCheck, onRename, onAddTask, onDelete
       icon: plan.icon,
       title: plan.title,
       date: plan.type === 'project' ? (plan.dueDate ?? '') : formatEventDate(plan.eventDate),
+      description: plan.description ?? '',
     })
     setTaskDrafts(plan.tasks.map(t => t.label))
     setEditingPlan(true)
@@ -3773,6 +3774,7 @@ function PlanDetailScreen({ plan, onBack, onCheck, onRename, onAddTask, onDelete
     const updates = {
       icon: editDraft.icon.trim() || plan.icon,
       title: editDraft.title.trim() || plan.title,
+      description: editDraft.description.trim(),
     }
     if (plan.type === 'project') updates.dueDate = editDraft.date.trim()
     if (plan.type === 'event')   updates.eventDate = editDraft.date.trim()
@@ -3794,7 +3796,7 @@ function PlanDetailScreen({ plan, onBack, onCheck, onRename, onAddTask, onDelete
       <div style={{ marginBottom: 6 }}>
         <button onClick={onBack} style={{ background: 'none', border: 'none', color: C.ochre, fontSize: 14, fontWeight: 700, cursor: 'pointer', padding: '2px 0', fontFamily: 'inherit' }}>‹ Plans</button>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: plan.description && !editingPlan ? 6 : 14 }}>
         <span style={{ fontSize: 20 }}>{plan.icon}</span>
         <span style={{ flex: 1, fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 600, color: C.warmDark, letterSpacing: -0.2 }}>{plan.title}</span>
         <button
@@ -3804,6 +3806,11 @@ function PlanDetailScreen({ plan, onBack, onCheck, onRename, onAddTask, onDelete
           {editingPlan ? '✕' : '⋯'}
         </button>
       </div>
+      {plan.description && !editingPlan && (
+        <div style={{ fontSize: 13, color: C.inkSoft, fontStyle: 'italic', marginBottom: 14, lineHeight: 1.5, paddingLeft: 2 }}>
+          {plan.description}
+        </div>
+      )}
 
       {/* due date / event date — shown in normal view */}
       {!editingPlan && (plan.dueDate || plan.eventDate) && (
@@ -3835,6 +3842,16 @@ function PlanDetailScreen({ plan, onBack, onCheck, onRename, onAddTask, onDelete
               onChange={e => setEditDraft(d => ({ ...d, date: e.target.value }))}
               placeholder={plan.type === 'project' ? 'e.g. Jun 15' : 'e.g. May 8'}
               style={{ flex: 1, fontSize: 13, border: 'none', borderBottom: `1.5px solid ${C.ochre}`, outline: 'none', background: 'transparent', fontFamily: 'inherit', color: C.ink }}
+            />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <span style={{ fontSize: 12, color: C.inkMute }}>Description <span style={{ fontWeight: 400 }}>(optional)</span></span>
+            <textarea
+              value={editDraft.description}
+              onChange={e => setEditDraft(d => ({ ...d, description: e.target.value }))}
+              placeholder="What's this plan for?"
+              rows={2}
+              style={{ display: 'block', width: '100%', marginTop: 4, fontSize: 13, border: 'none', borderBottom: `1.5px solid ${C.ochre}`, outline: 'none', background: 'transparent', fontFamily: 'inherit', color: C.ink, resize: 'none', boxSizing: 'border-box' }}
             />
           </div>
           {/* Tasks editor — single edit-all flow */}

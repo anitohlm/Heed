@@ -2,7 +2,7 @@
 
 > **DEPRECATED — moved to a single consolidated tech doc.**
 >
-> All technical documentation is now maintained in **[`docs/Heed_Azure_Setup.docx`](Heed_Azure_Setup.docx)** (Word format).
+> All technical documentation is now maintained in **[`docs/Heed_Technical_Doc.docx`](Heed_Technical_Doc.docx)** (Word format).
 >
 > That file is the single source of truth and now covers:
 > - Azure infrastructure provisioning, secrets, and resource inventory

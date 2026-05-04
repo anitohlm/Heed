@@ -1,7 +1,7 @@
 """
-Generates the Azure setup technical documentation as a Word file.
-Run once: python generate_azure_doc.py
-Output: docs/Heed_Azure_Setup.docx
+Generates Heed's consolidated technical documentation as a Word file.
+Run: python generate_azure_doc.py
+Output: docs/Heed_Technical_Doc.docx
 """
 
 from docx import Document
@@ -639,6 +639,6 @@ for ref_title, ref_body in refs:
     doc.add_paragraph(ref_body)
 
 # ── Save ──────────────────────────────────────────────────────────────────────
-out_path = Path(__file__).parent / "docs" / "Heed_Azure_Setup.docx"
+out_path = Path(__file__).parent / "docs" / "Heed_Technical_Doc.docx"
 doc.save(out_path)
 print(f"Saved: {out_path}")

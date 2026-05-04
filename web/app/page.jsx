@@ -2085,8 +2085,37 @@ function RoutineRow({ routine, delay = 0, onMarkDone, onSkipToday, onLighten }) 
 // ── RoutineCard ────────────────────────────────────────────────
 function RoutineCard({ routine, delay = 0, onMarkDone, onLighten, onEdit, onShare, onMarkDay }) {
   const [hover, setHover] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
   const completionRate = routine.completion14d.filter(Boolean).length / routine.completion14d.length
   const isAttentionWorthy = routine.suggestion !== null
+
+  const menuItems = [
+    {
+      label: 'Mark today done',
+      color: C.sage,
+      icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M5 12l5 5L19 7" stroke={C.sage} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+      action: () => { onMarkDone?.(routine.id); setMenuOpen(false) },
+    },
+    ...(isAttentionWorthy ? [{
+      label: 'Lighten this week',
+      color: C.ochre,
+      icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4" stroke={C.ochre} strokeWidth="1.8"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" stroke={C.ochre} strokeWidth="1.8" strokeLinecap="round"/></svg>,
+      action: () => { onLighten?.(routine.id); setMenuOpen(false) },
+    }] : []),
+    {
+      label: 'Edit',
+      color: C.ink,
+      icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke={C.inkSoft} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke={C.inkSoft} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+      action: () => { onEdit?.(routine); setMenuOpen(false) },
+    },
+    {
+      label: 'Share card',
+      color: C.ink,
+      icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="18" cy="5" r="3" stroke={C.inkSoft} strokeWidth="1.8"/><circle cx="6" cy="12" r="3" stroke={C.inkSoft} strokeWidth="1.8"/><circle cx="18" cy="19" r="3" stroke={C.inkSoft} strokeWidth="1.8"/><path d="M8.59 13.51l6.83 3.98M15.41 6.51L8.59 10.49" stroke={C.inkSoft} strokeWidth="1.8" strokeLinecap="round"/></svg>,
+      action: () => { onShare?.(routine); setMenuOpen(false) },
+    },
+  ]
+
   return (
     <div
       onMouseEnter={() => setHover(true)}
@@ -2101,28 +2130,92 @@ function RoutineCard({ routine, delay = 0, onMarkDone, onLighten, onEdit, onShar
         animation: 'heed-fadeUp 0.5s ease both', animationDelay: `${delay}ms`,
       }}
     >
+      {menuOpen && <div onClick={() => setMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 49 }}/>}
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-        <div>
+        <div style={{ flex: 1, minWidth: 0, paddingRight: 8 }}>
           <div style={{ marginBottom: 3 }}>
             <span style={{ fontFamily: 'Lora, serif', fontSize: 17, fontWeight: 600, color: C.ink, letterSpacing: -0.2 }}>{routine.name}</span>
           </div>
           <div style={{ fontSize: 12, color: C.inkMute }}>{routine.schedule} · {routine.weekRate}</div>
         </div>
-        <div style={{ position: 'relative', width: 52, height: 52 }}>
-          <svg width="52" height="52" style={{ transform: 'rotate(-90deg)' }}>
-            <circle cx="26" cy="26" r="22" fill="none" stroke={C.hairline} strokeWidth="3"/>
-            <circle cx="26" cy="26" r="22" fill="none"
-              stroke={completionRate > 0.8 ? C.sage : completionRate > 0.5 ? C.ochre : C.rust}
-              strokeWidth="3" strokeLinecap="round"
-              strokeDasharray={`${completionRate * 138} 138`}
-              style={{ transition: 'stroke-dasharray 0.6s ease' }}
-            />
-          </svg>
-          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: C.warmDark }}>
-            {Math.round(completionRate * 100)}%
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 2, flexShrink: 0 }}>
+          <div style={{ position: 'relative', width: 52, height: 52 }}>
+            <svg width="52" height="52" style={{ transform: 'rotate(-90deg)' }}>
+              <circle cx="26" cy="26" r="22" fill="none" stroke={C.hairline} strokeWidth="3"/>
+              <circle cx="26" cy="26" r="22" fill="none"
+                stroke={completionRate > 0.8 ? C.sage : completionRate > 0.5 ? C.ochre : C.rust}
+                strokeWidth="3" strokeLinecap="round"
+                strokeDasharray={`${completionRate * 138} 138`}
+                style={{ transition: 'stroke-dasharray 0.6s ease' }}
+              />
+            </svg>
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Lora, serif', fontSize: 13, fontWeight: 600, color: C.warmDark }}>
+              {Math.round(completionRate * 100)}%
+            </div>
+          </div>
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={e => { e.stopPropagation(); setMenuOpen(m => !m) }}
+              aria-label="Routine options"
+              aria-haspopup="true"
+              aria-expanded={menuOpen}
+              style={{
+                width: 44, height: 44, background: 'transparent', border: 'none',
+                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                touchAction: 'manipulation', flexShrink: 0,
+              }}
+            >
+              <div style={{
+                width: 30, height: 30, borderRadius: '50%',
+                background: menuOpen ? C.bellySoft : 'transparent',
+                border: `1px solid ${menuOpen ? C.border : 'transparent'}`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'all 0.15s',
+              }}
+                onMouseEnter={e => { if (!menuOpen) { e.currentTarget.style.background = C.bellySoft; e.currentTarget.style.borderColor = C.border } }}
+                onMouseLeave={e => { if (!menuOpen) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent' } }}
+              >
+                <svg width="4" height="16" viewBox="0 0 4 16" fill="none">
+                  <circle cx="2" cy="2" r="1.8" fill={C.inkSoft}/>
+                  <circle cx="2" cy="8" r="1.8" fill={C.inkSoft}/>
+                  <circle cx="2" cy="14" r="1.8" fill={C.inkSoft}/>
+                </svg>
+              </div>
+            </button>
+            {menuOpen && (
+              <div style={{
+                position: 'absolute', top: 'calc(100% + 2px)', right: 0, zIndex: 50,
+                background: C.paperHi, border: `1px solid ${C.border}`, borderRadius: 12,
+                boxShadow: '0 8px 24px rgba(44,24,16,0.15)', minWidth: 188, overflow: 'hidden',
+                animation: 'heed-fadeIn 0.15s ease',
+              }}>
+                {menuItems.map((item, i) => (
+                  <button
+                    key={i}
+                    onClick={item.action}
+                    style={{
+                      width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '0 14px', minHeight: 44, background: 'transparent', border: 'none',
+                      borderBottom: i < menuItems.length - 1 ? `1px solid ${C.hairline}` : 'none',
+                      fontSize: 14, color: item.color === C.sage ? C.sage : item.color === C.ochre ? C.ochre : C.ink,
+                      fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
+                      textAlign: 'left', touchAction: 'manipulation', transition: 'background 0.1s',
+                      boxSizing: 'border-box',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = C.bellySoft }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                  >
+                    {item.icon}
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
+
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
         {routine.items.map((item, i) => {
           const isOptional = routine.lightenedItems?.includes(item)
@@ -2202,12 +2295,6 @@ function RoutineCard({ routine, delay = 0, onMarkDone, onLighten, onEdit, onShar
           </div>
         </div>
       )}
-      <div style={{ marginTop: 12, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-        <button style={getBtnPrimary()} onClick={() => onMarkDone && onMarkDone(routine.id)}>Mark today done</button>
-        {isAttentionWorthy && <button style={{ ...getBtnPrimary(), background: C.ochre, color: C.warmDeep }} onClick={() => onLighten && onLighten(routine.id)}>Lighten this week</button>}
-        <button style={getBtnGhost()} onClick={() => onEdit && onEdit(routine)}>Edit</button>
-        <button style={getBtnGhost()} onClick={() => onShare && onShare(routine)}>Share card</button>
-      </div>
     </div>
   )
 }
@@ -4319,6 +4406,18 @@ function AddTaskModal({ open, onClose, onSubmit, onDelete, initialData = null, c
   const [dueDate, setDueDate] = useState('')
   const [dueTime, setDueTime] = useState('')
   const [description, setDescription] = useState('')
+  const [showImportanceInfo, setShowImportanceInfo] = useState(false)
+  const importanceInfoRef = useRef(null)
+  useEffect(() => {
+    if (!showImportanceInfo) return
+    const handler = (e) => {
+      if (importanceInfoRef.current && !importanceInfoRef.current.contains(e.target)) {
+        setShowImportanceInfo(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [showImportanceInfo])
   const inputRef = useRef(null)
   useEffect(() => {
     if (!open) return
@@ -4406,7 +4505,38 @@ function AddTaskModal({ open, onClose, onSubmit, onDelete, initialData = null, c
             </div>
           </div>
           <div style={{ marginBottom: 14 }}>
-            <label style={getFieldLabel()}>How important?</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, position: 'relative' }} ref={importanceInfoRef}>
+              <label style={getFieldLabel()}>How important?</label>
+              <button
+                onClick={() => setShowImportanceInfo(v => !v)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', color: C.inkMute, lineHeight: 1 }}
+                aria-label="What do importance levels mean?"
+              >
+                <svg width="15" height="15" viewBox="0 0 15 15" aria-hidden="true">
+                  <circle cx="7.5" cy="7.5" r="6.5" fill="none" stroke={C.inkMute} strokeWidth="1.5"/>
+                  <text x="7.5" y="11.5" textAnchor="middle" fontSize="9" fontWeight="700" fill={C.inkMute} fontFamily="inherit">?</text>
+                </svg>
+              </button>
+              {showImportanceInfo && (
+                <div style={{
+                  position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 30,
+                  background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 10,
+                  padding: '10px 14px', boxShadow: C.shadowMed, minWidth: 230,
+                  animation: 'heed-fadeIn 0.15s ease',
+                }}>
+                  {[
+                    { label: 'Low',    color: C.sage,  desc: 'Do it when you have a free window' },
+                    { label: 'Medium', color: C.ochre, desc: 'Should happen this week' },
+                    { label: 'High',   color: C.rust,  desc: 'Must happen — urgent or critical' },
+                  ].map(({ label, color, desc }, i, arr) => (
+                    <div key={label} style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: i < arr.length - 1 ? 6 : 0 }}>
+                      <span style={{ fontWeight: 700, fontSize: 12, color, minWidth: 46 }}>{label}</span>
+                      <span style={{ fontSize: 12, color: C.inkMute, lineHeight: 1.4 }}>{desc}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
             <div style={{ display: 'flex', gap: 8 }}>
               {[
                 { v: 'low',    tone: C.sage,  caption: 'when you have a window' },

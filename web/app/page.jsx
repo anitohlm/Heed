@@ -3614,26 +3614,53 @@ function AddPlanSheet({ onClose, onAdd }) {
   const [targetDate, setTargetDate]   = useState('')
   const [eventDate, setEventDate]     = useState('')
   const [suggestDismissed, setSuggestDismissed] = useState(false)
+  const [addedSuggestions, setAddedSuggestions] = useState([])
 
   const inputStyle = { width: '100%', background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '9px 12px', fontSize: 14, color: C.ink, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box', marginTop: 4 }
   const labelStyle = { fontSize: 12, fontWeight: 600, color: C.inkMute, display: 'block', marginTop: 12 }
 
-  const showSuggest = (type === 'project' || type === 'event') && title.trim().length >= 3 && !suggestDismissed && tasksText.trim() === ''
-  const applySuggestions = () => {
-    setTasksText(getSuggestedTasks(type, title).join('\n'))
-    setSuggestDismissed(true)
+  const suggestions = (type === 'project' || type === 'event') && title.trim().length >= 3
+    ? getSuggestedTasks(type, title)
+    : []
+  const showSuggest = suggestions.length > 0 && !suggestDismissed
+
+  const addSuggestion = (item) => {
+    if (addedSuggestions.includes(item)) return
+    setAddedSuggestions(prev => [...prev, item])
+    setTasksText(prev => prev.trim() ? prev.trim() + '\n' + item : item)
   }
 
   const suggestPrompt = showSuggest && (
-    <div style={{ background: C.bellySoft, border: `1px solid ${C.belly}`, borderRadius: 10, padding: '10px 14px', marginTop: 12, display: 'flex', alignItems: 'center', gap: 10, animation: 'heed-fadeIn 0.25s ease' }}>
-      <MayaOwl size={26} idle={true}/>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: C.warmDark }}>Want me to suggest some tasks?</div>
-        <div style={{ fontSize: 11.5, color: C.inkMute, marginTop: 1 }}>Based on "{title.trim().slice(0, 28)}{title.trim().length > 28 ? '…' : ''}"</div>
+    <div style={{ background: C.bellySoft, border: `1px solid ${C.belly}`, borderRadius: 10, padding: '10px 12px', marginTop: 12, animation: 'heed-fadeIn 0.25s ease' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+        <MayaOwl size={22} idle={true}/>
+        <div style={{ flex: 1, fontSize: 12, fontWeight: 600, color: C.warmDark }}>
+          Tap to add · based on "{title.trim().slice(0, 24)}{title.trim().length > 24 ? '…' : ''}"
+        </div>
+        <button onClick={() => setSuggestDismissed(true)} style={{ fontSize: 13, color: C.inkMute, background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 4px', lineHeight: 1, touchAction: 'manipulation' }}>✕</button>
       </div>
-      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-        <button onClick={applySuggestions} style={{ fontSize: 12, fontWeight: 600, color: C.warmDark, background: C.belly, border: 'none', borderRadius: 7, padding: '6px 12px', cursor: 'pointer', fontFamily: 'inherit', touchAction: 'manipulation' }}>Suggest →</button>
-        <button onClick={() => setSuggestDismissed(true)} style={{ fontSize: 12, color: C.inkMute, background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'inherit', touchAction: 'manipulation', padding: '6px 6px' }}>✕</button>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        {suggestions.map((item, i) => {
+          const added = addedSuggestions.includes(item)
+          return (
+            <button key={i} onClick={() => addSuggestion(item)} disabled={added}
+              style={{
+                fontSize: 12, fontWeight: 500, borderRadius: 999, padding: '5px 11px',
+                border: `1px solid ${added ? C.sage + '80' : C.belly}`,
+                background: added ? C.sageSoft : C.paper,
+                color: added ? C.sage : C.inkSoft,
+                cursor: added ? 'default' : 'pointer',
+                touchAction: 'manipulation', fontFamily: 'inherit',
+                transition: 'all 0.15s',
+                display: 'flex', alignItems: 'center', gap: 5,
+              }}>
+              {added
+                ? <><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1.5 5l2.5 2.5L8.5 2" stroke={C.sage} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>{item}</>
+                : <><span style={{ fontSize: 14, lineHeight: 1, color: C.warmDark, fontWeight: 700 }}>+</span>{item}</>
+              }
+            </button>
+          )
+        })}
       </div>
     </div>
   )

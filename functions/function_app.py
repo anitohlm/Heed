@@ -589,20 +589,19 @@ _USER_STATE_CONTAINER_NAME = "user_state"
 
 def _ensure_user_state_container():
     db = cosmos_tool._get_database()
-    try:
-        return db.get_container_client(_USER_STATE_CONTAINER_NAME)
-    except Exception:
-        pass
-    # First request after deploy — create the container with /user_id partition key.
+    # create_container_if_not_exists is a no-op when the container already
+    # exists, so it's safe to call on every request. The old pattern of
+    # try/except around get_container_client() was wrong — that call never
+    # raises even when the container is absent (it just returns a proxy).
     try:
         from azure.cosmos import PartitionKey
-        db.create_container_if_not_exists(
+        return db.create_container_if_not_exists(
             id=_USER_STATE_CONTAINER_NAME,
             partition_key=PartitionKey(path="/user_id"),
         )
     except Exception:
-        logging.exception("create user_state container failed")
-    return db.get_container_client(_USER_STATE_CONTAINER_NAME)
+        logging.exception("ensure user_state container failed")
+        return db.get_container_client(_USER_STATE_CONTAINER_NAME)
 
 
 @app.route(route="user_state/{kind}", methods=["GET", "PUT", "DELETE", "OPTIONS"])
@@ -663,7 +662,11 @@ def user_state(req: func.HttpRequest) -> func.HttpResponse:
             "items": items,
             "updated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         }
-        container.upsert_item(body=doc)
+        try:
+            container.upsert_item(body=doc)
+        except Exception:
+            logging.exception("user_state upsert failed kind=%s", kind)
+            return _error("Failed to save", 500)
         return _json_response({"ok": True, "count": len(items)})
 
 

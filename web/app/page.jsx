@@ -2735,6 +2735,9 @@ function RoutineRow({ routine, delay = 0, onMarkDone, onSkipToday, onLighten }) 
   const isLightened = !!routine.lightenedItems?.length
   const borderColor = isLightened ? `${C.sage}73` : isAttention ? `${C.ochre}73` : C.border
   const items = routine.items || []
+  // Collapsed by default to keep Today scannable when there are several
+  // routines. Tap the header to expand into the checklist + Mark all done.
+  const [expanded, setExpanded] = useState(false)
   // Per-item ticked state. Visual only — when all are ticked (or the user
   // taps Mark all done) the routine fires onMarkDone for the day. We don't
   // persist individual items because the data model only tracks the routine
@@ -2775,112 +2778,140 @@ function RoutineRow({ routine, delay = 0, onMarkDone, onSkipToday, onLighten }) 
       overflow: 'hidden',
       userSelect: 'none',
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+      <button
+        type="button"
+        onClick={() => setExpanded(e => !e)}
+        aria-expanded={expanded}
+        aria-label={`${expanded ? 'Collapse' : 'Expand'} ${routine.name}`}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          width: '100%',
+          padding: 0,
+          background: 'transparent',
+          border: 'none',
+          cursor: 'pointer',
+          fontFamily: 'inherit',
+          textAlign: 'left',
+          touchAction: 'manipulation',
+          WebkitTapHighlightColor: 'transparent',
+          marginBottom: expanded ? 12 : 0,
+        }}
+      >
+        <svg
+          width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"
+          style={{ flexShrink: 0, transition: 'transform 0.2s ease', transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)' }}
+        >
+          <path d="M5 3l4 4-4 4" stroke={C.inkSoft} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
         <span style={{ flex: 1, fontSize: 14.5, fontWeight: 600, color: C.ink }}>{routine.name}</span>
         <span style={{ fontSize: 11, fontWeight: 700, color: isHealthy ? C.sage : C.ochre, whiteSpace: 'nowrap' }}>
           {isHealthy ? '✓' : '⚠'} {thisWeekCount}/7 this week
         </span>
-      </div>
-
-      {items.length > 0 && (
-        <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 10px 0' }}>
-          {items.map((item, i) => {
-            const checked = checkedItems.has(i)
-            return (
-              <li key={i}>
-                <button
-                  type="button"
-                  onClick={() => toggleItem(i)}
-                  aria-pressed={checked}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 12,
-                    width: '100%',
-                    padding: '7px 0',
-                    background: 'transparent',
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontFamily: 'inherit',
-                    textAlign: 'left',
-                    touchAction: 'manipulation',
-                    WebkitTapHighlightColor: 'transparent',
-                  }}
-                >
-                  <span aria-hidden="true" style={{
-                    width: 22, height: 22, flexShrink: 0,
-                    borderRadius: 6,
-                    border: `2px solid ${checked ? C.sage : C.border}`,
-                    background: checked ? C.sage : 'transparent',
-                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                    transition: 'all 0.18s cubic-bezier(0.4, 0, 0.2, 1)',
-                  }}>
-                    {checked && (
-                      <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
-                        <path d="M3 7l3 3 5-6" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    )}
-                  </span>
-                  <span style={{
-                    fontSize: 13.5,
-                    color: checked ? C.inkMute : C.ink,
-                    textDecoration: checked ? 'line-through' : 'none',
-                    flex: 1,
-                    minWidth: 0,
-                    transition: 'color 0.18s, text-decoration 0.18s',
-                  }}>{item}</span>
-                </button>
-              </li>
-            )
-          })}
-        </ul>
-      )}
-
-      <button
-        type="button"
-        onClick={triggerComplete}
-        disabled={completing}
-        style={{
-          width: '100%',
-          background: completing ? C.sage : 'transparent',
-          color: completing ? C.cream : C.sage,
-          border: `1.5px solid ${C.sage}`,
-          padding: '9px 14px',
-          borderRadius: 8,
-          fontSize: 12.5,
-          fontWeight: 700,
-          cursor: completing ? 'default' : 'pointer',
-          fontFamily: 'inherit',
-          letterSpacing: 0.2,
-          transition: 'all 0.18s',
-          opacity: completing ? 0.7 : 1,
-        }}
-        onMouseEnter={e => { if (!completing) { e.currentTarget.style.background = C.sage; e.currentTarget.style.color = C.cream } }}
-        onMouseLeave={e => { if (!completing) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = C.sage } }}
-      >
-        ✓ Mark all done
       </button>
 
-      <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', gap: 3, alignItems: 'center', flex: 1 }}>
-          {last7.map((done, i) => (
-            <span key={i} style={{ width: 6, height: 6, borderRadius: '50%', display: 'inline-block', background: done ? C.sage : C.border }}/>
-          ))}
-          <span style={{ marginLeft: 6, fontSize: 10, color: C.inkMute, fontStyle: 'italic' }}>last 7 days</span>
-        </div>
-        {isLightened && (
-          <span style={{ fontSize: 10.5, fontWeight: 600, color: C.sage, background: C.sageSoft, border: `1px solid ${C.sage}4d`, borderRadius: 999, padding: '2px 9px' }}>
-            {routine.lightenedItems.length} items optional
-          </span>
-        )}
-        {isAttention && !isLightened && (
+      {expanded && (
+        <>
+          {items.length > 0 && (
+            <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 10px 0' }}>
+              {items.map((item, i) => {
+                const checked = checkedItems.has(i)
+                return (
+                  <li key={i}>
+                    <button
+                      type="button"
+                      onClick={() => toggleItem(i)}
+                      aria-pressed={checked}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 12,
+                        width: '100%',
+                        padding: '7px 0',
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontFamily: 'inherit',
+                        textAlign: 'left',
+                        touchAction: 'manipulation',
+                        WebkitTapHighlightColor: 'transparent',
+                      }}
+                    >
+                      <span aria-hidden="true" style={{
+                        width: 22, height: 22, flexShrink: 0,
+                        borderRadius: 6,
+                        border: `2px solid ${checked ? C.sage : C.border}`,
+                        background: checked ? C.sage : 'transparent',
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        transition: 'all 0.18s cubic-bezier(0.4, 0, 0.2, 1)',
+                      }}>
+                        {checked && (
+                          <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
+                            <path d="M3 7l3 3 5-6" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        )}
+                      </span>
+                      <span style={{
+                        fontSize: 13.5,
+                        color: checked ? C.inkMute : C.ink,
+                        textDecoration: checked ? 'line-through' : 'none',
+                        flex: 1,
+                        minWidth: 0,
+                        transition: 'color 0.18s, text-decoration 0.18s',
+                      }}>{item}</span>
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+
           <button
             type="button"
-            onClick={() => onLighten?.(routine.id)}
-            style={{ fontSize: 10.5, fontWeight: 600, color: C.ochre, background: C.ochreSoft, border: `1px solid ${C.ochre}40`, borderRadius: 999, padding: '2px 9px', cursor: 'pointer', fontFamily: 'inherit' }}
+            onClick={triggerComplete}
+            disabled={completing}
+            style={{
+              width: '100%',
+              background: completing ? C.sage : 'transparent',
+              color: completing ? C.cream : C.sage,
+              border: `1.5px solid ${C.sage}`,
+              padding: '9px 14px',
+              borderRadius: 8,
+              fontSize: 12.5,
+              fontWeight: 700,
+              cursor: completing ? 'default' : 'pointer',
+              fontFamily: 'inherit',
+              letterSpacing: 0.2,
+              transition: 'all 0.18s',
+              opacity: completing ? 0.7 : 1,
+            }}
+            onMouseEnter={e => { if (!completing) { e.currentTarget.style.background = C.sage; e.currentTarget.style.color = C.cream } }}
+            onMouseLeave={e => { if (!completing) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = C.sage } }}
           >
-            Lighten this week →
+            ✓ Mark all done
           </button>
-        )}
-      </div>
+
+          <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 3, alignItems: 'center', flex: 1 }}>
+              {last7.map((done, i) => (
+                <span key={i} style={{ width: 6, height: 6, borderRadius: '50%', display: 'inline-block', background: done ? C.sage : C.border }}/>
+              ))}
+              <span style={{ marginLeft: 6, fontSize: 10, color: C.inkMute, fontStyle: 'italic' }}>last 7 days</span>
+            </div>
+            {isLightened && (
+              <span style={{ fontSize: 10.5, fontWeight: 600, color: C.sage, background: C.sageSoft, border: `1px solid ${C.sage}4d`, borderRadius: 999, padding: '2px 9px' }}>
+                {routine.lightenedItems.length} items optional
+              </span>
+            )}
+            {isAttention && !isLightened && (
+              <button
+                type="button"
+                onClick={() => onLighten?.(routine.id)}
+                style={{ fontSize: 10.5, fontWeight: 600, color: C.ochre, background: C.ochreSoft, border: `1px solid ${C.ochre}40`, borderRadius: 999, padding: '2px 9px', cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                Lighten this week →
+              </button>
+            )}
+          </div>
+        </>
+      )}
     </div>
   )
 }
@@ -4619,8 +4650,6 @@ function AddPlanSheet({ onClose, onAdd }) {
 
 // ── GoalDetailScreen ───────────────────────────────────────────────
 function GoalDetailScreen({ plan, onBack, onUpdatePlan }) {
-  const [editingPlan, setEditingPlan] = useState(false)
-  const [editDraft, setEditDraft] = useState({ icon: '', title: '', targetDate: '', description: '' })
   const isMilestone = plan.goalKind === 'milestone'
   const [val, setVal] = useState(String(plan.current ?? 0))
   useEffect(() => { if (!isMilestone) setVal(String(plan.current ?? 0)) }, [plan.current, isMilestone])
@@ -4630,20 +4659,6 @@ function GoalDetailScreen({ plan, onBack, onUpdatePlan }) {
     : plan.target > 0 ? Math.min(100, Math.round((plan.current ?? 0) / plan.target * 100)) : 0
   const remaining = isMilestone ? 0 : Math.max(0, plan.target - (plan.current ?? 0))
 
-  function openEditPlan() {
-    setEditDraft({ icon: plan.icon, title: plan.title, targetDate: plan.targetDate ?? '', description: plan.description ?? '' })
-    setEditingPlan(true)
-  }
-  function cancelEditPlan() { setEditingPlan(false) }
-  function saveEditPlan() {
-    onUpdatePlan?.(plan.id, {
-      icon: editDraft.icon.trim() || plan.icon,
-      title: editDraft.title.trim() || plan.title,
-      targetDate: editDraft.targetDate.trim(),
-      description: editDraft.description.trim(),
-    })
-    setEditingPlan(false)
-  }
   function submitNumeric() {
     const n = parseFloat(val)
     if (isNaN(n) || n < 0) return
@@ -4655,87 +4670,51 @@ function GoalDetailScreen({ plan, onBack, onUpdatePlan }) {
       <div style={{ marginBottom: 6 }}>
         <button onClick={onBack} style={{ background: 'none', border: 'none', color: C.ochre, fontSize: 14, fontWeight: 700, cursor: 'pointer', padding: '2px 0', fontFamily: 'inherit' }}>‹ Plans</button>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: plan.description && !editingPlan ? 6 : 14 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: plan.description ? 6 : 14 }}>
         <span style={{ fontSize: 20 }}>{plan.icon}</span>
         <span style={{ flex: 1, fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 600, color: C.warmDark, letterSpacing: -0.2 }}>{plan.title}</span>
-        <button
-          onClick={editingPlan ? cancelEditPlan : openEditPlan}
-          aria-label={editingPlan ? 'Cancel edit' : 'Edit goal'}
-          style={{ background: 'none', border: `1px solid ${C.border}`, color: C.warmDark, fontSize: 18, fontWeight: 400, cursor: 'pointer', padding: '2px 10px', fontFamily: 'inherit', lineHeight: 1, borderRadius: 999 }}>
-          {editingPlan ? '✕' : '⋯'}
-        </button>
       </div>
-      {plan.description && !editingPlan && (
+      {plan.description && (
         <div style={{ fontSize: 13, color: C.inkSoft, fontStyle: 'italic', marginBottom: 14, lineHeight: 1.5, paddingLeft: 2 }}>
           {plan.description}
         </div>
       )}
-      {!editingPlan && plan.targetDate && plan.targetDate !== 'No date set' && (
+      {plan.targetDate && plan.targetDate !== 'No date set' && (
         <div style={{ fontSize: 12, color: C.inkMute, marginBottom: 14, paddingLeft: 2 }}>
           Target: {plan.targetDate}
         </div>
       )}
 
-      {editingPlan && (
-        <div style={{ background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '12px 14px', marginBottom: 14 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-            <input value={editDraft.icon} onChange={e => setEditDraft(d => ({ ...d, icon: e.target.value }))}
-              style={{ width: 36, height: 36, textAlign: 'center', fontSize: 22, border: 'none', borderBottom: `1.5px solid ${C.ochre}`, outline: 'none', background: 'transparent', fontFamily: 'inherit', flexShrink: 0 }}/>
-            <input value={editDraft.title} onChange={e => setEditDraft(d => ({ ...d, title: e.target.value }))}
-              style={{ flex: 1, fontSize: 14, fontWeight: 600, border: 'none', borderBottom: `1.5px solid ${C.ochre}`, outline: 'none', background: 'transparent', fontFamily: 'inherit', color: C.ink }}/>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-            <span style={{ fontSize: 12, color: C.inkMute, flexShrink: 0 }}>Target date</span>
-            <input value={editDraft.targetDate} onChange={e => setEditDraft(d => ({ ...d, targetDate: e.target.value }))}
-              placeholder="e.g. Dec 2025"
-              style={{ flex: 1, fontSize: 13, border: 'none', borderBottom: `1.5px solid ${C.ochre}`, outline: 'none', background: 'transparent', fontFamily: 'inherit', color: C.ink }}/>
-          </div>
-          <div style={{ marginBottom: 12 }}>
-            <span style={{ fontSize: 12, color: C.inkMute }}>Description <span style={{ fontWeight: 400 }}>(optional)</span></span>
-            <textarea value={editDraft.description} onChange={e => setEditDraft(d => ({ ...d, description: e.target.value }))}
-              placeholder="What's this goal about?"
-              rows={2}
-              style={{ display: 'block', width: '100%', marginTop: 4, fontSize: 13, border: 'none', borderBottom: `1.5px solid ${C.ochre}`, outline: 'none', background: 'transparent', fontFamily: 'inherit', color: C.ink, resize: 'none', boxSizing: 'border-box' }}/>
-          </div>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button onClick={saveEditPlan} style={{ ...getBtnPrimary(), flex: 1, padding: '10px 0', fontSize: 13 }}>Save</button>
-            <button onClick={cancelEditPlan} style={{ ...getBtnGhost(), flex: 1, padding: '10px 0', fontSize: 13 }}>Cancel</button>
-          </div>
+      <div style={{ background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 12, padding: 16 }}>
+        <div style={{ height: 6, background: C.bellySoft, borderRadius: 3, marginBottom: 6, overflow: 'hidden' }}>
+          <div style={{ height: '100%', borderRadius: 3, background: isMilestone ? C.sage : C.ochre, width: `${pct}%`, transition: 'width 0.4s ease' }}/>
         </div>
-      )}
-
-      {!editingPlan && (
-        <div style={{ background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 12, padding: 16 }}>
-          <div style={{ height: 6, background: C.bellySoft, borderRadius: 3, marginBottom: 6, overflow: 'hidden' }}>
-            <div style={{ height: '100%', borderRadius: 3, background: isMilestone ? C.sage : C.ochre, width: `${pct}%`, transition: 'width 0.4s ease' }}/>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, color: C.inkMute, marginBottom: 16 }}>
-            <span>{pct}%{isMilestone ? (plan.achieved ? ' · Achieved!' : ' · In progress') : ' saved'}</span>
-            {!isMilestone && <span>{plan.unit}{remaining.toLocaleString()} to go</span>}
-          </div>
-          {isMilestone ? (
-            <button onClick={() => onUpdatePlan?.(plan.id, { achieved: !plan.achieved })}
-              style={{ ...getBtnPrimary(), width: '100%', padding: '12px 0', fontSize: 14 }}>
-              {plan.achieved ? 'Mark as in progress' : 'Mark as achieved ✓'}
-            </button>
-          ) : (
-            <>
-              <label style={{ fontSize: 12, fontWeight: 600, color: C.inkMute, display: 'block', marginBottom: 6 }}>
-                Update current amount ({plan.unit})
-              </label>
-              <div style={{ display: 'flex', gap: 10 }}>
-                <input type="number" min="0" value={val}
-                  onChange={e => setVal(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && submitNumeric()}
-                  style={{ flex: 1, background: C.paperHi, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '11px 14px', fontSize: 15, color: C.ink, outline: 'none', fontFamily: 'inherit' }}
-                  onFocus={e => { e.target.style.borderColor = C.warmDark }}
-                  onBlur={e => { e.target.style.borderColor = C.border }}/>
-                <button onClick={submitNumeric} style={{ ...getBtnPrimary(), padding: '11px 18px', fontSize: 14 }}>Save</button>
-              </div>
-            </>
-          )}
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, color: C.inkMute, marginBottom: 16 }}>
+          <span>{pct}%{isMilestone ? (plan.achieved ? ' · Achieved!' : ' · In progress') : ' saved'}</span>
+          {!isMilestone && <span>{plan.unit}{remaining.toLocaleString()} to go</span>}
         </div>
-      )}
+        {isMilestone ? (
+          <button onClick={() => onUpdatePlan?.(plan.id, { achieved: !plan.achieved })}
+            style={{ ...getBtnPrimary(), width: '100%', padding: '12px 0', fontSize: 14 }}>
+            {plan.achieved ? 'Mark as in progress' : 'Mark as achieved ✓'}
+          </button>
+        ) : (
+          <>
+            <label style={{ fontSize: 12, fontWeight: 600, color: C.inkMute, display: 'block', marginBottom: 6 }}>
+              Update current amount ({plan.unit})
+            </label>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <input type="number" min="0" value={val}
+                onChange={e => setVal(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && submitNumeric()}
+                style={{ flex: 1, background: C.paperHi, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '11px 14px', fontSize: 15, color: C.ink, outline: 'none', fontFamily: 'inherit' }}
+                onFocus={e => { e.target.style.borderColor = C.warmDark }}
+                onBlur={e => { e.target.style.borderColor = C.border }}/>
+              <button onClick={submitNumeric} style={{ ...getBtnPrimary(), padding: '11px 18px', fontSize: 14 }}>Save</button>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   )
 }

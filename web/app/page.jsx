@@ -6984,7 +6984,12 @@ export default function HeedApp() {
   }, [FUNCTIONS_URL])
 
   const handleAskHeed = useCallback((query) => {
-    setAskPrefill(query)
+    // Auto-send whenever a non-empty query is passed (e.g. "Plan around my
+    // Singapore trip" from the context banner). Empty/undefined query just
+    // opens the tab blank — preserves the speed-dial "Ask Heed" entry point.
+    const q = (query || '').trim()
+    setAskPrefill(q)
+    setAskAutoSend(q.length > 0)
     setTab('ask')
   }, [])
 

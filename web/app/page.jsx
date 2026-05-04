@@ -4209,8 +4209,22 @@ function AddRoutineModal({ open, onClose, onSubmit, initialData = null, seedTask
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const nameRef = useRef(null)
+  const inputStyle = { flex: 1, minWidth: 0, background: C.paper, border: `1px solid ${C.border}`, borderRadius: 6, padding: '7px 10px', fontSize: 13, color: C.ink, outline: 'none', fontFamily: 'inherit' }
+  function filteredTasks() {
+    const q = pickerSearch.toLowerCase()
+    return tasks.filter(t => t.name.toLowerCase().includes(q))
+  }
+
+  function pickTask(idx, task) {
+    setItems(prev => prev.map((it, i) => i === idx ? { ...it, name: task.name } : it))
+    setOpenPickerIndex(null)
+    setPickerSearch('')
+  }
+
   useEffect(() => {
     if (!open) return
+    setOpenPickerIndex(null)
+    setPickerSearch('')
     if (initialData) {
       setName(initialData.name || '')
       setItems(initialData.items?.map((item, i) => ({ id: i + 1, name: item })) || [{ id: 1, name: '' }])
@@ -4247,18 +4261,6 @@ function AddRoutineModal({ open, onClose, onSubmit, initialData = null, seedTask
     onClose()
   }
   if (!open) return null
-  const inputStyle = { flex: 1, minWidth: 0, background: C.paper, border: `1px solid ${C.border}`, borderRadius: 6, padding: '7px 10px', fontSize: 13, color: C.ink, outline: 'none', fontFamily: 'inherit' }
-  function filteredTasks() {
-    const q = pickerSearch.toLowerCase()
-    return tasks.filter(t => t.name.toLowerCase().includes(q))
-  }
-
-  function pickTask(idx, task) {
-    setItems(prev => prev.map((it, i) => i === idx ? { ...it, name: task.name } : it))
-    setOpenPickerIndex(null)
-    setPickerSearch('')
-  }
-
   return (
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(44,24,16,0.45)', backdropFilter: 'blur(4px)', animation: 'heed-fadeIn 0.2s ease' }}/>

@@ -3565,6 +3565,8 @@ const PLAN_TYPES = [
 
 function getSuggestedTasks(type, title) {
   const t = title.toLowerCase()
+  // Strip leading verbs so "the thing" survives ("Cook nilaga" → "nilaga").
+  const subject = t.replace(/^(cook|make|bake|build|fix|repair|learn|study|clean|organize|declutter|plan|prepare|finish|start)\s+/i, '').trim() || t
   if (type === 'project') {
     if (/mov(e|ing)|apartment|flat|reloc/.test(t))
       return ['Book moving truck', 'Notify landlord', 'Pack bedroom', 'Pack kitchen', 'Update address with bank', 'Arrange utilities transfer', 'Clean old place']
@@ -3578,9 +3580,29 @@ function getSuggestedTasks(type, title) {
       return ['Get contractor quotes', 'Choose materials', 'Clear the space', 'Order supplies', 'Schedule inspections', 'Final walkthrough']
     if (/hire|recruit|onboard/.test(t))
       return ['Write job description', 'Post to job boards', 'Screen applications', 'Schedule interviews', 'Make offer', 'Onboarding plan']
-    if (/book|write|publish/.test(t))
+    if (/book|writ(e|ing)|publish|novel|memoir/.test(t))
       return ['Outline chapters', 'Write first draft', 'Edit and revise', 'Design cover', 'Proofread', 'Publish or share']
-    return ['Define goal and scope', 'Research and plan', 'Break into milestones', 'Execute first steps', 'Review and adjust']
+    // Cooking / recipes — covers "Cook nilaga", "Make sinigang", "Bake bread", etc.
+    if (/^cook|^make.+(soup|stew|pasta|curry|bread|cake|pie|dish)|^bak(e|ing)|recipe|nilaga|sinigang|adobo|kare[- ]?kare|menudo/.test(t))
+      return [`Find a ${subject} recipe`, 'List ingredients', 'Buy groceries', 'Prep ingredients', `Cook ${subject}`, 'Plate and serve', 'Save the recipe if it worked']
+    // Learning / studying / a course / a skill
+    if (/learn|study|course|tutorial|skill|master|practice|memoriz|exam prep/.test(t))
+      return [`Set a goal for ${subject}`, 'Find one good resource', 'Schedule daily practice (15–30 min)', 'Track progress weekly', 'Test what you learned', 'Teach it back to someone']
+    // Fitness / training / habit-building
+    if (/workout|fitness|gym|run|marathon|train(ing)?|lift|yoga|swim|cycle|cycling|diet/.test(t))
+      return ['Set a target (date or measure)', 'Plan weekly schedule', 'Take baseline measurements', 'Prepare gear / space', 'Track sessions', 'Review progress weekly']
+    // Cleaning / decluttering / organizing
+    if (/clean|declutter|organi[sz]e|tidy|kondo|kondo-?style|sweep/.test(t))
+      return [`Pick a starting zone for ${subject}`, 'Sort: keep / donate / toss', 'Bag up what is leaving', 'Wipe and reset surfaces', 'Put back with a system', 'Photograph the result']
+    // Gardening / plants
+    if (/garden|plant|grow|seedling|herb/.test(t))
+      return [`Pick a spot for ${subject}`, 'Buy seeds or seedlings', 'Prepare soil', 'Plant', 'Set watering schedule', 'Track first signs of growth']
+    // Crafting / DIY / build something
+    if (/diy|craft|build|sew|knit|paint|3d print|woodwork/.test(t))
+      return [`Sketch what ${subject} should look like`, 'List materials', 'Buy or gather supplies', 'Set aside a working block', 'Build / make the thing', 'Show or photograph the result']
+    // Generic but personalized fallback — uses the user's words instead of
+    // sounding like a corporate template.
+    return [`Plan ${subject}`, `Gather what you need for ${subject}`, `Block time for ${subject}`, `Make a first attempt`, `Reflect on how ${subject} went`]
   }
   if (type === 'event') {
     if (/interview/.test(t))

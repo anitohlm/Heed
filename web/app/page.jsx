@@ -395,7 +395,7 @@ function mapApiContext(ctx) {
 }
 
 // ── useChat hook ───────────────────────────────────────────────
-function useChat({ onLightenRoutine } = {}) {
+function useChat({ onLightenRoutine, onTaskAdded } = {}) {
   const [messages, setMessages] = useState(() => {
     if (typeof window === 'undefined') return []
     try {
@@ -506,6 +506,9 @@ function useChat({ onLightenRoutine } = {}) {
           displaySummary = `Removed: ${itemsToStrike.join(', ')}${keep.length > 0 ? ` · Kept: ${keep.join(', ')}` : ''}`
         }
         onLightenRoutine?.(action.routine_id, itemsToStrike.length > 0 ? itemsToStrike : null)
+      }
+      if (action.action_type === 'add_task' && result.ok) {
+        onTaskAdded?.()
       }
       setMessages(msgs => msgs.map((m, i) => {
         if (i !== messageIndex) return m
@@ -2383,8 +2386,8 @@ function MicButton({ listening, onToggle, disabled }) {
   )
 }
 
-function AskTab({ prefill = '', autoSend = false, onAutoSendDone, onLightenRoutine }) {
-  const { messages, input, setInput, thinking, streaming, busy, send, executeAction } = useChat({ onLightenRoutine })
+function AskTab({ prefill = '', autoSend = false, onAutoSendDone, onLightenRoutine, onTaskAdded }) {
+  const { messages, input, setInput, thinking, streaming, busy, send, executeAction } = useChat({ onLightenRoutine, onTaskAdded })
   const scrollRef = useRef(null)
   const { listening, toggle: toggleMic, supported: micSupported } = useMic(useCallback((text, isFinal) => { if (isFinal) send(text) }, [send]))
   useEffect(() => {
@@ -5880,7 +5883,7 @@ export default function HeedApp() {
         <div key={tab} style={{ animation: 'heed-tab-in 0.28s cubic-bezier(0.32,0.72,0,1) both', display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
           {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} upcomingContexts={upcomingContexts} skippedTasks={skippedTasks} onMarkDone={handleMarkDone} onSkip={handleSkip} onUnskip={handleUnskip} onMarkRoutineDone={handleMarkRoutineDone} onSkipRoutineToday={handleSkipRoutineToday} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAskHeed={handleAskHeed} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen}/>}
           {tab === 'calendar' && <CalendarTab tasks={apiTasks} contexts={[...(apiContexts.active||[]), ...(apiContexts.upcoming||[])]} routines={routines} recentSkips={recentSkips} onReschedule={handleReschedule} onMarkDone={handleMarkDone} onSkip={handleSkip} onAddTask={() => setModalOpen(true)} onAddContext={() => setContextModalOpen(true)} onEditRoutine={handleEditRoutine} onApplyRetroSuggestion={handleApplyRetroSuggestion}/>}
-          {tab === 'ask' && <AskTab prefill={askPrefill} autoSend={askAutoSend} onAutoSendDone={() => { setAskAutoSend(false); setAskPrefill('') }} onLightenRoutine={handleLightenRoutine}/>}
+          {tab === 'ask' && <AskTab prefill={askPrefill} autoSend={askAutoSend} onAutoSendDone={() => { setAskAutoSend(false); setAskPrefill('') }} onLightenRoutine={handleLightenRoutine} onTaskAdded={() => fetch(`${FUNCTIONS_URL}/api/tasks`).then(r => r.json()).then(d => Array.isArray(d) && setApiTasks(d)).catch(() => {})}/>}
           {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onMarkRoutineDay={handleMarkRoutineDay}/>}
           {tab === 'context' && <LifeTab upcoming={apiContexts.upcoming} active={apiContexts.active} activeContext={activeContext} onAddContext={() => setContextModalOpen(true)} onQuickContext={type => setQuickContextType(type)} onImBetter={() => setRecoveryOpen(true)} onExtend={handleExtendContext} onDetailOpen={handleDetailOpen}/>}
         </div>

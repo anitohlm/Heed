@@ -45,3 +45,28 @@ def test_execute_action_options_cors():
     req = _make_request({}, method="OPTIONS")
     resp = execute_action(req)
     assert resp.status_code == 204
+
+
+def test_execute_action_add_task_success():
+    with patch("agents.tools.cosmos_tool._get_database") as mock_get_db:
+        mock_container = MagicMock()
+        mock_get_db.return_value.get_container_client.return_value = mock_container
+        from functions.function_app import execute_action
+        req = _make_request({
+            "action_type": "add_task",
+            "payload": {"name": "Buy groceries", "category": "home", "importance": "medium"},
+        })
+        resp = execute_action(req)
+        body = json.loads(resp.get_body())
+        assert body["ok"] is True
+        assert "Buy groceries" in body["summary"]
+        assert body["task"]["name"] == "Buy groceries"
+        assert body["task"]["category"] == "home"
+
+
+def test_execute_action_add_task_missing_name():
+    from functions.function_app import execute_action
+    req = _make_request({"action_type": "add_task", "payload": {"category": "home"}})
+    resp = execute_action(req)
+    body = json.loads(resp.get_body())
+    assert body["ok"] is False

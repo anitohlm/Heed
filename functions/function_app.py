@@ -444,6 +444,37 @@ def execute_action(req: func.HttpRequest) -> func.HttpResponse:
             return _json_response({"ok": True, "summary": "Context added"})
         return _json_response({"ok": False, "error": result.get("error", "Failed")}, 400)
 
+    elif action_type == "add_task":
+        name = payload.get("name", "").strip()
+        category = payload.get("category", "admin")
+        importance = payload.get("importance", "medium")
+        if not name:
+            return _json_response({"ok": False, "error": "name is required for add_task"}, 400)
+        import uuid
+        from datetime import datetime, timezone
+        task = {
+            "id": f"task_{uuid.uuid4().hex[:12]}",
+            "user_id": USER_ID,
+            "name": name,
+            "description": payload.get("description"),
+            "category": category,
+            "importance": importance,
+            "status": "active",
+            "created_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "explicit_cadence_days": payload.get("explicit_cadence_days"),
+            "learned_cadence_days": None,
+            "learned_confidence": None,
+            "last_done_at": None,
+            "next_due_at": None,
+        }
+        try:
+            from agents.tools import cosmos_tool as _ct
+            _ct._get_database().get_container_client("tasks").create_item(body=task)
+        except Exception as e:
+            logging.exception("add_task cosmos write failed")
+            return _json_response({"ok": False, "error": str(e)}, 500)
+        return _json_response({"ok": True, "summary": f"Added: {name}", "task": task}, 201)
+
     else:
         return _error(f"Unknown action_type: {action_type}", 400)
 

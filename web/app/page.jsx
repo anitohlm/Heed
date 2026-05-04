@@ -6923,6 +6923,8 @@ function ContextDetailSheet({ open, ctx, heldTasks, onClose, onImBetter, onExten
 
 // ── Main App ───────────────────────────────────────────────────
 export default function HeedApp() {
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
   const [apiTasks, setApiTasks] = useState([])
   const [apiContexts, setApiContexts] = useState({ active: [], upcoming: [] })
   const [dismissedIds, setDismissedIds] = useState(new Set())
@@ -7459,6 +7461,8 @@ export default function HeedApp() {
   useEffect(() => {
     setTodayStr(new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }))
   }, [])
+
+  if (!mounted) return null
 
   return (
     <div style={{ minHeight: '100vh', background: `radial-gradient(ellipse at 30% 0%, ${C.paper} 0%, ${C.cream} 60%)`, color: C.ink, fontFamily: '"Nunito Sans", -apple-system, BlinkMacSystemFont, sans-serif' }}>

@@ -4539,15 +4539,15 @@ function AddTaskModal({ open, onClose, onSubmit, onDelete, initialData = null, c
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               {[
-                { v: 'low',    tone: C.sage,  caption: 'when you have a window' },
-                { v: 'medium', tone: C.ochre, caption: 'this week' },
-                { v: 'high',   tone: C.rust,  caption: 'must happen' },
-              ].map(({ v, tone, caption }) => (
+                { v: 'low',    tone: C.sage  },
+                { v: 'medium', tone: C.ochre },
+                { v: 'high',   tone: C.rust  },
+              ].map(({ v, tone }) => (
                 <button key={v} onClick={() => setImportance(v)}
                   style={{
-                    flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4,
+                    flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
                     background: tone, color: C.cream,
-                    padding: '10px 6px', borderRadius: 10, minHeight: 56,
+                    padding: '10px 6px', borderRadius: 10,
                     fontSize: 13,
                     fontWeight: v === 'high' ? 700 : v === 'medium' ? 500 : 400,
                     border: importance === v ? `2.5px solid ${C.cream}` : '2.5px solid transparent',
@@ -4575,7 +4575,6 @@ function AddTaskModal({ open, onClose, onSubmit, onDelete, initialData = null, c
                     )}
                     {v.charAt(0).toUpperCase() + v.slice(1)}
                   </span>
-                  <span style={{ fontSize: 10, fontWeight: 500, opacity: 0.85, lineHeight: 1.1, textAlign: 'center' }}>{caption}</span>
                 </button>
               ))}
             </div>

@@ -622,6 +622,8 @@ function SettingsRow({ children, last = false, onClick }) {
         background: hover && onClick ? C.bellySoft : 'transparent',
         transition: 'background 0.12s',
         cursor: onClick ? 'pointer' : 'default',
+        touchAction: 'manipulation',
+        WebkitTapHighlightColor: 'transparent',
       }}
     >
       {children}
@@ -2748,6 +2750,9 @@ function PlanDetailScreen({ plan, onBack, onCheck, onRename, onAddTask, onDelete
   const [dropIndex, setDropIndex] = useState(null)
   const [editingPlan, setEditingPlan] = useState(false)
   const [editDraft, setEditDraft] = useState({ icon: '', title: '', date: '' })
+  // Edit-all mode: holds working copies of each task label so Save can persist
+  // them in one batch instead of inline-renaming per row.
+  const [taskDrafts, setTaskDrafts] = useState([])
   const rowRefs = useRef([])
   const swipeStart = useRef({ x: null, index: null })
   const dragRef = useRef({ dragIndex: null, dropIndex: null })
@@ -2820,9 +2825,11 @@ function PlanDetailScreen({ plan, onBack, onCheck, onRename, onAddTask, onDelete
       title: plan.title,
       date: plan.type === 'project' ? (plan.dueDate ?? '') : formatEventDate(plan.eventDate),
     })
+    setTaskDrafts(plan.tasks.map(t => t.label))
     setEditingPlan(true)
+    setSwipedIndex(null)
   }
-  function cancelEditPlan() { setEditingPlan(false) }
+  function cancelEditPlan() { setEditingPlan(false); setTaskDrafts([]) }
   function saveEditPlan() {
     const updates = {
       icon: editDraft.icon.trim() || plan.icon,
@@ -2831,19 +2838,32 @@ function PlanDetailScreen({ plan, onBack, onCheck, onRename, onAddTask, onDelete
     if (plan.type === 'project') updates.dueDate = editDraft.date.trim()
     if (plan.type === 'event')   updates.eventDate = editDraft.date.trim()
     onUpdatePlan?.(plan.id, updates)
+    // Persist any renamed tasks in one pass.
+    taskDrafts.forEach((label, i) => {
+      const next = label.trim()
+      if (next && plan.tasks[i] && next !== plan.tasks[i].label) {
+        onRename(plan.id, i, next)
+      }
+    })
     setEditingPlan(false)
+    setTaskDrafts([])
   }
 
   return (
     <div style={{ animation: 'heed-fadeIn 0.2s ease' }}>
-      {/* top bar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-        <button onClick={onBack} style={{ background: 'none', border: 'none', color: C.ochre, fontSize: 15, fontWeight: 700, cursor: 'pointer', padding: '4px 0', fontFamily: 'inherit' }}>‹ Plans</button>
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
-          <span style={{ fontSize: 18 }}>{plan.icon}</span>
-          <span style={{ fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600, color: C.warmDark }}>{plan.title}</span>
-        </div>
-        <button onClick={editingPlan ? cancelEditPlan : openEditPlan} style={{ background: 'none', border: 'none', color: C.border, fontSize: 16, cursor: 'pointer', padding: '4px 0', fontFamily: 'inherit', lineHeight: 1 }}>{editingPlan ? '×' : '✎'}</button>
+      {/* top bar — back link on its own line, plan title below */}
+      <div style={{ marginBottom: 6 }}>
+        <button onClick={onBack} style={{ background: 'none', border: 'none', color: C.ochre, fontSize: 14, fontWeight: 700, cursor: 'pointer', padding: '2px 0', fontFamily: 'inherit' }}>‹ Plans</button>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+        <span style={{ fontSize: 20 }}>{plan.icon}</span>
+        <span style={{ flex: 1, fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 600, color: C.warmDark, letterSpacing: -0.2 }}>{plan.title}</span>
+        <button
+          onClick={editingPlan ? cancelEditPlan : openEditPlan}
+          aria-label={editingPlan ? 'Cancel edit' : 'Edit plan'}
+          style={{ background: 'none', border: `1px solid ${C.border}`, color: C.warmDark, fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: '4px 12px', fontFamily: 'inherit', lineHeight: 1, borderRadius: 999 }}>
+          {editingPlan ? 'Cancel' : '✎ Edit'}
+        </button>
       </div>
 
       {/* edit panel */}
@@ -2870,6 +2890,22 @@ function PlanDetailScreen({ plan, onBack, onCheck, onRename, onAddTask, onDelete
               style={{ flex: 1, fontSize: 13, border: 'none', borderBottom: `1.5px solid ${C.ochre}`, outline: 'none', background: 'transparent', fontFamily: 'inherit', color: C.ink }}
             />
           </div>
+          {/* Tasks editor — single edit-all flow */}
+          {plan.tasks.length > 0 && (
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 6 }}>Tasks</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {taskDrafts.map((label, i) => (
+                  <input
+                    key={i}
+                    value={label}
+                    onChange={e => setTaskDrafts(arr => arr.map((v, j) => j === i ? e.target.value : v))}
+                    style={{ width: '100%', boxSizing: 'border-box', fontSize: 13, color: C.ink, background: 'transparent', border: `1px solid ${C.border}`, borderRadius: 6, padding: '6px 10px', outline: 'none', fontFamily: 'inherit' }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <button onClick={cancelEditPlan} style={{ background: 'none', border: 'none', color: C.inkMute, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', padding: '4px 0' }}>Cancel</button>
             <button onClick={saveEditPlan} style={{ background: 'none', border: 'none', color: C.ochre, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', padding: '4px 0' }}>Save →</button>
@@ -2950,10 +2986,8 @@ function PlanDetailScreen({ plan, onBack, onCheck, onRename, onAddTask, onDelete
                 ) : (
                   <span style={{ flex: 1, fontSize: 13, color: task.done ? C.inkMute : C.ink, textDecoration: task.done ? 'line-through' : 'none' }}>{task.label}</span>
                 )}
-                {/* pencil */}
-                {!isEditing && (
-                  <span onClick={() => startEdit(i, task.label)} style={{ fontSize: 13, color: C.border, cursor: 'pointer', flexShrink: 0, padding: '0 3px', lineHeight: 1 }}>✎</span>
-                )}
+                {/* per-row pencil removed — task editing flows through the
+                    single ✎ Edit button at the top of the screen now. */}
               </div>
               {/* swipe delete button */}
               {isSwiped && (

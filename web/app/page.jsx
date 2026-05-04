@@ -1,5 +1,5 @@
 "use client"
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import './globals.css'
 import { THEMES, OWL_THEMES, themeState, setThemeState, DEFAULT_THEME } from './themes'
 
@@ -2412,14 +2412,16 @@ function TaskCard({ task, delay = 0, onMarkDone, onSkip, onEdit, onAddToRoutine,
 // Stripped-down today-only row: just a checkbox + name. Used in the
 // "Focus today" section on the Today tab. No metadata, no menu — the
 // goal is a clean glanceable list of what needs doing today, not a
-// management surface (that lives on Tracks). Tap anywhere on the row
-// to tick; ticking animates the box to sage with a drawing checkmark,
-// then the row slides+fades out before onMarkDone fires.
+// management surface (that lives on Tracks). Only the CHECKBOX is
+// the tap target — making the whole row a button caused accidental
+// ticks during scroll on mobile and made cards "disappear" when
+// users were just trying to read them.
 function FocusTaskRow({ task, delay = 0, onMarkDone }) {
   const [checked, setChecked] = useState(false)
   const [completing, setCompleting] = useState(false)
   const completingRef = useRef(false)
-  const handleCheck = useCallback(() => {
+  const handleCheck = useCallback((e) => {
+    if (e) e.stopPropagation()
     if (completingRef.current) return
     completingRef.current = true
     setChecked(true)
@@ -2431,11 +2433,6 @@ function FocusTaskRow({ task, delay = 0, onMarkDone }) {
   }, [task, onMarkDone])
   return (
     <div
-      onClick={handleCheck}
-      role="button"
-      tabIndex={0}
-      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleCheck() } }}
-      aria-label={`Mark "${task.name}" done`}
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -2445,42 +2442,63 @@ function FocusTaskRow({ task, delay = 0, onMarkDone }) {
         border: `1.5px solid ${C.border}`,
         borderRadius: 12,
         marginBottom: 10,
-        cursor: 'pointer',
         animation: completing
           ? 'heed-done-out 0.38s cubic-bezier(0.4,0,0.8,0.2) forwards'
           : 'heed-fadeUp 0.5s ease both',
         animationDelay: completing ? undefined : `${delay}ms`,
         overflow: 'hidden',
         userSelect: 'none',
-        WebkitTapHighlightColor: 'transparent',
         boxShadow: C.shadowSoft,
       }}
     >
-      <span aria-hidden="true" style={{
-        width: 24, height: 24, flexShrink: 0,
-        borderRadius: 7,
-        border: `2px solid ${checked ? C.sage : C.border}`,
-        background: checked ? C.sage : 'transparent',
-        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-      }}>
-        {checked && (
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <path
-              d="M3 7l3 3 5-6"
-              stroke="white"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              style={{
-                strokeDasharray: 16,
-                strokeDashoffset: 16,
-                animation: 'heed-check-draw 0.28s cubic-bezier(0.4, 0, 0.2, 1) 0.05s forwards',
-              }}
-            />
-          </svg>
-        )}
-      </span>
+      <button
+        type="button"
+        onClick={handleCheck}
+        aria-label={`Mark "${task.name}" done`}
+        aria-pressed={checked}
+        style={{
+          // 44px hit area (Apple HIG / Material) wrapping the visual 24px box.
+          width: 44, height: 44,
+          flexShrink: 0,
+          margin: '-10px -10px -10px -10px',
+          padding: 0,
+          background: 'transparent',
+          border: 'none',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          touchAction: 'manipulation',
+          WebkitTapHighlightColor: 'transparent',
+          fontFamily: 'inherit',
+        }}
+      >
+        <span aria-hidden="true" style={{
+          width: 24, height: 24,
+          borderRadius: 7,
+          border: `2px solid ${checked ? C.sage : C.border}`,
+          background: checked ? C.sage : 'transparent',
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+        }}>
+          {checked && (
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path
+                d="M3 7l3 3 5-6"
+                stroke="white"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                style={{
+                  strokeDasharray: 16,
+                  strokeDashoffset: 16,
+                  animation: 'heed-check-draw 0.28s cubic-bezier(0.4, 0, 0.2, 1) 0.05s forwards',
+                }}
+              />
+            </svg>
+          )}
+        </span>
+      </button>
       <span style={{
         fontSize: 15,
         fontWeight: 600,
@@ -3591,7 +3609,21 @@ function SegmentButton({ active, onClick, label, count, accent }) {
 function TracksTab({ tasks, routines, onMarkDone, onSkip, onMarkRoutineDone, onLightenRoutine, onEditRoutine, onAddTask, onAddRoutine, onMoreOptions, onShareCard, onMarkRoutineDay, onEditTask, onAddToRoutine, onBuildRoutine }) {
   const [subtab, setSubtab] = useState('routines')
   const [filter, setFilter] = useState('all')
-  const filteredTasks = filter === 'all' ? tasks : tasks.filter(t => t.category === filter)
+  const [sortBy, setSortBy] = useState('due')
+  const filteredTasks = useMemo(() => {
+    const base = filter === 'all' ? tasks : tasks.filter(t => t.category === filter)
+    if (sortBy === 'alpha') return [...base].sort((a, b) => a.name.localeCompare(b.name))
+    if (sortBy === 'severity') return [...base].sort((a, b) => {
+      const score = t => (t.overdue || 0) * 3 + Math.max(0, 14 - (t.dueIn ?? 14))
+      return score(b) - score(a)
+    })
+    // due: overdue first (dueIn < 0, most overdue first), then upcoming by dueIn asc, then no-date last
+    return [...base].sort((a, b) => {
+      const aD = a.dueIn ?? Infinity
+      const bD = b.dueIn ?? Infinity
+      return aD - bD
+    })
+  }, [tasks, filter, sortBy])
   return (
     <div>
       <div style={{ marginBottom: 18 }}>
@@ -3612,13 +3644,19 @@ function TracksTab({ tasks, routines, onMarkDone, onSkip, onMarkRoutineDone, onL
       )}
       {subtab === 'tasks' && (
         <div style={{ animation: 'heed-fadeIn 0.2s ease' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, gap: 8, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, gap: 8, flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {['all','home','finance','relationships','health','admin','work'].map(cat => (
                 <button key={cat} onClick={() => setFilter(cat)} style={{ background: filter === cat ? C.warmDark : C.paper, color: filter === cat ? C.cream : C.warmDark, border: `1px solid ${filter === cat ? C.warmDark : C.border}`, padding: '5px 12px', borderRadius: 999, fontSize: 12, fontWeight: 500, cursor: 'pointer', textTransform: 'capitalize', fontFamily: 'inherit', transition: 'all 0.15s' }}>{cat}</button>
               ))}
             </div>
             <button onClick={onAddTask} style={getBtnPrimary()}>+ Add task</button>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 14 }}>
+            <span style={{ fontSize: 11, color: C.inkMute, marginRight: 2 }}>Sort:</span>
+            {[{ key: 'due', label: 'Due date' }, { key: 'alpha', label: 'A–Z' }, { key: 'severity', label: 'Severity' }].map(({ key, label }) => (
+              <button key={key} onClick={() => setSortBy(key)} style={{ background: sortBy === key ? C.warmDark : C.paper, color: sortBy === key ? C.cream : C.inkSoft, border: `1px solid ${sortBy === key ? C.warmDark : C.border}`, padding: '4px 11px', borderRadius: 999, fontSize: 11.5, fontWeight: sortBy === key ? 600 : 400, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s', minHeight: 28 }}>{label}</button>
+            ))}
           </div>
           <div>
             {filteredTasks.map((t, i) => <TaskCard key={t.id} task={t} delay={i * 30} onMarkDone={onMarkDone} onSkip={onSkip} onEdit={onEditTask} onAddToRoutine={onAddToRoutine} onBuildRoutine={onBuildRoutine}/>)}

@@ -652,7 +652,7 @@ function SettingsRow({ children, last = false, onClick }) {
   )
 }
 
-function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, customCategories, onAddCategory, customEventTypes, onAddEventType, onResetAllData }) {
+function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, customCategories, onAddCategory, customEventTypes, onAddEventType, onResetAllData, efMode, onSetEfMode }) {
   const [nameVal, setNameVal] = useState(userName)
   const [catIcon, setCatIcon] = useState('✦')
   const [catName, setCatName] = useState('')
@@ -873,6 +873,47 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
               )}
             </div>
 
+            {/* Focus mode toggle — surfaces "Just one thing" mode for crash
+                days. Same flag the Today header toggles, so this is a calm
+                discoverability path for users who don't notice the inline pill. */}
+            {secLabel('Focus')}
+            <div style={group}>
+              <SettingsRow last
+                onClick={() => onSetEfMode?.(!efMode)}>
+                {iconTile(
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="9" stroke={C.warmDark} strokeWidth="1.6"/>
+                    <circle cx="12" cy="12" r="3.5" fill={C.warmDark}/>
+                  </svg>,
+                  C.warmDark + '18'
+                )}
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 15, color: C.ink, fontWeight: 500 }}>Just one thing</div>
+                  <div style={{ fontSize: 12, color: C.inkMute, marginTop: 2, lineHeight: 1.4 }}>Today shows only the single most important task. For crash days when a full list overwhelms.</div>
+                </div>
+                {/* iOS-style toggle pill */}
+                <span aria-hidden="true" style={{
+                  flexShrink: 0,
+                  width: 38, height: 22,
+                  borderRadius: 999,
+                  background: efMode ? C.warmDark : C.border,
+                  position: 'relative',
+                  transition: 'background 0.18s',
+                }}>
+                  <span style={{
+                    position: 'absolute',
+                    top: 2,
+                    left: efMode ? 18 : 2,
+                    width: 18, height: 18,
+                    borderRadius: '50%',
+                    background: C.cream,
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.25)',
+                    transition: 'left 0.18s',
+                  }}/>
+                </span>
+              </SettingsRow>
+            </div>
+
             {/* Danger zone — pulled out of the standard list group so the
                 destructive action has visual weight, breathing room, and a
                 clear "this is different" treatment. */}
@@ -972,7 +1013,7 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
 }
 
 // ── MobileBottomNav ────────────────────────────────────────────
-function MobileBottomNav({ tab, onTab, onMicAsk }) {
+function MobileBottomNav({ tab, onTab, onMicAsk, overdueCount = 0 }) {
   const askActive = tab === 'ask'
   const [pressing, setPressing] = useState(false)
   const pressTimer = useRef(null)
@@ -1146,8 +1187,29 @@ function MobileBottomNav({ tab, onTab, onMicAsk }) {
                 minWidth: 0,
               }}
             >
-              <div style={{ transition: 'opacity 0.15s', opacity: active ? 1 : 0.7 }}>
+              <div style={{ position: 'relative', transition: 'opacity 0.15s', opacity: active ? 1 : 0.7 }}>
                 {navIcon}
+                {/* Overdue badge — only on Today, only when something needs attention.
+                    Replaces real push notifications until Capacitor wraps the app. */}
+                {t.id === 'today' && overdueCount > 0 && (
+                  <span aria-label={`${overdueCount} overdue`} style={{
+                    position: 'absolute',
+                    top: -5, right: -8,
+                    minWidth: 16, height: 16,
+                    padding: '0 4px',
+                    borderRadius: 999,
+                    background: C.rust,
+                    color: C.cream,
+                    fontSize: 9.5,
+                    fontWeight: 700,
+                    display: 'inline-flex',
+                    alignItems: 'center', justifyContent: 'center',
+                    border: `1.5px solid ${C.paper}`,
+                    lineHeight: 1,
+                  }}>
+                    {overdueCount > 9 ? '9+' : overdueCount}
+                  </span>
+                )}
               </div>
               <span style={{
                 fontSize: 10,
@@ -2771,7 +2833,7 @@ function ContextBanner({ upcomingContexts, onAskHeed }) {
 }
 
 // ── TodayTab ───────────────────────────────────────────────────
-function TodayTab({ tasks, routines, upcomingContexts, skippedTasks = [], userName = '', onMarkDone, onSkip, onUnskip, onMarkRoutineDone, onSkipRoutineToday, onLightenRoutine, onEditRoutine, onAskHeed, onMoreOptions, onShareCard, onAddTask }) {
+function TodayTab({ tasks, routines, upcomingContexts, skippedTasks = [], userName = '', efMode = false, onSetEfMode, onMarkDone, onSkip, onUnskip, onMarkRoutineDone, onSkipRoutineToday, onLightenRoutine, onEditRoutine, onAskHeed, onMoreOptions, onShareCard, onAddTask }) {
   const [showSwipeHint, setShowSwipeHint] = useState(() => {
     if (typeof window === 'undefined') return false
     return !localStorage.getItem('heed.swipe-hint-seen')
@@ -2840,15 +2902,67 @@ function TodayTab({ tasks, routines, upcomingContexts, skippedTasks = [], userNa
     }
     return `Nothing pressing right now. Good day for what's been waiting.`
   })()
+  // EF (executive-function) mode — render-time short-circuit. When on, Today
+  // shows ONLY the single highest-priority task, no banner, no routines, no
+  // coming-up. Designed for crash days when seeing a long list causes
+  // shutdown. A small "show all" link drops back to the full view.
+  if (efMode) {
+    const oneTask = focusTasks[0]
+    return (
+      <div>
+        <div style={{ marginBottom: 18, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontFamily: 'Lora, serif', fontSize: 20, fontWeight: 600, color: C.warmDark, lineHeight: 1.15, letterSpacing: -0.3 }}>
+              {greetingHeadline}
+            </div>
+            <div style={{ fontSize: 12.5, color: C.inkSoft, marginTop: 4, fontStyle: 'italic', lineHeight: 1.5 }}>
+              Just one thing. Easy day.
+            </div>
+          </div>
+          <button onClick={() => onSetEfMode?.(false)}
+            style={{ background: 'transparent', border: `1px solid ${C.border}`, color: C.inkSoft, padding: '5px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}>
+            Show all
+          </button>
+        </div>
+        {oneTask ? (
+          <TaskCard task={oneTask} delay={0} onMarkDone={onMarkDone} onSkip={onSkip} onMoreOptions={onMoreOptions} showHint={showSwipeHint} onHintDismiss={dismissSwipeHint}/>
+        ) : (
+          <div style={{ background: C.paper, border: `1px solid ${C.border}`, borderRadius: 14, padding: '20px 18px', boxShadow: C.shadowSoft, textAlign: 'center' }}>
+            <div style={{ fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 500, color: C.warmDark, marginBottom: 6 }}>
+              Nothing today.
+            </div>
+            <div style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.5 }}>
+              Rest. Heed will surface things when they need you.
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div>
-      <div style={{ marginBottom: 18 }}>
-        <div style={{ fontFamily: 'Lora, serif', fontSize: 22, fontWeight: 600, color: C.warmDark, lineHeight: 1.15, letterSpacing: -0.4 }}>
-          {greetingHeadline}
+      <div style={{ marginBottom: 18, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontFamily: 'Lora, serif', fontSize: 22, fontWeight: 600, color: C.warmDark, lineHeight: 1.15, letterSpacing: -0.4 }}>
+            {greetingHeadline}
+          </div>
+          <div style={{ fontSize: 13, color: C.inkSoft, marginTop: 4, fontStyle: 'italic', lineHeight: 1.5 }}>
+            {greetingSub}
+          </div>
         </div>
-        <div style={{ fontSize: 13, color: C.inkSoft, marginTop: 4, fontStyle: 'italic', lineHeight: 1.5 }}>
-          {greetingSub}
-        </div>
+        {onSetEfMode && (
+          <button
+            onClick={() => onSetEfMode(true)}
+            aria-label="Switch to Just one thing mode"
+            title="Just one thing — show only the top task"
+            style={{ background: 'transparent', border: `1px solid ${C.border}`, color: C.inkSoft, padding: '6px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true">
+              <circle cx="5.5" cy="5.5" r="3" fill={C.warmDark}/>
+            </svg>
+            Just one
+          </button>
+        )}
       </div>
       <ContextBanner upcomingContexts={upcomingContexts} onAskHeed={onAskHeed}/>
       <SectionHeader motif="leaf" count={focusTasks.length}>Focus today</SectionHeader>
@@ -6559,6 +6673,17 @@ export default function HeedApp() {
   const [detailOpen, setDetailOpen] = useState(false)
   const [shareCtx, setShareCtx] = useState(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  // "Just one thing" / executive-function mode — strips Today down to the
+  // single highest-priority card. Designed for crash days where seeing 12
+  // items causes shutdown. Persisted to localStorage so it survives refresh.
+  const [efMode, setEfMode] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return localStorage.getItem('heed.ef-mode') === '1'
+  })
+  const handleSetEfMode = useCallback((on) => {
+    setEfMode(on)
+    try { localStorage.setItem('heed.ef-mode', on ? '1' : '0') } catch (_) {}
+  }, [])
   const [userName, setUserName] = useState(() => {
     if (typeof window === 'undefined') return 'Maya'
     return localStorage.getItem('heed-username') || 'Maya'
@@ -6604,6 +6729,17 @@ export default function HeedApp() {
   const displayTasks = (apiTasks.length > 0 ? apiTasks : TASKS_DEMO)
     .filter(t => t.status === 'active' && !dismissedIds.has(t.id))
     .map(computeTaskDisplay)
+
+  // Document title prefix when something is overdue — the cheapest possible
+  // "notification" surface. A user with the Heed tab open in another window
+  // (or returning to it) sees "(3) Heed — …" and gets pulled back. Stops
+  // short of real push (Capacitor will handle that natively).
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    const overdue = displayTasks.filter(t => (t.overdue || 0) > 0).length
+    const base = 'Heed — The agent that remembers what you forget.'
+    document.title = overdue > 0 ? `(${overdue}) ${base}` : base
+  }, [displayTasks])
 
   const apiUpcoming = [
     ...(apiContexts.upcoming || []).map(c => ({ ...mapApiContext(c), _startDate: c.start_date ? new Date(c.start_date) : null })),
@@ -7048,14 +7184,14 @@ export default function HeedApp() {
         ))}
       </nav>
 
-      <MobileBottomNav tab={tab} onTab={setTab} onMicAsk={handleMicAsk}/>
+      <MobileBottomNav tab={tab} onTab={setTab} onMicAsk={handleMicAsk} overdueCount={displayTasks.filter(t => (t.overdue || 0) > 0).length}/>
 
       <main className="heed-main" style={{ maxWidth: 820, margin: '0 auto', padding: '28px 32px 100px 32px', minHeight: 'calc(100vh - 140px)', display: 'flex', flexDirection: 'column' }}>
         {/* keyed wrapper so React remounts subtree on tab change → CSS animation
             replays. Slide-in from a few px right + fade gives a native-feeling
             transition without tracking previous tab for direction. */}
         <div key={tab} style={{ animation: 'heed-tab-in 0.28s cubic-bezier(0.32,0.72,0,1) both', display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
-          {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} upcomingContexts={upcomingContexts} skippedTasks={skippedTasks} userName={userName} onMarkDone={handleMarkDone} onSkip={handleSkip} onUnskip={handleUnskip} onMarkRoutineDone={handleMarkRoutineDone} onSkipRoutineToday={handleSkipRoutineToday} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAskHeed={handleAskHeed} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onAddTask={() => setModalOpen(true)}/>}
+          {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} upcomingContexts={upcomingContexts} skippedTasks={skippedTasks} userName={userName} efMode={efMode} onSetEfMode={handleSetEfMode} onMarkDone={handleMarkDone} onSkip={handleSkip} onUnskip={handleUnskip} onMarkRoutineDone={handleMarkRoutineDone} onSkipRoutineToday={handleSkipRoutineToday} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAskHeed={handleAskHeed} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onAddTask={() => setModalOpen(true)}/>}
           {tab === 'calendar' && <CalendarTab tasks={apiTasks} contexts={[...(apiContexts.active||[]), ...(apiContexts.upcoming||[])]} routines={routines} recentSkips={recentSkips} onReschedule={handleReschedule} onMarkDone={handleMarkDone} onSkip={handleSkip} onAddTask={() => setModalOpen(true)} onAddContext={() => setContextModalOpen(true)} onEditRoutine={handleEditRoutine} onApplyRetroSuggestion={handleApplyRetroSuggestion}/>}
           {tab === 'ask' && <AskTab prefill={askPrefill} autoSend={askAutoSend} onAutoSendDone={() => { setAskAutoSend(false); setAskPrefill('') }} onLightenRoutine={handleLightenRoutine} onTaskAdded={() => fetch(`${FUNCTIONS_URL}/api/tasks`).then(r => r.json()).then(d => Array.isArray(d) && setApiTasks(d)).catch(() => {})}/>}
           {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onMarkRoutineDay={handleMarkRoutineDay}/>}
@@ -7085,7 +7221,7 @@ export default function HeedApp() {
         onAskHeed={handleAskHeed}
       />
       <ShareCardSheet routine={shareCtx} onClose={handleShareClose}/>
-      <SettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} userName={userName} onUserName={handleUserName} theme={theme} onTheme={handleSetTheme} customCategories={customCategories} onAddCategory={cat => setCustomCategories(cs => [...cs, cat])} customEventTypes={customEventTypes} onAddEventType={evt => setCustomEventTypes(es => [...es, evt])} onResetAllData={handleResetAllData}/>
+      <SettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} userName={userName} onUserName={handleUserName} theme={theme} onTheme={handleSetTheme} customCategories={customCategories} onAddCategory={cat => setCustomCategories(cs => [...cs, cat])} customEventTypes={customEventTypes} onAddEventType={evt => setCustomEventTypes(es => [...es, evt])} onResetAllData={handleResetAllData} efMode={efMode} onSetEfMode={handleSetEfMode}/>
       {toast && <Toast message={toast.message} onView={toast.showView ? handleToastView : undefined} onUndo={toast.onUndo} onDismiss={() => setToast(null)} reasons={toast.reasons} onReason={toast.onReason}/>}
       <HeedFAB onAddTask={() => setModalOpen(true)} onAskHeed={() => setAskOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)}/>
     </div>

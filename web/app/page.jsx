@@ -3206,14 +3206,56 @@ function SuggestionChip({ suggestion, onClick, disabled, delay = 0 }) {
 
 function ThinkingBubble({ steps }) {
   return (
-    <div style={{ background: C.paper, border: `1px dashed ${C.border}`, borderRadius: 12, padding: '14px 16px', marginBottom: 12, fontSize: 12.5, color: C.inkMute, fontStyle: 'italic', animation: 'heed-fadeIn 0.3s ease' }}>
-      {steps.map((t, i) => (
-        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0', animation: 'heed-fadeUp 0.3s ease both' }}>
-          <span style={{ color: C.sage, fontSize: 14 }}>›</span>
-          <span>{t}</span>
-          {i === steps.length - 1 && <span style={{ marginLeft: 4, color: C.sage, animation: 'heed-blink 1s infinite' }}>●</span>}
+    <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: 12, animation: 'heed-fadeUp 0.25s ease' }}>
+      <div style={{
+        background: C.paper,
+        border: `1px solid ${C.border}`,
+        borderRadius: '14px 14px 14px 3px',
+        padding: '12px 16px',
+        boxShadow: C.shadowSoft,
+      }}>
+        {/* Bouncing dots */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+            {[0, 1, 2].map(i => (
+              <span key={i} style={{
+                display: 'inline-block', width: 7, height: 7, borderRadius: '50%',
+                background: C.warmDark,
+                animation: 'heed-dot-bounce 1.4s ease-in-out infinite',
+                animationDelay: `${i * 0.18}s`,
+              }}/>
+            ))}
+          </div>
+          {steps.length === 0 && (
+            <span style={{ fontSize: 12.5, color: C.inkMute, fontStyle: 'italic' }}>thinking…</span>
+          )}
         </div>
-      ))}
+
+        {/* Steps revealed one by one */}
+        {steps.length > 0 && (
+          <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 5 }}>
+            {steps.map((step, i) => {
+              const isLatest = i === steps.length - 1
+              return (
+                <div key={i} style={{
+                  display: 'flex', alignItems: 'flex-start', gap: 8,
+                  opacity: isLatest ? 1 : 0.5,
+                  animation: 'heed-fadeUp 0.3s ease both',
+                }}>
+                  <span style={{
+                    fontSize: 8, color: isLatest ? C.sage : C.inkMute,
+                    marginTop: 5, flexShrink: 0,
+                  }}>●</span>
+                  <span style={{
+                    fontSize: 12.5, color: isLatest ? C.inkSoft : C.inkMute,
+                    fontStyle: 'italic', lineHeight: 1.5,
+                  }}>{step}</span>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -3293,7 +3335,7 @@ function AskTab({ prefill = '', autoSend = false, onAutoSendDone, onLightenRouti
               onChipClick={(text) => send(text)}
             />
           ))}
-          {thinking && thinking.length > 0 && <ThinkingBubble steps={thinking}/>}
+          {thinking !== null && <ThinkingBubble steps={thinking}/>}
           {streaming && <Bubble role="assistant" content={streaming} streaming/>}
         </div>
       )}
@@ -5315,7 +5357,7 @@ function AskInlineModal({ open, onClose, onLightenRoutine }) {
                 onChipClick={(text) => send(text)}
               />
             ))}
-            {thinking && thinking.length > 0 && <ThinkingBubble steps={thinking}/>}
+            {thinking !== null && <ThinkingBubble steps={thinking}/>}
             {streaming && <Bubble role="assistant" content={streaming} streaming/>}
           </div>
           <div style={{ display: 'flex', gap: 8, paddingTop: 10, borderTop: messages.length > 0 ? `1px solid ${C.hairline}` : 'none', flexShrink: 0, alignItems: 'center' }}>
@@ -7266,6 +7308,7 @@ export default function HeedApp() {
         @keyframes heed-mic-pulse { 0%,100% { box-shadow: 0 0 0 3px #fff3f3, 0 0 0 6px rgba(229,62,62,0.2), 0 -4px 20px rgba(229,62,62,0.2); } 50% { box-shadow: 0 0 0 3px #fff3f3, 0 0 0 11px rgba(229,62,62,0.45), 0 -4px 24px rgba(229,62,62,0.35); } }
         @keyframes heed-blink { 0%,50%,100% { opacity:1; } 25%,75% { opacity:0.3; } }
         @keyframes heed-bob { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-2px); } }
+        @keyframes heed-dot-bounce { 0%,60%,100% { transform:translateY(0); opacity:0.4; } 30% { transform:translateY(-6px); opacity:1; } }
         @keyframes heed-slideUp { from { opacity:0; transform:translateY(40px); } to { opacity:1; transform:translateY(0); } }
         @keyframes heed-slideRight { from { opacity:0; transform:translateX(20px); } to { opacity:1; transform:translateX(0); } }
         @keyframes heed-slideIn { from { transform:translateX(100%); } to { transform:translateX(0); } }

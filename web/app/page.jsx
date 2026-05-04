@@ -1303,6 +1303,158 @@ function CategoryBadge({ category }) {
   )
 }
 
+// Themed date field: input-shaped trigger that opens a brand-themed
+// calendar panel (replaces the OS native date picker, which uses the
+// blue-on-white system style and breaks the warm-dark earthy palette).
+// `value` is an ISO YYYY-MM-DD string, '' when empty. `onChange(iso)`.
+function DateField({ value, onChange, placeholder = 'Pick a date' }) {
+  const [open, setOpen] = useState(false)
+  const [viewMonth, setViewMonth] = useState(() => {
+    if (value) { const d = new Date(value + 'T00:00:00'); if (!isNaN(d)) return new Date(d.getFullYear(), d.getMonth(), 1) }
+    const t = new Date(); return new Date(t.getFullYear(), t.getMonth(), 1)
+  })
+  const wrapRef = useRef(null)
+  useEffect(() => {
+    if (!open) return
+    const onDoc = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false) }
+    const onKey = (e) => { if (e.key === 'Escape') setOpen(false) }
+    document.addEventListener('mousedown', onDoc)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDoc)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+  const valueDate = value ? new Date(value + 'T00:00:00') : null
+  const today = new Date(); today.setHours(0,0,0,0)
+  const monthLabel = viewMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+  const displayLabel = valueDate
+    ? valueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    : placeholder
+  // Build the 6-row grid: monday-first, leading days from previous month, then this month, then trailing.
+  const firstOfMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth(), 1)
+  const startWeekday = (firstOfMonth.getDay() + 6) % 7  // Mon=0..Sun=6
+  const daysInMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 0).getDate()
+  const cells = []
+  for (let i = 0; i < startWeekday; i++) cells.push(null)
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d)
+  while (cells.length % 7 !== 0) cells.push(null)
+  const isSameDay = (a, b) => a && b && a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate()
+  function pickDay(d) {
+    const picked = new Date(viewMonth.getFullYear(), viewMonth.getMonth(), d, 12, 0, 0)
+    const iso = `${picked.getFullYear()}-${String(picked.getMonth()+1).padStart(2,'0')}-${String(picked.getDate()).padStart(2,'0')}`
+    onChange(iso)
+    setOpen(false)
+  }
+  return (
+    <div ref={wrapRef} style={{ position: 'relative', flex: 1 }}>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        style={{
+          width: '100%', boxSizing: 'border-box',
+          background: C.paper,
+          border: `1.5px solid ${open ? C.warmDark : C.border}`,
+          borderRadius: 10,
+          padding: '9px 12px',
+          minHeight: 44,
+          display: 'flex', alignItems: 'center', gap: 10,
+          fontSize: 13, color: value ? C.ink : C.inkMute,
+          fontFamily: 'inherit',
+          cursor: 'pointer',
+          textAlign: 'left',
+          transition: 'border-color 0.15s',
+        }}>
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}>
+          <rect x="1.5" y="3" width="11" height="9.5" rx="1.5" stroke={C.inkMute} strokeWidth="1.2"/>
+          <path d="M4 1.5v3M10 1.5v3M1.5 6h11" stroke={C.inkMute} strokeWidth="1.2" strokeLinecap="round"/>
+        </svg>
+        <span style={{ flex: 1 }}>{displayLabel}</span>
+      </button>
+      {open && (
+        <div role="dialog" aria-label="Choose date" style={{
+          position: 'absolute', top: 'calc(100% + 4px)', left: 0,
+          background: C.paperHi,
+          border: `1px solid ${C.border}`,
+          borderRadius: 12,
+          padding: 12,
+          boxShadow: '0 8px 28px rgba(0,0,0,0.35)',
+          zIndex: 200,
+          width: 280,
+          animation: 'heed-fadeUp 0.16s cubic-bezier(0.32,0.72,0,1)',
+        }}>
+          {/* header */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <button type="button" onClick={() => setViewMonth(m => new Date(m.getFullYear(), m.getMonth()-1, 1))}
+              aria-label="Previous month"
+              style={{ background: 'none', border: 'none', color: C.inkSoft, padding: 6, cursor: 'pointer', fontFamily: 'inherit', borderRadius: 6, lineHeight: 0 }}>
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 2l-5 5 5 5" stroke={C.inkSoft} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/></svg>
+            </button>
+            <div style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, color: C.warmDark }}>{monthLabel}</div>
+            <button type="button" onClick={() => setViewMonth(m => new Date(m.getFullYear(), m.getMonth()+1, 1))}
+              aria-label="Next month"
+              style={{ background: 'none', border: 'none', color: C.inkSoft, padding: 6, cursor: 'pointer', fontFamily: 'inherit', borderRadius: 6, lineHeight: 0 }}>
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M5 2l5 5-5 5" stroke={C.inkSoft} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/></svg>
+            </button>
+          </div>
+          {/* weekday row */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, marginBottom: 4 }}>
+            {['M','T','W','T','F','S','S'].map((wd, i) => (
+              <div key={i} style={{ fontSize: 10, fontWeight: 700, color: C.inkMute, textAlign: 'center', padding: '4px 0', letterSpacing: 0.5 }}>{wd}</div>
+            ))}
+          </div>
+          {/* day grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
+            {cells.map((d, i) => {
+              if (d === null) return <div key={i} style={{ height: 32 }}/>
+              const cellDate = new Date(viewMonth.getFullYear(), viewMonth.getMonth(), d)
+              const isToday = isSameDay(cellDate, today)
+              const isSelected = isSameDay(cellDate, valueDate)
+              return (
+                <button key={i} type="button" onClick={() => pickDay(d)}
+                  aria-label={cellDate.toDateString()}
+                  aria-pressed={isSelected}
+                  style={{
+                    height: 32,
+                    background: isSelected ? C.warmDark : isToday ? C.bellySoft : 'transparent',
+                    color: isSelected ? C.cream : isToday ? C.warmDark : C.ink,
+                    border: 'none',
+                    borderRadius: 7,
+                    fontSize: 12.5,
+                    fontWeight: isSelected || isToday ? 700 : 500,
+                    fontFamily: 'inherit',
+                    cursor: 'pointer',
+                    transition: 'background 0.12s',
+                  }}
+                  onMouseEnter={e => { if (!isSelected && !isToday) e.currentTarget.style.background = C.bellySoft + '80' }}
+                  onMouseLeave={e => { if (!isSelected && !isToday) e.currentTarget.style.background = 'transparent' }}
+                >{d}</button>
+              )
+            })}
+          </div>
+          {/* footer */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, borderTop: `1px solid ${C.hairline}`, paddingTop: 10 }}>
+            <button type="button" onClick={() => { onChange(''); setOpen(false) }}
+              style={{ background: 'none', border: 'none', color: C.inkMute, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>
+              Clear
+            </button>
+            <button type="button" onClick={() => {
+                const t = new Date()
+                const iso = `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`
+                onChange(iso); setOpen(false)
+              }}
+              style={{ background: 'none', border: 'none', color: C.warmDark, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>
+              Today →
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // Themed dropdown: looks and behaves like a native <select> trigger but
 // opens a custom-styled list panel so hover/selected states use brand
 // colors instead of the OS-default highlight (blue band on Chrome/Android).
@@ -4786,10 +4938,7 @@ function AddTaskModal({ open, onClose, onSubmit, onDelete, initialData = null, c
           <div style={{ marginBottom: 18 }}>
             <label style={getFieldLabel()}>Due date & time <span style={{ fontWeight: 400, color: C.inkMute, fontStyle: 'italic' }}>(optional)</span></label>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
-                style={{ flex: 1, background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '9px 12px', fontSize: 13, color: dueDate ? C.ink : C.inkMute, outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.15s' }}
-                onFocus={e => { e.target.style.borderColor = C.warmDark }} onBlur={e => { e.target.style.borderColor = C.border }}
-              />
+              <DateField value={dueDate} onChange={setDueDate} placeholder="Pick a date"/>
               <input type="time" value={dueTime} onChange={e => setDueTime(e.target.value)} disabled={!dueDate}
                 style={{ flex: '0 0 110px', background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '9px 12px', fontSize: 13, color: dueTime ? C.ink : C.inkMute, outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.15s', opacity: dueDate ? 1 : 0.4 }}
                 onFocus={e => { e.target.style.borderColor = C.warmDark }} onBlur={e => { e.target.style.borderColor = C.border }}

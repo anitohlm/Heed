@@ -2166,11 +2166,11 @@ function RoutineCard({ routine, delay = 0, onMarkDone, onLighten, onEdit, onShar
                 touchAction: 'manipulation', flexShrink: 0,
               }}
             >
-              <div style={{
+              <span style={{
                 width: 30, height: 30, borderRadius: '50%',
                 background: menuOpen ? C.bellySoft : 'transparent',
                 border: `1px solid ${menuOpen ? C.border : 'transparent'}`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                 transition: 'all 0.15s',
               }}
                 onMouseEnter={e => { if (!menuOpen) { e.currentTarget.style.background = C.bellySoft; e.currentTarget.style.borderColor = C.border } }}
@@ -2181,7 +2181,7 @@ function RoutineCard({ routine, delay = 0, onMarkDone, onLighten, onEdit, onShar
                   <circle cx="2" cy="8" r="1.8" fill={C.inkSoft}/>
                   <circle cx="2" cy="14" r="1.8" fill={C.inkSoft}/>
                 </svg>
-              </div>
+              </span>
             </button>
             {menuOpen && (
               <div style={{

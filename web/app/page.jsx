@@ -3928,17 +3928,22 @@ function AskInlineModal({ open, onClose, onLightenRoutine }) {
           </div>
           <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', paddingRight: 4, marginBottom: 12, minHeight: messages.length === 0 ? 'auto' : 200 }}>
             {messages.length === 0 && !busy && (
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
-                {SUGGESTIONS.map((s, i) => (
-                  <button key={s.text} onClick={() => send(s.text)} disabled={busy}
-                    style={{ background: C.paper, border: `1px solid ${C.border}`, color: C.warmDark, padding: '7px 12px', borderRadius: 999, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6, animation: 'heed-fadeUp 0.3s ease both', animationDelay: `${i * 60}ms`, transition: 'all 0.15s' }}
-                    onMouseEnter={e => { e.currentTarget.style.background = C.bellySoft }}
-                    onMouseLeave={e => { e.currentTarget.style.background = C.paper }}
-                  >
-                    <span style={{ fontSize: 13 }}>{s.emoji}</span>{s.text}
-                  </button>
-                ))}
-              </div>
+              <>
+                <div style={{ fontSize: 13, color: C.inkSoft, fontStyle: 'italic', marginBottom: 12, lineHeight: 1.5 }}>
+                  Pick one to start, or just type.
+                </div>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
+                  {SUGGESTIONS.map((s, i) => (
+                    <button key={s.text} onClick={() => send(s.text)} disabled={busy}
+                      style={{ background: C.paper, border: `1px solid ${C.border}`, color: C.warmDark, padding: '7px 12px', borderRadius: 999, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6, animation: 'heed-fadeUp 0.3s ease both', animationDelay: `${i * 60}ms`, transition: 'all 0.15s' }}
+                      onMouseEnter={e => { e.currentTarget.style.background = C.bellySoft }}
+                      onMouseLeave={e => { e.currentTarget.style.background = C.paper }}
+                    >
+                      <span style={{ fontSize: 13 }}>{s.emoji}</span>{s.text}
+                    </button>
+                  ))}
+                </div>
+              </>
             )}
             {messages.map((m, i) => (
               <Bubble key={i} role={m.role} content={m.content}
@@ -4737,8 +4742,22 @@ function TaskOptionsSheet({ task, onClose, onEdit, onAddToRoutine, onBuildRoutin
       <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(2px)' }}/>
       <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: C.paper, borderRadius: '20px 20px 0 0', padding: `24px 24px calc(24px + env(safe-area-inset-bottom)) 24px`, animation: 'heed-slideUp 0.28s cubic-bezier(0.32,0.72,0,1)', boxShadow: '0 -8px 32px rgba(0,0,0,0.12)' }}>
         <div style={{ width: 40, height: 4, borderRadius: 2, background: C.border, margin: '0 auto 20px' }}/>
-        <div style={{ fontFamily: 'Lora, serif', fontSize: 17, fontWeight: 600, color: C.ink, marginBottom: 3 }}>{task.name}</div>
-        <div style={{ fontSize: 12.5, color: C.inkMute, marginBottom: 20 }}>{task.cadence}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+          <CategoryBadge category={task.category}/>
+          {task.importance && <ImportanceBadge importance={task.importance}/>}
+          {task.learned && <Pill tone="sage">✨ learned</Pill>}
+        </div>
+        <div style={{ fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 600, color: C.ink, marginBottom: 4 }}>{task.name}</div>
+        {task.description && (
+          <div style={{ fontSize: 13, color: C.inkSoft, fontStyle: 'italic', marginBottom: 8, lineHeight: 1.5 }}>{task.description}</div>
+        )}
+        <div style={{ fontSize: 12.5, color: C.inkMute, marginBottom: 16 }}>
+          {task.cadence} · last done {task.lastDone}
+          {task.overdue != null && <span style={{ color: task.overdue >= 7 ? C.rust : C.ochre, fontWeight: 600, marginLeft: 6 }}>· {task.overdue}d overdue</span>}
+          {task.overdue == null && task.dueIn === 0 && <span style={{ color: C.sage, fontWeight: 600, marginLeft: 6 }}>· due today</span>}
+          {task.overdue == null && task.dueIn > 0 && <span style={{ color: C.inkMute, marginLeft: 6 }}>· in {task.dueIn}d</span>}
+        </div>
+        <div style={{ height: 1, background: C.hairline, marginBottom: 16 }}/>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {onEdit && (
             <button onClick={() => { onEdit(task); onClose() }}

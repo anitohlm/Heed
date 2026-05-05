@@ -736,7 +736,7 @@ function SettingsRow({ children, last = false, onClick }) {
   )
 }
 
-function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, customCategories, onAddCategory, customEventTypes, onAddEventType, onResetAllData, onLoadDemoData, efMode, onSetEfMode }) {
+function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, customCategories, onAddCategory, customEventTypes, onAddEventType, onResetAllData, onLoadDemoData, onSwitchToRealData, efMode, onSetEfMode }) {
   const [nameVal, setNameVal] = useState(userName)
   const [nameSaved, setNameSaved] = useState(false)
   const [pendingTheme, setPendingTheme] = useState(theme)
@@ -1042,11 +1042,59 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
               </SettingsRow>
             </div>
 
-            {/* Demo data — replaces existing data with a curated seed.
-                Useful for hackathon judges or for resetting to a known
-                "everything populated" state for screenshots. */}
-            {onLoadDemoData && secLabel('Demo data')}
-            {onLoadDemoData && (
+            {/* Demo data — toggle between demo and real data modes */}
+            {secLabel('Demo data')}
+            {isDemoMode() ? (
+              <div style={{
+                background: C.paper,
+                border: `1px solid ${C.ochre}55`,
+                borderRadius: 14,
+                padding: '20px 18px',
+                marginTop: 8,
+                boxShadow: `0 0 0 1px ${C.ochre}11 inset`,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 16 }}>
+                  <div style={{
+                    flexShrink: 0,
+                    width: 44, height: 44, borderRadius: 11,
+                    background: C.ochre + '22',
+                    border: `1px solid ${C.ochre}33`,
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 22,
+                  }}>🦉</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 600, color: C.ink, marginBottom: 4, letterSpacing: -0.1 }}>
+                      Demo mode active
+                    </div>
+                    <div style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.5 }}>
+                      You're viewing demo data. Your real tasks, routines, and plans are safe on the server and will reload when you switch back.
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={onSwitchToRealData}
+                  style={{
+                    width: '100%',
+                    background: 'transparent',
+                    border: `1.5px solid ${C.ochre}99`,
+                    color: C.ochre,
+                    padding: '11px 14px',
+                    borderRadius: 10,
+                    fontSize: 13.5,
+                    fontWeight: 700,
+                    fontFamily: 'inherit',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                    letterSpacing: 0.2,
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = C.ochre; e.currentTarget.style.color = C.cream }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = C.ochre }}
+                >
+                  Switch to real data
+                </button>
+              </div>
+            ) : (
               <div style={{
                 background: C.paper,
                 border: `1px solid ${C.sage}55`,
@@ -7864,7 +7912,7 @@ export default function HeedApp() {
   }, [routines, FUNCTIONS_URL])
   // Plans live at HeedApp level so both Today (read-only summary) and Life
   // (full management surface) share one source of truth.
-  const plansHook = usePlans(DEMO_PLANS)
+  const plansHook = usePlans(isDemoMode() ? DEMO_PLANS : [])
   const [tab, setTab] = useState('today')
   const [theme, setTheme] = useState(DEFAULT_THEME)
   setThemeState(theme)
@@ -7943,7 +7991,7 @@ export default function HeedApp() {
     return () => clearTimeout(t)
   }, [toast])
 
-  const displayTasks = (apiTasks.length > 0 ? apiTasks : TASKS_DEMO)
+  const displayTasks = apiTasks
     .filter(t => t.status === 'active' && !dismissedIds.has(t.id))
     .map(computeTaskDisplay)
 
@@ -8196,6 +8244,15 @@ export default function HeedApp() {
       }
       keysToWipe.forEach(k => localStorage.removeItem(k))
       localStorage.setItem('heed.use-demo', '1')
+    } catch (_) {}
+    window.location.reload()
+  }, [])
+
+  const handleSwitchToRealData = useCallback(() => {
+    if (typeof window === 'undefined') return
+    try {
+      localStorage.removeItem('heed.use-demo')
+      localStorage.removeItem('heed_plans')
     } catch (_) {}
     window.location.reload()
   }, [])
@@ -8508,7 +8565,7 @@ export default function HeedApp() {
         onAskHeed={handleAskHeed}
       />
       <ShareCardSheet routine={shareCtx} onClose={handleShareClose}/>
-      <SettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} userName={username} onUserName={name => { setUsername(name); try { localStorage.setItem('heed.username', name) } catch (_) {} }} theme={theme} onTheme={handleSetTheme} customCategories={customCategories} onAddCategory={cat => setCustomCategories(cs => [...cs, cat])} customEventTypes={customEventTypes} onAddEventType={evt => setCustomEventTypes(es => [...es, evt])} onResetAllData={handleResetAllData} onLoadDemoData={handleLoadDemoData} efMode={efMode} onSetEfMode={handleSetEfMode}/>
+      <SettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} userName={username} onUserName={name => { setUsername(name); try { localStorage.setItem('heed.username', name) } catch (_) {} }} theme={theme} onTheme={handleSetTheme} customCategories={customCategories} onAddCategory={cat => setCustomCategories(cs => [...cs, cat])} customEventTypes={customEventTypes} onAddEventType={evt => setCustomEventTypes(es => [...es, evt])} onResetAllData={handleResetAllData} onLoadDemoData={handleLoadDemoData} onSwitchToRealData={handleSwitchToRealData} efMode={efMode} onSetEfMode={handleSetEfMode}/>
       {toast && <Toast message={toast.message} onView={toast.onView || (toast.showView ? handleToastView : undefined)} onUndo={toast.onUndo} onDismiss={() => setToast(null)} reasons={toast.reasons} onReason={toast.onReason}/>}
       <HeedFAB onAddTask={() => setModalOpen(true)} onAskHeed={() => setAskOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)}/>
     </div>

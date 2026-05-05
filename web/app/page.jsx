@@ -2050,23 +2050,22 @@ function Bubble({ role, content, streaming: isStreaming, actions, chips, onConfi
               if (action.confirmed) {
                 if (action.action_type === 'add_task' && action.result) {
                   return (
-                    <div key={i} style={{ background: '#f0faf0', border: '1.5px solid #7c9e6e', borderRadius: 10, padding: '8px 12px', marginBottom: 6, animation: 'heed-fadeIn 0.3s ease' }}>
+                    <div key={i} style={{ background: '#f0faf0', border: '1.5px solid #7c9e6e', borderRadius: 10, padding: '8px 12px', marginTop: 4, animation: 'heed-fadeIn 0.3s ease' }}>
                       <div style={{ fontSize: 10, fontWeight: 700, color: '#4a7a4a', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 3 }}>✓ Task added</div>
                       <div style={{ fontSize: 13, fontWeight: 600, color: '#2d4a2d' }}>{action.payload?.name || action.result?.name}</div>
                       {onViewTask && action.result && (
-                        <button onClick={() => onViewTask(action.result)} style={{ fontSize: 11, color: C.warmDark, fontWeight: 600, background: 'none', border: 'none', padding: '4px 0 0', cursor: 'pointer', fontFamily: 'inherit' }}>View →</button>
+                        <button onClick={() => onViewTask(action.result)} style={{ fontSize: 11, color: '#7c5333', fontWeight: 600, background: 'none', border: 'none', padding: '4px 0 0', cursor: 'pointer', fontFamily: 'inherit' }}>View →</button>
                       )}
                     </div>
                   )
                 }
                 if (action.action_type === 'add_routine' && action.result) {
-                  const r = action.result
                   return (
-                    <div key={i} style={{ background: '#f5edde', border: '1.5px solid #c8a96e', borderRadius: 10, padding: '8px 12px', marginBottom: 6, animation: 'heed-fadeIn 0.3s ease' }}>
+                    <div key={i} style={{ background: '#f5edde', border: '1.5px solid #c8a96e', borderRadius: 10, padding: '8px 12px', marginTop: 4, animation: 'heed-fadeIn 0.3s ease' }}>
                       <div style={{ fontSize: 10, fontWeight: 700, color: '#a06c20', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 3 }}>↻ Routine added</div>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: '#3d2b1f' }}>{r.name}</div>
-                      <div style={{ fontSize: 11, color: '#9e7a40', marginTop: 2 }}>{r.frequency} · {(r.items || []).length} items · {r.importance}</div>
-                      <div style={{ fontSize: 11, color: C.warmDark, fontWeight: 600, marginTop: 4 }}>Edit in Tracks →</div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#3d2b1f' }}>{action.payload?.name}</div>
+                      <div style={{ fontSize: 11, color: '#9e7a40', marginTop: 2 }}>{action.payload?.frequency} · {(action.payload?.items || []).length} items · {action.payload?.importance}</div>
+                      <div style={{ fontSize: 11, color: '#7c5333', fontWeight: 600, marginTop: 4 }}>Edit in Tracks →</div>
                     </div>
                   )
                 }

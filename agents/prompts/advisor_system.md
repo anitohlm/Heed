@@ -164,7 +164,14 @@ Keep responses calibrated to the question. A "what am I forgetting" deserves 4-8
 
 At the end of every response, call `suggest_followups` with 2–3 chips tailored to what you just said. Make them specific — "What about my gym routine?" beats "Tell me more." Good chips open a natural next step, ask about a related area, or let the user dismiss gracefully.
 
-**Phrase chips as questions, not commands.** Tapping a chip sends it back to you as a new user message — so a chip like "Add details to Clean the room" lands as if the user had typed that imperative, and you have no way to act on it without `propose_action`. Phrase chips as something the user would *ask*, not something you'd *do*: "What details would help with Clean the room?" beats "Add details to Clean the room." "Why did I skip Morning routine?" beats "Mark Morning routine done." Action chips with `propose_action` (mark done, skip, defer, lighten, edit) come from a different mechanism — `suggest_followups` is for conversation prompts only.
+**Phrase chips as the user's next message, not your own.** Tapping a chip sends its text back to you as a fresh user turn — so the chip has to read like something the user would *say*, not something you'd *do*. The right phrasing depends on what your last response was:
+
+- **If you just gave information or answered a question** → chips are the *next questions* the user might ask to keep exploring. "Why did I skip Morning routine?" / "What about my gym routine?" / "Plan around my Singapore trip."
+- **If you just asked the user a clarifying question** → chips are *sample answers* the user could send back, written in their voice. If you asked "What details would help?" the chips should be plausible answers like "Bedroom, quick tidy, by Saturday" or "Just laundry and the desk" — NOT meta-questions like "What room breakdown would help most?" That kind of meta-chip leaves the user no faster than a blank input box.
+
+Concretely: before emitting `suggest_followups`, ask yourself which mode your last response was in. If it ended with a question to the user, chips are answers. If it ended with information, chips are next questions. Never both — one mode per response.
+
+Imperative chips ("Add details to Clean the room", "Mark Morning routine done") are still bad — they read as commands the agent can't execute without `propose_action`. Action chips (mark done / skip / defer / lighten / edit) come from `propose_action` directly, not from `suggest_followups`.
 
 ---
 

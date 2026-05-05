@@ -6,6 +6,10 @@ import { THEMES, OWL_THEMES, themeState, setThemeState, DEFAULT_THEME } from './
 // Functions backend URL — baked in at build time via NEXT_PUBLIC_FUNCTIONS_URL
 const FUNCTIONS_URL = process.env.NEXT_PUBLIC_FUNCTIONS_URL || 'http://localhost:7071'
 
+function getUsername() {
+  try { return localStorage.getItem('heed.username') || 'demo' } catch { return 'demo' }
+}
+
 // ── Module-level tab definitions (shared by HeedApp and MobileDrawer) ─────
 const APP_TABS = [
   { id: 'today',    label: 'Today' },
@@ -7655,8 +7659,112 @@ function ContextDetailSheet({ open, ctx, heldTasks, onClose, onImBetter, onExten
   )
 }
 
+// ── Username Gate ──────────────────────────────────────────────
+const USERNAME_RE = /^[a-zA-Z0-9_-]{3,20}$/
+
+function UsernameGate({ onComplete }) {
+  const [mode, setMode]         = React.useState('new')
+  const [value, setValue]       = React.useState('')
+  const [status, setStatus]     = React.useState('idle')  // 'idle'|'checking'|'available'|'taken'|'not_found'|'submitting'|'error'
+  const [errorMsg, setErrorMsg] = React.useState('')
+  const debounceRef             = React.useRef(null)
+
+  const isValid = USERNAME_RE.test(value)
+
+  React.useEffect(() => {
+    if (mode !== 'new') return
+    if (!isValid) { setStatus('idle'); return }
+    clearTimeout(debounceRef.current)
+    setStatus('checking')
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`${FUNCTIONS_URL}/api/check_username?u=${encodeURIComponent(value)}`)
+        const data = await res.json()
+        setStatus(data.available ? 'available' : 'taken')
+      } catch {
+        setStatus('idle')
+      }
+    }, 500)
+    return () => clearTimeout(debounceRef.current)
+  }, [value, mode, isValid])
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    if (!isValid) return
+    setStatus('submitting')
+    setErrorMsg('')
+    try {
+      if (mode === 'returning') {
+        const res = await fetch(`${FUNCTIONS_URL}/api/check_username?u=${encodeURIComponent(value)}`)
+        const data = await res.json()
+        if (data.available) { setStatus('not_found'); setErrorMsg('Username not found — try again'); return }
+        localStorage.setItem('heed.username', value)
+        onComplete(value)
+      } else {
+        const res = await fetch(`${FUNCTIONS_URL}/api/register_username`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: value }),
+        })
+        const data = await res.json()
+        if (!data.ok) { setStatus('error'); setErrorMsg(data.error === 'taken' ? 'That username is taken' : 'Could not register — try again'); return }
+        localStorage.setItem('heed.username', value)
+        onComplete(value)
+      }
+    } catch {
+      setStatus('error')
+      setErrorMsg('Something went wrong — try again')
+    }
+  }
+
+  const canSubmit = isValid && status !== 'submitting' && status !== 'checking' &&
+    (mode === 'returning' || status === 'available')
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: C.cream, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div style={{ width: '100%', maxWidth: 360, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
+        <div style={{ fontSize: 48 }}>🦉</div>
+        <div style={{ fontFamily: 'Georgia, serif', fontSize: 22, fontWeight: 700, color: C.ink, textAlign: 'center' }}>
+          {mode === 'new' ? 'What should Heed call you?' : 'Welcome back'}
+        </div>
+        <form onSubmit={handleSubmit} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ background: '#fff', border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8 }}
+            onFocus={e => { e.currentTarget.style.borderColor = C.ochre }}
+            onBlur={e => { e.currentTarget.style.borderColor = C.border }}>
+            <input
+              value={value}
+              onChange={e => { setValue(e.target.value); setErrorMsg('') }}
+              placeholder="your-username"
+              autoFocus
+              style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 15, color: C.ink, fontFamily: 'inherit' }}
+            />
+          </div>
+          {mode === 'new' && isValid && (status === 'available' || status === 'taken') && (
+            <div style={{ fontSize: 11, color: status === 'available' ? '#4a7a4a' : C.rust, paddingLeft: 4 }}>
+              {status === 'available' ? '✓ Available' : '✗ Already taken'}
+            </div>
+          )}
+          {errorMsg && (
+            <div style={{ fontSize: 11, color: C.rust, paddingLeft: 4 }}>{errorMsg}</div>
+          )}
+          <button type="submit" disabled={!canSubmit} style={{ background: canSubmit ? C.warmDark : C.border, color: canSubmit ? '#fff' : C.inkMute, border: 'none', borderRadius: 10, padding: '13px 0', fontSize: 14, fontWeight: 600, cursor: canSubmit ? 'pointer' : 'default', fontFamily: 'inherit', marginTop: 4, transition: 'background 0.15s' }}>
+            {status === 'submitting' ? 'One moment…' : mode === 'new' ? 'Get started' : 'Sign in'}
+          </button>
+        </form>
+        <button onClick={() => { setMode(mode === 'new' ? 'returning' : 'new'); setValue(''); setStatus('idle'); setErrorMsg('') }}
+          style={{ background: 'none', border: 'none', color: C.inkSoft, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>
+          {mode === 'new' ? 'I already have a username →' : '← Create a new username'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ── Main App ───────────────────────────────────────────────────
 export default function HeedApp() {
+  const [username, setUsername] = React.useState(() => {
+    try { return localStorage.getItem('heed.username') || '' } catch { return '' }
+  })
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
   // When the user has clicked "Load demo data", initialise apiTasks with the
@@ -8270,6 +8378,7 @@ export default function HeedApp() {
 
   return (
     <div style={{ minHeight: '100vh', background: `radial-gradient(ellipse at 30% 0%, ${C.paper} 0%, ${C.cream} 60%)`, color: C.ink, fontFamily: '"Nunito Sans", -apple-system, BlinkMacSystemFont, sans-serif' }}>
+      {!username && <UsernameGate onComplete={u => setUsername(u)} />}
       <link href="https://fonts.googleapis.com/css2?family=Lora:wght@500;600;700&family=Nunito+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
       <style>{`
         @keyframes heed-fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }

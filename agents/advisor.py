@@ -190,7 +190,7 @@ TOOLS = [
                 "properties": {
                     "action_type": {
                         "type": "string",
-                        "enum": ["mark_done", "skip", "defer", "lighten_routine", "add_context", "add_task", "add_routine"],
+                        "enum": ["mark_done", "skip", "defer", "lighten_routine", "add_context", "add_task", "add_routine", "edit_task"],
                     },
                     "task_id": {"type": "string"},
                     "routine_id": {"type": "string"},
@@ -203,6 +203,10 @@ TOOLS = [
                             "start_date, end_date, description }. "
                             "For add_task: { name, category, importance, explicit_cadence_days? } — "
                             "category must be one of: relationships, finance, admin, home, health, work, self_care. "
+                            "For edit_task (requires task_id): { name?, description?, category?, "
+                            "importance?, explicit_cadence_days?, status? } — only include the fields "
+                            "you intend to change. category must be one of the seven valid values. "
+                            "status must be one of: active, paused, archived. "
                             "For add_routine: { name, items: [string], frequency: daily|weekdays|weekly|monthly, "
                             "importance: nice-to-have|core|non-negotiable, notes? }."
                         ),

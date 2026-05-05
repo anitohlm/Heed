@@ -654,6 +654,41 @@ def execute_action(req: func.HttpRequest) -> func.HttpResponse:
             return _json_response({"ok": True, "summary": "Context added"})
         return _json_response({"ok": False, "error": result.get("error", "Failed")}, 400)
 
+    elif action_type == "edit_task":
+        # Same allowlist as PATCH /api/tasks/{task_id}, kept here so the
+        # agent can drive edits via propose_action without bouncing through
+        # the REST endpoint.
+        if not task_id:
+            return _json_response({"ok": False, "error": "task_id required for edit_task"}, 400)
+        existing = cosmos_tool.get_task(task_id, user_id)
+        if not existing:
+            return _json_response({"ok": False, "error": "Task not found"}, 404)
+        allowed_fields = {"name", "description", "category", "importance",
+                          "status", "explicit_cadence_days"}
+        updates = {k: v for k, v in payload.items() if k in allowed_fields}
+        if not updates:
+            return _json_response({"ok": False, "error": "No editable fields in payload"}, 400)
+        task_dict = existing.model_dump(mode="json")
+        task_dict.update(updates)
+        try:
+            cosmos_tool._get_database().get_container_client("tasks").replace_item(
+                item=task_id, body=task_dict
+            )
+        except Exception as e:
+            logging.exception("edit_task cosmos write failed")
+            return _json_response({"ok": False, "error": str(e)}, 500)
+        # Build a human-readable summary of what changed.
+        changed_bits = []
+        for k, v in updates.items():
+            if k == "name":                  changed_bits.append(f"renamed to \"{v}\"")
+            elif k == "description":         changed_bits.append("description updated")
+            elif k == "category":            changed_bits.append(f"category → {v}")
+            elif k == "importance":          changed_bits.append(f"importance → {v}")
+            elif k == "status":              changed_bits.append(f"status → {v}")
+            elif k == "explicit_cadence_days": changed_bits.append(f"cadence → every {v} day(s)")
+        summary = f"\"{existing.name}\": " + ", ".join(changed_bits) if changed_bits else "Updated."
+        return _json_response({"ok": True, "summary": summary, "task": task_dict})
+
     elif action_type == "add_task":
         name = payload.get("name", "").strip()
         category = payload.get("category", "admin")

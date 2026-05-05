@@ -8089,7 +8089,7 @@ export default function HeedApp() {
         isEdit ? `${FUNCTIONS_URL}/api/tasks/${data.id}` : `${FUNCTIONS_URL}/api/tasks`,
         {
           method: isEdit ? 'PATCH' : 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'X-User-ID': getUsername() || 'demo' },
           body: JSON.stringify(body),
         }
       )

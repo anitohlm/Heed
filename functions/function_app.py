@@ -36,6 +36,7 @@ import re
 import uuid
 from datetime import datetime, timezone
 import azure.functions as func
+from azure.cosmos.exceptions import CosmosResourceNotFoundError, CosmosResourceExistsError
 
 from agents.advisor import stream_response
 from agents.memory_keeper import run_for_user
@@ -755,9 +756,9 @@ def check_username(req: func.HttpRequest) -> func.HttpResponse:
         container = _ensure_users_container()
         container.read_item(item=u, partition_key=u)
         return _json_response({"available": False})
-    except Exception as e:
-        if "404" in str(e) or "NotFound" in type(e).__name__:
-            return _json_response({"available": True})
+    except CosmosResourceNotFoundError:
+        return _json_response({"available": True})
+    except Exception:
         logging.exception("check_username failed")
         return _error("Could not check username", 500)
 
@@ -780,16 +781,15 @@ def register_username(req: func.HttpRequest) -> func.HttpResponse:
     if not username or not USERNAME_RE.match(username):
         return _error("Invalid username format", 400)
     try:
-        from datetime import datetime, timezone
         container = _ensure_users_container()
         container.create_item(body={
             "id": username,
             "created_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         })
         return _json_response({"ok": True, "username": username})
-    except Exception as e:
-        if "409" in str(e) or "Conflict" in type(e).__name__:
-            return _json_response({"error": "taken"}, 409)
+    except CosmosResourceExistsError:
+        return _json_response({"error": "taken"}, 409)
+    except Exception:
         logging.exception("register_username failed")
         return _error("Could not register username", 500)
 

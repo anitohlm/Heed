@@ -105,6 +105,8 @@ async def advisor_stream(req: func.HttpRequest) -> func.HttpResponse:
             },
         )
 
+    user_id = _get_user_id(req)
+
     try:
         body = req.get_json()
     except ValueError:
@@ -112,7 +114,6 @@ async def advisor_stream(req: func.HttpRequest) -> func.HttpResponse:
 
     message = body.get("message", "").strip()
     history = body.get("history", [])
-    user_id = _get_user_id(req)
 
     if not message:
         return _error("message is required")
@@ -368,6 +369,8 @@ def parse_capture(req: func.HttpRequest) -> func.HttpResponse:
             "Access-Control-Allow-Methods": "POST, OPTIONS",
             "Access-Control-Allow-Headers": "Content-Type, X-User-ID",
         })
+
+    user_id = _get_user_id(req)
 
     try:
         body = req.get_json()
@@ -1121,7 +1124,7 @@ def memory_keeper_timer(timer: func.TimerRequest) -> None:
     """Runs every 6 hours. Computes cadence updates for all active tasks."""
     logging.info("Memory Keeper timer triggered")
     try:
-        updates = run_for_user("demo")
+        updates = run_for_user("demo")  # timer has no request context; runs for the default user
         logging.info(f"Memory Keeper completed: {len(updates)} tasks processed")
     except Exception as e:
         logging.exception(f"Memory Keeper failed: {e}")

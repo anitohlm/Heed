@@ -340,6 +340,92 @@ def suggest_tasks(req: func.HttpRequest) -> func.HttpResponse:
         return _error(f"LLM error: {str(e)}", 502)
 
 
+# ── parse_capture ──────────────────────────────────────────────────────────────
+
+@app.route(route="parse_capture", methods=["POST", "OPTIONS"])
+def parse_capture(req: func.HttpRequest) -> func.HttpResponse:
+    """
+    POST /api/parse_capture
+    Body: {"text": "Call mom this weekend"}
+    Returns: {"type": "task"|"routine", "payload": {...}}
+
+    Uses the advisor's AzureOpenAI deployment to classify and structure
+    a quick-capture input into either a task or routine payload.
+    """
+    if req.method == "OPTIONS":
+        return func.HttpResponse(status_code=204, headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type",
+        })
+
+    try:
+        body = req.get_json()
+    except ValueError:
+        return _error("Invalid JSON body")
+
+    text = (body.get("text") or "").strip()
+    if not text:
+        return _error("text is required")
+    if len(text) > 500:
+        return _error("text too long (max 500 chars)", 413)
+
+    system = (
+        'Parse this into a structured Heed item. Respond with JSON only — no explanation.\n\n'
+        'Classify as "task" if it is a one-time thing: a reminder, errand, call, payment, appointment.\n'
+        'Classify as "routine" if it is recurring: a habit, daily/weekly practice, or cluster of repeated actions.\n\n'
+        'Task format:\n'
+        '{"type":"task","payload":{"name":"...","category":"relationships|finance|admin|home|health|work|self_care","importance":"high|medium|low","explicit_cadence_days":null}}\n\n'
+        'Routine format:\n'
+        '{"type":"routine","payload":{"name":"...","items":["item1","item2"],"frequency":"daily|weekdays|weekly|monthly","importance":"nice-to-have|core|non-negotiable"}}\n\n'
+        'Rules:\n'
+        '- Keep names short and action-oriented (≤6 words)\n'
+        '- For routines, extract any items mentioned; if none, use ["..."] as a single placeholder item named after the activity\n'
+        '- Default category for tasks: "health" if physical, "relationships" if about people, "admin" otherwise\n'
+        '- Default frequency for routines: "daily"\n'
+        '- Default importance for routines: "core"'
+    )
+
+    try:
+        from agents.advisor import _client as _advisor_client
+        client = _advisor_client()
+        deployment = os.environ.get("OPENAI_DEPLOYMENT_ADVISOR", "heed-advisor")
+        resp = client.chat.completions.create(
+            model=deployment,
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": text},
+            ],
+            max_tokens=300,
+            temperature=0.3,
+        )
+        raw = (resp.choices[0].message.content or "").strip()
+        if raw.startswith("```"):
+            raw = raw.strip("`").lstrip()
+            if raw.startswith("json"):
+                raw = raw[4:].lstrip()
+            if raw.endswith("```"):
+                raw = raw[:-3].rstrip()
+        parsed = json.loads(raw)
+        if parsed.get("type") not in ("task", "routine"):
+            raise ValueError("unexpected type")
+        return _json_response(parsed)
+    except (json.JSONDecodeError, ValueError, KeyError):
+        # Fallback: treat as a plain task with the raw text as name
+        return _json_response({
+            "type": "task",
+            "payload": {
+                "name": text[:60],
+                "category": "admin",
+                "importance": "medium",
+                "explicit_cadence_days": None,
+            },
+        })
+    except Exception as e:
+        logging.exception("parse_capture failed")
+        return _error(f"parse failed: {str(e)}", 500)
+
+
 # ── completions ────────────────────────────────────────────────────────────────
 
 @app.route(route="completions", methods=["POST", "OPTIONS"])

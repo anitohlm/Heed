@@ -483,7 +483,7 @@ function useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded } = {}) {
     try {
       const resp = await fetch(`${FUNCTIONS_URL}/api/advisor_stream`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-User-ID': getUsername() || 'demo' },
         body: JSON.stringify({ message: trimmed, history: snapshot }),
       })
       if (!resp.ok) throw new Error(`${resp.status}`)
@@ -570,7 +570,7 @@ function useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded } = {}) {
     try {
       const resp = await fetch(`${FUNCTIONS_URL}/api/execute_action`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-User-ID': getUsername() || 'demo' },
         body: JSON.stringify({
           action_type: action.action_type,
           payload: { ...action.payload, task_id: action.task_id, routine_id: action.routine_id },
@@ -3396,7 +3396,7 @@ function CaptureBar({ onCreateTask, onCreateRoutine, onViewTask, onToast }) {
     try {
       const res = await fetch(`${FUNCTIONS_URL}/api/parse_capture`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-User-ID': getUsername() || 'demo' },
         body: JSON.stringify({ text: t }),
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -4054,7 +4054,7 @@ function usePlans(initialPlans) {
     if (typeof window === 'undefined' || _hydrated.current) return
     _hydrated.current = true
     if (isDemoMode()) return  // demo mode — keep DEMO_PLANS default, skip API
-    fetch(`${FUNCTIONS_URL}/api/user_state/plans`)
+    fetch(`${FUNCTIONS_URL}/api/user_state/plans`, { headers: { 'X-User-ID': getUsername() || 'demo' } })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         const items = data && Array.isArray(data.items) ? data.items : null
@@ -4066,7 +4066,7 @@ function usePlans(initialPlans) {
           if (Array.isArray(cur) && cur.length > 0) {
             fetch(`${FUNCTIONS_URL}/api/user_state/plans`, {
               method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
+              headers: { 'Content-Type': 'application/json', 'X-User-ID': getUsername() || 'demo' },
               body: JSON.stringify({ items: cur }),
             }).catch(() => {})
           }
@@ -4081,7 +4081,7 @@ function usePlans(initialPlans) {
     if (isDemoMode()) return  // demo mode — local-only, don't write to API
     fetch(`${FUNCTIONS_URL}/api/user_state/plans`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-User-ID': getUsername() || 'demo' },
       body: JSON.stringify({ items: plans }),
     }).catch(() => {})
   }, [plans])
@@ -4855,7 +4855,7 @@ function AddPlanSheet({ onClose, onAdd }) {
     try {
       const resp = await fetch(`${FUNCTIONS_URL}/api/suggest_tasks`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-User-ID': getUsername() || 'demo' },
         body: JSON.stringify({ title: title.trim(), type }),
       })
       if (!resp.ok) throw new Error('Request failed')
@@ -7678,7 +7678,7 @@ function UsernameGate({ onComplete }) {
     setStatus('checking')
     debounceRef.current = setTimeout(async () => {
       try {
-        const res = await fetch(`${FUNCTIONS_URL}/api/check_username?u=${encodeURIComponent(value)}`)
+        const res = await fetch(`${FUNCTIONS_URL}/api/check_username?u=${encodeURIComponent(value)}`, { headers: { 'X-User-ID': getUsername() || 'demo' } })
         const data = await res.json()
         setStatus(data.available ? 'available' : 'taken')
       } catch {
@@ -7695,7 +7695,7 @@ function UsernameGate({ onComplete }) {
     setErrorMsg('')
     try {
       if (mode === 'returning') {
-        const res = await fetch(`${FUNCTIONS_URL}/api/check_username?u=${encodeURIComponent(value)}`)
+        const res = await fetch(`${FUNCTIONS_URL}/api/check_username?u=${encodeURIComponent(value)}`, { headers: { 'X-User-ID': getUsername() || 'demo' } })
         const data = await res.json()
         if (data.available) { setStatus('not_found'); setErrorMsg('Username not found — try again'); return }
         localStorage.setItem('heed.username', value)
@@ -7703,7 +7703,7 @@ function UsernameGate({ onComplete }) {
       } else {
         const res = await fetch(`${FUNCTIONS_URL}/api/register_username`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'X-User-ID': getUsername() || 'demo' },
           body: JSON.stringify({ username: value }),
         })
         const data = await res.json()
@@ -7800,7 +7800,7 @@ export default function HeedApp() {
       }
     } catch (_) {}
     if (isDemoMode()) return  // demo mode — keep ROUTINES default, skip API
-    fetch(`${FUNCTIONS_URL}/api/user_state/routines`)
+    fetch(`${FUNCTIONS_URL}/api/user_state/routines`, { headers: { 'X-User-ID': getUsername() || 'demo' } })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         const items = data && Array.isArray(data.items) ? data.items : null
@@ -7810,7 +7810,7 @@ export default function HeedApp() {
           // future reinstall on the same user finds it.
           fetch(`${FUNCTIONS_URL}/api/user_state/routines`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'X-User-ID': getUsername() || 'demo' },
             body: JSON.stringify({ items: local }),
           }).catch(() => {})
         }
@@ -7826,7 +7826,7 @@ export default function HeedApp() {
     if (isDemoMode()) return  // demo mode — local-only, don't write to API
     fetch(`${FUNCTIONS_URL}/api/user_state/routines`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-User-ID': getUsername() || 'demo' },
       body: JSON.stringify({ items: routines }),
     }).catch(() => {})
   }, [routines, FUNCTIONS_URL])
@@ -7892,11 +7892,11 @@ export default function HeedApp() {
     // Skip API in demo mode — apiTasks is already seeded with TASKS_DEMO and
     // a real fetch would clobber it with stale Cosmos data.
     if (isDemoMode()) return
-    fetch(`${FUNCTIONS_URL}/api/tasks`)
+    fetch(`${FUNCTIONS_URL}/api/tasks`, { headers: { 'X-User-ID': getUsername() || 'demo' } })
       .then(r => r.json())
       .then(data => Array.isArray(data) && setApiTasks(data))
       .catch(() => {})
-    fetch(`${FUNCTIONS_URL}/api/context`)
+    fetch(`${FUNCTIONS_URL}/api/context`, { headers: { 'X-User-ID': getUsername() || 'demo' } })
       .then(r => r.json())
       .then(data => data && setApiContexts(data))
       .catch(() => {})
@@ -7981,7 +7981,7 @@ export default function HeedApp() {
     })
     fetch(`${FUNCTIONS_URL}/api/completions`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-User-ID': getUsername() || 'demo' },
       body: JSON.stringify({ task_id: taskId, event_type: 'done' }),
     }).catch(() => {})
     // For one-time tasks, also patch the backend status so the next /api/tasks
@@ -7989,7 +7989,7 @@ export default function HeedApp() {
     if (isOneTime) {
       fetch(`${FUNCTIONS_URL}/api/tasks/${taskId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-User-ID': getUsername() || 'demo' },
         body: JSON.stringify({ status: 'archived' }),
       }).catch(() => {})
     }
@@ -8008,7 +8008,7 @@ export default function HeedApp() {
     const recordSkip = (reason) => {
       fetch(`${FUNCTIONS_URL}/api/completions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-User-ID': getUsername() || 'demo' },
         body: JSON.stringify({ task_id: taskId, event_type: 'skipped', skip_reason: reason }),
       }).catch(() => {})
       setRecentSkips(s => {
@@ -8049,12 +8049,12 @@ export default function HeedApp() {
     try {
       const res = await fetch(`${FUNCTIONS_URL}/api/tasks/${taskId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-User-ID': getUsername() || 'demo' },
         body: JSON.stringify({ next_due_at: d.toISOString() }),
       })
       if (!res.ok) return
     } catch { return }
-    fetch(`${FUNCTIONS_URL}/api/tasks`)
+    fetch(`${FUNCTIONS_URL}/api/tasks`, { headers: { 'X-User-ID': getUsername() || 'demo' } })
       .then(r => r.json())
       .then(data => Array.isArray(data) && setApiTasks(data))
       .catch(() => {})
@@ -8116,7 +8116,7 @@ export default function HeedApp() {
   const handleDeleteTask = useCallback(async (task) => {
     if (!task?.id) return
     try {
-      const resp = await fetch(`${FUNCTIONS_URL}/api/tasks/${task.id}`, { method: 'DELETE' })
+      const resp = await fetch(`${FUNCTIONS_URL}/api/tasks/${task.id}`, { method: 'DELETE', headers: { 'X-User-ID': getUsername() || 'demo' } })
       if (!resp.ok && resp.status !== 404) return
     } catch { return }
     setApiTasks(t => t.filter(x => x.id !== task.id))
@@ -8130,7 +8130,7 @@ export default function HeedApp() {
   // after to make sure no in-memory state survives.
   const handleResetAllData = useCallback(async () => {
     try {
-      await fetch(`${FUNCTIONS_URL}/api/reset`, { method: 'POST' })
+      await fetch(`${FUNCTIONS_URL}/api/reset`, { method: 'POST', headers: { 'X-User-ID': getUsername() || 'demo' } })
     } catch (_) {}
     if (typeof window !== 'undefined') {
       try {
@@ -8177,7 +8177,7 @@ export default function HeedApp() {
         if (!newDays || !suggestion.target_id) return false
         const resp = await fetch(`${FUNCTIONS_URL}/api/tasks/${suggestion.target_id}`, {
           method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'X-User-ID': getUsername() || 'demo' },
           body: JSON.stringify({ explicit_cadence_days: newDays }),
         })
         if (!resp.ok) return false
@@ -8197,11 +8197,11 @@ export default function HeedApp() {
     try {
       const resp = await fetch(`${FUNCTIONS_URL}/api/context`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-User-ID': getUsername() || 'demo' },
         body: JSON.stringify(body),
       })
       if (resp.ok) {
-        fetch(`${FUNCTIONS_URL}/api/context`)
+        fetch(`${FUNCTIONS_URL}/api/context`, { headers: { 'X-User-ID': getUsername() || 'demo' } })
           .then(r => r.json())
           .then(d => d && setApiContexts(d))
           .catch(() => {})
@@ -8212,13 +8212,13 @@ export default function HeedApp() {
 
   function handleTaskAdded(task) {
     if (task) setApiTasks(t => [...t, task])
-    else fetch(`${FUNCTIONS_URL}/api/tasks`).then(r => r.json()).then(d => Array.isArray(d) && setApiTasks(d)).catch(() => {})
+    else fetch(`${FUNCTIONS_URL}/api/tasks`, { headers: { 'X-User-ID': getUsername() || 'demo' } }).then(r => r.json()).then(d => Array.isArray(d) && setApiTasks(d)).catch(() => {})
   }
 
   const handleCaptureTask = useCallback(async (payload) => {
     const res = await fetch(`${FUNCTIONS_URL}/api/tasks`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-User-ID': getUsername() || 'demo' },
       body: JSON.stringify(payload),
     })
     const task = await res.json()

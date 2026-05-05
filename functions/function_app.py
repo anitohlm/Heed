@@ -664,10 +664,22 @@ def execute_action(req: func.HttpRequest) -> func.HttpResponse:
         if not existing:
             return _json_response({"ok": False, "error": "Task not found"}, 404)
         allowed_fields = {"name", "description", "category", "importance",
-                          "status", "explicit_cadence_days"}
+                          "status", "explicit_cadence_days", "next_due_at"}
         updates = {k: v for k, v in payload.items() if k in allowed_fields}
         if not updates:
             return _json_response({"ok": False, "error": "No editable fields in payload"}, 400)
+        # Validate next_due_at if present — accept ISO date or full datetime;
+        # store as the ISO string the rest of the codebase expects.
+        if "next_due_at" in updates and updates["next_due_at"] is not None:
+            raw = str(updates["next_due_at"])
+            try:
+                # Accept "YYYY-MM-DD" by appending a midnight time so
+                # datetime.fromisoformat handles it.
+                normalised = raw if "T" in raw else f"{raw}T00:00:00+00:00"
+                datetime.fromisoformat(normalised.replace("Z", "+00:00"))
+                updates["next_due_at"] = normalised.replace("+00:00", "Z")
+            except (ValueError, AttributeError):
+                return _json_response({"ok": False, "error": "next_due_at must be ISO 8601"}, 400)
         task_dict = existing.model_dump(mode="json")
         task_dict.update(updates)
         try:
@@ -686,6 +698,7 @@ def execute_action(req: func.HttpRequest) -> func.HttpResponse:
             elif k == "importance":          changed_bits.append(f"importance → {v}")
             elif k == "status":              changed_bits.append(f"status → {v}")
             elif k == "explicit_cadence_days": changed_bits.append(f"cadence → every {v} day(s)")
+            elif k == "next_due_at":         changed_bits.append(f"due {str(v)[:10]}")
         summary = f"\"{existing.name}\": " + ", ".join(changed_bits) if changed_bits else "Updated."
         return _json_response({"ok": True, "summary": summary, "task": task_dict})
 

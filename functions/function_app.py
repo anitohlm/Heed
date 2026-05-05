@@ -269,6 +269,8 @@ def suggest_tasks(req: func.HttpRequest) -> func.HttpResponse:
             "Access-Control-Allow-Headers": "Content-Type, X-User-ID",
         })
 
+    user_id = _get_user_id(req)
+
     try:
         body = req.get_json()
     except ValueError:

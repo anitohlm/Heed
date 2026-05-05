@@ -7,7 +7,7 @@ import { THEMES, OWL_THEMES, themeState, setThemeState, DEFAULT_THEME } from './
 const FUNCTIONS_URL = process.env.NEXT_PUBLIC_FUNCTIONS_URL || 'http://localhost:7071'
 
 function getUsername() {
-  try { return localStorage.getItem('heed.username') || 'demo' } catch { return 'demo' }
+  try { return localStorage.getItem('heed.username') || '' } catch { return '' }
 }
 
 // ── Module-level tab definitions (shared by HeedApp and MobileDrawer) ─────
@@ -7762,9 +7762,7 @@ function UsernameGate({ onComplete }) {
 
 // ── Main App ───────────────────────────────────────────────────
 export default function HeedApp() {
-  const [username, setUsername] = React.useState(() => {
-    try { return localStorage.getItem('heed.username') || '' } catch { return '' }
-  })
+  const [username, setUsername] = React.useState(() => getUsername())
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
   // When the user has clicked "Load demo data", initialise apiTasks with the
@@ -7876,14 +7874,6 @@ export default function HeedApp() {
     setEfMode(on)
     try { localStorage.setItem('heed.ef-mode', on ? '1' : '0') } catch (_) {}
   }, [])
-  const [userName, setUserName] = useState(() => {
-    if (typeof window === 'undefined') return 'Maya'
-    return localStorage.getItem('heed-username') || 'Maya'
-  })
-  const handleUserName = useCallback((name) => {
-    setUserName(name)
-    try { localStorage.setItem('heed-username', name) } catch (_) {}
-  }, [])
   const [customCategories, setCustomCategories] = useState(() => {
     if (typeof window === 'undefined') return []
     try {
@@ -7957,7 +7947,7 @@ export default function HeedApp() {
                : hour < 17 ? 'Afternoon'
                : hour < 22 ? 'Evening'
                : 'Late evening'
-    const first = (userName || '').trim().split(/\s+/)[0]
+    const first = (username || '').trim().split(/\s+/)[0]
     const headline = first ? `${time}, ${first}.` : `${time}.`
     const todayCount = displayTasks.filter(t => t.overdue != null || t.dueIn === 0).length
     const overdue = displayTasks.filter(t => (t.overdue || 0) >= 7).length
@@ -8431,12 +8421,12 @@ export default function HeedApp() {
         <div className="heed-header-date" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontSize: 13, color: C.inkSoft, fontWeight: 500 }}>{todayStr}</div>
-            <div style={{ fontSize: 11.5, color: C.inkMute, marginTop: 2 }}>Hi, {userName} 👋</div>
+            <div style={{ fontSize: 11.5, color: C.inkMute, marginTop: 2 }}>Hi, {username} 👋</div>
           </div>
-          <AvatarButton name={userName} onClick={() => setSettingsOpen(true)}/>
+          <AvatarButton name={username} onClick={() => setSettingsOpen(true)}/>
         </div>
         <div className="heed-theme-mobile" style={{ alignItems: 'center' }}>
-          <AvatarButton name={userName} onClick={() => setSettingsOpen(true)}/>
+          <AvatarButton name={username} onClick={() => setSettingsOpen(true)}/>
         </div>
       </header>
 
@@ -8455,7 +8445,7 @@ export default function HeedApp() {
             replays. Slide-in from a few px right + fade gives a native-feeling
             transition without tracking previous tab for direction. */}
         <div key={tab} style={{ animation: 'heed-tab-in 0.28s cubic-bezier(0.32,0.72,0,1) both', display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
-          {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} plans={plansHook.plans} upcomingContexts={upcomingContexts} skippedTasks={skippedTasks} userName={userName} efMode={efMode} onSetEfMode={handleSetEfMode} onMarkDone={handleMarkDone} onSkip={handleSkip} onUnskip={handleUnskip} onMarkRoutineDone={handleMarkRoutineDone} onSkipRoutineToday={handleSkipRoutineToday} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAskHeed={handleAskHeed} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onAddTask={() => setModalOpen(true)} onEditTask={handleEditTask} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }} onNavigateToPlans={() => setTab('context')} onCapture={handleCaptureTask} onCaptureRoutine={handleAddRoutine} onViewTask={task => { setEditingTask(task); setModalOpen(true) }} onToast={setToast}/>}
+          {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} plans={plansHook.plans} upcomingContexts={upcomingContexts} skippedTasks={skippedTasks} userName={username} efMode={efMode} onSetEfMode={handleSetEfMode} onMarkDone={handleMarkDone} onSkip={handleSkip} onUnskip={handleUnskip} onMarkRoutineDone={handleMarkRoutineDone} onSkipRoutineToday={handleSkipRoutineToday} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAskHeed={handleAskHeed} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onAddTask={() => setModalOpen(true)} onEditTask={handleEditTask} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }} onNavigateToPlans={() => setTab('context')} onCapture={handleCaptureTask} onCaptureRoutine={handleAddRoutine} onViewTask={task => { setEditingTask(task); setModalOpen(true) }} onToast={setToast}/>}
           {tab === 'calendar' && <CalendarTab tasks={apiTasks} contexts={[...(apiContexts.active||[]), ...(apiContexts.upcoming||[])]} routines={routines} recentSkips={recentSkips} onReschedule={handleReschedule} onMarkDone={handleMarkDone} onSkip={handleSkip} onAddTask={() => setModalOpen(true)} onAddContext={() => setContextModalOpen(true)} onEditRoutine={handleEditRoutine} onApplyRetroSuggestion={handleApplyRetroSuggestion}/>}
           {tab === 'ask' && <AskTab prefill={askPrefill} autoSend={askAutoSend} onAutoSendDone={() => { setAskAutoSend(false); setAskPrefill('') }} onLightenRoutine={handleLightenRoutine} onTaskAdded={handleTaskAdded} onRoutineAdded={handleAddRoutine} onViewTask={task => { setEditingTask(task); setModalOpen(true) }}/>}
           {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onMarkRoutineDay={handleMarkRoutineDay} onEditTask={handleEditTask} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }}/>}
@@ -8485,7 +8475,7 @@ export default function HeedApp() {
         onAskHeed={handleAskHeed}
       />
       <ShareCardSheet routine={shareCtx} onClose={handleShareClose}/>
-      <SettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} userName={userName} onUserName={handleUserName} theme={theme} onTheme={handleSetTheme} customCategories={customCategories} onAddCategory={cat => setCustomCategories(cs => [...cs, cat])} customEventTypes={customEventTypes} onAddEventType={evt => setCustomEventTypes(es => [...es, evt])} onResetAllData={handleResetAllData} onLoadDemoData={handleLoadDemoData} efMode={efMode} onSetEfMode={handleSetEfMode}/>
+      <SettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} userName={username} onUserName={name => { setUsername(name); try { localStorage.setItem('heed.username', name) } catch (_) {} }} theme={theme} onTheme={handleSetTheme} customCategories={customCategories} onAddCategory={cat => setCustomCategories(cs => [...cs, cat])} customEventTypes={customEventTypes} onAddEventType={evt => setCustomEventTypes(es => [...es, evt])} onResetAllData={handleResetAllData} onLoadDemoData={handleLoadDemoData} efMode={efMode} onSetEfMode={handleSetEfMode}/>
       {toast && <Toast message={toast.message} onView={toast.onView || (toast.showView ? handleToastView : undefined)} onUndo={toast.onUndo} onDismiss={() => setToast(null)} reasons={toast.reasons} onReason={toast.onReason}/>}
       <HeedFAB onAddTask={() => setModalOpen(true)} onAskHeed={() => setAskOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)}/>
     </div>

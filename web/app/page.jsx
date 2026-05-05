@@ -434,7 +434,7 @@ function mapApiContext(ctx) {
 }
 
 // ── useChat hook ───────────────────────────────────────────────
-function useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded, onViewTask } = {}) {
+function useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded } = {}) {
   const [messages, setMessages] = useState(() => {
     if (typeof window === 'undefined') return []
     try {
@@ -612,7 +612,7 @@ function useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded, onViewTask } =
     }
   }, [messages, onLightenRoutine, onTaskAdded, onRoutineAdded])
 
-  return { messages, input, setInput, thinking, streaming, busy, send, executeAction, onViewTask }
+  return { messages, input, setInput, thinking, streaming, busy, send, executeAction }
 }
 
 // ── useMic hook ────────────────────────────────────────────────
@@ -2053,7 +2053,7 @@ function Bubble({ role, content, streaming: isStreaming, actions, chips, onConfi
                     <div key={i} style={{ background: '#f0faf0', border: '1.5px solid #7c9e6e', borderRadius: 10, padding: '8px 12px', marginTop: 4, animation: 'heed-fadeIn 0.3s ease' }}>
                       <div style={{ fontSize: 10, fontWeight: 700, color: '#4a7a4a', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 3 }}>✓ Task added</div>
                       <div style={{ fontSize: 13, fontWeight: 600, color: '#2d4a2d' }}>{action.payload?.name || action.result?.name}</div>
-                      {onViewTask && action.result && (
+                      {onViewTask && (
                         <button onClick={() => onViewTask(action.result)} style={{ fontSize: 11, color: '#7c5333', fontWeight: 600, background: 'none', border: 'none', padding: '4px 0 0', cursor: 'pointer', fontFamily: 'inherit' }}>View →</button>
                       )}
                     </div>
@@ -2065,7 +2065,7 @@ function Bubble({ role, content, streaming: isStreaming, actions, chips, onConfi
                       <div style={{ fontSize: 10, fontWeight: 700, color: '#a06c20', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 3 }}>↻ Routine added</div>
                       <div style={{ fontSize: 13, fontWeight: 600, color: '#3d2b1f' }}>{action.payload?.name}</div>
                       <div style={{ fontSize: 11, color: '#9e7a40', marginTop: 2 }}>{action.payload?.frequency} · {(action.payload?.items || []).length} items · {action.payload?.importance}</div>
-                      <div style={{ fontSize: 11, color: '#7c5333', fontWeight: 600, marginTop: 4 }}>Edit in Tracks →</div>
+                      <div style={{ fontSize: 11, color: '#9e7a40', marginTop: 4 }}>Edit in Tracks tab to adjust</div>
                     </div>
                   )
                 }
@@ -3689,7 +3689,7 @@ function MicButton({ listening, onToggle, disabled }) {
 }
 
 function AskTab({ prefill = '', autoSend = false, onAutoSendDone, onLightenRoutine, onTaskAdded, onRoutineAdded, onViewTask }) {
-  const { messages, input, setInput, thinking, streaming, busy, send, executeAction } = useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded, onViewTask })
+  const { messages, input, setInput, thinking, streaming, busy, send, executeAction } = useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded })
   const scrollRef = useRef(null)
   const { listening, toggle: toggleMic, supported: micSupported } = useMic(useCallback((text, isFinal) => { if (isFinal) send(text) }, [send]))
   useEffect(() => {
@@ -5981,7 +5981,7 @@ function HeedFAB({ onAddTask, onAskHeed, onAddRoutine }) {
 
 // ── AskInlineModal ─────────────────────────────────────────────
 function AskInlineModal({ open, onClose, onLightenRoutine, onTaskAdded, onRoutineAdded, onViewTask }) {
-  const { messages, input, setInput, thinking, streaming, busy, send, executeAction } = useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded, onViewTask })
+  const { messages, input, setInput, thinking, streaming, busy, send, executeAction } = useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded })
   const scrollRef = useRef(null)
   const inputRef = useRef(null)
   const { listening, toggle: toggleMic, supported: micSupported } = useMic(useCallback((text, isFinal) => { if (isFinal) send(text) }, [send]))
@@ -7961,7 +7961,12 @@ export default function HeedApp() {
     } catch {}
   }, [FUNCTIONS_URL])
 
-  const handleAddRoutine = useCallback((routineData) => {
+  function handleTaskAdded(task) {
+    if (task) setApiTasks(t => [...t, task])
+    else fetch(`${FUNCTIONS_URL}/api/tasks`).then(r => r.json()).then(d => Array.isArray(d) && setApiTasks(d)).catch(() => {})
+  }
+
+  const handleAddRoutine = useCallback((routineData, { navigate = false } = {}) => {
     const isEdit = !routineData.id.startsWith('custom_')
     setRoutines(rs =>
       isEdit
@@ -7970,7 +7975,7 @@ export default function HeedApp() {
     )
     setToast({ message: isEdit ? 'Routine updated.' : 'Routine added — building up history.', showView: true })
     setEditingRoutine(null)
-    setTab('today')
+    if (navigate) setTab('today')
   }, [])
 
   const handleMarkRoutineDone = useCallback((routineId) => {
@@ -8181,7 +8186,7 @@ export default function HeedApp() {
         <div key={tab} style={{ animation: 'heed-tab-in 0.28s cubic-bezier(0.32,0.72,0,1) both', display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
           {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} plans={plansHook.plans} upcomingContexts={upcomingContexts} skippedTasks={skippedTasks} userName={userName} efMode={efMode} onSetEfMode={handleSetEfMode} onMarkDone={handleMarkDone} onSkip={handleSkip} onUnskip={handleUnskip} onMarkRoutineDone={handleMarkRoutineDone} onSkipRoutineToday={handleSkipRoutineToday} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAskHeed={handleAskHeed} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onAddTask={() => setModalOpen(true)} onEditTask={handleEditTask} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }} onNavigateToPlans={() => setTab('context')}/>}
           {tab === 'calendar' && <CalendarTab tasks={apiTasks} contexts={[...(apiContexts.active||[]), ...(apiContexts.upcoming||[])]} routines={routines} recentSkips={recentSkips} onReschedule={handleReschedule} onMarkDone={handleMarkDone} onSkip={handleSkip} onAddTask={() => setModalOpen(true)} onAddContext={() => setContextModalOpen(true)} onEditRoutine={handleEditRoutine} onApplyRetroSuggestion={handleApplyRetroSuggestion}/>}
-          {tab === 'ask' && <AskTab prefill={askPrefill} autoSend={askAutoSend} onAutoSendDone={() => { setAskAutoSend(false); setAskPrefill('') }} onLightenRoutine={handleLightenRoutine} onTaskAdded={task => { if (task) setApiTasks(t => [...t, task]); else fetch(`${FUNCTIONS_URL}/api/tasks`).then(r => r.json()).then(d => Array.isArray(d) && setApiTasks(d)).catch(() => {}) }} onRoutineAdded={handleAddRoutine} onViewTask={task => { setEditingTask(task); setModalOpen(true) }}/>}
+          {tab === 'ask' && <AskTab prefill={askPrefill} autoSend={askAutoSend} onAutoSendDone={() => { setAskAutoSend(false); setAskPrefill('') }} onLightenRoutine={handleLightenRoutine} onTaskAdded={handleTaskAdded} onRoutineAdded={handleAddRoutine} onViewTask={task => { setEditingTask(task); setModalOpen(true) }}/>}
           {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onMarkRoutineDay={handleMarkRoutineDay} onEditTask={handleEditTask} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }}/>}
           {tab === 'context' && <LifeTab upcoming={apiContexts.upcoming} active={apiContexts.active} activeContext={activeContext} plansHook={plansHook} onAddContext={() => setContextModalOpen(true)} onQuickContext={type => setQuickContextType(type)} onImBetter={() => setRecoveryOpen(true)} onExtend={handleExtendContext} onDetailOpen={handleDetailOpen}/>}
         </div>
@@ -8192,9 +8197,9 @@ export default function HeedApp() {
       </footer>
 
       <AddTaskModal open={modalOpen} onClose={() => { setModalOpen(false); setEditingTask(null) }} onSubmit={handleAddTask} onDelete={handleDeleteTask} initialData={editingTask} customCategories={customCategories}/>
-      <BuildRoutineScreen open={routineModalOpen} onClose={() => { setRoutineModalOpen(false); setEditingRoutine(null); setBuildRoutineTask(null) }} onSubmit={handleAddRoutine} initialData={editingRoutine} seedTask={buildRoutineTask} tasks={displayTasks}/>
+      <BuildRoutineScreen open={routineModalOpen} onClose={() => { setRoutineModalOpen(false); setEditingRoutine(null); setBuildRoutineTask(null) }} onSubmit={data => handleAddRoutine(data, { navigate: true })} initialData={editingRoutine} seedTask={buildRoutineTask} tasks={displayTasks}/>
       <AddContextModal open={contextModalOpen} onClose={() => setContextModalOpen(false)} onSubmit={handleAddContext}/>
-      <AskInlineModal open={askOpen} onClose={() => setAskOpen(false)} onLightenRoutine={handleLightenRoutine} onTaskAdded={task => { if (task) setApiTasks(t => [...t, task]); else fetch(`${FUNCTIONS_URL}/api/tasks`).then(r => r.json()).then(d => Array.isArray(d) && setApiTasks(d)).catch(() => {}) }} onRoutineAdded={handleAddRoutine} onViewTask={task => { setEditingTask(task); setModalOpen(true) }}/>
+      <AskInlineModal open={askOpen} onClose={() => setAskOpen(false)} onLightenRoutine={handleLightenRoutine} onTaskAdded={handleTaskAdded} onRoutineAdded={handleAddRoutine} onViewTask={task => { setEditingTask(task); setModalOpen(true) }}/>
       <TaskOptionsSheet task={taskOptionsTask} onClose={() => setTaskOptionsTask(null)} onMarkDone={handleMarkDone} onSkip={handleSkip} onEdit={handleEditTask} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }}/>
       <AddToRoutineSheet task={addToRoutineTask} routines={routines} onClose={() => setAddToRoutineTask(null)} onSelect={handleAddTaskToRoutine}/>
       <QuickContextSheet type={quickContextType} onClose={() => setQuickContextType(null)} onActivate={handleQuickContext}/>

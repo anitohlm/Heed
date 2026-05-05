@@ -3416,6 +3416,7 @@ function CaptureBar({ onCreateTask, onCreateRoutine, onViewTask, onToast }) {
       // Fallback: never lose the text
       try {
         await fallbackCreate()
+        onToast?.({ message: 'Item added — ' + t })
       } catch (_2) {
         setErrorMsg('Could not save — try again')
         setState('error')
@@ -8128,7 +8129,7 @@ export default function HeedApp() {
   }, [handleTaskAdded])
 
   const handleAddRoutine = useCallback((routineData, { navigate = false } = {}) => {
-    const isEdit = !routineData.id.startsWith('custom_')
+    const isEdit = !!routineData.id && !routineData.id.startsWith('custom_')
     setRoutines(rs =>
       isEdit
         ? rs.map(r => r.id === routineData.id ? { ...r, name: routineData.name, items: routineData.items } : r)

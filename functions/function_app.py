@@ -705,6 +705,7 @@ def execute_action(req: func.HttpRequest) -> func.HttpResponse:
 
         new_routine = {
             "id": f"custom_{uuid.uuid4().hex[:12]}",
+            "created_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             "name": name,
             "notes": notes,
             "frequency": frequency,

@@ -3374,8 +3374,183 @@ function ContextBanner({ upcomingContexts, onAskHeed }) {
   )
 }
 
+// ── CaptureBar ─────────────────────────────────────────────────
+function CaptureBar({ onCreateTask, onCreateRoutine, onViewTask }) {
+  const [text, setText] = useState('')
+  const [state, setState] = useState('idle') // 'idle' | 'submitting' | 'error'
+  const [errorMsg, setErrorMsg] = useState('')
+  const [focused, setFocused] = useState(false)
+  const inputRef = useRef(null)
+
+  const getBorderColor = () => {
+    if (state === 'error') return C.rust
+    if (state === 'submitting') return C.border
+    if (text.length > 0) return C.warmDark
+    if (focused) return C.ochre
+    return C.border
+  }
+
+  const submit = useCallback(async (submitText) => {
+    const t = (submitText || text).trim()
+    if (!t) return
+    setState('submitting')
+    try {
+      const res = await fetch(`${FUNCTIONS_URL}/api/parse_capture`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: t }),
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = await res.json()
+      if (data.type === 'task') {
+        const createdTask = await onCreateTask(data.payload)
+        setText('')
+        setState('idle')
+        // show toast after creation
+        if (typeof window !== 'undefined') {
+          // use global setToast via a custom event — or just call showToast if it's in scope
+          // We'll set a window-level event since showToast lives in HeedApp scope
+          window.dispatchEvent(new CustomEvent('heed:toast', {
+            detail: {
+              message: 'Task added — ' + (data.payload?.name || t),
+              action: createdTask ? { label: 'View →', onClick: () => onViewTask?.(createdTask) } : undefined,
+              duration: 4000,
+            }
+          }))
+        }
+      } else if (data.type === 'routine') {
+        await onCreateRoutine(data.payload)
+        setText('')
+        setState('idle')
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('heed:toast', {
+            detail: {
+              message: 'Routine added — ' + (data.payload?.name || t),
+              duration: 3000,
+            }
+          }))
+        }
+      } else {
+        // unknown type — fallback to task
+        const createdTask = await onCreateTask({ name: t, category: 'admin', importance: 'medium' })
+        setText('')
+        setState('idle')
+      }
+    } catch (_) {
+      // Fallback: never lose the text
+      try {
+        await onCreateTask({ name: t, category: 'admin', importance: 'medium' })
+        setText('')
+        setState('idle')
+      } catch (_2) {
+        setErrorMsg('Could not save — try again')
+        setState('error')
+        setTimeout(() => { setState('idle'); setErrorMsg('') }, 3000)
+      }
+    }
+  }, [text, onCreateTask, onCreateRoutine, onViewTask])
+
+  const latestMicText = useRef('')
+  const { listening: micListening, toggle: toggleMic, supported: micSupported } = useMic(
+    useCallback((transcript, isFinal) => {
+      latestMicText.current = transcript
+      setText(transcript)
+      if (isFinal) submit(transcript)
+    }, [submit]),
+    useCallback(() => {
+      const t = latestMicText.current.trim()
+      latestMicText.current = ''
+      if (t) submit(t)
+    }, [submit])
+  )
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && text.trim()) submit()
+  }
+
+  if (state === 'submitting') {
+    return (
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        background: '#fff', border: `1.5px solid ${C.border}`, borderRadius: 10,
+        padding: '8px 12px', marginBottom: 14,
+      }}>
+        <span style={{ fontSize: 18 }}>🦉</span>
+        <span style={{ fontSize: 13, color: C.inkMute, fontStyle: 'italic' }}>Writing it down…</span>
+      </div>
+    )
+  }
+
+  if (state === 'error') {
+    return (
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        background: '#fff', border: `1.5px solid ${C.rust}`, borderRadius: 10,
+        padding: '8px 12px', marginBottom: 14,
+      }}>
+        <span style={{ fontSize: 13, color: C.rust, fontStyle: 'italic' }}>{errorMsg || 'Something went wrong — try again'}</span>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 8,
+      background: '#fff',
+      border: `1.5px solid ${getBorderColor()}`,
+      borderRadius: 10,
+      padding: '8px 12px',
+      marginBottom: 14,
+      transition: 'border-color 0.15s ease',
+    }}>
+      <span style={{ fontSize: 15, color: C.ochre, flexShrink: 0 }}>✦</span>
+      <input
+        ref={inputRef}
+        value={text}
+        onChange={e => setText(e.target.value)}
+        onKeyDown={handleKeyDown}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        placeholder="What do you need to remember?"
+        style={{
+          flex: 1, border: 'none', outline: 'none', background: 'transparent',
+          fontSize: 13.5, color: C.ink, fontStyle: 'italic', fontFamily: 'inherit',
+          minWidth: 0,
+        }}
+      />
+      {text.length > 0 && (
+        <button
+          onClick={() => submit()}
+          aria-label="Send"
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px',
+            fontSize: 17, color: C.warmDark, lineHeight: 1, flexShrink: 0,
+          }}
+        >→</button>
+      )}
+      {micSupported && (
+        <button
+          onClick={toggleMic}
+          aria-label={micListening ? 'Stop listening' : 'Speak to capture'}
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px',
+            color: micListening ? '#e53e3e' : C.inkMute, lineHeight: 1, flexShrink: 0,
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+            <line x1="12" y1="19" x2="12" y2="23"/>
+            <line x1="8" y1="23" x2="16" y2="23"/>
+          </svg>
+        </button>
+      )}
+    </div>
+  )
+}
+
 // ── TodayTab ───────────────────────────────────────────────────
-function TodayTab({ tasks, routines, plans = [], upcomingContexts, skippedTasks = [], userName = '', efMode = false, onSetEfMode, onMarkDone, onSkip, onUnskip, onMarkRoutineDone, onSkipRoutineToday, onLightenRoutine, onEditRoutine, onAskHeed, onMoreOptions, onShareCard, onAddTask, onEditTask, onAddToRoutine, onBuildRoutine, onNavigateToPlans }) {
+function TodayTab({ tasks, routines, plans = [], upcomingContexts, skippedTasks = [], userName = '', efMode = false, onSetEfMode, onMarkDone, onSkip, onUnskip, onMarkRoutineDone, onSkipRoutineToday, onLightenRoutine, onEditRoutine, onAskHeed, onMoreOptions, onShareCard, onAddTask, onEditTask, onAddToRoutine, onBuildRoutine, onNavigateToPlans, onCapture, onCaptureRoutine, onViewTask }) {
   const [showSwipeHint, setShowSwipeHint] = useState(() => {
     if (typeof window === 'undefined') return false
     return !localStorage.getItem('heed.swipe-hint-seen')
@@ -3454,6 +3629,7 @@ function TodayTab({ tasks, routines, plans = [], upcomingContexts, skippedTasks 
 
   return (
     <div>
+      <CaptureBar onCreateTask={onCapture} onCreateRoutine={onCaptureRoutine} onViewTask={onViewTask}/>
       <ContextBanner upcomingContexts={upcomingContexts} onAskHeed={onAskHeed}/>
       <SectionHeader motif="leaf" count={focusTasks.length}>Focus today</SectionHeader>
       {focusTasks.length > 0 ? (
@@ -7662,6 +7838,17 @@ export default function HeedApp() {
     return () => clearTimeout(t)
   }, [toast])
 
+  // Listen for toast requests dispatched by CaptureBar (which lives in TodayTab
+  // but needs to trigger toasts managed at HeedApp level).
+  useEffect(() => {
+    const handler = (e) => {
+      const { message, action, duration } = e.detail || {}
+      setToast({ message, onView: action?.onClick ? action.onClick : undefined })
+    }
+    window.addEventListener('heed:toast', handler)
+    return () => window.removeEventListener('heed:toast', handler)
+  }, [])
+
   const displayTasks = (apiTasks.length > 0 ? apiTasks : TASKS_DEMO)
     .filter(t => t.status === 'active' && !dismissedIds.has(t.id))
     .map(computeTaskDisplay)
@@ -8184,7 +8371,7 @@ export default function HeedApp() {
             replays. Slide-in from a few px right + fade gives a native-feeling
             transition without tracking previous tab for direction. */}
         <div key={tab} style={{ animation: 'heed-tab-in 0.28s cubic-bezier(0.32,0.72,0,1) both', display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
-          {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} plans={plansHook.plans} upcomingContexts={upcomingContexts} skippedTasks={skippedTasks} userName={userName} efMode={efMode} onSetEfMode={handleSetEfMode} onMarkDone={handleMarkDone} onSkip={handleSkip} onUnskip={handleUnskip} onMarkRoutineDone={handleMarkRoutineDone} onSkipRoutineToday={handleSkipRoutineToday} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAskHeed={handleAskHeed} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onAddTask={() => setModalOpen(true)} onEditTask={handleEditTask} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }} onNavigateToPlans={() => setTab('context')}/>}
+          {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} plans={plansHook.plans} upcomingContexts={upcomingContexts} skippedTasks={skippedTasks} userName={userName} efMode={efMode} onSetEfMode={handleSetEfMode} onMarkDone={handleMarkDone} onSkip={handleSkip} onUnskip={handleUnskip} onMarkRoutineDone={handleMarkRoutineDone} onSkipRoutineToday={handleSkipRoutineToday} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAskHeed={handleAskHeed} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onAddTask={() => setModalOpen(true)} onEditTask={handleEditTask} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }} onNavigateToPlans={() => setTab('context')} onCapture={async (payload) => { const res = await fetch(`${FUNCTIONS_URL}/api/tasks`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); const task = await res.json(); if (task?.id) handleTaskAdded(task); return task }} onCaptureRoutine={handleAddRoutine} onViewTask={task => { setEditingTask(task); setModalOpen(true) }}/>}
           {tab === 'calendar' && <CalendarTab tasks={apiTasks} contexts={[...(apiContexts.active||[]), ...(apiContexts.upcoming||[])]} routines={routines} recentSkips={recentSkips} onReschedule={handleReschedule} onMarkDone={handleMarkDone} onSkip={handleSkip} onAddTask={() => setModalOpen(true)} onAddContext={() => setContextModalOpen(true)} onEditRoutine={handleEditRoutine} onApplyRetroSuggestion={handleApplyRetroSuggestion}/>}
           {tab === 'ask' && <AskTab prefill={askPrefill} autoSend={askAutoSend} onAutoSendDone={() => { setAskAutoSend(false); setAskPrefill('') }} onLightenRoutine={handleLightenRoutine} onTaskAdded={handleTaskAdded} onRoutineAdded={handleAddRoutine} onViewTask={task => { setEditingTask(task); setModalOpen(true) }}/>}
           {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onMarkRoutineDay={handleMarkRoutineDay} onEditTask={handleEditTask} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }}/>}

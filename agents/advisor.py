@@ -161,7 +161,7 @@ TOOLS = [
                 "properties": {
                     "action_type": {
                         "type": "string",
-                        "enum": ["mark_done", "skip", "defer", "lighten_routine", "add_context", "add_task"],
+                        "enum": ["mark_done", "skip", "defer", "lighten_routine", "add_context", "add_task", "add_routine"],
                     },
                     "task_id": {"type": "string"},
                     "routine_id": {"type": "string"},
@@ -173,7 +173,9 @@ TOOLS = [
                             "{ defer_until: 'YYYY-MM-DD' }. For add_context: { context_type, "
                             "start_date, end_date, description }. "
                             "For add_task: { name, category, importance, explicit_cadence_days? } — "
-                            "category must be one of: relationships, finance, admin, home, health, work, self_care."
+                            "category must be one of: relationships, finance, admin, home, health, work, self_care. "
+                            "For add_routine: { name, items: [string], frequency: daily|weekdays|weekly|monthly, "
+                            "importance: nice-to-have|core|non-negotiable, notes? }."
                         ),
                     },
                     "requires_confirmation": {"type": "boolean", "default": True},
@@ -290,12 +292,13 @@ def _dispatch_tool(name: str, arguments: dict, user_id: str) -> str:
 
 
 _ACTION_DISPLAY = {
-    "mark_done":       ("Mark done",  "✓"),
-    "skip":            ("Skip this",  "⏭"),
-    "defer":           ("Defer",      "→"),
-    "lighten_routine": ("Lighten it", "🪶"),
-    "add_context":     ("Add context","📍"),
-    "add_task":        ("Add task",   "＋"),
+    "mark_done":       ("Mark done",   "✓"),
+    "skip":            ("Skip this",   "⏭"),
+    "defer":           ("Defer",       "→"),
+    "lighten_routine": ("Lighten it",  "🪶"),
+    "add_context":     ("Add context", "📍"),
+    "add_task":        ("Add task",    "＋"),
+    "add_routine":     ("Add routine", "↻"),
 }
 
 

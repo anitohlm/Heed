@@ -96,7 +96,20 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "get_user_routines",
-            "description": "List the user's saved routines (grouped daily/weekly checklists like 'Morning routine' or 'Evening wind-down'). Each routine has a name, a schedule, an items list (sub-tasks like 'Stretch', 'Vitamins', 'Make coffee'), and last-7-day completion stats. Use this for any question about routines specifically — 'what routines do I have', 'how's my morning routine going', 'which routine is slipping'. Routines are NOT the same as recurring tasks: they live in a separate store and have grouped sub-items.",
+            "description": (
+                "List the user's saved routines (grouped daily/weekly checklists like 'Morning routine' "
+                "or 'Evening wind-down'). Each routine has a name, schedule, items list (sub-tasks like "
+                "'Stretch', 'Vitamins'), and these completion fields you can rely on directly:\n"
+                "  - done_today (bool): did the user complete this routine today?\n"
+                "  - done_yesterday (bool): did they complete it yesterday?\n"
+                "  - last_done_days_ago (int|null): 0=today, 1=yesterday, etc. null = not in last 14 days.\n"
+                "  - done_last_7_days (int): count out of 7.\n"
+                "  - last_7_days (bool[]): one entry per day, last entry = today.\n"
+                "Use this tool for ANY routine question, including 'did I do X today', 'when did I last "
+                "do my morning routine', 'how's my evening wind-down going', 'what routines do I have'. "
+                "Routines are NOT the same as recurring tasks — they live in a separate store and have "
+                "grouped sub-items."
+            ),
             "parameters": {"type": "object", "properties": {}, "required": []},
         },
     },
@@ -273,14 +286,30 @@ def _dispatch_tool(name: str, arguments: dict, user_id: str) -> str:
             shaped = []
             for r in routines:
                 completion14d = r.get("completion14d") or []
-                last7 = completion14d[-7:] if isinstance(completion14d, list) else []
+                if not isinstance(completion14d, list):
+                    completion14d = []
+                last7 = completion14d[-7:]
                 done_last7 = sum(1 for x in last7 if x)
+                # By convention, index len-1 of completion14d is TODAY.
+                done_today = bool(completion14d[-1]) if completion14d else False
+                done_yesterday = bool(completion14d[-2]) if len(completion14d) >= 2 else False
+                # Index of the most recent True (0 = today, 1 = yesterday, etc).
+                # None if the routine has never been done in the 14-day window.
+                last_done_days_ago = None
+                for i, v in enumerate(reversed(completion14d)):
+                    if v:
+                        last_done_days_ago = i
+                        break
                 shaped.append({
                     "id": r.get("id"),
                     "name": r.get("name"),
                     "schedule": r.get("schedule"),
                     "items": r.get("items") or [],
+                    "done_today": done_today,
+                    "done_yesterday": done_yesterday,
+                    "last_done_days_ago": last_done_days_ago,
                     "done_last_7_days": done_last7,
+                    "last_7_days": list(last7),  # ordered oldest → newest, last entry = today
                     "lightened_items": r.get("lightenedItems") or [],
                     "suggestion": r.get("suggestion"),
                 })

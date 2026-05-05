@@ -32,6 +32,7 @@ if _repo_root not in sys.path:
 import json
 import logging
 import asyncio
+import re
 import uuid
 from datetime import datetime, timezone
 import azure.functions as func
@@ -98,7 +99,7 @@ async def advisor_stream(req: func.HttpRequest) -> func.HttpResponse:
             headers={
                 "Access-Control-Allow-Origin": "*",
                 "Access-Control-Allow-Methods": "POST, OPTIONS",
-                "Access-Control-Allow-Headers": "Content-Type",
+                "Access-Control-Allow-Headers": "Content-Type, X-User-ID",
             },
         )
 
@@ -143,7 +144,7 @@ def tasks(req: func.HttpRequest) -> func.HttpResponse:
         return func.HttpResponse(status_code=204, headers={
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type",
+            "Access-Control-Allow-Headers": "Content-Type, X-User-ID",
         })
 
     if req.method == "GET":
@@ -197,7 +198,7 @@ def task_by_id(req: func.HttpRequest) -> func.HttpResponse:
         return func.HttpResponse(status_code=204, headers={
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Methods": "PATCH, DELETE, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type",
+            "Access-Control-Allow-Headers": "Content-Type, X-User-ID",
         })
 
     if req.method == "DELETE":
@@ -258,7 +259,7 @@ def suggest_tasks(req: func.HttpRequest) -> func.HttpResponse:
         return func.HttpResponse(status_code=204, headers={
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Methods": "POST, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type",
+            "Access-Control-Allow-Headers": "Content-Type, X-User-ID",
         })
 
     try:
@@ -356,7 +357,7 @@ def parse_capture(req: func.HttpRequest) -> func.HttpResponse:
         return func.HttpResponse(status_code=204, headers={
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Methods": "POST, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type",
+            "Access-Control-Allow-Headers": "Content-Type, X-User-ID",
         })
 
     try:
@@ -441,7 +442,7 @@ def completions(req: func.HttpRequest) -> func.HttpResponse:
         return func.HttpResponse(status_code=204, headers={
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Methods": "POST, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type",
+            "Access-Control-Allow-Headers": "Content-Type, X-User-ID",
         })
 
     try:
@@ -486,7 +487,7 @@ def context(req: func.HttpRequest) -> func.HttpResponse:
         return func.HttpResponse(status_code=204, headers={
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type",
+            "Access-Control-Allow-Headers": "Content-Type, X-User-ID",
         })
 
     if req.method == "GET":
@@ -527,7 +528,7 @@ def today_view(req: func.HttpRequest) -> func.HttpResponse:
         return func.HttpResponse(status_code=204, headers={
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Methods": "GET, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type",
+            "Access-Control-Allow-Headers": "Content-Type, X-User-ID",
         })
 
     try:
@@ -556,7 +557,7 @@ def execute_action(req: func.HttpRequest) -> func.HttpResponse:
         return func.HttpResponse(status_code=204, headers={
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Methods": "POST, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type",
+            "Access-Control-Allow-Headers": "Content-Type, X-User-ID",
         })
 
     try:
@@ -722,6 +723,77 @@ def execute_action(req: func.HttpRequest) -> func.HttpResponse:
 # On mount, frontend GETs and prefers backend if present, falls back to local
 # if the backend is unreachable. Single Cosmos doc per (user, kind) — simpler
 # than per-item CRUD and matches how the data is used (whole-list reads).
+_USERS_CONTAINER_NAME = "users"
+
+def _ensure_users_container():
+    db = cosmos_tool._get_database()
+    try:
+        from azure.cosmos import PartitionKey
+        return db.create_container_if_not_exists(
+            id=_USERS_CONTAINER_NAME,
+            partition_key=PartitionKey(path="/id"),
+        )
+    except Exception:
+        logging.exception("ensure users container failed")
+        return db.get_container_client(_USERS_CONTAINER_NAME)
+
+
+USERNAME_RE = re.compile(r'^[a-zA-Z0-9_-]{3,20}$')
+
+@app.route(route="check_username", methods=["GET", "OPTIONS"])
+def check_username(req: func.HttpRequest) -> func.HttpResponse:
+    if req.method == "OPTIONS":
+        return func.HttpResponse(status_code=204, headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, X-User-ID",
+        })
+    u = (req.params.get("u") or "").strip()
+    if not u or not USERNAME_RE.match(u):
+        return _error("Invalid username format", 400)
+    try:
+        container = _ensure_users_container()
+        container.read_item(item=u, partition_key=u)
+        return _json_response({"available": False})
+    except Exception as e:
+        if "404" in str(e) or "NotFound" in type(e).__name__:
+            return _json_response({"available": True})
+        logging.exception("check_username failed")
+        return _error("Could not check username", 500)
+
+
+@app.route(route="register_username", methods=["POST", "OPTIONS"])
+def register_username(req: func.HttpRequest) -> func.HttpResponse:
+    if req.method == "OPTIONS":
+        return func.HttpResponse(status_code=204, headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, X-User-ID",
+        })
+    try:
+        body = req.get_json()
+    except ValueError:
+        return _error("Invalid JSON body")
+    if not body:
+        return _error("Request body is required")
+    username = (body.get("username") or "").strip()
+    if not username or not USERNAME_RE.match(username):
+        return _error("Invalid username format", 400)
+    try:
+        from datetime import datetime, timezone
+        container = _ensure_users_container()
+        container.create_item(body={
+            "id": username,
+            "created_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        })
+        return _json_response({"ok": True, "username": username})
+    except Exception as e:
+        if "409" in str(e) or "Conflict" in type(e).__name__:
+            return _json_response({"error": "taken"}, 409)
+        logging.exception("register_username failed")
+        return _error("Could not register username", 500)
+
+
 _USER_STATE_CONTAINER_NAME = "user_state"
 
 
@@ -758,7 +830,7 @@ def user_state(req: func.HttpRequest) -> func.HttpResponse:
         return func.HttpResponse(status_code=204, headers={
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Methods": "GET, PUT, DELETE, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type",
+            "Access-Control-Allow-Headers": "Content-Type, X-User-ID",
         })
 
     kind = (req.route_params.get("kind") or "").lower()
@@ -822,7 +894,7 @@ def reset_user_data(req: func.HttpRequest) -> func.HttpResponse:
         return func.HttpResponse(status_code=204, headers={
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Methods": "POST, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type",
+            "Access-Control-Allow-Headers": "Content-Type, X-User-ID",
         })
 
     db = cosmos_tool._get_database()
@@ -862,7 +934,7 @@ def seed_demo_data(req: func.HttpRequest) -> func.HttpResponse:
         return func.HttpResponse(status_code=204, headers={
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Methods": "POST, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type",
+            "Access-Control-Allow-Headers": "Content-Type, X-User-ID",
         })
 
     from datetime import datetime, timezone, timedelta
@@ -1043,7 +1115,7 @@ def memory_keeper_run(req: func.HttpRequest) -> func.HttpResponse:
         return func.HttpResponse(status_code=204, headers={
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Methods": "POST, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type",
+            "Access-Control-Allow-Headers": "Content-Type, X-User-ID",
         })
 
     try:

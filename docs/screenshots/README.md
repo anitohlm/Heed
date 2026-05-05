@@ -19,6 +19,22 @@ python generate_azure_doc.py
 | `10-cors-configured.png` | Output of `az functionapp cors add …` showing `allowedOrigins` populated with the SWA origin, localhost, and `*`. |
 | `10-flex-log-stream-success.png` | Function App → Monitoring → Log stream during a successful chat round-trip. Lines like `Executing 'Functions.advisor_stream'` and `Executed … (Succeeded, Duration=…ms)`, plus the chained Azure OpenAI `200 OK` requests. |
 
+## Filenames expected (Section 12 — Heed Chat Agent QA)
+
+These are screenshots captured during agent QA. Each one shows the **before** state — the symptom the user saw. Capture from the chat tab on `brave-pond-035757400.7.azurestaticapps.net`. Bubble + chip area is enough; no need to include the navbar.
+
+| Filename | What it should show |
+|---|---|
+| `12-latest-task-honest-punt.png` | User asked "What is the latest task I added?" and Heed replied with the long "I can't tell confidently from the data I have. The closest match looks like Update expense tracker, but this search doesn't expose a true 'created at' field…" answer. **Before** `list_recent_tasks` shipped. |
+| `12-routines-invisible.png` | User asked "What routines do I have?" and Heed replied "I'm not seeing any routines in your current data — just recurring tasks." Followed by a bullet list of recurring tasks (Vitamin D, Clean cat litter box, etc). **Before** `get_user_routines` shipped. |
+| `12-routine-done-today-no-data.png` | User asked "Did I do my morning routine today?" Heed replied "I can see your Morning routine, but I don't have today's completion state in this view, so I can't tell for sure whether you did it today." with the 4-of-7-days fallback. **Before** the per-day completion fields were added. |
+| `12-why-skip-no-history.png` | User asked "Why did I skip my evening routine?" Heed replied "I don't have enough history yet to say why you skipped it. … I don't have the skip record or reason in the data I can see here." Documents the real data gap (skips not persisted). |
+| `12-undated-tasks-missed.png` | User asked "Do I have any tasks with no due date?" Heed replied "I can't tell from the data I have right now. Clean the room isn't showing up in today, overdue, or this week, but I don't have a reliable list of all undated tasks…" **Before** the `has_due_date` filter shipped. |
+| `12-done-hallucination.png` | User tapped a follow-up chip "Add details to Clean the room" and Heed replied with a single "Done." No action chip, no confirmation. The hallucinated-success failure mode that triggered the §12.7 fix. |
+| `12-imperative-chips.png` | A chat bubble with FOLLOW UP chips written as imperatives — "Add details to Clean the room", "Should this get a due date?", etc. The user perceived these as buttons the agent should act on. Often the same screenshot as `12-done-hallucination.png` if both fit in one frame. |
+| `12-chip-mode-mismatch.png` | Agent asked "What details would help with Clean the room?" and the FOLLOW UP chips beneath it were also questions ("What room breakdown would help most?", "Should this get a due date?", "What smaller steps should this include?"). The mode-mismatch failure that triggered the §12.9 two-mode rule. |
+| `12-edit-refused-despite-action.png` | User typed "Update Clean the room to bedroom, quick tidy, laundry and desk, by Saturday" and Heed replied with the canned "I can't edit that from chat. You can do it from the task's ⋯ menu in Tracks." — even though `edit_task` was already in the action enum. The verbatim-refusal-parroting failure that triggered the §12.10 three-branch rule. |
+
 ## Filename conventions
 
 - Lowercase, hyphen-separated.

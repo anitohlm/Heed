@@ -1182,6 +1182,13 @@ doc.add_paragraph(
     "Reference commit: feat: list_recent_tasks tool — agent can now answer "
     "'what did I just add?' (a2a3616)."
 )
+add_screenshot(
+    doc,
+    "12-latest-task-honest-punt.png",
+    "Heed honestly punting on 'what is the latest task I added?' before "
+    "list_recent_tasks existed. The agent recognised the question but "
+    "could see no tool that surfaced created_at.",
+)
 
 # ── 12.3 ───────────────────────────────────────────────────────────────────────
 doc.add_heading("12.3 Problem 2 — Routines and Plans Were Invisible to the Agent", 2)
@@ -1217,6 +1224,14 @@ doc.add_paragraph(
 doc.add_paragraph(
     "Reference commit: feat: get_user_routines + get_user_plans tools — "
     "agent can now read both (72700a3)."
+)
+add_screenshot(
+    doc,
+    "12-routines-invisible.png",
+    "'What routines do I have?' before the routines tool was added. "
+    "The agent saw recurring tasks (which DO live in the tasks "
+    "container) but couldn't see Morning routine / Evening wind-down "
+    "(which live in user_state under a different key).",
 )
 
 # ── 12.4 ───────────────────────────────────────────────────────────────────────
@@ -1259,6 +1274,13 @@ doc.add_paragraph(
     "Reference commit: fix: get_user_routines exposes per-day completion "
     "(today, yesterday, etc.) (1c0fc77)."
 )
+add_screenshot(
+    doc,
+    "12-routine-done-today-no-data.png",
+    "'Did I do my morning routine today?' — the agent could see the "
+    "routine and the 7-day count but had no per-day flags, so it "
+    "honestly punted on whether today specifically was marked done.",
+)
 
 # ── 12.5 ───────────────────────────────────────────────────────────────────────
 doc.add_heading("12.5 Problem 4 — 'Why Did I Skip?' Hits a Real Data Gap", 2)
@@ -1288,6 +1310,13 @@ doc.add_paragraph(
     "get_routine_history tool. Estimated 30–45 minutes; deferred until "
     "post-demo because the honest-punt response is acceptable for the "
     "hackathon and the fix touches all three layers (data, UI, agent)."
+)
+add_screenshot(
+    doc,
+    "12-why-skip-no-history.png",
+    "'Why did I skip my evening routine?' — the agent had access to "
+    "the completion array but no skip-reason events because the "
+    "frontend handler shows a toast and writes nothing.",
 )
 
 # ── 12.6 ───────────────────────────────────────────────────────────────────────
@@ -1329,6 +1358,14 @@ for label, body in list_fixes:
 doc.add_paragraph(
     "Reference commit: fix: list_recent_tasks gets has_due_date filter — "
     "answers undated questions (0c745ea)."
+)
+add_screenshot(
+    doc,
+    "12-undated-tasks-missed.png",
+    "'Do I have any tasks with no due date?' before the has_due_date "
+    "filter. list_recent_tasks DID return next_due_at on every result, "
+    "but the description framed it as 'recency only' so the model "
+    "didn't recognise it as the right tool for this phrasing.",
 )
 
 # ── 12.7 ───────────────────────────────────────────────────────────────────────
@@ -1373,6 +1410,14 @@ doc.add_paragraph(
     "Reference commit: fix: stop the 'Done.' hallucination + add edit_task "
     "action + chip wording (88e5fbd)."
 )
+add_screenshot(
+    doc,
+    "12-done-hallucination.png",
+    "Hallucinated success: user tapped a follow-up chip 'Add details to "
+    "Clean the room' and the agent responded with a single 'Done.' — "
+    "no propose_action fired, no Cosmos write, the task was unchanged. "
+    "The most dangerous failure mode for a tool-using agent.",
+)
 
 # ── 12.8 ───────────────────────────────────────────────────────────────────────
 doc.add_heading("12.8 Problem 7 — Follow-up Chips Read as Commands", 2)
@@ -1398,6 +1443,14 @@ doc.add_paragraph(
     "mechanic so the model understands the constraint. Provided "
     "specific replacements: 'What details would help with Clean the "
     "room?' beats 'Add details to Clean the room.'"
+)
+add_screenshot(
+    doc,
+    "12-imperative-chips.png",
+    "Imperative follow-up chips ('Add details to Clean the room') that "
+    "the user expected to be action buttons. Tapping them sent the "
+    "imperative back as a fresh user message — directly causing the "
+    "Done.-hallucination in §12.7.",
 )
 
 # ── 12.9 ───────────────────────────────────────────────────────────────────────
@@ -1444,6 +1497,14 @@ for last, chips in mode_rows:
 doc.add_paragraph(
     "Reference commit: fix: chips switch mode — answers when agent just "
     "asked, questions when it answered (b646a8b)."
+)
+add_screenshot(
+    doc,
+    "12-chip-mode-mismatch.png",
+    "Chip-mode mismatch: agent asked 'What details would help with "
+    "Clean the room?' but the chips were ALSO questions ('What room "
+    "breakdown would help most?'), leaving the user no closer to "
+    "answering than a blank input box.",
 )
 
 # ── 12.10 ──────────────────────────────────────────────────────────────────────
@@ -1499,6 +1560,15 @@ doc.add_paragraph(
 doc.add_paragraph(
     "Reference commit: fix: edit_task actually fires for in-chat edit "
     "requests (b9c3d6f)."
+)
+add_screenshot(
+    doc,
+    "12-edit-refused-despite-action.png",
+    "Verbatim refusal parroting: 'Update Clean the room: bedroom, "
+    "quick tidy, laundry and desk, by Saturday' returned the canned "
+    "'I can't edit that from chat' string — even though edit_task was "
+    "in the action enum. The model was lifting the example refusal "
+    "string from the system prompt as a template.",
 )
 
 # ── 12.11 ──────────────────────────────────────────────────────────────────────

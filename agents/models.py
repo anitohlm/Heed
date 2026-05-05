@@ -136,9 +136,21 @@ class TodayView(BaseModel):
     upcoming_contexts: list[UserContext]
 
 
+class AddRoutinePayload(BaseModel):
+    name: str
+    items: list[str]
+    frequency: str = "daily"      # daily | weekdays | weekly | monthly
+    importance: str = "core"      # nice-to-have | core | non-negotiable
+    notes: Optional[str] = None
+
+
 class AgentAction(BaseModel):
     """A structured action the Advisor proposes. Validated before execution."""
-    action_type: Literal["mark_done", "skip", "defer", "lighten_routine", "add_context"]
+    action_type: Literal[
+        "mark_done", "skip", "defer",
+        "lighten_routine", "add_context",
+        "add_task", "add_routine",
+    ]
     task_id: Optional[str] = None
     routine_id: Optional[str] = None
     payload: dict = Field(default_factory=dict)

@@ -136,6 +136,18 @@ toc_items = [
     ("    10.8", "Problem 6 — Agent Couldn't Answer 'Latest Task'"),
     ("    10.9", "Outcome and Open Items"),
     ("11", "Operational Tips Specific to Flex Consumption"),
+    ("12", "Heed Chat Agent Quality Issues and Solutions"),
+    ("    12.1", "How the Agent Reasons (Quick Recap)"),
+    ("    12.2", "Problem 1 — 'Latest Task' Question Got an Honest Punt"),
+    ("    12.3", "Problem 2 — Routines and Plans Were Invisible to the Agent"),
+    ("    12.4", "Problem 3 — 'Did I Do My Routine Today?' Couldn't Be Answered"),
+    ("    12.5", "Problem 4 — 'Why Did I Skip?' Hits a Real Data Gap"),
+    ("    12.6", "Problem 5 — 'Tasks with No Due Date' Missed by Existing Tools"),
+    ("    12.7", "Problem 6 — Agent Hallucinated 'Done.' for Unsupported Edits"),
+    ("    12.8", "Problem 7 — Follow-up Chips Read as Commands"),
+    ("    12.9", "Problem 8 — Chip Wording Didn't Switch Modes"),
+    ("    12.10", "Problem 9 — Agent Refused Edits Even Though edit_task Exists"),
+    ("    12.11", "Pattern Summary and Operating Principle"),
 ]
 for num, item in toc_items:
     p = doc.add_paragraph(style="List Bullet" if num.startswith("    ") else "Normal")
@@ -1098,6 +1110,458 @@ add_code_block(
     "      - 'web/app/**'\n"
     "      - 'web/**/*.{js,jsx,ts,tsx,css,json}'\n"
     "      - '.github/workflows/**'",
+)
+
+
+# ── 12. Heed Chat Agent Quality Issues and Solutions ──────────────────────────
+
+doc.add_page_break()
+doc.add_heading("12. Heed Chat Agent Quality Issues and Solutions", 1)
+doc.add_paragraph(
+    "After the Flex Consumption migration restored real chat functionality, "
+    "QA testing exposed a class of agent behaviour issues distinct from the "
+    "infrastructure problems in §10. Each issue was either (a) a missing "
+    "tool, (b) a tool whose response shape was too narrow for the question, "
+    "or (c) a system-prompt rule that produced the wrong behaviour for the "
+    "user's intent. This section records each one with the symptom the "
+    "user saw, the root cause, and the shipped fix."
+)
+
+doc.add_heading("12.1 How the Agent Reasons (Quick Recap)", 2)
+doc.add_paragraph(
+    "Heed's chat agent is an agentic / function-calling architecture, not "
+    "pure RAG. The Advisor LLM (Azure OpenAI heed-advisor deployment) plans "
+    "each turn, picks one or more tools to call, integrates their JSON "
+    "responses, and produces a streaming answer. Tools live in "
+    "agents/advisor.py; the system prompt lives in agents/prompts/"
+    "advisor_system.md. Some tools wrap Azure AI Search (RAG-flavoured "
+    "retrieval); others are Cosmos queries or write actions. The agent is "
+    "explicitly instructed to ground every claim in tool results and "
+    "refuse to fabricate — which is what caused most of the issues "
+    "below to manifest as honest punts ('I can't tell from the data') "
+    "rather than hallucinations."
+)
+
+# ── 12.2 ───────────────────────────────────────────────────────────────────────
+doc.add_heading("12.2 Problem 1 — 'Latest Task' Question Got an Honest Punt", 2)
+doc.add_paragraph(
+    "Symptom: User asked 'What's the latest task I added?' Heed replied "
+    "'I can't tell confidently from the data I have. The closest match "
+    "looks like Update expense tracker, but this search doesn't expose "
+    "a true \"created at\" field, so I don't want to pretend that means "
+    "it was the latest added.'"
+)
+doc.add_paragraph("Cause:", style="Intense Quote")
+doc.add_paragraph(
+    "The advisor's tool surface had nothing for chronological listing. "
+    "get_today_view filters to overdue/today/upcoming. search_task_memory "
+    "is a semantic search — its result shape doesn't include created_at. "
+    "Cosmos has the data on every task, but no tool exposed it."
+)
+doc.add_paragraph("Solution:", style="Intense Quote")
+doc.add_paragraph(
+    "Added a list_recent_tasks tool that pulls active tasks, sorts by "
+    "created_at descending, returns up to N (default 10, capped at 30 at "
+    "the time of this fix; later raised to 100). Each result includes "
+    "id, name, category, importance, created_at, next_due_at."
+)
+add_code_block(
+    doc,
+    "elif name == \"list_recent_tasks\":\n"
+    "    limit = max(1, min(int(arguments.get(\"limit\", 10) or 10), 30))\n"
+    "    tasks = cosmos_tool.get_active_tasks(user_id)\n"
+    "    sortable = sorted(\n"
+    "        tasks,\n"
+    "        key=lambda t: (t.created_at\n"
+    "            or datetime.min.replace(tzinfo=timezone.utc)),\n"
+    "        reverse=True,\n"
+    "    )[:limit]\n"
+    "    return json.dumps({\"tasks\": [...]}, default=str)",
+)
+doc.add_paragraph(
+    "Reference commit: feat: list_recent_tasks tool — agent can now answer "
+    "'what did I just add?' (a2a3616)."
+)
+
+# ── 12.3 ───────────────────────────────────────────────────────────────────────
+doc.add_heading("12.3 Problem 2 — Routines and Plans Were Invisible to the Agent", 2)
+doc.add_paragraph(
+    "Symptom: User asked 'What routines do I have?' and Heed responded "
+    "'I'm not seeing any routines in your current data — just recurring "
+    "tasks.' Same pattern for plans: 'How's my Singapore trip plan coming "
+    "along?' got 'I don't see any plans in your data.'"
+)
+doc.add_paragraph("Cause:", style="Intense Quote")
+doc.add_paragraph(
+    "Heed stores tasks and routines/plans in DIFFERENT Cosmos containers. "
+    "Tasks live in 'tasks'; routines and plans live in 'user_state' under "
+    "doc IDs {user_id}__routines and {user_id}__plans (write-through cache "
+    "from the frontend usePlans / routines hooks). Every existing tool "
+    "(get_today_view, search_task_memory, list_recent_tasks, "
+    "get_task_history) reads ONLY from the tasks container. Nothing read "
+    "user_state. So the agent had no way to see routines or plans data, "
+    "and correctly refused to fabricate."
+)
+doc.add_paragraph("Solution:", style="Intense Quote")
+doc.add_paragraph(
+    "Added a single helper in cosmos_tool — get_user_state(user_id, kind) "
+    "— that reads either {user}__routines or {user}__plans and returns "
+    "the items list. Then two new advisor tools sit on top of it: "
+    "get_user_routines and get_user_plans. Each tool description "
+    "explicitly calls out 'routines ≠ recurring tasks' and 'plans ≠ "
+    "tasks' so the model routes ambiguous phrasings to the right tool. "
+    "Plans are shaped per type (project / numeric goal / milestone goal "
+    "/ event) so the agent gets just the fields it needs (e.g. "
+    "current/target/unit for goals, eventDate for events)."
+)
+doc.add_paragraph(
+    "Reference commit: feat: get_user_routines + get_user_plans tools — "
+    "agent can now read both (72700a3)."
+)
+
+# ── 12.4 ───────────────────────────────────────────────────────────────────────
+doc.add_heading("12.4 Problem 3 — 'Did I Do My Routine Today?' Couldn't Be Answered", 2)
+doc.add_paragraph(
+    "Symptom: With routines now visible, user asked 'Did I do my morning "
+    "routine today?' Heed replied 'I can see your Morning routine, but "
+    "I don't have today's completion state in this view, so I can't tell "
+    "for sure whether you did it today.'"
+)
+doc.add_paragraph("Cause:", style="Intense Quote")
+doc.add_paragraph(
+    "The new get_user_routines tool only returned a 7-day count "
+    "('done_last_7_days: 4 of 7'), not per-day flags. The underlying "
+    "completion14d array (one bool per day, last index = today) was "
+    "trimmed away during shaping. So the agent could see 'four of last "
+    "seven' but not 'today specifically'."
+)
+doc.add_paragraph("Solution:", style="Intense Quote")
+doc.add_paragraph(
+    "Widened the get_user_routines response with per-day fields: "
+    "done_today (last array element), done_yesterday (second-to-last), "
+    "last_done_days_ago (0=today, 1=yesterday … null if not in 14-day "
+    "window), and the full last_7_days bool array. Tool description "
+    "documents each field so the model picks the right one."
+)
+add_code_block(
+    doc,
+    "completion14d = r.get(\"completion14d\") or []\n"
+    "done_today    = bool(completion14d[-1]) if completion14d else False\n"
+    "done_yesterday = (\n"
+    "    bool(completion14d[-2])\n"
+    "    if len(completion14d) >= 2 else False\n"
+    ")\n"
+    "last_done_days_ago = None\n"
+    "for i, v in enumerate(reversed(completion14d)):\n"
+    "    if v: last_done_days_ago = i; break",
+)
+doc.add_paragraph(
+    "Reference commit: fix: get_user_routines exposes per-day completion "
+    "(today, yesterday, etc.) (1c0fc77)."
+)
+
+# ── 12.5 ───────────────────────────────────────────────────────────────────────
+doc.add_heading("12.5 Problem 4 — 'Why Did I Skip?' Hits a Real Data Gap", 2)
+doc.add_paragraph(
+    "Symptom: User asked 'Why did I skip my evening routine?' Heed "
+    "responded 'I don't have enough history yet to say why you skipped "
+    "it. There was likely one missed day recently, but I don't have the "
+    "skip record or reason in the data I can see here.'"
+)
+doc.add_paragraph("Cause:", style="Intense Quote")
+doc.add_paragraph(
+    "Unlike previous gaps, this one isn't a missing-tool problem — it's "
+    "a missing-data problem. Routine skips are NOT persisted anywhere. "
+    "The frontend's handleSkipRoutineToday handler shows a toast and "
+    "returns; no backend call, no Cosmos write, no event log. The "
+    "completion14d array tracks true/false per day but stores no reason "
+    "— and false doesn't even mean 'skipped', it just means 'not marked "
+    "done'. The agent's response was correct: there is no answer in "
+    "the system to find."
+)
+doc.add_paragraph("Status:", style="Intense Quote")
+doc.add_paragraph(
+    "DOCUMENTED AS A KNOWN GAP. Fixing it requires three coordinated "
+    "changes: (1) extend POST /api/completions to accept routine_id "
+    "in addition to task_id, (2) add a routine-skip UI flow with reason "
+    "chips like the existing task-skip flow, (3) add a "
+    "get_routine_history tool. Estimated 30–45 minutes; deferred until "
+    "post-demo because the honest-punt response is acceptable for the "
+    "hackathon and the fix touches all three layers (data, UI, agent)."
+)
+
+# ── 12.6 ───────────────────────────────────────────────────────────────────────
+doc.add_heading("12.6 Problem 5 — 'Tasks with No Due Date' Missed by Existing Tools", 2)
+doc.add_paragraph(
+    "Symptom: User asked 'Do I have any tasks with no due date?' Heed "
+    "replied 'I can't tell from the data I have right now. Clean the "
+    "room isn't showing up in today, overdue, or this week, but I "
+    "don't have a reliable list of all undated tasks from the available "
+    "tools.'"
+)
+doc.add_paragraph("Cause:", style="Intense Quote")
+doc.add_paragraph(
+    "list_recent_tasks already returns next_due_at on every result, so "
+    "the data was technically reachable. But its description framed it "
+    "as 'recency only' — 'what's the latest task I added' — which the "
+    "model didn't generalise to 'list undated tasks'. Default limit of "
+    "10 also clipped the answer when the user has 25+ tasks."
+)
+doc.add_paragraph("Solution:", style="Intense Quote")
+doc.add_paragraph("Three changes to list_recent_tasks:")
+list_fixes = [
+    ("Description rewrite", "Now explicitly covers task-listing questions "
+     "get_today_view can't answer (undated, all-tasks, total count). Names "
+     "canonical phrasings: 'do I have any tasks with no due date', 'list "
+     "all my tasks'."),
+    ("New has_due_date filter", "Optional boolean — true returns only "
+     "dated tasks, false returns only undated tasks (the failure case), "
+     "omitted returns all."),
+    ("Higher limits", "Default raised 10 → 25, max raised 30 → 100. "
+     "Response also returns total + returned counts so the agent can "
+     "say '3 of 27 tasks have no due date' precisely."),
+]
+for label, body in list_fixes:
+    p = doc.add_paragraph(style="List Bullet")
+    r = p.add_run(f"{label}: ")
+    r.bold = True
+    p.add_run(body)
+doc.add_paragraph(
+    "Reference commit: fix: list_recent_tasks gets has_due_date filter — "
+    "answers undated questions (0c745ea)."
+)
+
+# ── 12.7 ───────────────────────────────────────────────────────────────────────
+doc.add_heading("12.7 Problem 6 — Agent Hallucinated 'Done.' for Unsupported Edits", 2)
+doc.add_paragraph(
+    "Symptom: User asked Heed to 'Add details to Clean the room.' Heed "
+    "replied with one word: 'Done.' But no action chip appeared, no "
+    "Cosmos write happened, the task was unchanged. Pure hallucinated "
+    "success — the most dangerous failure mode for a tool-using agent."
+)
+doc.add_paragraph("Cause:", style="Intense Quote")
+doc.add_paragraph(
+    "Two compounding issues. First, the propose_action tool's "
+    "action_type enum had no edit_task value — only mark_done, skip, "
+    "defer, lighten_routine, add_context, add_task, add_routine. So "
+    "even if the agent wanted to edit a description, it had no tool. "
+    "Second, the system prompt's discipline of 'ground every claim in "
+    "tool results' had a leak: when the user asked for an unsupported "
+    "edit, instead of refusing honestly the agent acknowledged "
+    "completion as if the request had been fulfilled."
+)
+doc.add_paragraph("Solution:", style="Intense Quote")
+doc.add_paragraph("Two coordinated fixes:")
+hallucination_fixes = [
+    ("System prompt rule against false success", "Added an explicit "
+     "'never reply Done. unless propose_action was actually called this "
+     "turn' rule, with named examples and the canonical refusal text "
+     "for unsupported writes."),
+    ("New edit_task action type", "Added edit_task to the propose_action "
+     "enum and implemented its dispatcher in function_app.execute_action. "
+     "Allowed payload fields mirror PATCH /api/tasks/{id}: name, "
+     "description, category, importance, status, explicit_cadence_days, "
+     "and (later) next_due_at. Read-modify-write on the tasks container; "
+     "produces a human-readable summary line for the confirmation card."),
+]
+for label, body in hallucination_fixes:
+    p = doc.add_paragraph(style="List Bullet")
+    r = p.add_run(f"{label}: ")
+    r.bold = True
+    p.add_run(body)
+doc.add_paragraph(
+    "Reference commit: fix: stop the 'Done.' hallucination + add edit_task "
+    "action + chip wording (88e5fbd)."
+)
+
+# ── 12.8 ───────────────────────────────────────────────────────────────────────
+doc.add_heading("12.8 Problem 7 — Follow-up Chips Read as Commands", 2)
+doc.add_paragraph(
+    "Symptom: After Heed answered a question, its FOLLOW UP chips "
+    "included entries like 'Add details to Clean the room' — phrased as "
+    "imperatives. Tapping the chip sent that text back as a fresh user "
+    "turn, which the agent then couldn't fulfill (see Problem 6). The "
+    "user perceived the chip as a button that did nothing."
+)
+doc.add_paragraph("Cause:", style="Intense Quote")
+doc.add_paragraph(
+    "suggest_followups produces chips meant to be conversation prompts. "
+    "But the system prompt didn't constrain their phrasing, so the "
+    "model often produced commands. Combined with the click-sends-as-"
+    "user-message mechanic, an imperative chip is a recipe for the "
+    "user thinking 'why didn't that work'."
+)
+doc.add_paragraph("Solution:", style="Intense Quote")
+doc.add_paragraph(
+    "Added a 'phrase chips as questions, not commands' rule in the "
+    "system prompt's Output format section. Explained the round-trip "
+    "mechanic so the model understands the constraint. Provided "
+    "specific replacements: 'What details would help with Clean the "
+    "room?' beats 'Add details to Clean the room.'"
+)
+
+# ── 12.9 ───────────────────────────────────────────────────────────────────────
+doc.add_heading("12.9 Problem 8 — Chip Wording Didn't Switch Modes", 2)
+doc.add_paragraph(
+    "Symptom: After the questions-not-commands rule shipped, a deeper "
+    "problem surfaced. Agent asked the user 'What details would help "
+    "with Clean the room?' — and then the FOLLOW UP chips were ALSO "
+    "questions: 'What room breakdown would help most?', 'What smaller "
+    "steps should this include?'. The user complained: 'his follow up "
+    "doesn't make sense because he should suggest answers from his "
+    "question.'"
+)
+doc.add_paragraph("Cause:", style="Intense Quote")
+doc.add_paragraph(
+    "The rule was right after the agent gave INFORMATION, but wrong "
+    "after the agent ASKED the user for clarification. In the second "
+    "case, the chips should be sample answers in the user's voice "
+    "('Bedroom, quick tidy, by Saturday'), not meta-questions that "
+    "ask about the question."
+)
+doc.add_paragraph("Solution:", style="Intense Quote")
+doc.add_paragraph(
+    "Replaced the blanket rule with a two-mode rule keyed off the "
+    "agent's last response shape:"
+)
+mode_table = doc.add_table(rows=1, cols=2)
+mode_table.style = "Light Grid Accent 1"
+hdr = mode_table.rows[0].cells
+hdr[0].text = "Last response was…"
+hdr[1].text = "Chip mode"
+mode_rows = [
+    ("Information / answered a question", "Next questions the user might "
+     "ask (e.g. 'What about my gym routine?', 'Plan around my Singapore "
+     "trip')"),
+    ("A clarifying question to the user", "Sample answers in the user's "
+     "voice (e.g. 'Bedroom, quick tidy, by Saturday', 'Just laundry and "
+     "the desk')"),
+]
+for last, chips in mode_rows:
+    row = mode_table.add_row().cells
+    row[0].text = last
+    row[1].text = chips
+doc.add_paragraph(
+    "Reference commit: fix: chips switch mode — answers when agent just "
+    "asked, questions when it answered (b646a8b)."
+)
+
+# ── 12.10 ──────────────────────────────────────────────────────────────────────
+doc.add_heading("12.10 Problem 9 — Agent Refused Edits Even Though edit_task Exists", 2)
+doc.add_paragraph(
+    "Symptom: User typed 'Update Clean the room: bedroom, quick tidy, "
+    "laundry and desk, by Saturday' to test the new edit_task action. "
+    "Heed replied: 'I can't edit that from chat. You can do it from "
+    "the task's ⋯ menu in Tracks.' The exact canned refusal — but "
+    "edit_task IS available."
+)
+doc.add_paragraph("Cause:", style="Intense Quote")
+doc.add_paragraph(
+    "When the system prompt rule from Problem 6 was written, it included "
+    "a verbatim refusal string ('I can't edit that from chat...') as the "
+    "EXAMPLE of how to refuse unsupported writes. The model was then "
+    "lifting that string for ALL edit requests — including the "
+    "edit_task-supported ones — because it read like a template. The "
+    "rule said 'editing a name, changing cadence, renaming a routine, "
+    "etc.' as the trigger, which the model interpreted as 'all edits'."
+)
+doc.add_paragraph(
+    "Secondary issue: edit_task's allowed_fields didn't include "
+    "next_due_at, so even if the agent fired it, 'by Saturday' couldn't "
+    "be set."
+)
+doc.add_paragraph("Solution:", style="Intense Quote")
+doc.add_paragraph(
+    "Rewrote the rule into a three-branch checklist that names which "
+    "edits ARE supported, what the field names are, and what to do for "
+    "the others:"
+)
+add_code_block(
+    doc,
+    "Editing a TASK (name, description, category, importance, cadence,\n"
+    "due date, status) → use edit_task with task_id set and payload\n"
+    "listing ONLY the fields you're changing. This DOES work from chat\n"
+    "— do not refuse it. Allowed: name, description, category, importance,\n"
+    "status, explicit_cadence_days, next_due_at (ISO date).\n"
+    "\n"
+    "Editing a ROUTINE or PLAN → not supported yet. Say: \"I can't edit\n"
+    "routines/plans from chat yet…\"\n"
+    "\n"
+    "Anything else with no matching action → refuse with one sentence\n"
+    "pointing them to where they can do it themselves.",
+)
+doc.add_paragraph(
+    "Also added next_due_at to the edit_task allowlist with a small "
+    "ISO-date normaliser, so 'by Saturday' can land directly. Updated "
+    "the propose_action tool description so the model knows next_due_at "
+    "is editable."
+)
+doc.add_paragraph(
+    "Reference commit: fix: edit_task actually fires for in-chat edit "
+    "requests (b9c3d6f)."
+)
+
+# ── 12.11 ──────────────────────────────────────────────────────────────────────
+doc.add_heading("12.11 Pattern Summary and Operating Principle", 2)
+doc.add_paragraph(
+    "The nine issues above cluster into three failure modes, each with a "
+    "consistent fix shape:"
+)
+pattern_table = doc.add_table(rows=1, cols=3)
+pattern_table.style = "Light Grid Accent 1"
+hdr = pattern_table.rows[0].cells
+hdr[0].text = "Failure mode"
+hdr[1].text = "Examples"
+hdr[2].text = "Fix shape"
+pattern_rows = [
+    (
+        "Missing tool",
+        "Latest task; routines/plans visibility (Problems 1, 2)",
+        "Add a tool with a Cosmos read + JSON shape. ~30 lines.",
+    ),
+    (
+        "Tool exists but response shape too narrow",
+        "Per-day routine completion; undated tasks; edit_task next_due_at "
+        "(Problems 3, 5, 9)",
+        "Widen the tool's response or add an optional parameter. ~10 lines.",
+    ),
+    (
+        "System prompt produced wrong behaviour",
+        "Done. hallucination; chip imperatives; chip mode mismatch; "
+        "verbatim refusal parroting (Problems 6, 7, 8, 9)",
+        "Edit advisor_system.md. Replace blanket rules with checklists. "
+        "Avoid verbatim refusal templates the model can pattern-match into "
+        "false negatives.",
+    ),
+    (
+        "Real data gap",
+        "Routine skip reasons (Problem 4)",
+        "Cross-cutting fix touching frontend + backend + agent. Documented; "
+        "deferred when time-boxed.",
+    ),
+]
+for mode, examples, fix in pattern_rows:
+    row = pattern_table.add_row().cells
+    row[0].text = mode
+    row[1].text = examples
+    row[2].text = fix
+doc.add_paragraph()
+doc.add_paragraph(
+    "Operating principle that emerged: the agent's discipline of refusing "
+    "to fabricate is correct and should not be relaxed. When the user "
+    "phrases a real question and the agent honestly punts, that's a "
+    "signal that a tool, a parameter, or a prompt rule needs adjustment — "
+    "almost never that the agent should be told to 'try harder' or 'just "
+    "answer'. Pushing the latter would trade honest gaps for confident "
+    "hallucinations, which is the worse failure mode."
+)
+doc.add_paragraph(
+    "Concretely, when triaging a future Heed Chat issue, ask in order: "
+    "(1) does any existing tool surface the data the question needs? "
+    "(2) if yes, does its response shape include the specific field? "
+    "(3) does the tool description tell the model to reach for it on this "
+    "phrasing? (4) does any prompt rule actively block the right "
+    "behaviour? Most fixes land at one of those layers."
 )
 
 

@@ -675,11 +675,15 @@ def execute_action(req: func.HttpRequest) -> func.HttpResponse:
         try:
             doc = container.read_item(item=doc_id, partition_key=USER_ID)
             routines = doc.get("items", [])
-        except Exception:
-            routines = []
+        except Exception as read_err:
+            if "404" in str(read_err) or "NotFound" in type(read_err).__name__:
+                routines = []
+            else:
+                logging.exception("add_routine: failed to read existing routines")
+                return _json_response({"ok": False, "error": "Could not read existing routines"}, 500)
 
         new_routine = {
-            "id": f"custom_{int(datetime.now(timezone.utc).timestamp() * 1000)}",
+            "id": f"custom_{uuid.uuid4().hex[:12]}",
             "name": name,
             "notes": notes,
             "frequency": frequency,

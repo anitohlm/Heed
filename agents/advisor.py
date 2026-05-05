@@ -515,7 +515,12 @@ async def stream_response(
     deployment = os.environ.get("OPENAI_DEPLOYMENT_ADVISOR", "heed-advisor")
     client = _client()
 
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    username = user_id if user_id and user_id != "demo" else None
+    if username:
+        system_content = f"The user's username is **{username}**. Greet them by name when it feels natural — especially on a first message or after a gap. Don't use it every sentence, just when it adds warmth.\n\n---\n\n{SYSTEM_PROMPT}"
+    else:
+        system_content = SYSTEM_PROMPT
+    messages = [{"role": "system", "content": system_content}]
     if conversation_history:
         trimmed = conversation_history[-10:] if len(conversation_history) > 10 else conversation_history
         messages.extend(trimmed)

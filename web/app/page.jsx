@@ -434,7 +434,7 @@ function mapApiContext(ctx) {
 }
 
 // ── useChat hook ───────────────────────────────────────────────
-function useChat({ onLightenRoutine, onTaskAdded } = {}) {
+function useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded, onViewTask } = {}) {
   const [messages, setMessages] = useState(() => {
     if (typeof window === 'undefined') return []
     try {
@@ -575,6 +575,7 @@ function useChat({ onLightenRoutine, onTaskAdded } = {}) {
       const result = await resp.json()
       if (!result.ok) throw new Error(result.error || 'Failed')
       let displaySummary = result.summary
+      let resultItem = null
       if (action.action_type === 'lighten_routine') {
         const itemsToStrike = (action.payload?.preview?.remove || []).map(x => typeof x === 'object' ? x.name : x)
         const keep = action.payload?.preview?.keep || []
@@ -582,16 +583,19 @@ function useChat({ onLightenRoutine, onTaskAdded } = {}) {
           displaySummary = `Removed: ${itemsToStrike.join(', ')}${keep.length > 0 ? ` · Kept: ${keep.join(', ')}` : ''}`
         }
         onLightenRoutine?.(action.routine_id, itemsToStrike.length > 0 ? itemsToStrike : null)
-      }
-      if (action.action_type === 'add_task' && result.ok) {
-        onTaskAdded?.()
+      } else if (action.action_type === 'add_task' && result.task) {
+        resultItem = result.task
+        onTaskAdded?.(result.task)
+      } else if (action.action_type === 'add_routine' && result.routine) {
+        resultItem = result.routine
+        onRoutineAdded?.(result.routine)
       }
       setMessages(msgs => msgs.map((m, i) => {
         if (i !== messageIndex) return m
         return {
           ...m,
           actions: m.actions.map((a, j) =>
-            j === actionIndex ? { ...a, confirmed: true, summary: displaySummary } : a
+            j === actionIndex ? { ...a, confirmed: true, summary: displaySummary, result: resultItem } : a
           ),
         }
       }))
@@ -606,9 +610,9 @@ function useChat({ onLightenRoutine, onTaskAdded } = {}) {
         }
       }))
     }
-  }, [messages])
+  }, [messages, onLightenRoutine, onTaskAdded, onRoutineAdded])
 
-  return { messages, input, setInput, thinking, streaming, busy, send, executeAction }
+  return { messages, input, setInput, thinking, streaming, busy, send, executeAction, onViewTask }
 }
 
 // ── useMic hook ────────────────────────────────────────────────
@@ -2018,7 +2022,7 @@ function renderMarkdown(text) {
   })
 }
 
-function Bubble({ role, content, streaming: isStreaming, actions, chips, onConfirm, onChipClick }) {
+function Bubble({ role, content, streaming: isStreaming, actions, chips, onConfirm, onChipClick, onViewTask }) {
   const [activePreviewIndex, setActivePreviewIndex] = useState(null)
   const isUser = role === 'user'
   const hasActions = !isUser && actions?.length > 0
@@ -2044,6 +2048,28 @@ function Bubble({ role, content, streaming: isStreaming, actions, chips, onConfi
           <div style={{ borderTop: `1px solid ${C.hairline}`, marginTop: 12, paddingTop: 10 }}>
             {actions.map((action, i) => {
               if (action.confirmed) {
+                if (action.action_type === 'add_task' && action.result) {
+                  return (
+                    <div key={i} style={{ background: '#f0faf0', border: '1.5px solid #7c9e6e', borderRadius: 10, padding: '8px 12px', marginBottom: 6, animation: 'heed-fadeIn 0.3s ease' }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: '#4a7a4a', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 3 }}>✓ Task added</div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#2d4a2d' }}>{action.payload?.name || action.result?.name}</div>
+                      {onViewTask && action.result && (
+                        <button onClick={() => onViewTask(action.result)} style={{ fontSize: 11, color: C.warmDark, fontWeight: 600, background: 'none', border: 'none', padding: '4px 0 0', cursor: 'pointer', fontFamily: 'inherit' }}>View →</button>
+                      )}
+                    </div>
+                  )
+                }
+                if (action.action_type === 'add_routine' && action.result) {
+                  const r = action.result
+                  return (
+                    <div key={i} style={{ background: '#f5edde', border: '1.5px solid #c8a96e', borderRadius: 10, padding: '8px 12px', marginBottom: 6, animation: 'heed-fadeIn 0.3s ease' }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: '#a06c20', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 3 }}>↻ Routine added</div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#3d2b1f' }}>{r.name}</div>
+                      <div style={{ fontSize: 11, color: '#9e7a40', marginTop: 2 }}>{r.frequency} · {(r.items || []).length} items · {r.importance}</div>
+                      <div style={{ fontSize: 11, color: C.warmDark, fontWeight: 600, marginTop: 4 }}>Edit in Tracks →</div>
+                    </div>
+                  )
+                }
                 return (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: C.sageSoft, borderRadius: 8, marginBottom: 6, animation: 'heed-fadeIn 0.3s ease' }}>
                     <span style={{ color: C.sage, fontSize: 15, flexShrink: 0 }}>✓</span>
@@ -3663,8 +3689,8 @@ function MicButton({ listening, onToggle, disabled }) {
   )
 }
 
-function AskTab({ prefill = '', autoSend = false, onAutoSendDone, onLightenRoutine, onTaskAdded }) {
-  const { messages, input, setInput, thinking, streaming, busy, send, executeAction } = useChat({ onLightenRoutine, onTaskAdded })
+function AskTab({ prefill = '', autoSend = false, onAutoSendDone, onLightenRoutine, onTaskAdded, onRoutineAdded, onViewTask }) {
+  const { messages, input, setInput, thinking, streaming, busy, send, executeAction } = useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded, onViewTask })
   const scrollRef = useRef(null)
   const { listening, toggle: toggleMic, supported: micSupported } = useMic(useCallback((text, isFinal) => { if (isFinal) send(text) }, [send]))
   useEffect(() => {
@@ -3707,6 +3733,7 @@ function AskTab({ prefill = '', autoSend = false, onAutoSendDone, onLightenRouti
               actions={m.actions} chips={m.chips}
               onConfirm={(actionIndex) => executeAction(i, actionIndex)}
               onChipClick={(text) => send(text)}
+              onViewTask={onViewTask}
             />
           ))}
           {thinking !== null && <ThinkingBubble steps={thinking}/>}
@@ -5954,8 +5981,8 @@ function HeedFAB({ onAddTask, onAskHeed, onAddRoutine }) {
 }
 
 // ── AskInlineModal ─────────────────────────────────────────────
-function AskInlineModal({ open, onClose, onLightenRoutine }) {
-  const { messages, input, setInput, thinking, streaming, busy, send, executeAction } = useChat({ onLightenRoutine })
+function AskInlineModal({ open, onClose, onLightenRoutine, onTaskAdded, onRoutineAdded, onViewTask }) {
+  const { messages, input, setInput, thinking, streaming, busy, send, executeAction } = useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded, onViewTask })
   const scrollRef = useRef(null)
   const inputRef = useRef(null)
   const { listening, toggle: toggleMic, supported: micSupported } = useMic(useCallback((text, isFinal) => { if (isFinal) send(text) }, [send]))
@@ -6008,6 +6035,7 @@ function AskInlineModal({ open, onClose, onLightenRoutine }) {
                 actions={m.actions} chips={m.chips}
                 onConfirm={(actionIndex) => executeAction(i, actionIndex)}
                 onChipClick={(text) => send(text)}
+                onViewTask={onViewTask}
               />
             ))}
             {thinking !== null && <ThinkingBubble steps={thinking}/>}
@@ -8154,7 +8182,7 @@ export default function HeedApp() {
         <div key={tab} style={{ animation: 'heed-tab-in 0.28s cubic-bezier(0.32,0.72,0,1) both', display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
           {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} plans={plansHook.plans} upcomingContexts={upcomingContexts} skippedTasks={skippedTasks} userName={userName} efMode={efMode} onSetEfMode={handleSetEfMode} onMarkDone={handleMarkDone} onSkip={handleSkip} onUnskip={handleUnskip} onMarkRoutineDone={handleMarkRoutineDone} onSkipRoutineToday={handleSkipRoutineToday} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAskHeed={handleAskHeed} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onAddTask={() => setModalOpen(true)} onEditTask={handleEditTask} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }} onNavigateToPlans={() => setTab('context')}/>}
           {tab === 'calendar' && <CalendarTab tasks={apiTasks} contexts={[...(apiContexts.active||[]), ...(apiContexts.upcoming||[])]} routines={routines} recentSkips={recentSkips} onReschedule={handleReschedule} onMarkDone={handleMarkDone} onSkip={handleSkip} onAddTask={() => setModalOpen(true)} onAddContext={() => setContextModalOpen(true)} onEditRoutine={handleEditRoutine} onApplyRetroSuggestion={handleApplyRetroSuggestion}/>}
-          {tab === 'ask' && <AskTab prefill={askPrefill} autoSend={askAutoSend} onAutoSendDone={() => { setAskAutoSend(false); setAskPrefill('') }} onLightenRoutine={handleLightenRoutine} onTaskAdded={() => fetch(`${FUNCTIONS_URL}/api/tasks`).then(r => r.json()).then(d => Array.isArray(d) && setApiTasks(d)).catch(() => {})}/>}
+          {tab === 'ask' && <AskTab prefill={askPrefill} autoSend={askAutoSend} onAutoSendDone={() => { setAskAutoSend(false); setAskPrefill('') }} onLightenRoutine={handleLightenRoutine} onTaskAdded={task => { if (task) setApiTasks(t => [...t, task]); else fetch(`${FUNCTIONS_URL}/api/tasks`).then(r => r.json()).then(d => Array.isArray(d) && setApiTasks(d)).catch(() => {}) }} onRoutineAdded={handleAddRoutine} onViewTask={task => { setEditingTask(task); setModalOpen(true) }}/>}
           {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onMarkRoutineDay={handleMarkRoutineDay} onEditTask={handleEditTask} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }}/>}
           {tab === 'context' && <LifeTab upcoming={apiContexts.upcoming} active={apiContexts.active} activeContext={activeContext} plansHook={plansHook} onAddContext={() => setContextModalOpen(true)} onQuickContext={type => setQuickContextType(type)} onImBetter={() => setRecoveryOpen(true)} onExtend={handleExtendContext} onDetailOpen={handleDetailOpen}/>}
         </div>
@@ -8167,7 +8195,7 @@ export default function HeedApp() {
       <AddTaskModal open={modalOpen} onClose={() => { setModalOpen(false); setEditingTask(null) }} onSubmit={handleAddTask} onDelete={handleDeleteTask} initialData={editingTask} customCategories={customCategories}/>
       <BuildRoutineScreen open={routineModalOpen} onClose={() => { setRoutineModalOpen(false); setEditingRoutine(null); setBuildRoutineTask(null) }} onSubmit={handleAddRoutine} initialData={editingRoutine} seedTask={buildRoutineTask} tasks={displayTasks}/>
       <AddContextModal open={contextModalOpen} onClose={() => setContextModalOpen(false)} onSubmit={handleAddContext}/>
-      <AskInlineModal open={askOpen} onClose={() => setAskOpen(false)} onLightenRoutine={handleLightenRoutine}/>
+      <AskInlineModal open={askOpen} onClose={() => setAskOpen(false)} onLightenRoutine={handleLightenRoutine} onTaskAdded={task => { if (task) setApiTasks(t => [...t, task]); else fetch(`${FUNCTIONS_URL}/api/tasks`).then(r => r.json()).then(d => Array.isArray(d) && setApiTasks(d)).catch(() => {}) }} onRoutineAdded={handleAddRoutine} onViewTask={task => { setEditingTask(task); setModalOpen(true) }}/>
       <TaskOptionsSheet task={taskOptionsTask} onClose={() => setTaskOptionsTask(null)} onMarkDone={handleMarkDone} onSkip={handleSkip} onEdit={handleEditTask} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }}/>
       <AddToRoutineSheet task={addToRoutineTask} routines={routines} onClose={() => setAddToRoutineTask(null)} onSelect={handleAddTaskToRoutine}/>
       <QuickContextSheet type={quickContextType} onClose={() => setQuickContextType(null)} onActivate={handleQuickContext}/>

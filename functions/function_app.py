@@ -661,6 +661,51 @@ def execute_action(req: func.HttpRequest) -> func.HttpResponse:
             return _json_response({"ok": False, "error": str(e)}, 500)
         return _json_response({"ok": True, "summary": f"Added: {name}", "task": task}, 201)
 
+    elif action_type == "add_routine":
+        name      = payload.get("name", "").strip()
+        items     = payload.get("items", [])
+        frequency = payload.get("frequency", "daily")
+        importance = payload.get("importance", "core")
+        notes     = payload.get("notes")
+        if not name or not items:
+            return _json_response({"ok": False, "error": "name and items required"}, 400)
+
+        doc_id = f"{USER_ID}__routines"
+        container = _ensure_user_state_container()
+        try:
+            doc = container.read_item(item=doc_id, partition_key=USER_ID)
+            routines = doc.get("items", [])
+        except Exception:
+            routines = []
+
+        new_routine = {
+            "id": f"custom_{int(datetime.now(timezone.utc).timestamp() * 1000)}",
+            "name": name,
+            "notes": notes,
+            "frequency": frequency,
+            "importance": importance,
+            "items": [i.strip() for i in items if isinstance(i, str) and i.strip()],
+            "completion14d": [False] * 14,
+            "insight": "Just added — building up history.",
+            "suggestion": None,
+            "weekRate": "no data yet",
+            "startDate": None,
+            "endDate": None,
+        }
+        routines.append(new_routine)
+        try:
+            container.upsert_item({
+                "id": doc_id,
+                "user_id": USER_ID,
+                "kind": "routines",
+                "items": routines,
+                "updated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            })
+        except Exception as e:
+            logging.exception("add_routine upsert failed")
+            return _json_response({"ok": False, "error": str(e)}, 500)
+        return _json_response({"ok": True, "summary": f"Routine added: {name}", "routine": new_routine})
+
     else:
         return _error(f"Unknown action_type: {action_type}", 400)
 

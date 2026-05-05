@@ -7678,7 +7678,7 @@ function UsernameGate({ onComplete }) {
     setStatus('checking')
     debounceRef.current = setTimeout(async () => {
       try {
-        const res = await fetch(`${FUNCTIONS_URL}/api/check_username?u=${encodeURIComponent(value)}`, { headers: { 'X-User-ID': getUsername() || 'demo' } })
+        const res = await fetch(`${FUNCTIONS_URL}/api/check_username?u=${encodeURIComponent(value)}`)
         const data = await res.json()
         setStatus(data.available ? 'available' : 'taken')
       } catch {
@@ -7695,7 +7695,7 @@ function UsernameGate({ onComplete }) {
     setErrorMsg('')
     try {
       if (mode === 'returning') {
-        const res = await fetch(`${FUNCTIONS_URL}/api/check_username?u=${encodeURIComponent(value)}`, { headers: { 'X-User-ID': getUsername() || 'demo' } })
+        const res = await fetch(`${FUNCTIONS_URL}/api/check_username?u=${encodeURIComponent(value)}`)
         const data = await res.json()
         if (data.available) { setStatus('not_found'); setErrorMsg('Username not found — try again'); return }
         localStorage.setItem('heed.username', value)
@@ -7703,7 +7703,7 @@ function UsernameGate({ onComplete }) {
       } else {
         const res = await fetch(`${FUNCTIONS_URL}/api/register_username`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-User-ID': getUsername() || 'demo' },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username: value }),
         })
         const data = await res.json()

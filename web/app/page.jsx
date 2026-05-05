@@ -2586,6 +2586,7 @@ function FocusTaskRow({ task, delay = 0, onMarkDone }) {
   }, [task, onMarkDone])
   return (
     <div
+      onClick={handleCheck}
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -2602,6 +2603,7 @@ function FocusTaskRow({ task, delay = 0, onMarkDone }) {
         overflow: 'hidden',
         userSelect: 'none',
         boxShadow: C.shadowSoft,
+        cursor: 'pointer',
       }}
     >
       <button

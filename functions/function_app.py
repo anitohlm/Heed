@@ -363,6 +363,8 @@ def parse_capture(req: func.HttpRequest) -> func.HttpResponse:
         body = req.get_json()
     except ValueError:
         return _error("Invalid JSON body")
+    if not body:
+        return _error("Request body is required")
 
     text = (body.get("text") or "").strip()
     if not text:

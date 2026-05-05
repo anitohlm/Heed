@@ -45,7 +45,8 @@ from agents.models import AgentAction
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
 
-USER_ID = "usr_heed_demo_001"  # Single-user build — no auth in scope
+def _get_user_id(req: func.HttpRequest) -> str:
+    return req.headers.get("X-User-ID") or "demo"
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -111,6 +112,7 @@ async def advisor_stream(req: func.HttpRequest) -> func.HttpResponse:
 
     message = body.get("message", "").strip()
     history = body.get("history", [])
+    user_id = _get_user_id(req)
 
     if not message:
         return _error("message is required")
@@ -120,7 +122,7 @@ async def advisor_stream(req: func.HttpRequest) -> func.HttpResponse:
 
     chunks: list[str] = []
     try:
-        async for event in stream_response(USER_ID, message, history):
+        async for event in stream_response(user_id, message, history):
             chunks.append(json.dumps(event, default=str))
     except Exception as e:
         logging.exception("advisor_stream agent failed")
@@ -148,9 +150,11 @@ def tasks(req: func.HttpRequest) -> func.HttpResponse:
             "Access-Control-Allow-Headers": "Content-Type, X-User-ID",
         })
 
+    user_id = _get_user_id(req)
+
     if req.method == "GET":
         try:
-            task_list = cosmos_tool.get_active_tasks(USER_ID)
+            task_list = cosmos_tool.get_active_tasks(user_id)
             return _json_response([t.model_dump(mode="json") for t in task_list])
         except Exception as e:
             logging.exception("tasks GET failed")
@@ -172,7 +176,7 @@ def tasks(req: func.HttpRequest) -> func.HttpResponse:
 
         task = {
             "id": f"task_{uuid.uuid4().hex[:12]}",
-            "user_id": USER_ID,
+            "user_id": user_id,
             "name": body["name"],
             "description": body.get("description"),
             "category": body["category"],
@@ -202,8 +206,10 @@ def task_by_id(req: func.HttpRequest) -> func.HttpResponse:
             "Access-Control-Allow-Headers": "Content-Type, X-User-ID",
         })
 
+    user_id = _get_user_id(req)
+
     if req.method == "DELETE":
-        task = cosmos_tool.get_task(task_id, USER_ID)
+        task = cosmos_tool.get_task(task_id, user_id)
         if not task:
             return _error("Task not found", 404)
         task_dict = task.model_dump(mode="json")
@@ -219,7 +225,7 @@ def task_by_id(req: func.HttpRequest) -> func.HttpResponse:
         except ValueError:
             return _error("Invalid JSON body")
 
-        task = cosmos_tool.get_task(task_id, USER_ID)
+        task = cosmos_tool.get_task(task_id, user_id)
         if not task:
             return _error("Task not found", 404)
 
@@ -446,6 +452,8 @@ def completions(req: func.HttpRequest) -> func.HttpResponse:
             "Access-Control-Allow-Headers": "Content-Type, X-User-ID",
         })
 
+    user_id = _get_user_id(req)
+
     try:
         body = req.get_json()
     except ValueError:
@@ -458,10 +466,10 @@ def completions(req: func.HttpRequest) -> func.HttpResponse:
         return _error("task_id and event_type required")
 
     if event_type == "done":
-        result = action_tools.mark_task_done(task_id, USER_ID, note=body.get("note"))
+        result = action_tools.mark_task_done(task_id, user_id, note=body.get("note"))
     elif event_type == "skipped":
         result = action_tools.skip_task(
-            task_id, USER_ID,
+            task_id, user_id,
             skip_reason=body.get("skip_reason", "other"),
             note=body.get("note"),
         )
@@ -469,7 +477,7 @@ def completions(req: func.HttpRequest) -> func.HttpResponse:
         if not body.get("defer_until"):
             return _error("defer_until required for deferred event")
         result = action_tools.defer_task(
-            task_id, USER_ID,
+            task_id, user_id,
             defer_until=body["defer_until"],
             reason=body.get("note"),
         )
@@ -491,10 +499,12 @@ def context(req: func.HttpRequest) -> func.HttpResponse:
             "Access-Control-Allow-Headers": "Content-Type, X-User-ID",
         })
 
+    user_id = _get_user_id(req)
+
     if req.method == "GET":
         try:
-            active = cosmos_tool.get_active_contexts(USER_ID)
-            upcoming = cosmos_tool.get_upcoming_contexts(USER_ID)
+            active = cosmos_tool.get_active_contexts(user_id)
+            upcoming = cosmos_tool.get_upcoming_contexts(user_id)
             return _json_response({
                 "active": [c.model_dump(mode="json") for c in active],
                 "upcoming": [c.model_dump(mode="json") for c in upcoming],
@@ -510,7 +520,7 @@ def context(req: func.HttpRequest) -> func.HttpResponse:
             return _error("Invalid JSON body")
 
         result = action_tools.add_user_context(
-            user_id=USER_ID,
+            user_id=user_id,
             context_type=body.get("context_type", "other"),
             start_date=body.get("start_date", ""),
             end_date=body.get("end_date", ""),
@@ -532,10 +542,12 @@ def today_view(req: func.HttpRequest) -> func.HttpResponse:
             "Access-Control-Allow-Headers": "Content-Type, X-User-ID",
         })
 
+    user_id = _get_user_id(req)
+
     try:
         from agents.advisor import _today_view_json
         return func.HttpResponse(
-            _today_view_json(USER_ID),
+            _today_view_json(user_id),
             status_code=200,
             mimetype="application/json",
             headers={"Access-Control-Allow-Origin": "*"},
@@ -561,6 +573,8 @@ def execute_action(req: func.HttpRequest) -> func.HttpResponse:
             "Access-Control-Allow-Headers": "Content-Type, X-User-ID",
         })
 
+    user_id = _get_user_id(req)
+
     try:
         body = req.get_json()
     except ValueError:
@@ -576,7 +590,7 @@ def execute_action(req: func.HttpRequest) -> func.HttpResponse:
         task_id = payload.get("task_id")
         if not task_id:
             return _error("task_id required for mark_done")
-        result = action_tools.mark_task_done(task_id, USER_ID, note=payload.get("note"))
+        result = action_tools.mark_task_done(task_id, user_id, note=payload.get("note"))
         if result.get("success"):
             return _json_response({"ok": True, "summary": "Task marked done"})
         return _json_response({"ok": False, "error": result.get("error", "Failed")}, 400)
@@ -586,7 +600,7 @@ def execute_action(req: func.HttpRequest) -> func.HttpResponse:
         if not task_id:
             return _error("task_id required for skip")
         result = action_tools.skip_task(
-            task_id, USER_ID,
+            task_id, user_id,
             skip_reason=payload.get("skip_reason", "other"),
             note=payload.get("note"),
         )
@@ -602,7 +616,7 @@ def execute_action(req: func.HttpRequest) -> func.HttpResponse:
         if not defer_until:
             return _error("defer_until required for defer")
         result = action_tools.defer_task(
-            task_id, USER_ID,
+            task_id, user_id,
             defer_until=defer_until,
             reason=payload.get("note"),
         )
@@ -613,7 +627,7 @@ def execute_action(req: func.HttpRequest) -> func.HttpResponse:
     elif action_type == "lighten_routine":
         routine_id = payload.get("routine_id") or "default"
         result = action_tools.lighten_routine(
-            routine_id, USER_ID,
+            routine_id, user_id,
             items_to_keep=payload.get("keep", []),
         )
         if result.get("success"):
@@ -625,7 +639,7 @@ def execute_action(req: func.HttpRequest) -> func.HttpResponse:
 
     elif action_type == "add_context":
         result = action_tools.add_user_context(
-            user_id=USER_ID,
+            user_id=user_id,
             context_type=payload.get("context_type", "other"),
             start_date=payload.get("start_date", ""),
             end_date=payload.get("end_date", ""),
@@ -643,7 +657,7 @@ def execute_action(req: func.HttpRequest) -> func.HttpResponse:
             return _json_response({"ok": False, "error": "name is required for add_task"}, 400)
         task = {
             "id": f"task_{uuid.uuid4().hex[:12]}",
-            "user_id": USER_ID,
+            "user_id": user_id,
             "name": name,
             "description": payload.get("description"),
             "category": category,
@@ -672,10 +686,10 @@ def execute_action(req: func.HttpRequest) -> func.HttpResponse:
         if not name or not items:
             return _json_response({"ok": False, "error": "name and items required"}, 400)
 
-        doc_id = f"{USER_ID}__routines"
+        doc_id = f"{user_id}__routines"
         container = _ensure_user_state_container()
         try:
-            doc = container.read_item(item=doc_id, partition_key=USER_ID)
+            doc = container.read_item(item=doc_id, partition_key=user_id)
             routines = doc.get("items", [])
         except Exception as read_err:
             if "404" in str(read_err) or "NotFound" in type(read_err).__name__:
@@ -702,7 +716,7 @@ def execute_action(req: func.HttpRequest) -> func.HttpResponse:
         try:
             container.upsert_item({
                 "id": doc_id,
-                "user_id": USER_ID,
+                "user_id": user_id,
                 "kind": "routines",
                 "items": routines,
                 "updated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
@@ -833,16 +847,17 @@ def user_state(req: func.HttpRequest) -> func.HttpResponse:
             "Access-Control-Allow-Headers": "Content-Type, X-User-ID",
         })
 
+    user_id = _get_user_id(req)
     kind = (req.route_params.get("kind") or "").lower()
     if kind not in ("routines", "plans"):
         return _error("kind must be 'routines' or 'plans'")
 
-    doc_id = f"{USER_ID}__{kind}"
+    doc_id = f"{user_id}__{kind}"
     container = _ensure_user_state_container()
 
     if req.method == "GET":
         try:
-            doc = container.read_item(item=doc_id, partition_key=USER_ID)
+            doc = container.read_item(item=doc_id, partition_key=user_id)
             return _json_response({"items": doc.get("items", [])})
         except Exception:
             # Not found is the common case for first-time users.
@@ -850,7 +865,7 @@ def user_state(req: func.HttpRequest) -> func.HttpResponse:
 
     if req.method == "DELETE":
         try:
-            container.delete_item(item=doc_id, partition_key=USER_ID)
+            container.delete_item(item=doc_id, partition_key=user_id)
         except Exception:
             pass  # idempotent — already absent is success
         return _json_response({"ok": True})
@@ -867,7 +882,7 @@ def user_state(req: func.HttpRequest) -> func.HttpResponse:
             return _error("Too many items (max 500 per kind)", 413)
         doc = {
             "id": doc_id,
-            "user_id": USER_ID,
+            "user_id": user_id,
             "kind": kind,
             "items": items,
             "updated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
@@ -897,6 +912,7 @@ def reset_user_data(req: func.HttpRequest) -> func.HttpResponse:
             "Access-Control-Allow-Headers": "Content-Type, X-User-ID",
         })
 
+    user_id = _get_user_id(req)
     db = cosmos_tool._get_database()
     wiped = {}
     for cname in ("tasks", "completions", "user_context", _USER_STATE_CONTAINER_NAME):
@@ -904,11 +920,11 @@ def reset_user_data(req: func.HttpRequest) -> func.HttpResponse:
             container = db.get_container_client(cname)
             # Query all docs for this user, then delete each.
             query = "SELECT c.id, c.user_id FROM c WHERE c.user_id = @uid"
-            params = [{"name": "@uid", "value": USER_ID}]
+            params = [{"name": "@uid", "value": user_id}]
             count = 0
             for item in container.query_items(query=query, parameters=params, enable_cross_partition_query=True):
                 try:
-                    container.delete_item(item=item["id"], partition_key=item.get("user_id", USER_ID))
+                    container.delete_item(item=item["id"], partition_key=item.get("user_id", user_id))
                     count += 1
                 except Exception:
                     pass
@@ -937,6 +953,7 @@ def seed_demo_data(req: func.HttpRequest) -> func.HttpResponse:
             "Access-Control-Allow-Headers": "Content-Type, X-User-ID",
         })
 
+    user_id = _get_user_id(req)
     from datetime import datetime, timezone, timedelta
     import uuid
 
@@ -948,11 +965,11 @@ def seed_demo_data(req: func.HttpRequest) -> func.HttpResponse:
             container = db.get_container_client(cname)
             for item in container.query_items(
                 query="SELECT c.id, c.user_id FROM c WHERE c.user_id = @uid",
-                parameters=[{"name": "@uid", "value": USER_ID}],
+                parameters=[{"name": "@uid", "value": user_id}],
                 enable_cross_partition_query=True,
             ):
                 try:
-                    container.delete_item(item=item["id"], partition_key=item.get("user_id", USER_ID))
+                    container.delete_item(item=item["id"], partition_key=item.get("user_id", user_id))
                 except Exception:
                     pass
         except Exception:
@@ -984,7 +1001,7 @@ def seed_demo_data(req: func.HttpRequest) -> func.HttpResponse:
     for t in seed_tasks:
         task_doc = {
             "id": f"task_seed_{uuid.uuid4().hex[:10]}",
-            "user_id": USER_ID,
+            "user_id": user_id,
             "name": t["name"],
             "description": t.get("description"),
             "category": t["category"],
@@ -1022,8 +1039,8 @@ def seed_demo_data(req: func.HttpRequest) -> func.HttpResponse:
     ]
     try:
         state_container.upsert_item({
-            "id": f"{USER_ID}__routines",
-            "user_id": USER_ID,
+            "id": f"{user_id}__routines",
+            "user_id": user_id,
             "kind": "routines",
             "items": routines,
         })
@@ -1077,8 +1094,8 @@ def seed_demo_data(req: func.HttpRequest) -> func.HttpResponse:
     ]
     try:
         state_container.upsert_item({
-            "id": f"{USER_ID}__plans",
-            "user_id": USER_ID,
+            "id": f"{user_id}__plans",
+            "user_id": user_id,
             "kind": "plans",
             "items": plans,
         })
@@ -1102,7 +1119,7 @@ def memory_keeper_timer(timer: func.TimerRequest) -> None:
     """Runs every 6 hours. Computes cadence updates for all active tasks."""
     logging.info("Memory Keeper timer triggered")
     try:
-        updates = run_for_user(USER_ID)
+        updates = run_for_user("demo")
         logging.info(f"Memory Keeper completed: {len(updates)} tasks processed")
     except Exception as e:
         logging.exception(f"Memory Keeper failed: {e}")
@@ -1118,8 +1135,10 @@ def memory_keeper_run(req: func.HttpRequest) -> func.HttpResponse:
             "Access-Control-Allow-Headers": "Content-Type, X-User-ID",
         })
 
+    user_id = _get_user_id(req)
+
     try:
-        updates = run_for_user(USER_ID)
+        updates = run_for_user(user_id)
         return _json_response({
             "success": True,
             "tasks_processed": len(updates),

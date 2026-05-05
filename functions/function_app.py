@@ -658,6 +658,7 @@ def execute_action(req: func.HttpRequest) -> func.HttpResponse:
         # Same allowlist as PATCH /api/tasks/{task_id}, kept here so the
         # agent can drive edits via propose_action without bouncing through
         # the REST endpoint.
+        task_id = payload.get("task_id")
         if not task_id:
             return _json_response({"ok": False, "error": "task_id required for edit_task"}, 400)
         existing = cosmos_tool.get_task(task_id, user_id)

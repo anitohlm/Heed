@@ -630,13 +630,18 @@ async def stream_response(
                             action_type, (action_type.replace("_", " ").title(), "")
                         )
                         payload = args.get("payload") or {}
+                        # task_id / routine_id may land at top-level or inside
+                        # payload depending on how the LLM serialises the call.
+                        # Prefer top-level; fall back to payload to be safe.
+                        task_id = args.get("task_id") or payload.get("task_id")
+                        routine_id = args.get("routine_id") or payload.get("routine_id")
                         yield {
                             "type": "action",
                             "action_type": action_type,
                             "label": payload.get("label", default_label),
                             "emoji": payload.get("emoji", default_emoji),
-                            "task_id": args.get("task_id"),
-                            "routine_id": args.get("routine_id"),
+                            "task_id": task_id,
+                            "routine_id": routine_id,
                             "payload": payload,
                         }
                     elif tc["name"] == "suggest_followups" and args:

@@ -6868,7 +6868,7 @@ function Toast({ message, onView, onUndo, onDismiss, reasons, onReason }) {
               <button onClick={onUndo} style={{ marginLeft: 'auto', background: 'transparent', border: `1px solid ${C.inkMute}`, color: C.inkSoft, padding: '3px 10px', borderRadius: 6, fontSize: 11, cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit', whiteSpace: 'nowrap' }}>Undo</button>
             )}
             {onView && (
-              <button onClick={onView} style={{ marginLeft: onUndo ? 4 : 'auto', background: 'transparent', border: `1px solid ${C.sage}`, color: C.sage, padding: '3px 10px', borderRadius: 6, fontSize: 11, cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit', whiteSpace: 'nowrap' }}>View Tracks</button>
+              <button onClick={onView} style={{ marginLeft: onUndo ? 4 : 'auto', background: 'transparent', border: `1px solid ${C.sage}`, color: C.sage, padding: '3px 10px', borderRadius: 6, fontSize: 11, cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit', whiteSpace: 'nowrap' }}>View →</button>
             )}
           </div>
         )}
@@ -8402,7 +8402,7 @@ export default function HeedApp() {
       />
       <ShareCardSheet routine={shareCtx} onClose={handleShareClose}/>
       <SettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} userName={userName} onUserName={handleUserName} theme={theme} onTheme={handleSetTheme} customCategories={customCategories} onAddCategory={cat => setCustomCategories(cs => [...cs, cat])} customEventTypes={customEventTypes} onAddEventType={evt => setCustomEventTypes(es => [...es, evt])} onResetAllData={handleResetAllData} onLoadDemoData={handleLoadDemoData} efMode={efMode} onSetEfMode={handleSetEfMode}/>
-      {toast && <Toast message={toast.message} onView={toast.showView ? handleToastView : undefined} onUndo={toast.onUndo} onDismiss={() => setToast(null)} reasons={toast.reasons} onReason={toast.onReason}/>}
+      {toast && <Toast message={toast.message} onView={toast.onView || (toast.showView ? handleToastView : undefined)} onUndo={toast.onUndo} onDismiss={() => setToast(null)} reasons={toast.reasons} onReason={toast.onReason}/>}
       <HeedFAB onAddTask={() => setModalOpen(true)} onAskHeed={() => setAskOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)}/>
     </div>
   )

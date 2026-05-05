@@ -95,6 +95,22 @@ TOOLS = [
     {
         "type": "function",
         "function": {
+            "name": "get_user_routines",
+            "description": "List the user's saved routines (grouped daily/weekly checklists like 'Morning routine' or 'Evening wind-down'). Each routine has a name, a schedule, an items list (sub-tasks like 'Stretch', 'Vitamins', 'Make coffee'), and last-7-day completion stats. Use this for any question about routines specifically — 'what routines do I have', 'how's my morning routine going', 'which routine is slipping'. Routines are NOT the same as recurring tasks: they live in a separate store and have grouped sub-items.",
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_user_plans",
+            "description": "List the user's saved plans (multi-step goals like a project, savings goal, or upcoming event). Each plan has a type ('project' | 'goal' | 'event'), title, optional description, and structured progress data: project plans have a tasks checklist with done flags, goal plans have current/target/unit, event plans have an eventDate. Use this for any question about plans specifically — 'how's my Singapore trip plan', 'what plans do I have', 'how much more do I need to save'. Plans are NOT the same as tasks: they're broader, longer-running, and live in a separate store.",
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "get_task_history",
             "description": "Get all completion records for a specific task, including skips and reasons. Use when the user asks 'why did I skip X' or 'when did I last do Y'.",
             "parameters": {
@@ -251,6 +267,60 @@ def _dispatch_tool(name: str, arguments: dict, user_id: str) -> str:
                     for t in sortable
                 ],
             }, default=str)
+        elif name == "get_user_routines":
+            routines = cosmos_tool.get_user_state(user_id, "routines")
+            # Trim to fields the model needs — drop heavy / irrelevant ones.
+            shaped = []
+            for r in routines:
+                completion14d = r.get("completion14d") or []
+                last7 = completion14d[-7:] if isinstance(completion14d, list) else []
+                done_last7 = sum(1 for x in last7 if x)
+                shaped.append({
+                    "id": r.get("id"),
+                    "name": r.get("name"),
+                    "schedule": r.get("schedule"),
+                    "items": r.get("items") or [],
+                    "done_last_7_days": done_last7,
+                    "lightened_items": r.get("lightenedItems") or [],
+                    "suggestion": r.get("suggestion"),
+                })
+            return json.dumps({"routines": shaped}, default=str)
+        elif name == "get_user_plans":
+            plans = cosmos_tool.get_user_state(user_id, "plans")
+            # Project tasks can be long; cap at 20 to keep the prompt small.
+            shaped = []
+            for p in plans:
+                ptype = p.get("type")
+                base = {
+                    "id": p.get("id"),
+                    "type": ptype,
+                    "title": p.get("title"),
+                    "description": p.get("description"),
+                    "icon": p.get("icon"),
+                }
+                if ptype == "project":
+                    tasks = (p.get("tasks") or [])[:20]
+                    base["tasks"] = [
+                        {"label": t.get("label"), "done": bool(t.get("done"))}
+                        for t in tasks
+                    ]
+                    base["due_date"] = p.get("dueDate")
+                elif ptype == "goal":
+                    base["goal_kind"] = p.get("goalKind")
+                    base["target"] = p.get("target")
+                    base["current"] = p.get("current")
+                    base["unit"] = p.get("unit")
+                    base["target_date"] = p.get("targetDate")
+                    base["achieved"] = p.get("achieved")
+                elif ptype == "event":
+                    base["event_date"] = p.get("eventDate")
+                    tasks = (p.get("tasks") or [])[:20]
+                    base["tasks"] = [
+                        {"label": t.get("label"), "done": bool(t.get("done"))}
+                        for t in tasks
+                    ]
+                shaped.append(base)
+            return json.dumps({"plans": shaped}, default=str)
         elif name == "get_task_history":
             completions = cosmos_tool.get_completions(arguments["task_id"], user_id)
             return json.dumps({

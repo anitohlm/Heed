@@ -161,6 +161,28 @@ def get_upcoming_contexts(user_id: str, days_ahead: int = 30) -> list[UserContex
     return [UserContext(**_fix_item(i)) for i in items]
 
 
+def get_user_state(user_id: str, kind: str) -> list[dict]:
+    """
+    Read the user's stored routines or plans from the user_state container.
+    These live in a single doc per (user, kind) keyed `{user_id}__{kind}`,
+    written through by the frontend usePlans / routines hooks. Returns the
+    raw items list as plain dicts so the caller can shape them for the
+    agent without coupling to a Pydantic model.
+
+    kind must be 'routines' or 'plans'. Returns [] if the doc doesn't exist.
+    """
+    if kind not in ("routines", "plans"):
+        raise ValueError(f"kind must be 'routines' or 'plans', got {kind!r}")
+    container = _get_database().get_container_client("user_state")
+    doc_id = f"{user_id}__{kind}"
+    try:
+        doc = container.read_item(item=doc_id, partition_key=user_id)
+    except exceptions.CosmosResourceNotFoundError:
+        return []
+    items = doc.get("items")
+    return items if isinstance(items, list) else []
+
+
 def get_recent_completions(user_id: str, days_back: int = 30) -> list[Completion]:
     """All completions across all tasks in the last N days."""
     cutoff = (datetime.now(timezone.utc) - timedelta(days=days_back)).isoformat()

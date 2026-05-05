@@ -7723,11 +7723,42 @@ function UsernameGate({ onComplete }) {
   return (
     <div style={{ position: 'fixed', inset: 0, background: C.cream, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
       <div style={{ width: '100%', maxWidth: 360, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
-        <div style={{ fontSize: 48 }}>🦉</div>
-        <div style={{ fontFamily: 'Georgia, serif', fontSize: 22, fontWeight: 700, color: C.ink, textAlign: 'center' }}>
-          {mode === 'new' ? 'What should Heed call you?' : 'Welcome back'}
+
+        {/* Owl on branch */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: -4 }}>
+          <div style={{ animation: 'heed-owl-fly 1.1s cubic-bezier(0.22, 1, 0.36, 1) both' }}>
+            <div style={{ fontSize: 56, lineHeight: 1, animation: 'heed-bob 3s 1.15s ease-in-out infinite' }}>🦉</div>
+          </div>
+          <svg style={{ marginTop: -2, animation: 'heed-fadeIn 0.4s 1.0s both' }} width="220" height="30" viewBox="0 0 220 30" fill="none">
+            <path d="M6 22 Q50 13 110 15 Q165 17 214 11" stroke="#A07840" strokeWidth="4" strokeLinecap="round"/>
+            <path d="M72 14 Q77 6 85 2" stroke="#A07840" strokeWidth="2.5" strokeLinecap="round"/>
+            <path d="M148 14 Q154 5 162 1" stroke="#A07840" strokeWidth="2" strokeLinecap="round"/>
+            <ellipse cx="85" cy="2" rx="7" ry="4" fill="#8FAF6E" transform="rotate(-25 85 2)"/>
+            <ellipse cx="80" cy="6" rx="5.5" ry="3" fill="#7A9E5D" transform="rotate(-45 80 6)"/>
+            <ellipse cx="162" cy="1" rx="6" ry="3.5" fill="#8FAF6E" transform="rotate(20 162 1)"/>
+            <ellipse cx="157" cy="5" rx="5" ry="3" fill="#7A9E5D" transform="rotate(-5 157 5)"/>
+          </svg>
         </div>
-        <form onSubmit={handleSubmit} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 8 }}>
+
+        {/* Introduction */}
+        <div style={{ textAlign: 'center', animation: 'heed-fadeUp 0.45s 0.95s both' }}>
+          {mode === 'new' ? (
+            <>
+              <div style={{ fontFamily: 'Georgia, serif', fontSize: 24, fontWeight: 700, color: C.ink, marginBottom: 8 }}>Hi, I'm Heed.</div>
+              <div style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.65 }}>
+                Your memory keeper — tasks, routines,<br/>and everything you don't want to forget.
+              </div>
+            </>
+          ) : (
+            <div style={{ fontFamily: 'Georgia, serif', fontSize: 22, fontWeight: 700, color: C.ink }}>Welcome back</div>
+          )}
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 8, animation: 'heed-fadeUp 0.45s 1.1s both' }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: C.inkSoft, textAlign: 'center', marginBottom: 2 }}>
+            {mode === 'new' ? 'What should Heed call you?' : 'Enter your username to continue'}
+          </div>
           <div style={{ background: '#fff', border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8 }}
             onFocus={e => { e.currentTarget.style.borderColor = C.ochre }}
             onBlur={e => { e.currentTarget.style.borderColor = C.border }}>
@@ -7751,8 +7782,9 @@ function UsernameGate({ onComplete }) {
             {status === 'submitting' ? 'One moment…' : mode === 'new' ? 'Get started' : 'Sign in'}
           </button>
         </form>
+
         <button onClick={() => { setMode(mode === 'new' ? 'returning' : 'new'); setValue(''); setStatus('idle'); setErrorMsg('') }}
-          style={{ background: 'none', border: 'none', color: C.inkSoft, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>
+          style={{ background: 'none', border: 'none', color: C.inkSoft, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', animation: 'heed-fadeIn 0.4s 1.3s both' }}>
           {mode === 'new' ? 'I already have a username →' : '← Create a new username'}
         </button>
       </div>
@@ -8371,6 +8403,7 @@ export default function HeedApp() {
       {!username && <UsernameGate onComplete={u => setUsername(u)} />}
       <link href="https://fonts.googleapis.com/css2?family=Lora:wght@500;600;700&family=Nunito+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
       <style>{`
+        @keyframes heed-owl-fly { 0% { transform:translate(300px,-420px) rotate(-28deg) scale(0.35); opacity:0; } 18% { opacity:1; } 68% { transform:translate(8px,-10px) rotate(5deg) scale(1.06); } 85% { transform:translate(-3px,3px) rotate(-2deg) scale(0.97); } 100% { transform:translate(0,0) rotate(0deg) scale(1); opacity:1; } }
         @keyframes heed-fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
         @keyframes heed-dropdown { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
         @keyframes heed-tab-in { from { opacity:0; transform:translateX(12px); } to { opacity:1; transform:translateX(0); } }

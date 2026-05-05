@@ -78,14 +78,31 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "list_recent_tasks",
-            "description": "List the user's tasks sorted by creation time, newest first. Use this for questions like 'what's the latest task I added', 'what did I just create', 'show me my newest tasks', or any question that needs to know when tasks were added. Returns up to `limit` tasks with their id, name, category, importance, created_at, and next_due_at.",
+            "description": (
+                "List the user's active tasks. Sorted by creation time, newest first. "
+                "Returns each task's id, name, category, importance, created_at, and next_due_at. "
+                "USE THIS for any task-listing question that get_today_view doesn't cover, including: "
+                "'what's the latest task I added', 'show me my newest tasks', 'what tasks do I have "
+                "with no due date' (filter has_due_date=false), 'what tasks have a due date' "
+                "(has_due_date=true), 'how many active tasks do I have', and 'list all my tasks'. "
+                "When the user asks 'do I have any tasks without a due date' or similar, ALWAYS "
+                "call this with has_due_date=false rather than guessing from get_today_view "
+                "(which only surfaces overdue/today/upcoming, not undated)."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "limit": {
                         "type": "integer",
-                        "description": "Max tasks to return. Default 10, max 30.",
-                        "default": 10,
+                        "description": "Max tasks to return. Default 25, max 100.",
+                        "default": 25,
+                    },
+                    "has_due_date": {
+                        "type": "boolean",
+                        "description": (
+                            "Filter by whether next_due_at is set. true = only tasks with a due "
+                            "date, false = only undated tasks. Omit to return all tasks regardless."
+                        ),
                     },
                 },
                 "required": [],
@@ -263,8 +280,13 @@ def _dispatch_tool(name: str, arguments: dict, user_id: str) -> str:
             )
             return json.dumps({"results": results})
         elif name == "list_recent_tasks":
-            limit = max(1, min(int(arguments.get("limit", 10) or 10), 30))
+            limit = max(1, min(int(arguments.get("limit", 25) or 25), 100))
+            has_due_filter = arguments.get("has_due_date")  # True / False / None
             tasks = cosmos_tool.get_active_tasks(user_id)
+            if has_due_filter is True:
+                tasks = [t for t in tasks if t.next_due_at is not None]
+            elif has_due_filter is False:
+                tasks = [t for t in tasks if t.next_due_at is None]
             # Sort by created_at desc; tasks without created_at sink to the end.
             sortable = sorted(
                 tasks,
@@ -272,6 +294,8 @@ def _dispatch_tool(name: str, arguments: dict, user_id: str) -> str:
                 reverse=True,
             )[:limit]
             return json.dumps({
+                "total": len(tasks),
+                "returned": len(sortable),
                 "tasks": [
                     {
                         "id": t.id,

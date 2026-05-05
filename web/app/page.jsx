@@ -4087,11 +4087,21 @@ function normalizePlan(p) {
   return p
 }
 
+const DEMO_PLAN_IDS = new Set(['plan-1', 'plan-2', 'plan-3'])
+function stripDemoPlans(arr) { return arr.filter(p => !DEMO_PLAN_IDS.has(p.id)) }
+
 function usePlans(initialPlans) {
   const [plans, setPlans] = useState(() => {
     try {
       const saved = localStorage.getItem('heed_plans')
-      return saved ? JSON.parse(saved).map(normalizePlan) : initialPlans
+      if (!saved) return initialPlans
+      const parsed = JSON.parse(saved).map(normalizePlan)
+      if (isDemoMode()) return parsed
+      const real = stripDemoPlans(parsed)
+      if (real.length < parsed.length) {
+        try { real.length ? localStorage.setItem('heed_plans', JSON.stringify(real)) : localStorage.removeItem('heed_plans') } catch (_) {}
+      }
+      return real
     } catch {
       return initialPlans
     }
@@ -4106,16 +4116,27 @@ function usePlans(initialPlans) {
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         const items = data && Array.isArray(data.items) ? data.items : null
-        if (items && items.length > 0) setPlans(items.map(normalizePlan))
-        else {
-          // Backend empty — push current local copy up so a future device finds it.
-          let cur
-          try { cur = JSON.parse(localStorage.getItem('heed_plans') || '[]') } catch { cur = [] }
-          if (Array.isArray(cur) && cur.length > 0) {
+        if (items && items.length > 0) {
+          const real = stripDemoPlans(items)
+          setPlans(real.map(normalizePlan))
+          // If backend only had demo plans, wipe them
+          if (real.length < items.length) {
             fetch(`${FUNCTIONS_URL}/api/user_state/plans`, {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json', 'X-User-ID': getUsername() || 'demo' },
-              body: JSON.stringify({ items: cur }),
+              body: JSON.stringify({ items: real }),
+            }).catch(() => {})
+          }
+        } else {
+          // Backend empty — push current local copy up so a future device finds it.
+          let cur
+          try { cur = JSON.parse(localStorage.getItem('heed_plans') || '[]') } catch { cur = [] }
+          const realCur = stripDemoPlans(Array.isArray(cur) ? cur : [])
+          if (realCur.length > 0) {
+            fetch(`${FUNCTIONS_URL}/api/user_state/plans`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json', 'X-User-ID': getUsername() || 'demo' },
+              body: JSON.stringify({ items: realCur }),
             }).catch(() => {})
           }
         }
@@ -7858,12 +7879,11 @@ export default function HeedApp() {
   // so they can bring one back without searching the API once the toast Undo
   // window closes.
   const [skippedTasks, setSkippedTasks] = useState([])
-  const [routines, setRoutines] = useState(ROUTINES)
-  // Hydrate routines: try backend first, fall back to localStorage, then to
-  // the default ROUTINES seed. localStorage stays the synchronous source of
-  // truth so the UI is never blank waiting on the network. Backend is a
-  // write-through cache so a reinstall / different device finds the user's
-  // real routines instead of the demo seed.
+  const [routines, setRoutines] = useState(isDemoMode() ? ROUTINES : [])
+  const DEFAULT_ROUTINE_IDS = new Set(['morning', 'evening'])
+  // Hydrate routines: try backend first, fall back to localStorage. In real
+  // mode, the default ROUTINES seed is never used — start empty and wait for
+  // real data. Backend is write-through so a reinstall finds the user's data.
   const _routinesHydrated = useRef(false)
   useEffect(() => {
     if (typeof window === 'undefined' || _routinesHydrated.current) return
@@ -7873,7 +7893,10 @@ export default function HeedApp() {
       const raw = window.localStorage.getItem('heed.routines.v1')
       if (raw) {
         const parsed = JSON.parse(raw)
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        // In real mode, skip cached data that is purely the unseeded defaults
+        const isDefaultOnly = Array.isArray(parsed) && parsed.length > 0 &&
+          parsed.every(r => DEFAULT_ROUTINE_IDS.has(r.id))
+        if (Array.isArray(parsed) && parsed.length > 0 && (!isDefaultOnly || isDemoMode())) {
           local = parsed
           setRoutines(parsed)
         }
@@ -7885,8 +7908,8 @@ export default function HeedApp() {
       .then(data => {
         const items = data && Array.isArray(data.items) ? data.items : null
         if (items && items.length > 0) setRoutines(items)
-        else if (local) {
-          // Backend is empty but we have a local copy → push it up so a
+        else if (local && !local.every(r => DEFAULT_ROUTINE_IDS.has(r.id))) {
+          // Backend is empty but we have a real local copy → push it up so a
           // future reinstall on the same user finds it.
           fetch(`${FUNCTIONS_URL}/api/user_state/routines`, {
             method: 'PUT',

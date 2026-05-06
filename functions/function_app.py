@@ -863,6 +863,72 @@ def register_username(req: func.HttpRequest) -> func.HttpResponse:
         return _error("Could not register username", 500)
 
 
+@app.route(route="user_avatar", methods=["GET", "PUT", "OPTIONS"])
+def user_avatar(req: func.HttpRequest) -> func.HttpResponse:
+    if req.method == "OPTIONS":
+        return func.HttpResponse(status_code=204, headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, PUT, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, X-User-ID",
+        })
+
+    user_id = _get_user_id(req)
+
+    if req.method == "GET":
+        container = _ensure_users_container()
+        try:
+            doc = container.read_item(item=user_id, partition_key=user_id)
+            return _json_response({"avatar_b64": doc.get("avatar_b64")})
+        except CosmosResourceNotFoundError:
+            return _json_response({"avatar_b64": None})
+        except Exception as e:
+            return _error(str(e), 500)
+
+    if req.method == "PUT":
+        try:
+            body = req.get_json()
+        except ValueError:
+            return _error("Invalid JSON body", 400)
+
+        raw_b64 = body.get("avatar_b64", "")
+        if not raw_b64 or not isinstance(raw_b64, str):
+            return _error("avatar_b64 is required", 400)
+
+        import base64
+        try:
+            if raw_b64.startswith("data:"):
+                raw_b64 = raw_b64.split(",", 1)[-1]
+            clean = re.sub(r'\s', '', raw_b64)
+            if not re.fullmatch(r'[A-Za-z0-9+/]*={0,2}', clean):
+                raise ValueError("non-base64 characters")
+            decoded = base64.b64decode(clean, validate=True)
+        except Exception:
+            return _error("avatar_b64 must be valid base64", 400)
+
+        if len(decoded) > 1_048_576:
+            return _error("Image too large (max 1 MB)", 400)
+
+        is_jpeg = decoded[:3] == b'\xff\xd8\xff'
+        is_png  = decoded[:8] == b'\x89PNG\r\n\x1a\n'
+        if not is_jpeg and not is_png:
+            return _error("Image must be JPEG or PNG", 400)
+
+        safe_b64 = base64.b64encode(decoded).decode('ascii')
+
+        container = _ensure_users_container()
+        try:
+            try:
+                doc = container.read_item(item=user_id, partition_key=user_id)
+            except CosmosResourceNotFoundError:
+                doc = {"id": user_id, "created_at": datetime.now(timezone.utc).isoformat()}
+            doc["avatar_b64"] = safe_b64
+            container.upsert_item(doc)
+            return _json_response({"ok": True})
+        except Exception as e:
+            logging.exception("user_avatar PUT failed")
+            return _error(str(e), 500)
+
+
 _USER_STATE_CONTAINER_NAME = "user_state"
 
 

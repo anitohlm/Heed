@@ -1366,7 +1366,14 @@ function MobileBottomNav({ tab, onTab, onMicAsk, overdueCount = 0 }) {
             WebkitUserSelect: 'none',
           }}
         >
-          <MayaOwl size={50} idle={false} mood={micListening ? 'thinking' : 'calm'} speaking={micListening}/>
+          {/* Wrap the owl SVG in a positioning span so we can shrink him
+              slightly (44 vs 50) AND lift him a few pixels — the SVG paints
+              his feet right at the bottom of its viewBox, so without an
+              upward nudge the round button border was visually cropping
+              his lower body. */}
+          <span aria-hidden="true" style={{ display: 'inline-flex', transform: 'translateY(-3px)' }}>
+            <MayaOwl size={44} idle={false} mood={micListening ? 'thinking' : 'calm'} speaking={micListening}/>
+          </span>
         </button>
 
         {APP_TABS.map(t => {

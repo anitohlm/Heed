@@ -4654,7 +4654,8 @@ const CAL_MONTHS = ['January','February','March','April','May','June','July','Au
 function CalendarPicker({ value, onChange, label = 'Due date' }) {
   const [open, setOpen] = useState(false)
   const today = new Date()
-  const parsedValue = value ? new Date(value + (value.includes('T') ? '' : 'T00:00:00')) : null
+  const valStr = value instanceof Date ? (isNaN(value) ? null : value.toISOString().slice(0, 10)) : (value ? String(value) : null)
+  const parsedValue = valStr ? new Date(valStr + (valStr.includes('T') ? '' : 'T00:00:00')) : null
   const [viewYear, setViewYear]   = useState(parsedValue ? parsedValue.getFullYear() : today.getFullYear())
   const [viewMonth, setViewMonth] = useState(parsedValue ? parsedValue.getMonth()    : today.getMonth())
   const displayLabel = parsedValue ? parsedValue.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'No date set'
@@ -4730,7 +4731,7 @@ function PlanBubble({ plan, index = 0, onSelect }) {
     : totalCount > 0 ? Math.round(doneCount / totalCount * 100) : 0
   const ringColor = plan.type === 'project' ? C.rust : plan.type === 'goal' ? C.ochre : C.sage
   const rawDate   = plan.type === 'event' ? plan.eventDate : plan.type === 'goal' ? plan.targetDate : plan.dueDate
-  const parsedDate = rawDate ? new Date(rawDate + (rawDate.includes('T') ? '' : 'T00:00:00')) : null
+  const parsedDate = rawDate instanceof Date ? (isNaN(rawDate) ? null : rawDate) : (rawDate ? new Date(String(rawDate) + (String(rawDate).includes('T') ? '' : 'T00:00:00')) : null)
   const dateLabel  = parsedDate && !isNaN(parsedDate) ? parsedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'No date'
   const circ   = 377
   const offset = circ * (1 - pct / 100)
@@ -4824,7 +4825,8 @@ function EditPlanScreen({ plan, onBack, onSave, onAddTask, onDeleteTask, onRenam
   const [title, setTitle]         = useState(plan.title ?? '')
   const [desc, setDesc]           = useState(plan.description ?? '')
   const rawDate = plan.type === 'event' ? plan.eventDate : plan.type === 'goal' ? plan.targetDate : plan.dueDate
-  const [dueDate, setDueDate]     = useState(rawDate ?? null)
+  const rawDateStr = rawDate instanceof Date ? (isNaN(rawDate) ? null : rawDate.toISOString().slice(0, 10)) : (rawDate ? String(rawDate) : null)
+  const [dueDate, setDueDate]     = useState(rawDateStr ?? null)
   const [taskInputs, setTaskInputs] = useState(plan.tasks ? plan.tasks.map(t => t.label) : [])
   const [newTaskLabel, setNewTaskLabel] = useState('')
   const dateLabel = plan.type === 'event' ? 'Event date' : plan.type === 'goal' ? 'Target date' : 'Due date'
@@ -7078,6 +7080,10 @@ function AskInlineModal({ open, onClose, onLightenRoutine, onTaskAdded, onRoutin
     return () => window.removeEventListener('keydown', fn)
   }, [open, onClose])
   useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight }, [messages, thinking, streaming])
+  // Scroll to latest message whenever the panel opens
+  useEffect(() => {
+    if (open && scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+  }, [open])
   if (!open) return null
   return (
     <>
@@ -8780,6 +8786,7 @@ export default function HeedApp() {
   // (full management surface) share one source of truth.
   const plansHook = usePlans(isDemoMode() ? DEMO_PLANS : [])
   const [tab, setTab] = useState('today')
+  useEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' }) }, [tab])
   const [theme, setTheme] = useState(DEFAULT_THEME)
   setThemeState(theme)
   const handleSetTheme = useCallback((name) => setTheme(name), [])

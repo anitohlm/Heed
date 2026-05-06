@@ -3926,7 +3926,7 @@ function AskTab({ prefill = '', autoSend = false, onAutoSendDone, onLightenRouti
             Ask me anything about your tasks, routines, or schedule.
           </div>
           <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap', maxWidth: 640, margin: '0 auto' }}>
-            {SUGGESTIONS.map((s, i) => <SuggestionChip key={s.text} suggestion={s} onClick={() => send(s.text)} disabled={busy} delay={i * 80}/>)}
+            {(isDemoMode() ? SUGGESTIONS : SUGGESTIONS.filter(s => s.text !== 'Plan around my Singapore trip')).map((s, i) => <SuggestionChip key={s.text} suggestion={s} onClick={() => send(s.text)} disabled={busy} delay={i * 80}/>)}
           </div>
         </div>
       )}
@@ -6493,7 +6493,7 @@ function AskInlineModal({ open, onClose, onLightenRoutine, onTaskAdded, onRoutin
                   Pick one to start, or just type.
                 </div>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
-                  {SUGGESTIONS.map((s, i) => (
+                  {(isDemoMode() ? SUGGESTIONS : SUGGESTIONS.filter(s => s.text !== 'Plan around my Singapore trip')).map((s, i) => (
                     <button key={s.text} onClick={() => send(s.text)} disabled={busy}
                       style={{ background: C.paper, border: `1px solid ${C.border}`, color: C.warmDark, padding: '7px 12px', borderRadius: 999, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6, animation: 'heed-fadeUp 0.3s ease both', animationDelay: `${i * 60}ms`, transition: 'all 0.15s' }}
                       onMouseEnter={e => { e.currentTarget.style.background = C.bellySoft }}
@@ -8272,7 +8272,7 @@ export default function HeedApp() {
       || CONTEXTS_UPCOMING_DEMO.find(d => d.type === c.type)
     return demo ? { ...c, plan: demo.plan, askQuery: demo.askQuery } : c
   })
-  const upcomingContexts = enrichedUpcoming.length > 0 ? enrichedUpcoming : CONTEXTS_UPCOMING_DEMO
+  const upcomingContexts = enrichedUpcoming.length > 0 ? enrichedUpcoming : (isDemoMode() ? CONTEXTS_UPCOMING_DEMO : [])
 
   // Greeting for the header. Lives at HeedApp (not TodayTab) so it shows on
   // every tab and the in-page TodayTab title doesn't duplicate it.

@@ -49,28 +49,35 @@ input, select, textarea {
   /* Hide hover-revealed task actions on touch devices — swipe replaces them */
   .heed-task-actions { display: none !important; }
 
-  /* Pin the AskTab input bar to the viewport bottom, just above the
-     bottom nav. Only on mobile and only on the Ask Heed tab — applies
-     because this class is only attached to that one input bar. The
-     46px = nav content height (8 padding + 17 icon + 3 gap + 11 label
-     + 7 padding); env(safe-area-inset-bottom) handles the iOS home bar. */
+  /* Mobile: pin AskTab input bar above the bottom nav. The 46px = nav
+     content height (8 padding + 17 icon + 3 gap + 11 label + 7 padding);
+     +12 breathing room; env(safe-area-inset-bottom) handles the iOS
+     home bar. */
   .heed-ask-inputbar {
-    position: fixed !important;
-    left: 16px !important;
-    right: 16px !important;
-    bottom: calc(46px + env(safe-area-inset-bottom)) !important;
-    z-index: 49 !important;
-    padding: 10px 0 !important;
-    margin: 0 !important;
+    bottom: calc(46px + 12px + env(safe-area-inset-bottom)) !important;
+    width: calc(100vw - 24px) !important;
   }
+}
 
-  /* Spacer so the last chat bubble can scroll above the fixed input bar
-     instead of being permanently hidden behind it. ~80px covers the bar
-     + breathing room. */
-  .heed-ask-scroll {
-    padding-bottom: 80px !important;
-    margin-bottom: 0 !important;
-  }
+/* AskTab portaled input bar — lives at document.body so it escapes the
+   tab wrapper's transform-containing-block. Default styles apply on
+   every screen size; the @media (max-width: 767px) block above only
+   adjusts the bottom offset to clear the mobile bottom nav. */
+.heed-ask-inputbar {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 24px;
+  width: calc(100vw - 48px);
+  max-width: 720px;
+  z-index: 49;
+}
+
+/* Spacer so the last chat bubble can scroll above the fixed input bar
+   instead of being permanently hidden behind it. */
+.heed-ask-scroll {
+  padding-bottom: 100px !important;
+  margin-bottom: 0 !important;
 }
 
 /* Tablet  ────────────────────────────────────────────────── */

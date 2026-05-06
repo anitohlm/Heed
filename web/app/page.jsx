@@ -1,5 +1,6 @@
 "use client"
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import './globals.css'
 import { THEMES, OWL_THEMES, themeState, setThemeState, DEFAULT_THEME } from './themes'
 
@@ -4076,18 +4077,36 @@ function AskTab({ prefill = '', autoSend = false, onAutoSendDone, onLightenRouti
           {streaming && <Bubble role="assistant" content={streaming} streaming/>}
         </div>
       )}
-      <div className="heed-ask-inputbar" style={{ display: 'flex', gap: 8, padding: '14px 4px', borderTop: `1px solid ${C.hairline}`, alignItems: 'center', background: C.paper, borderRadius: 12 }}>
-        {micSupported && <MicButton listening={listening} onToggle={toggleMic} disabled={busy}/>}
-        <input
-          value={input} onChange={e => setInput(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && send(input)}
-          placeholder={listening ? 'Listening…' : 'Ask Heed anything…'} disabled={busy}
-          style={{ flex: 1, background: C.paper, border: `1.5px solid ${listening ? '#e53e3e' : C.border}`, borderRadius: 10, padding: '12px 16px', fontSize: 14, color: C.ink, outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.15s' }}
-          onFocus={e => { e.target.style.borderColor = C.warmDark }}
-          onBlur={e => { if (!listening) e.target.style.borderColor = C.border }}
-        />
-        <button onClick={() => send(input)} disabled={busy || !input.trim()} style={{ ...getBtnPrimary(), padding: '12px 22px', fontSize: 13, opacity: (busy || !input.trim()) ? 0.5 : 1 }}>Send</button>
-      </div>
+      {/* Input bar — portaled to document.body so position:fixed pins
+          to the viewport. The tab content wrapper has an animation that
+          ends with `transform: translateX(0)`, which per CSS spec makes
+          it a containing block for fixed-position descendants. Without
+          the portal, position:fixed is captured by that wrapper and the
+          bar drifts back into the document flow. */}
+      {typeof document !== 'undefined' && createPortal(
+        <div className="heed-ask-inputbar" style={{
+          display: 'flex',
+          gap: 8,
+          padding: '12px 14px',
+          alignItems: 'center',
+          background: C.paper,
+          border: `1px solid ${C.border}`,
+          borderRadius: 14,
+          boxShadow: '0 -2px 12px rgba(0,0,0,0.10)',
+        }}>
+          {micSupported && <MicButton listening={listening} onToggle={toggleMic} disabled={busy}/>}
+          <input
+            value={input} onChange={e => setInput(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && send(input)}
+            placeholder={listening ? 'Listening…' : 'Ask Heed anything…'} disabled={busy}
+            style={{ flex: 1, background: C.paper, border: `1.5px solid ${listening ? '#e53e3e' : C.border}`, borderRadius: 10, padding: '12px 14px', fontSize: 14, color: C.ink, outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.15s', minWidth: 0 }}
+            onFocus={e => { e.target.style.borderColor = C.warmDark }}
+            onBlur={e => { if (!listening) e.target.style.borderColor = C.border }}
+          />
+          <button onClick={() => send(input)} disabled={busy || !input.trim()} style={{ ...getBtnPrimary(), padding: '12px 18px', fontSize: 13, opacity: (busy || !input.trim()) ? 0.5 : 1, flexShrink: 0 }}>Send</button>
+        </div>,
+        document.body
+      )}
     </div>
   )
 }
@@ -4898,7 +4917,8 @@ function PlanBubbleDetailScreen({ plan, onBack, onEdit, onCheck, onTaskSelect, o
   const heroCirc   = 439.8
   const heroOffset = heroCirc * (1 - pct / 100)
   const rawDate    = plan.type === 'event' ? plan.eventDate : plan.type === 'goal' ? plan.targetDate : plan.dueDate
-  const parsedDate = rawDate ? new Date(rawDate + (rawDate.includes('T') ? '' : 'T00:00:00')) : null
+  const parsedDate = rawDate instanceof Date ? (isNaN(rawDate) ? null : rawDate)
+    : (rawDate ? new Date(String(rawDate) + (String(rawDate).includes('T') ? '' : 'T00:00:00')) : null)
   const dateLabel  = parsedDate && !isNaN(parsedDate) ? parsedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'No date set'
   const remaining  = totalCount - doneCount
   const stats = plan.type === 'goal' && plan.goalKind !== 'milestone'

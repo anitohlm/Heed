@@ -1703,6 +1703,150 @@ doc.add_paragraph(
 )
 
 
+# ── 13. Avatar Upload ─────────────────────────────────────────────────────────
+add_horizontal_rule(doc)
+doc.add_heading("13. Avatar Upload", level=1)
+doc.add_paragraph(
+    "Users can set a personal avatar photo in Settings. The image is stored as "
+    "a base64 string in the Cosmos users container and rendered everywhere the "
+    "avatar circle appears — the top-nav button and the Settings sheet header. "
+    "Security is enforced at both client and server so no malicious payload can "
+    "reach the database."
+)
+
+doc.add_heading("13.1 Architecture", level=2)
+doc.add_paragraph(
+    "Three layers work together:"
+)
+arch_items = [
+    "Frontend — AvatarButton renders <img> when an avatar is set, initials "
+    "otherwise. SettingsSheet shows a 72×72 tappable avatar circle with a "
+    "camera badge; a hidden <input type=file> triggers the upload flow.",
+    "Backend — two new endpoints GET /api/user_avatar and PUT /api/user_avatar "
+    "registered on the existing Azure Function.",
+    "Data — avatar_b64 field upserted into the existing users Cosmos container "
+    "document (same document created at registration). No schema migration "
+    "needed; Cosmos is schemaless.",
+]
+for item in arch_items:
+    p = doc.add_paragraph(style="List Bullet")
+    p.add_run(item)
+
+doc.add_heading("13.2 Frontend Changes", level=2)
+doc.add_paragraph(
+    "AvatarButton gains an avatar prop (base64 data URL or null). When set it "
+    "renders an <img> with objectFit: cover; otherwise it renders the user's "
+    "initials. HeedApp stores avatar in React state, seeds it from "
+    "localStorage('heed.avatar') synchronously on first render, then fetches "
+    "the live value from GET /api/user_avatar on mount (after username "
+    "resolves) and persists any update to localStorage for instant display on "
+    "next load."
+)
+doc.add_paragraph(
+    "SettingsSheet upload flow — client-side validation chain:"
+)
+client_checks = [
+    "MIME type allowlist: image/jpeg, image/png, image/webp, image/gif.",
+    "File size: must be under 1 MB before reading.",
+    "Magic bytes: first 12 bytes read via ArrayBuffer to verify JPEG "
+    "(FF D8 FF), PNG (89 50 4E 47), WebP (RIFF....WEBP), or GIF (GIF8) "
+    "signature — blocks MIME-spoofed files such as an .exe renamed .jpg.",
+    "Canvas normalisation: image drawn onto a 256×256 canvas and exported as "
+    "JPEG at quality 0.85 via toDataURL. This strips EXIF metadata, normalises "
+    "the format to clean JPEG, and caps the encoded size at roughly 80 KB.",
+]
+for check in client_checks:
+    p = doc.add_paragraph(style="List Number")
+    p.add_run(check)
+doc.add_paragraph(
+    "The data URL prefix is stripped before upload so only the raw base64 "
+    "string is sent. A spinner is shown during upload and the file input is "
+    "reset so the same file can be re-selected. Errors auto-clear after 3 s."
+)
+
+doc.add_heading("13.3 Backend Endpoints", level=2)
+doc.add_paragraph(
+    "GET /api/user_avatar — reads the users container document for the "
+    "authenticated user (X-User-ID header) and returns {avatar_b64: <string>}. "
+    "Returns {avatar_b64: null} with 200 if the document does not exist yet "
+    "(new user who has never uploaded)."
+)
+doc.add_paragraph(
+    "PUT /api/user_avatar — server-side validation chain:"
+)
+server_checks = [
+    "Base64 decode with validate=True — strict mode raises on any non-base64 "
+    "character. Any data URL prefix sent by mistake is stripped first.",
+    "Size check — decoded bytes must be ≤ 1 MB (client-bypass guard).",
+    "Magic bytes — only JPEG (\\xff\\xd8\\xff) and PNG (\\x89PNG\\r\\n\\x1a\\n) "
+    "accepted. The canvas step always outputs JPEG; PNG is accepted as a "
+    "belt-and-suspenders allowance for future clients.",
+    "Re-encode — b64encode(decoded) produces a clean base64 string, stripping "
+    "any encoding tricks present in the original.",
+    "Upsert — avatar_b64 is stored as a plain string field in the Cosmos users "
+    "document. No code path executes stored bytes.",
+]
+for check in server_checks:
+    p = doc.add_paragraph(style="List Number")
+    p.add_run(check)
+
+doc.add_heading("13.4 Security Model", level=2)
+sec_table = doc.add_table(rows=1, cols=3)
+sec_table.style = "Table Grid"
+hdr = sec_table.rows[0].cells
+hdr[0].text = "Layer"
+hdr[1].text = "Check"
+hdr[2].text = "What it blocks"
+sec_rows = [
+    ("Client — MIME", "file.type allowlist", "Wrong file type selected"),
+    ("Client — size", "file.size > 1 MB", "Large file before reading"),
+    ("Client — magic bytes", "First 12 bytes via ArrayBuffer", "MIME-spoofed files (e.g. .exe renamed .jpg)"),
+    ("Client — canvas", "toDataURL('image/jpeg', 0.85)", "EXIF, embedded scripts, format tricks; normalises to clean JPEG"),
+    ("Server — base64", "re.fullmatch + b64decode(validate=True)", "Non-base64 characters, padding attacks"),
+    ("Server — size", "len(decoded) > 1_048_576", "Client-bypass of size limit"),
+    ("Server — magic bytes", "JPEG \\xff\\xd8\\xff / PNG \\x89PNG", "Client-bypass of format check"),
+    ("Server — re-encode", "b64encode(decoded)", "Any encoding trick in the original string"),
+    ("Server — storage", "String field in Cosmos, never executed", "No code path exists to execute stored bytes"),
+]
+for layer, check, blocks in sec_rows:
+    row = sec_table.add_row().cells
+    row[0].text = layer
+    row[1].text = check
+    row[2].text = blocks
+doc.add_paragraph()
+
+doc.add_heading("13.5 Data Model", level=2)
+doc.add_paragraph(
+    "The users container document gains one optional field:"
+)
+data_table = doc.add_table(rows=1, cols=3)
+data_table.style = "Table Grid"
+dhdr = data_table.rows[0].cells
+dhdr[0].text = "Field"
+dhdr[1].text = "Type"
+dhdr[2].text = "Notes"
+drow = data_table.add_row().cells
+drow[0].text = "avatar_b64"
+drow[1].text = "string?"
+drow[2].text = (
+    "Base64-encoded JPEG, max ~80 KB after canvas normalisation. Present after "
+    "first upload; absent for new users. No migration needed."
+)
+doc.add_paragraph()
+
+doc.add_heading("13.6 What Doesn't Change", level=2)
+no_change = [
+    "UsernameGate — avatar upload is post-registration only (Settings).",
+    "Demo mode — avatar fetch/upload is skipped when isDemoMode() returns true.",
+    "localStorage('heed.avatar') is cleared alongside other local data on "
+    "reset-all-data.",
+    "All other settings rows — unchanged.",
+]
+for item in no_change:
+    p = doc.add_paragraph(style="List Bullet")
+    p.add_run(item)
+
+
 # ── Save ──────────────────────────────────────────────────────────────────────
 out_path = Path(__file__).parent / "docs" / "Heed_Technical_Doc.docx"
 doc.save(out_path)

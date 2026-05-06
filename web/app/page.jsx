@@ -10,6 +10,10 @@ function getUsername() {
   try { return localStorage.getItem('heed.username') || '' } catch { return '' }
 }
 
+function getAvatar() {
+  try { return localStorage.getItem('heed.avatar') || '' } catch { return '' }
+}
+
 // ── Module-level tab definitions (shared by HeedApp and MobileDrawer) ─────
 const APP_TABS = [
   { id: 'today',    label: 'Today' },
@@ -693,23 +697,25 @@ function ThemeSwitcher({ theme, onTheme }) {
 // ── Settings ──────────────────────────────────────────────────
 const PRESET_COLORS = ['#C9854A','#8FB89A','#D4A24C','#5B8DB8','#9B7BB8','#E8714C','#7A8EA0','#8A9460']
 
-function AvatarButton({ name, onClick }) {
+function AvatarButton({ name, avatar, onClick }) {
   const initials = (name || 'U').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
   return (
     <button
       onClick={onClick}
       aria-label="Settings"
       style={{
-        width: 36, height: 36, borderRadius: '50%', background: C.warmDark,
-        border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center',
-        justifyContent: 'center', flexShrink: 0,
-        fontFamily: 'Lora, Georgia, serif', fontSize: 14, fontWeight: 600, color: C.cream,
-        letterSpacing: 0.3, transition: 'opacity 0.15s',
+        width: 36, height: 36, borderRadius: '50%', overflow: 'hidden',
+        background: C.warmDark, border: 'none', cursor: 'pointer',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0, letterSpacing: 0.3, transition: 'opacity 0.15s',
       }}
       onMouseEnter={e => { e.currentTarget.style.opacity = '0.82' }}
       onMouseLeave={e => { e.currentTarget.style.opacity = '1' }}
     >
-      {initials}
+      {avatar
+        ? <img src={avatar} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
+        : <span style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 14, fontWeight: 600, color: C.cream }}>{initials}</span>
+      }
     </button>
   )
 }
@@ -8112,6 +8118,7 @@ function UsernameGate({ onComplete }) {
 // ── Main App ───────────────────────────────────────────────────
 export default function HeedApp() {
   const [username, setUsername] = React.useState(() => getUsername())
+  const [avatar, setAvatar] = React.useState(() => getAvatar())
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
   // When the user has clicked "Load demo data", initialise apiTasks with the
@@ -8784,10 +8791,10 @@ export default function HeedApp() {
             <div style={{ fontSize: 13, color: C.inkSoft, fontWeight: 500 }}>{todayStr}</div>
             <div style={{ fontSize: 11.5, color: C.inkMute, marginTop: 2 }}>Hi, {username} 👋</div>
           </div>
-          <AvatarButton name={username} onClick={() => setSettingsOpen(true)}/>
+          <AvatarButton name={username} avatar={avatar} onClick={() => setSettingsOpen(true)}/>
         </div>
         <div className="heed-theme-mobile" style={{ alignItems: 'center' }}>
-          <AvatarButton name={username} onClick={() => setSettingsOpen(true)}/>
+          <AvatarButton name={username} avatar={avatar} onClick={() => setSettingsOpen(true)}/>
         </div>
       </header>
 

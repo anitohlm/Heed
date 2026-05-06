@@ -8238,13 +8238,12 @@ export default function HeedApp() {
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (data?.avatar_b64) {
-          const dataUrl = `data:image/jpeg;base64,${data.avatar_b64}`
-          setAvatar(dataUrl)
-          try { localStorage.setItem('heed.avatar', dataUrl) } catch (_) {}
+          // backend always stores JPEG (canvas-normalised in handleAvatarFile)
+          handleAvatarChange(`data:image/jpeg;base64,${data.avatar_b64}`)
         }
       })
-      .catch(() => {})
-  }, [username, FUNCTIONS_URL])
+      .catch((err) => { console.warn('[heed] avatar fetch failed', err) })
+  }, [username, FUNCTIONS_URL, handleAvatarChange])
 
   useEffect(() => {
     if (typeof window === 'undefined') return

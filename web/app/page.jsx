@@ -4062,7 +4062,7 @@ function AskTab({ prefill = '', autoSend = false, onAutoSendDone, onLightenRouti
         </div>
       )}
       {messages.length > 0 && (
-        <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '12px 4px', marginBottom: 12 }}>
+        <div ref={scrollRef} className="heed-ask-scroll" style={{ flex: 1, overflowY: 'auto', padding: '12px 4px', marginBottom: 12 }}>
           <div style={{ textAlign: 'center', marginBottom: 18 }}><MayaOwl size={72} mood={owlMood} speaking={busy}/></div>
           {messages.map((m, i) => (
             <Bubble key={i} role={m.role} content={m.content}
@@ -4076,7 +4076,7 @@ function AskTab({ prefill = '', autoSend = false, onAutoSendDone, onLightenRouti
           {streaming && <Bubble role="assistant" content={streaming} streaming/>}
         </div>
       )}
-      <div style={{ display: 'flex', gap: 8, padding: '14px 4px', borderTop: messages.length > 0 ? `1px solid ${C.hairline}` : 'none', alignItems: 'center' }}>
+      <div className="heed-ask-inputbar" style={{ display: 'flex', gap: 8, padding: '14px 4px', borderTop: `1px solid ${C.hairline}`, alignItems: 'center', background: C.paper, borderRadius: 12 }}>
         {micSupported && <MicButton listening={listening} onToggle={toggleMic} disabled={busy}/>}
         <input
           value={input} onChange={e => setInput(e.target.value)}
@@ -8849,6 +8849,9 @@ export default function HeedApp() {
         if (data?.avatar_b64) {
           // backend always stores JPEG (canvas-normalised in handleAvatarFile)
           handleAvatarChange(`data:image/jpeg;base64,${data.avatar_b64}`)
+        } else if (data && 'avatar_b64' in data) {
+          setAvatar(null)
+          try { localStorage.removeItem('heed.avatar') } catch (_) {}
         }
       })
       .catch((err) => { console.warn('[heed] avatar fetch failed', err) })

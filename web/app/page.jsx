@@ -1328,14 +1328,16 @@ function MobileBottomNav({ tab, onTab, onMicAsk, overdueCount = 0 }) {
             the nav surface up around the owl. */}
         <div aria-hidden="true" style={{
           position: 'absolute',
-          top: -30, left: '50%', transform: 'translateX(-50%)',
-          width: 84, height: 30,
+          top: -12, left: '50%', transform: 'translateX(-50%)',
+          width: 84, height: 12,
           background: C.paper,
-          borderRadius: '42px 42px 0 0',
+          borderRadius: '6px 6px 0 0',
           zIndex: 51,
           pointerEvents: 'none',
         }}/>
-        {/* Owl circle — tap = Ask Heed screen; long-press = mic then auto-send */}
+        {/* Owl circle — tap = Ask Heed screen; long-press = mic then auto-send.
+            Sits mostly INSIDE the nav with a small overlap above (~12px) so it
+            reads as part of the nav rather than a floating FAB. */}
         <button
           onPointerDown={micSupported ? handleOwlDown : undefined}
           onPointerUp={micSupported ? handleOwlUp : undefined}
@@ -1347,7 +1349,7 @@ function MobileBottomNav({ tab, onTab, onMicAsk, overdueCount = 0 }) {
           aria-current={askActive ? 'page' : undefined}
           style={{
             position: 'absolute',
-            top: -30,
+            top: -12,
             left: '50%',
             transform: `translateX(-50%) scale(${pressing ? 1.12 : 1})`,
             width: 68,

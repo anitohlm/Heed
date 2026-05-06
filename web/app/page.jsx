@@ -1366,13 +1366,28 @@ function MobileBottomNav({ tab, onTab, onMicAsk, overdueCount = 0 }) {
             WebkitUserSelect: 'none',
           }}
         >
-          {/* Wrap the owl SVG in a positioning span so we can shrink him
-              slightly (44 vs 50) AND lift him a few pixels — the SVG paints
-              his feet right at the bottom of its viewBox, so without an
-              upward nudge the round button border was visually cropping
-              his lower body. */}
-          <span aria-hidden="true" style={{ display: 'inline-flex', transform: 'translateY(-3px)' }}>
-            <MayaOwl size={44} idle={false} mood={micListening ? 'thinking' : 'calm'} speaking={micListening}/>
+          {/* MayaOwl draws a perch (tree branch + leaves) at the bottom of
+              its 0-250 viewBox. In small-button contexts that perch ends
+              up sitting right against the inside of the circular border,
+              which reads as cropping. Solution: render the SVG at its full
+              natural size, but clip the bottom portion in a wrapper so
+              only the body+tufts are visible. The owl now reads as a
+              clean head+body inside the circle, no perch in this context.
+
+              Math: at size=42 the SVG is 42×52.5 (height = size × 1.25).
+              Owl body bottom is at viewBox y≈205 → SVG y≈43. Wrapper
+              height of 42 keeps body + tufts and clips the branch
+              starting at viewBox y=210 (SVG y≈44.1). */}
+          <span aria-hidden="true" style={{
+            display: 'inline-flex',
+            alignItems: 'flex-start',
+            justifyContent: 'center',
+            width: 42,
+            height: 42,
+            overflow: 'hidden',
+            transform: 'translateY(-1px)',
+          }}>
+            <MayaOwl size={42} idle={false} mood={micListening ? 'thinking' : 'calm'} speaking={micListening}/>
           </span>
         </button>
 

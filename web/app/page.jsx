@@ -258,7 +258,7 @@ const SCRIPTED_RESPONSES = {
       "Checking if any context windows explain the misses...",
       "Filtering out things you intentionally skipped...",
     ],
-    answer: `Here's what you're forgetting, sorted by what matters most:\n\n**🔴 Disconnection risk:**\n• **Maynilad bill** — 19 days overdue. You usually pay this early in the month.\n• **Meralco bill** — 9 days overdue. Mid-month pattern, payday-aligned.\n\n**🟡 Personal:**\n• **Call Mom** — 17 days overdue. You called her every Sunday for 19 weeks straight, then three Sundays got skipped. Your pattern broke.\n\n**🟢 Easier wins:**\n• **Clean aircon filter** — 78 days since last clean. Still inside your usual ~11-week range.\n• **Change toothbrush** — last logged 4 months ago.\n\nWant me to plan these around your Singapore trip next week?`,
+    answer: `Here's what you're forgetting, sorted by what matters most:\n\n**🔴 Disconnection risk:**\n• **Maynilad bill** — 19 days overdue. You usually pay this early in the month.\n• **Meralco bill** — 9 days overdue. Mid-month pattern, payday-aligned.\n\n**🟡 Personal:**\n• **Call Mom** — 17 days overdue. You called her every Sunday for 19 weeks straight, then three Sundays got skipped. Your pattern broke.\n\n**🟢 Easier wins:**\n• **Clean aircon filter** — 78 days since last clean. Still inside your usual ~11-week range.\n• **Change toothbrush** — last logged 4 months ago.\n\nWant me to plan these around your Singapore trip in June?`,
     actions: [
       { action_type: 'defer', emoji: '→', label: 'Defer Maynilad bill', payload: { defer_until: '2026-05-10' } },
     ],
@@ -270,12 +270,12 @@ const SCRIPTED_RESPONSES = {
   },
   "Plan around my Singapore trip": {
     thinking: [
-      "Reading your travel context: Apr 28 to May 2...",
+      "Reading your travel context: Jun 5 to Jun 9...",
       "Identifying tasks and routines that fall in that window...",
       "Categorizing by what truly can't wait...",
       "Drafting a pre-trip and after-trip plan...",
     ],
-    answer: `Got it — **Singapore trip Apr 28 – May 2** is locked in.\n\n**Before you leave (next 6 days):**\n• Pay Maynilad and Meralco — handle these this week.\n• Submit timesheet (Friday).\n• Refill water dispenser the day before you fly.\n\n**While you're away:**\n• I'll pause your morning and evening routines automatically.\n\n**When you're back (May 3–5):**\n• I'll resume your routines on May 3 with a soft start — just the essentials.\n• Aircon cleaning can wait until that weekend.`,
+    answer: `Got it — **Singapore trip Jun 5 – Jun 9** is locked in.\n\n**Before you leave:**\n• Pay Maynilad and Meralco — handle these well before you fly.\n• Submit timesheet (Friday before you leave).\n• Refill water dispenser the day before you fly.\n\n**While you're away:**\n• I'll pause your morning and evening routines automatically.\n\n**When you're back (Jun 10–12):**\n• I'll resume your routines on Jun 10 with a soft start — just the essentials.\n• Aircon cleaning can wait until that weekend.`,
     chips: [
       { emoji: '🍃', text: 'Lighten my routine while away' },
       { emoji: '🌾', text: 'What am I forgetting before I leave?' },

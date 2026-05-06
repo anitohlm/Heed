@@ -1326,16 +1326,11 @@ function MobileBottomNav({ tab, onTab, onMicAsk, overdueCount = 0 }) {
           overflow: 'visible',
         }}
       >
-        {/* No "podium" needed at this protrusion height — the button's own
-            `0 0 0 3px ${C.paper}` box-shadow ring (radius ~37 from center)
-            already covers the bounding-box corners above the nav top edge.
-            A rectangular shield only made sense at the original top:-30
-            where the corners sat far from the circle. At top:-12 a flat
-            rectangle reads as a square sitting behind the owl, which is
-            wrong both visually and conceptually. */}
-        {/* Owl circle — tap = Ask Heed screen; long-press = mic then auto-send.
-            Sits mostly INSIDE the nav with a small overlap above (~12px) so it
-            reads as part of the nav rather than a floating FAB. */}
+        {/* Owl FAB — fully contained inside the nav (no protrusion).
+            Sized to be visibly larger than the other tab icons (17px) so
+            it still reads as the primary action, but small enough that
+            its top edge + outer shadow rings stay below the nav's top
+            border. tap = Ask Heed screen; long-press = mic then auto-send. */}
         <button
           onPointerDown={micSupported ? handleOwlDown : undefined}
           onPointerUp={micSupported ? handleOwlUp : undefined}
@@ -1347,19 +1342,19 @@ function MobileBottomNav({ tab, onTab, onMicAsk, overdueCount = 0 }) {
           aria-current={askActive ? 'page' : undefined}
           style={{
             position: 'absolute',
-            top: -10,
+            top: 4,
             left: '50%',
             transform: `translateX(-50%) scale(${pressing ? 1.12 : 1})`,
-            width: 50,
-            height: 50,
+            width: 38,
+            height: 38,
             borderRadius: '50%',
             background: C.paper,
-            border: `2px solid ${micListening ? '#e53e3e' : askActive ? C.warmDark : `${C.warmDark}99`}`,
+            border: `1.5px solid ${micListening ? '#e53e3e' : askActive ? C.warmDark : `${C.warmDark}99`}`,
             boxShadow: micListening
-              ? `0 0 0 2px #fff3f3, 0 0 0 5px rgba(229,62,62,0.35), 0 -3px 14px rgba(229,62,62,0.3)`
+              ? `0 0 0 1.5px #fff3f3, 0 0 0 3px rgba(229,62,62,0.35), 0 1px 6px rgba(229,62,62,0.28)`
               : askActive
-              ? `0 0 0 2px ${C.paper}, 0 0 0 4px ${C.warmDark}55, 0 -4px 16px rgba(0,0,0,0.28)`
-              : `0 0 0 2px ${C.paper}, 0 0 0 3px ${C.border}, 0 -3px 14px rgba(0,0,0,0.22)`,
+              ? `0 0 0 1.5px ${C.paper}, 0 0 0 2.5px ${C.warmDark}55, 0 1px 6px rgba(0,0,0,0.18)`
+              : `0 0 0 1.5px ${C.paper}, 0 0 0 2px ${C.border}, 0 1px 5px rgba(0,0,0,0.14)`,
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
@@ -1372,28 +1367,19 @@ function MobileBottomNav({ tab, onTab, onMicAsk, overdueCount = 0 }) {
             WebkitUserSelect: 'none',
           }}
         >
-          {/* MayaOwl draws a perch (tree branch + leaves) at the bottom of
-              its 0-250 viewBox. In small-button contexts that perch ends
-              up sitting right against the inside of the circular border,
-              which reads as cropping. Solution: render the SVG at its full
-              natural size, but clip the bottom portion in a wrapper so
-              only the body+tufts are visible. The owl now reads as a
-              clean head+body inside the circle, no perch in this context.
-
-              Math: at size=42 the SVG is 42×52.5 (height = size × 1.25).
-              Owl body bottom is at viewBox y≈205 → SVG y≈43. Wrapper
-              height of 42 keeps body + tufts and clips the branch
-              starting at viewBox y=210 (SVG y≈44.1). */}
+          {/* Owl wrapper clips the perch at the bottom of MayaOwl's viewBox
+              so only the body + tufts show inside this small circle.
+              Math: at size=30 the SVG is 30×37.5; wrapper height 30 clips
+              the bottom 7.5 SVG units (where the branch lives). */}
           <span aria-hidden="true" style={{
             display: 'inline-flex',
             alignItems: 'flex-start',
             justifyContent: 'center',
-            width: 42,
-            height: 42,
+            width: 30,
+            height: 30,
             overflow: 'hidden',
-            transform: 'translateY(-1px)',
           }}>
-            <MayaOwl size={42} idle={false} mood={micListening ? 'thinking' : 'calm'} speaking={micListening}/>
+            <MayaOwl size={30} idle={false} mood={micListening ? 'thinking' : 'calm'} speaking={micListening}/>
           </span>
         </button>
 

@@ -742,7 +742,7 @@ function SettingsRow({ children, last = false, onClick }) {
   )
 }
 
-function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, customCategories, onAddCategory, customEventTypes, onAddEventType, onResetAllData, onLoadDemoData, onSwitchToRealData, efMode, onSetEfMode }) {
+function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, customCategories, onAddCategory, customEventTypes, onAddEventType, onResetAllData, onLoadDemoData, onSwitchToRealData, efMode, onSetEfMode, avatar, onAvatarChange }) {
   const [nameVal, setNameVal] = useState(userName)
   const [nameSaved, setNameSaved] = useState(false)
   const [pendingTheme, setPendingTheme] = useState(theme)
@@ -754,6 +754,9 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
   const [evtLabel, setEvtLabel] = useState('')
   const [evtDays, setEvtDays] = useState('3')
   const [evtOpen, setEvtOpen] = useState(false)
+  const [avatarUploading, setAvatarUploading] = useState(false)
+  const [avatarError, setAvatarError] = useState('')
+  const fileInputRef = useRef(null)
 
   useEffect(() => {
     if (open) {
@@ -777,6 +780,65 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
     if (!evtLabel.trim()) return
     onAddEventType({ id: `evt_${Date.now()}`, icon: evtIcon, label: evtLabel.trim(), defaultDays: parseInt(evtDays) || 3 })
     setEvtLabel(''); setEvtIcon('◈'); setEvtDays('3'); setEvtOpen(false)
+  }
+
+  async function handleAvatarFile(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+    if (!allowed.includes(file.type)) {
+      setAvatarError('Please use a JPEG, PNG, WebP, or GIF image.')
+      setTimeout(() => setAvatarError(''), 3000)
+      return
+    }
+
+    if (file.size > 1_048_576) {
+      setAvatarError('Image must be under 1 MB.')
+      setTimeout(() => setAvatarError(''), 3000)
+      return
+    }
+
+    const header = await file.slice(0, 12).arrayBuffer()
+    const bytes = new Uint8Array(header)
+    const isJpeg = bytes[0] === 0xFF && bytes[1] === 0xD8 && bytes[2] === 0xFF
+    const isPng  = bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E && bytes[3] === 0x47
+    const isWebp = bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46
+                 && bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50
+    const isGif  = bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x38
+    if (!isJpeg && !isPng && !isWebp && !isGif) {
+      setAvatarError('File does not appear to be a valid image.')
+      setTimeout(() => setAvatarError(''), 3000)
+      return
+    }
+
+    setAvatarUploading(true)
+    try {
+      const bitmap = await createImageBitmap(file)
+      const canvas = document.createElement('canvas')
+      canvas.width = 256; canvas.height = 256
+      const ctx = canvas.getContext('2d')
+      const scale = Math.min(256 / bitmap.width, 256 / bitmap.height)
+      const w = bitmap.width * scale, h = bitmap.height * scale
+      ctx.drawImage(bitmap, (256 - w) / 2, (256 - h) / 2, w, h)
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.85)
+      const b64 = dataUrl.split(',')[1]
+
+      const res = await fetch(`${FUNCTIONS_URL}/api/user_avatar`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'X-User-ID': getUsername() || 'demo' },
+        body: JSON.stringify({ avatar_b64: b64 }),
+      })
+      if (!res.ok) throw new Error('Upload failed')
+
+      onAvatarChange(dataUrl)
+    } catch {
+      setAvatarError('Upload failed — try again.')
+      setTimeout(() => setAvatarError(''), 3000)
+    } finally {
+      setAvatarUploading(false)
+      e.target.value = ''
+    }
   }
 
   const inputSt = { width: '100%', boxSizing: 'border-box', background: C.paperHi, border: `1.5px solid ${C.border}`, borderRadius: 9, padding: '10px 12px', fontSize: 14, color: C.ink, outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.15s' }
@@ -828,9 +890,38 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
             {/* Profile */}
             <div style={{ ...group, marginTop: 4 }}>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px 16px 16px', borderBottom: `1px solid ${C.hairline}` }}>
-                <div style={{ width: 64, height: 64, borderRadius: '50%', background: `linear-gradient(135deg, ${C.warmDark} 0%, ${C.ochre} 100%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Lora, Georgia, serif', fontSize: 22, fontWeight: 700, color: '#fff', letterSpacing: -0.5, boxShadow: `0 4px 16px ${C.warmDark}33`, marginBottom: 10 }}>
-                  {initials}
+                <div aria-label="Change avatar"
+                     style={{ position: 'relative', width: 72, height: 72, margin: '0 auto 10px', cursor: 'pointer' }}
+                     onClick={() => !avatarUploading && fileInputRef.current?.click()}>
+                  <div className="heed-settings-avatar"
+                       style={{ width: 72, height: 72, borderRadius: '50%', overflow: 'hidden',
+                                background: `linear-gradient(135deg, ${C.warmDark} 0%, ${C.ochre} 100%)`,
+                                border: `2px solid ${avatarError ? C.rust : C.border}`,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                boxShadow: `0 4px 16px ${C.warmDark}33` }}>
+                    {avatarUploading
+                      ? <div style={{ width: 24, height: 24, border: `3px solid #fff`, borderTopColor: 'transparent',
+                                      borderRadius: '50%', animation: 'heed-spin 0.7s linear infinite' }}/>
+                      : avatar
+                        ? <img src={avatar} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
+                        : <span style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 22, fontWeight: 700,
+                                         color: '#fff', letterSpacing: -0.5 }}>{initials}</span>
+                    }
+                  </div>
+                  {!avatarUploading && (
+                    <div style={{ position: 'absolute', bottom: 0, right: 0, width: 22, height: 22,
+                                  borderRadius: '50%', background: C.ochre, border: `2px solid ${C.paperHi}`,
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11 }}>
+                      📷
+                    </div>
+                  )}
                 </div>
+                {avatarError && (
+                  <div style={{ color: C.rust, fontSize: 12, textAlign: 'center', marginBottom: 8 }}>
+                    {avatarError}
+                  </div>
+                )}
+                <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatarFile}/>
                 <div style={{ fontSize: 17, fontWeight: 600, color: C.ink, fontFamily: 'Lora, Georgia, serif' }}>{nameVal || 'Your name'}</div>
               </div>
               <div style={{ padding: '14px 16px' }}>
@@ -4409,7 +4500,17 @@ function usePlans(initialPlans) {
     setPlans(prev => prev.map(p => p.id !== planId ? p : { ...p, ...safeUpdates }))
   }, [])
 
-  return { plans, checkTask, renameTask, addTask, deleteTask, reorderTasks, addPlan, updatePlan }
+  const archivePlan = useCallback((planId) => {
+    setPlans(prev => prev.map(p => p.id !== planId ? p : {
+      ...p, archived: true, archivedDate: new Date().toISOString().slice(0, 10)
+    }))
+  }, [])
+
+  const restorePlan = useCallback((planId) => {
+    setPlans(prev => prev.map(p => p.id !== planId ? p : { ...p, archived: false, archivedDate: undefined }))
+  }, [])
+
+  return { plans, checkTask, renameTask, addTask, deleteTask, reorderTasks, addPlan, updatePlan, archivePlan, restorePlan }
 }
 
 // ── PlanCard ────────────────────────────────────────────────────

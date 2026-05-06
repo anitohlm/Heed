@@ -222,30 +222,55 @@ const CONTEXTS_UPCOMING_DEMO = [
 ]
 const DEMO_PLANS = [
   {
-    id: 'plan-1', type: 'project', icon: '📦', title: 'Move apartments',
-    dueDate: 'Jun 15',
+    id: 'plan-1', type: 'project', icon: '🏃', title: 'Run a Marathon',
+    dueDate: 'Jun 30, 2026',
     tasks: [
-      { label: 'Book moving truck',           done: true },
-      { label: 'Notify landlord',             done: true },
-      { label: 'Pack bedroom',                done: false },
-      { label: 'Transfer utilities',          done: false },
-      { label: 'Update address with bank',    done: false },
-      { label: 'Deep clean current unit',     done: false },
-      { label: 'Return keys',                 done: false },
+      { label: 'Register for race',                  done: true },
+      { label: 'Run 5km without stopping',           done: true },
+      { label: 'Complete 10km training run',         done: true },
+      { label: 'Buy proper running shoes',           done: true },
+      { label: 'Complete half-marathon distance',    done: false },
+      { label: 'Run 4x per week for a month',        done: false },
+      { label: 'Full 42km training run',             done: false },
     ],
   },
   {
-    id: 'plan-2', type: 'event', icon: '📅', title: 'Job interview — Acme Co.',
-    eventDate: new Date('2026-05-08'),
+    id: 'plan-2', type: 'goal', goalKind: 'numeric', icon: '💰', title: 'Save ₱50,000',
+    current: 17500, target: 50000, unit: '₱', targetDate: 'Dec 2026',
     tasks: [
-      { label: 'Research the company',        done: true },
-      { label: 'Prepare questions to ask',    done: false },
-      { label: 'Iron outfit',                 done: false },
+      { label: 'Open dedicated savings account',     done: true },
+      { label: 'Set up auto-transfer ₱2,500/mo',    done: true },
+      { label: 'Cut subscription expenses',          done: false },
+      { label: 'Reach ₱25,000 halfway mark',         done: false },
+      { label: 'Review spending habits',             done: false },
     ],
   },
   {
-    id: 'plan-3', type: 'goal', goalKind: 'numeric', icon: '🎯', title: 'Save ₱50,000',
-    current: 31500, target: 50000, unit: '₱', targetDate: 'Aug 2026',
+    id: 'plan-3', type: 'project', icon: '🌿', title: 'Garden Project',
+    dueDate: 'May 20, 2026',
+    tasks: [
+      { label: 'Clear the old beds',                 done: true },
+      { label: 'Buy soil and compost',               done: true },
+      { label: 'Plant tomatoes',                     done: true },
+      { label: 'Plant herbs section',                done: true },
+      { label: 'Set up drip irrigation',             done: true },
+      { label: 'Add garden border stones',           done: true },
+      { label: 'Install raised bed frames',          done: true },
+      { label: 'Plant flowers along fence',          done: true },
+      { label: 'Label all plants',                   done: true },
+      { label: 'Final cleanup & photos',             done: false },
+    ],
+  },
+  {
+    id: 'plan-4', type: 'event', icon: '✈️', title: 'Singapore Trip',
+    eventDate: new Date('2026-06-05'),
+    tasks: [
+      { label: 'Book flights',                       done: false },
+      { label: 'Book hotel in Clarke Quay',          done: false },
+      { label: 'Apply for travel insurance',         done: false },
+      { label: 'Prepare travel documents',           done: false },
+      { label: 'Pack luggage',                       done: false },
+    ],
   },
 ]
 const SUGGESTIONS = [
@@ -891,8 +916,11 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
             <div style={{ ...group, marginTop: 4 }}>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px 16px 16px', borderBottom: `1px solid ${C.hairline}` }}>
                 <div aria-label="Change avatar"
+                     role="button"
+                     tabIndex={avatarUploading ? -1 : 0}
                      style={{ position: 'relative', width: 72, height: 72, margin: '0 auto 10px', cursor: 'pointer' }}
-                     onClick={() => !avatarUploading && fileInputRef.current?.click()}>
+                     onClick={() => !avatarUploading && fileInputRef.current?.click()}
+                     onKeyDown={e => { if ((e.key === 'Enter' || e.key === ' ') && !avatarUploading) { e.preventDefault(); fileInputRef.current?.click() } }}>
                   <div className="heed-settings-avatar"
                        style={{ width: 72, height: 72, borderRadius: '50%', overflow: 'hidden',
                                 background: `linear-gradient(135deg, ${C.warmDark} 0%, ${C.ochre} 100%)`,
@@ -4419,7 +4447,7 @@ function normalizePlan(p) {
   return p
 }
 
-const DEMO_PLAN_IDS = new Set(['plan-1', 'plan-2', 'plan-3'])
+const DEMO_PLAN_IDS = new Set(['plan-1', 'plan-2', 'plan-3', 'plan-4'])
 function stripDemoPlans(arr) { return arr.filter(p => !DEMO_PLAN_IDS.has(p.id)) }
 
 function usePlans(initialPlans) {
@@ -4687,6 +4715,7 @@ function CalendarPicker({ value, onChange, label = 'Due date' }) {
 
 // ── PlanBubble ──────────────────────────────────────────────────
 function PlanBubble({ plan, index = 0, onSelect }) {
+  const [pressed, setPressed] = useState(false)
   const doneCount  = plan.tasks ? plan.tasks.filter(t => t.done).length : 0
   const totalCount = plan.tasks ? plan.tasks.length : 0
   const pct = plan.type === 'goal'
@@ -4698,24 +4727,39 @@ function PlanBubble({ plan, index = 0, onSelect }) {
   const rawDate   = plan.type === 'event' ? plan.eventDate : plan.type === 'goal' ? plan.targetDate : plan.dueDate
   const parsedDate = rawDate ? new Date(rawDate + (rawDate.includes('T') ? '' : 'T00:00:00')) : null
   const dateLabel  = parsedDate && !isNaN(parsedDate) ? parsedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'No date'
-  const circ   = 345.6
+  const circ   = 377
   const offset = circ * (1 - pct / 100)
   return (
-    <div onClick={() => onSelect?.(plan.id)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: 6, cursor: 'pointer', marginTop: index % 2 === 1 ? 32 : 0, animation: `heed-fadeIn 0.25s ease ${index * 60}ms both`, WebkitTapHighlightColor: 'transparent' }}>
-      <div style={{ position: 'relative', width: 120, height: 120 }}>
-        <svg viewBox="0 0 120 120" style={{ position: 'absolute', inset: 0, width: 120, height: 120, transform: 'rotate(-90deg)' }}>
-          <circle fill="none" stroke={C.bellySoft} strokeWidth={5} cx={60} cy={60} r={55} />
-          <circle fill="none" stroke={ringColor} strokeWidth={5} strokeLinecap="round" cx={60} cy={60} r={55} strokeDasharray={circ} strokeDashoffset={offset} style={{ transition: 'stroke-dashoffset 0.5s ease' }} />
+    <div
+      onClick={() => onSelect?.(plan.id)}
+      onPointerDown={() => setPressed(true)}
+      onPointerUp={() => setPressed(false)}
+      onPointerLeave={() => setPressed(false)}
+      style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+        padding: 6, cursor: 'pointer',
+        marginTop: index % 2 === 1 ? 32 : 0,
+        animation: `heed-fadeIn 0.25s ease ${index * 60}ms both`,
+        WebkitTapHighlightColor: 'transparent',
+        touchAction: 'manipulation',
+        transform: pressed ? 'scale(0.94)' : 'scale(1)',
+        transition: 'transform 0.15s ease',
+      }}
+    >
+      <div style={{ position: 'relative', width: 130, height: 130 }}>
+        <svg viewBox="0 0 130 130" style={{ position: 'absolute', inset: 0, width: 130, height: 130, transform: 'rotate(-90deg)' }}>
+          <circle fill="none" stroke={C.bellySoft} strokeWidth={5} cx={65} cy={65} r={60} />
+          <circle fill="none" stroke={ringColor} strokeWidth={5} strokeLinecap="round" cx={65} cy={65} r={60} strokeDasharray={circ} strokeDashoffset={offset} style={{ transition: 'stroke-dashoffset 0.5s ease' }} />
         </svg>
-        <div style={{ position: 'absolute', top: 8, left: 8, width: 104, height: 104, borderRadius: '50%', background: C.paper, overflow: 'hidden', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
+        <div style={{ position: 'absolute', top: 8, left: 8, width: 114, height: 114, borderRadius: '50%', background: C.paperHi, overflow: 'hidden', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
           {plan.imageUrl
-            ? <img src={plan.imageUrl} style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: '50%' }} alt=""/>
-            : <span style={{ fontSize: 34, lineHeight: 1 }}>{plan.icon}</span>
+            ? <img src={plan.imageUrl} style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: '50%' }} alt=""/>
+            : <span style={{ fontSize: 36, lineHeight: 1 }}>{plan.icon}</span>
           }
-          <span style={{ fontSize: 11, fontWeight: 700, color: ringColor, lineHeight: 1 }}>{pct}%</span>
+          <span style={{ fontSize: 12, fontWeight: 700, color: ringColor, lineHeight: 1 }}>{pct}%</span>
         </div>
       </div>
-      <div style={{ textAlign: 'center', maxWidth: 120 }}>
+      <div style={{ textAlign: 'center', maxWidth: 130 }}>
         <div style={{ fontSize: 13, fontWeight: 600, color: C.ink, lineHeight: 1.3 }}>{plan.title}</div>
         <div style={{ fontSize: 11, color: C.inkMute, marginTop: 2 }}>{dateLabel}</div>
       </div>
@@ -4909,7 +4953,16 @@ function PlanBubbleDetailScreen({ plan, onBack, onEdit, onCheck, onTaskSelect, o
             ))}
           </>
         )}
-        <button onClick={onArchive} style={{ width: '100%', padding: 12, background: 'none', border: `1px solid ${C.border}`, borderRadius: 10, color: C.inkMute, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', marginTop: 16 }}>Archive this plan</button>
+        <button
+          onClick={() => {
+            const input = document.querySelector('[aria-label="Ask Heed"]') || document.querySelector('textarea[placeholder*="Ask"]')
+            if (input) { input.focus(); input.value = `Give me advice on my plan: ${plan.title}` }
+          }}
+          style={{ width: '100%', padding: 13, background: 'none', border: `1.5px dashed ${C.border}`, borderRadius: 12, color: C.inkMute, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', marginTop: 4, transition: 'border-color 0.15s, color 0.15s' }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = C.warmDark; e.currentTarget.style.color = C.ink }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.inkMute }}
+        >Ask Heed for advice on this plan</button>
+        <button onClick={onArchive} style={{ width: '100%', padding: 12, background: 'none', border: `1px solid ${C.border}`, borderRadius: 10, color: C.inkMute, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', marginTop: 8 }}>Archive this plan</button>
       </div>
     </div>
   )
@@ -6091,7 +6144,7 @@ function PlansPanel({ plans, checkTask, renameTask, addTask, deleteTask, reorder
           No plans yet. Tap "+ Add plan" to create a goal, project, or event.
         </div>
       )}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 0' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 0', paddingBottom: 16 }}>
         {activePlans.map((p, i) => (
           <PlanBubble key={p.id} plan={p} index={i} onSelect={id => setSelectedPlanId(id)} />
         ))}

@@ -213,107 +213,126 @@ test.describe('Life tab — Plans', () => {
   })
 
   test('shows three demo plans', async ({ page }) => {
-    await expect(page.getByText('Move apartments')).toBeVisible()
-    await expect(page.getByText('Job interview — Acme Co.')).toBeVisible()
+    await expect(page.getByText('Run a Marathon')).toBeVisible()
+    await expect(page.getByText('Singapore Trip')).toBeVisible()
     await expect(page.getByText('Save ₱50,000')).toBeVisible()
   })
 
   test('project plan card shows progress bar and task count', async ({ page }) => {
-    await expect(page.getByText(/2 of 7 tasks/i)).toBeVisible()
+    // Bubble layout shows circular ring with percentage; click into detail to see task counts
+    await page.getByText('Run a Marathon').click()
+    await page.waitForTimeout(300)
+    // Stat boxes in detail show done/remaining/total counts
+    await expect(page.locator('div').filter({ hasText: /^4$/ }).first()).toBeVisible()
+    await expect(page.getByText('done')).toBeVisible()
+    await expect(page.locator('div').filter({ hasText: /^7$/ }).first()).toBeVisible()
+    await expect(page.getByText('total')).toBeVisible()
   })
 
   test('goal plan card shows percentage', async ({ page }) => {
-    await expect(page.getByText('63%')).toBeVisible()
+    // Bubble shows percentage inside the ring
+    await expect(page.getByText('35%').first()).toBeVisible()
   })
 
   test('clicking project opens PlanDetailScreen', async ({ page }) => {
-    await page.getByText('Move apartments').click()
+    await page.getByText('Run a Marathon').click()
     await page.waitForTimeout(300)
-    await expect(page.getByText('‹ Plans')).toBeVisible()
-    await expect(page.getByText('Pack bedroom')).toBeVisible()
-    await expect(page.getByText('Transfer utilities')).toBeVisible()
+    // Detail screen shows back arrow and tasks
+    await expect(page.getByText('Complete half-marathon distance')).toBeVisible()
+    await expect(page.getByText('Run 4x per week for a month')).toBeVisible()
   })
 
   test('project detail back button returns to plans list', async ({ page }) => {
-    await page.getByText('Move apartments').click()
+    await page.getByText('Run a Marathon').click()
     await page.waitForTimeout(300)
-    await page.getByText('‹ Plans').click()
+    // Back button is the ← arrow button
+    await page.locator('button').filter({ hasText: '←' }).first().click()
     await page.waitForTimeout(300)
-    await expect(page.getByText('Job interview — Acme Co.')).toBeVisible()
+    await expect(page.getByText('Singapore Trip')).toBeVisible()
   })
 
-  test('project detail shows Edit plan button', async ({ page }) => {
-    await page.getByText('Move apartments').click()
+  test('project detail shows Edit button', async ({ page }) => {
+    await page.getByText('Run a Marathon').click()
     await page.waitForTimeout(300)
-    await expect(page.getByRole('button', { name: 'Edit plan' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Edit', exact: true })).toBeVisible()
   })
 
-  test('project detail Edit plan button opens edit panel', async ({ page }) => {
-    await page.getByText('Move apartments').click()
+  test('project detail Edit button opens edit panel', async ({ page }) => {
+    await page.getByText('Run a Marathon').click()
     await page.waitForTimeout(300)
-    await page.getByRole('button', { name: 'Edit plan' }).click()
-    await expect(page.getByPlaceholder(/jun 15|e\.g\. jun/i)).toBeVisible()
+    await page.getByRole('button', { name: 'Edit', exact: true }).click()
+    await page.waitForTimeout(300)
+    await expect(page.getByText('Edit plan')).toBeVisible()
   })
 
   test('project detail task checkbox marks task done', async ({ page }) => {
-    await page.getByText('Move apartments').click()
+    await page.getByText('Run a Marathon').click()
     await page.waitForTimeout(300)
-    const packRow = page.locator('label, div').filter({ hasText: 'Pack bedroom' }).first()
-    await packRow.click()
+    // Scroll to and find the undone task 'Complete half-marathon distance'
+    await page.getByText('Complete half-marathon distance').scrollIntoViewIfNeeded()
+    // The checkbox circle is the first div inside the task row div
+    const taskRowEl = page.locator('span', { hasText: 'Complete half-marathon distance' })
+    const checkCircle = taskRowEl.locator('..').locator('div').first()
+    await checkCircle.click()
     await page.waitForTimeout(300)
-    await expect(page.getByText(/3 of 7|done/i)).toBeVisible({ timeout: 3000 })
+    // After checking one more task done count should be 5
+    await expect(page.locator('div').filter({ hasText: /^5$/ }).first()).toBeVisible({ timeout: 3000 })
   })
 
   test('clicking event opens PlanDetailScreen', async ({ page }) => {
-    await page.getByText('Job interview — Acme Co.').click()
+    await page.getByText('Singapore Trip').click()
     await page.waitForTimeout(300)
-    await expect(page.getByText('‹ Plans')).toBeVisible()
-    await expect(page.getByText('Research the company')).toBeVisible()
+    await expect(page.getByText('Book flights')).toBeVisible()
   })
 
   test('event detail shows event date', async ({ page }) => {
-    await page.getByText('Job interview — Acme Co.').click()
+    await page.getByText('Singapore Trip').click()
     await page.waitForTimeout(300)
-    await expect(page.getByText(/date:/i)).toBeVisible()
+    // Event date shown as formatted date label (e.g. Jun 5, 2026)
+    await expect(page.getByText(/jun/i).first()).toBeVisible()
   })
 
   test('clicking goal opens GoalDetailScreen (not a bottom sheet)', async ({ page }) => {
     await page.getByText('Save ₱50,000').click()
     await page.waitForTimeout(300)
-    await expect(page.getByText('‹ Plans')).toBeVisible()
+    // Detail screen opens full-screen (not a bottom sheet)
+    await expect(page.getByText('to go')).toBeVisible()
   })
 
-  test('goal detail shows NO Edit plan button', async ({ page }) => {
+  test('goal detail shows Edit button (same as project)', async ({ page }) => {
     await page.getByText('Save ₱50,000').click()
     await page.waitForTimeout(300)
-    await expect(page.getByRole('button', { name: 'Edit plan' })).not.toBeVisible()
+    await expect(page.getByRole('button', { name: 'Edit', exact: true })).toBeVisible()
   })
 
   test('goal detail shows progress bar', async ({ page }) => {
     await page.getByText('Save ₱50,000').click()
     await page.waitForTimeout(300)
-    await expect(page.getByText(/63%.*saved/i)).toBeVisible()
+    // Stat box shows "35%" with label "progress"
+    await expect(page.getByText('35%').first()).toBeVisible()
+    await expect(page.getByText('progress')).toBeVisible()
   })
 
   test('goal detail shows amount to go', async ({ page }) => {
     await page.getByText('Save ₱50,000').click()
     await page.waitForTimeout(300)
-    await expect(page.getByText(/18,500.*to go/i)).toBeVisible()
+    // Stat box shows formatted amount with "to go" label
+    await expect(page.getByText('to go')).toBeVisible()
+    await expect(page.getByText(/32,500/)).toBeVisible()
   })
 
-  test('goal detail shows update amount input and save button', async ({ page }) => {
+  test('goal detail shows Archive button', async ({ page }) => {
     await page.getByText('Save ₱50,000').click()
     await page.waitForTimeout(300)
-    await expect(page.getByRole('spinbutton')).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Save', exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: /archive this plan/i })).toBeVisible()
   })
 
   test('goal detail back button returns to plans list', async ({ page }) => {
     await page.getByText('Save ₱50,000').click()
     await page.waitForTimeout(300)
-    await page.getByText('‹ Plans').click()
+    await page.locator('button').filter({ hasText: '←' }).first().click()
     await page.waitForTimeout(300)
-    await expect(page.getByText('Move apartments')).toBeVisible()
+    await expect(page.getByText('Run a Marathon')).toBeVisible()
   })
 
   test('Add plan button visible', async ({ page }) => {
@@ -429,7 +448,7 @@ test.describe('Bottom navigation', () => {
 
   test('can switch to Life tab', async ({ page }) => {
     await clickTab(page, 'Life')
-    await expect(page.getByText('Move apartments')).toBeVisible()
+    await expect(page.getByText('Run a Marathon')).toBeVisible()
   })
 
   test('can return to Today after switching', async ({ page }) => {

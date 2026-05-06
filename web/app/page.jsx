@@ -4086,8 +4086,8 @@ function AskTab({ prefill = '', autoSend = false, onAutoSendDone, onLightenRouti
       {typeof document !== 'undefined' && createPortal(
         <div className="heed-ask-inputbar" style={{
           display: 'flex',
-          gap: 8,
-          padding: '12px 14px',
+          gap: 10,
+          padding: '14px 16px',
           alignItems: 'center',
           background: C.paper,
           border: `1px solid ${C.border}`,
@@ -4095,12 +4095,10 @@ function AskTab({ prefill = '', autoSend = false, onAutoSendDone, onLightenRouti
           boxShadow: '0 -2px 12px rgba(0,0,0,0.10)',
           // Explicit font + color — portaled to document.body which is
           // outside the app div where these inherit from. Without this
-          // the bar reverts to the browser default (Times) on a
-          // black-on-white background that doesn't match the theme.
+          // the bar reverts to the browser default (Times).
           fontFamily: '"Nunito Sans", -apple-system, BlinkMacSystemFont, sans-serif',
           color: C.ink,
         }}>
-          {micSupported && <MicButton listening={listening} onToggle={toggleMic} disabled={busy}/>}
           <input
             value={input} onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && send(input)}
@@ -4109,7 +4107,39 @@ function AskTab({ prefill = '', autoSend = false, onAutoSendDone, onLightenRouti
             onFocus={e => { e.target.style.borderColor = C.warmDark }}
             onBlur={e => { if (!listening) e.target.style.borderColor = C.border }}
           />
-          <button onClick={() => send(input)} disabled={busy || !input.trim()} style={{ ...getBtnPrimary(), padding: '12px 18px', fontSize: 13, opacity: (busy || !input.trim()) ? 0.5 : 1, flexShrink: 0, fontFamily: 'inherit' }}>Send</button>
+          {/* Mic + send sit together on the right; mic on the left, send on the right.
+              Both 44×44 circles to satisfy Apple HIG / Material touch-target minimum. */}
+          {micSupported && <MicButton listening={listening} onToggle={toggleMic} disabled={busy}/>}
+          {(() => {
+            const sendDisabled = busy || !input.trim()
+            return (
+              <button
+                onClick={() => send(input)}
+                disabled={sendDisabled}
+                aria-label="Send"
+                style={{
+                  width: 44, height: 44, borderRadius: '50%', flexShrink: 0,
+                  background: sendDisabled ? C.bellySoft : C.warmDark,
+                  border: `1.5px solid ${sendDisabled ? C.border : C.warmDark}`,
+                  color: sendDisabled ? C.inkMute : C.cream,
+                  cursor: sendDisabled ? 'not-allowed' : 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  padding: 0,
+                  transition: 'all 0.15s ease',
+                  fontFamily: 'inherit',
+                  WebkitTapHighlightColor: 'transparent',
+                  touchAction: 'manipulation',
+                }}
+              >
+                {/* Paper-airplane send icon */}
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M3.5 12.5L21 4l-8 18-2.5-7.5L3.5 12.5z"
+                    stroke="currentColor" strokeWidth="1.8"
+                    strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+                </svg>
+              </button>
+            )
+          })()}
         </div>,
         document.body
       )}

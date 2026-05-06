@@ -147,7 +147,8 @@ toc_items = [
     ("    12.8", "Problem 7 — Follow-up Chips Read as Commands"),
     ("    12.9", "Problem 8 — Chip Wording Didn't Switch Modes"),
     ("    12.10", "Problem 9 — Agent Refused Edits Even Though edit_task Exists"),
-    ("    12.11", "Pattern Summary and Operating Principle"),
+    ("    12.11", "Problem 10 — Agent Declined Data-Grounded Suggestions as Out-of-Scope"),
+    ("    12.12", "Pattern Summary and Operating Principle"),
 ]
 for num, item in toc_items:
     p = doc.add_paragraph(style="List Bullet" if num.startswith("    ") else "Normal")
@@ -1572,10 +1573,75 @@ add_screenshot(
 )
 
 # ── 12.11 ──────────────────────────────────────────────────────────────────────
-doc.add_heading("12.11 Pattern Summary and Operating Principle", 2)
+doc.add_heading("12.11 Problem 10 — Agent Declined Data-Grounded Suggestions as Out-of-Scope", 2)
 doc.add_paragraph(
-    "The nine issues above cluster into three failure modes, each with a "
-    "consistent fix shape:"
+    "Symptom: User asked 'What routines should I start with?' Heed "
+    "replied 'That's a little outside my lane — I only work with your "
+    "own tasks, routines, and plans here in Heed. If you want, tell me "
+    "a routine you're thinking about starting, and I can add it for "
+    "you.' Wrong call — the user wanted Heed to look at their existing "
+    "data and propose specific routines based on tasks they already "
+    "track."
+)
+doc.add_paragraph("Cause:", style="Intense Quote")
+doc.add_paragraph(
+    "The system prompt's out-of-scope list named 'fitness plans, study "
+    "material, recipes' as off-limits and added a brief carve-out for "
+    "'structural advice tied to their existing task data', but the "
+    "carve-out was a single subordinate clause inside a larger 'don't "
+    "do this' bullet. The model pattern-matched 'what should I' → "
+    "'recommendations' → 'out-of-scope' and lifted the canned decline "
+    "verbatim. Same failure shape as Problem 9 (verbatim refusal "
+    "parroting): a phrase intended as an example became a template the "
+    "model applied too broadly."
+)
+doc.add_paragraph("Solution:", style="Intense Quote")
+doc.add_paragraph("Three coordinated changes to advisor_system.md:")
+suggestion_fixes = [
+    ("New 'In scope' bullet for data-grounded suggestions", "Names four "
+     "canonical phrasings — 'what routines should I start', 'what plans "
+     "could I make', 'what should I track that I'm not tracking', 'how "
+     "should I plan around my X trip' — and the test for distinguishing "
+     "them from generic recommendations: 'are you reasoning from THEIR "
+     "data to suggest something specific to them, or reciting general "
+     "advice?' Only the first is in scope."),
+    ("Sharpened out-of-scope rule", "The fitness/recipes/study-material "
+     "bullet now reads: 'structural advice tied to their actual data is "
+     "IN scope; generic content libraries are OUT.' Adds an explicit "
+     "'when in doubt, lean toward answering' to counter the previous "
+     "wording that erred too far on the refusal side."),
+    ("New worked example", "Added a 'What routines should I start with?' "
+     "entry to the Examples of good responses block, showing the agent "
+     "calling list_recent_tasks, reading the user's daily tasks, and "
+     "proposing a specific Morning routine made of those exact items. "
+     "Includes an explicit anti-pattern note: 'don't say that's outside "
+     "my lane here'."),
+]
+for label, body in suggestion_fixes:
+    p = doc.add_paragraph(style="List Bullet")
+    r = p.add_run(f"{label}: ")
+    r.bold = True
+    p.add_run(body)
+doc.add_paragraph(
+    "Reference commit: fix: data-grounded suggestions are in scope — "
+    "stop refusing them (ea6b099)."
+)
+add_screenshot(
+    doc,
+    "12-suggestion-refused-as-out-of-scope.png",
+    "'What routines should I start with?' refused with the canned "
+    "out-of-scope decline before the system prompt was updated. The "
+    "carve-out for data-grounded suggestions existed in the prompt but "
+    "wasn't prominent enough for the model to apply.",
+)
+
+# ── 12.12 ──────────────────────────────────────────────────────────────────────
+doc.add_heading("12.12 Pattern Summary and Operating Principle", 2)
+doc.add_paragraph(
+    "The ten issues above cluster into four failure modes (the original "
+    "three from the first nine, plus 'system prompt produced wrong "
+    "behaviour' grew to absorb Problem 10), each with a consistent fix "
+    "shape:"
 )
 pattern_table = doc.add_table(rows=1, cols=3)
 pattern_table.style = "Light Grid Accent 1"
@@ -1598,10 +1664,12 @@ pattern_rows = [
     (
         "System prompt produced wrong behaviour",
         "Done. hallucination; chip imperatives; chip mode mismatch; "
-        "verbatim refusal parroting (Problems 6, 7, 8, 9)",
+        "verbatim refusal parroting; data-grounded suggestions refused "
+        "(Problems 6, 7, 8, 9, 10)",
         "Edit advisor_system.md. Replace blanket rules with checklists. "
         "Avoid verbatim refusal templates the model can pattern-match into "
-        "false negatives.",
+        "false negatives. When the failure mode is 'agent refused something "
+        "in scope', add a positive worked example showing the right pattern.",
     ),
     (
         "Real data gap",

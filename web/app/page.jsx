@@ -8218,6 +8218,10 @@ export default function HeedApp() {
     setEfMode(on)
     try { localStorage.setItem('heed.ef-mode', on ? '1' : '0') } catch (_) {}
   }, [])
+  const handleAvatarChange = useCallback((dataUrl) => {
+    setAvatar(dataUrl)
+    try { localStorage.setItem('heed.avatar', dataUrl) } catch (_) {}
+  }, [])
   const [customCategories, setCustomCategories] = useState(() => {
     if (typeof window === 'undefined') return []
     try {
@@ -8226,6 +8230,21 @@ export default function HeedApp() {
     } catch { return [] }
   })
   const [customEventTypes, setCustomEventTypes] = useState([])
+  useEffect(() => {
+    if (!username || isDemoMode()) return
+    fetch(`${FUNCTIONS_URL}/api/user_avatar`, {
+      headers: { 'X-User-ID': username },
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.avatar_b64) {
+          const dataUrl = `data:image/jpeg;base64,${data.avatar_b64}`
+          setAvatar(dataUrl)
+          try { localStorage.setItem('heed.avatar', dataUrl) } catch (_) {}
+        }
+      })
+      .catch(() => {})
+  }, [username, FUNCTIONS_URL])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -8829,7 +8848,7 @@ export default function HeedApp() {
         onAskHeed={handleAskHeed}
       />
       <ShareCardSheet routine={shareCtx} onClose={handleShareClose}/>
-      <SettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} userName={username} onUserName={name => { setUsername(name); try { localStorage.setItem('heed.username', name) } catch (_) {} }} theme={theme} onTheme={handleSetTheme} customCategories={customCategories} onAddCategory={cat => setCustomCategories(cs => [...cs, cat])} customEventTypes={customEventTypes} onAddEventType={evt => setCustomEventTypes(es => [...es, evt])} onResetAllData={handleResetAllData} onLoadDemoData={handleLoadDemoData} onSwitchToRealData={handleSwitchToRealData} efMode={efMode} onSetEfMode={handleSetEfMode}/>
+      <SettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} userName={username} onUserName={name => { setUsername(name); try { localStorage.setItem('heed.username', name) } catch (_) {} }} theme={theme} onTheme={handleSetTheme} customCategories={customCategories} onAddCategory={cat => setCustomCategories(cs => [...cs, cat])} customEventTypes={customEventTypes} onAddEventType={evt => setCustomEventTypes(es => [...es, evt])} onResetAllData={handleResetAllData} onLoadDemoData={handleLoadDemoData} onSwitchToRealData={handleSwitchToRealData} efMode={efMode} onSetEfMode={handleSetEfMode} avatar={avatar} onAvatarChange={handleAvatarChange}/>
       {toast && <Toast message={toast.message} onView={toast.onView || (toast.showView ? handleToastView : undefined)} onUndo={toast.onUndo} onDismiss={() => setToast(null)} reasons={toast.reasons} onReason={toast.onReason}/>}
       <HeedFAB onAddTask={() => setModalOpen(true)} onAskHeed={() => setAskOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)}/>
     </div>

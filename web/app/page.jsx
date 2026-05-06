@@ -1341,19 +1341,19 @@ function MobileBottomNav({ tab, onTab, onMicAsk, overdueCount = 0 }) {
           aria-current={askActive ? 'page' : undefined}
           style={{
             position: 'absolute',
-            top: -12,
+            top: -10,
             left: '50%',
             transform: `translateX(-50%) scale(${pressing ? 1.12 : 1})`,
-            width: 68,
-            height: 68,
+            width: 50,
+            height: 50,
             borderRadius: '50%',
             background: C.paper,
-            border: `2.5px solid ${micListening ? '#e53e3e' : askActive ? C.warmDark : `${C.warmDark}99`}`,
+            border: `2px solid ${micListening ? '#e53e3e' : askActive ? C.warmDark : `${C.warmDark}99`}`,
             boxShadow: micListening
-              ? `0 0 0 3px #fff3f3, 0 0 0 8px rgba(229,62,62,0.35), 0 -4px 20px rgba(229,62,62,0.3)`
+              ? `0 0 0 2px #fff3f3, 0 0 0 5px rgba(229,62,62,0.35), 0 -3px 14px rgba(229,62,62,0.3)`
               : askActive
-              ? `0 0 0 3px ${C.paper}, 0 0 0 6px ${C.warmDark}55, 0 -6px 24px rgba(0,0,0,0.28)`
-              : `0 0 0 3px ${C.paper}, 0 0 0 5px ${C.border}, 0 -4px 20px rgba(0,0,0,0.22)`,
+              ? `0 0 0 2px ${C.paper}, 0 0 0 4px ${C.warmDark}55, 0 -4px 16px rgba(0,0,0,0.28)`
+              : `0 0 0 2px ${C.paper}, 0 0 0 3px ${C.border}, 0 -3px 14px rgba(0,0,0,0.22)`,
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',

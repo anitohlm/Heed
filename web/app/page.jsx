@@ -849,6 +849,11 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
       const dataUrl = canvas.toDataURL('image/jpeg', 0.85)
       const b64 = dataUrl.split(',')[1]
 
+      if (isDemoMode()) {
+        onAvatarChange(dataUrl)
+        return
+      }
+
       const res = await fetch(`${FUNCTIONS_URL}/api/user_avatar`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'X-User-ID': getUsername() || 'demo' },

@@ -1,8 +1,8 @@
-azure-functions
-azure-cosmos
-azure-search-documents
-azure-identity
-openai
-requests
-pydantic
-python-dotenv
+azure-functions==1.24.0
+azure-cosmos==4.15.0
+azure-search-documents==11.7.0b2
+azure-identity==1.25.3
+openai==2.31.0
+requests==2.33.1
+pydantic==2.12.5
+python-dotenv==1.2.2

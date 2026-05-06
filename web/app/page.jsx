@@ -4069,7 +4069,7 @@ function SegmentButton({ active, onClick, label, count, accent }) {
   )
 }
 
-function TracksTab({ tasks, routines, onMarkDone, onSkip, onMarkRoutineDone, onLightenRoutine, onEditRoutine, onAddTask, onAddRoutine, onMoreOptions, onShareCard, onMarkRoutineDay, onEditTask, onAddToRoutine, onBuildRoutine }) {
+function TracksTab({ tasks, routines, plans, checkTask, onMarkDone, onSkip, onMarkRoutineDone, onLightenRoutine, onEditRoutine, onAddTask, onAddRoutine, onMoreOptions, onShareCard, onMarkRoutineDay, onEditTask, onAddToRoutine, onBuildRoutine }) {
   const [subtab, setSubtab] = useState('routines')
   const [filter, setFilter] = useState('all')
   const [sortBy, setSortBy] = useState('due')
@@ -4325,6 +4325,36 @@ function TracksTab({ tasks, routines, onMarkDone, onSkip, onMarkRoutineDone, onL
           <div>
             {filteredTasks.map((t, i) => <TaskCard key={t.id} task={t} delay={i * 30} onMarkDone={onMarkDone} onSkip={onSkip} onEdit={onEditTask} onAddToRoutine={onAddToRoutine} onBuildRoutine={onBuildRoutine}/>)}
           </div>
+          {plans && plans.filter(p => !p.archived && Array.isArray(p.tasks) && p.tasks.length > 0).length > 0 && (
+            <div style={{ marginTop: 24 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.sage, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 12 }}>From your plans</div>
+              {plans.filter(p => !p.archived && Array.isArray(p.tasks) && p.tasks.length > 0).map(plan => (
+                <div key={plan.id} style={{ marginBottom: 16 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 8 }}>
+                    {plan.imageUrl
+                      ? <img src={plan.imageUrl} style={{ width: 20, height: 20, objectFit: 'cover', borderRadius: 5, flexShrink: 0 }} alt=""/>
+                      : <span style={{ fontSize: 16 }}>{plan.icon}</span>
+                    }
+                    <span style={{ fontSize: 13, fontWeight: 700, color: C.warmDark }}>{plan.title}</span>
+                    <span style={{ fontSize: 11, background: C.bellySoft, color: C.warmDark, border: `1px solid ${C.belly}`, borderRadius: 999, padding: '2px 8px', fontWeight: 600 }}>
+                      {plan.tasks.filter(t => t.done).length}/{plan.tasks.length}
+                    </span>
+                  </div>
+                  {plan.tasks.map((task, idx) => (
+                    <div key={idx} onClick={() => checkTask?.(plan.id, idx)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 10px', marginBottom: 4, background: C.paper, border: `1px solid ${C.border}`, borderRadius: 10, cursor: 'pointer', transition: 'all 0.15s' }}
+                      onMouseEnter={e => e.currentTarget.style.borderColor = C.belly}
+                      onMouseLeave={e => e.currentTarget.style.borderColor = C.border}
+                    >
+                      <div style={{ width: 20, height: 20, borderRadius: '50%', border: `2px solid ${task.done ? C.sage : C.border}`, background: task.done ? C.sage : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.15s' }}>
+                        {task.done && <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5l2.5 2.5L8 2" stroke={C.cream} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                      </div>
+                      <span style={{ fontSize: 13.5, color: task.done ? C.inkMute : C.ink, textDecoration: task.done ? 'line-through' : 'none', flex: 1, transition: 'all 0.15s' }}>{task.label}</span>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
           <div style={{ marginTop: 18, fontSize: 12.5, color: C.inkMute, fontStyle: 'italic', textAlign: 'center' }}>✨ = cadence learned by the agent from your behavior</div>
         </div>
       )}
@@ -4582,6 +4612,403 @@ function PlanCard({ plan, delay = 0, onSelectPlan }) {
         </div>
       )}
 
+    </div>
+  )
+}
+
+// ── CalendarPicker ─────────────────────────────────────────────
+const CAL_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
+function CalendarPicker({ value, onChange, label = 'Due date' }) {
+  const [open, setOpen] = useState(false)
+  const today = new Date()
+  const parsedValue = value ? new Date(value + (value.includes('T') ? '' : 'T00:00:00')) : null
+  const [viewYear, setViewYear]   = useState(parsedValue ? parsedValue.getFullYear() : today.getFullYear())
+  const [viewMonth, setViewMonth] = useState(parsedValue ? parsedValue.getMonth()    : today.getMonth())
+  const displayLabel = parsedValue ? parsedValue.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'No date set'
+  const firstDay     = new Date(viewYear, viewMonth, 1).getDay()
+  const daysInMonth  = new Date(viewYear, viewMonth + 1, 0).getDate()
+  function navMonth(dir) {
+    let m = viewMonth + dir, y = viewYear
+    if (m > 11) { m = 0; y++ }
+    if (m < 0)  { m = 11; y-- }
+    setViewMonth(m); setViewYear(y)
+  }
+  function pick(d) {
+    const mm = String(viewMonth + 1).padStart(2, '0')
+    const dd = String(d).padStart(2, '0')
+    onChange?.(`${viewYear}-${mm}-${dd}`)
+    setOpen(false)
+  }
+  const isToday = d => d === today.getDate() && viewMonth === today.getMonth() && viewYear === today.getFullYear()
+  const isSel   = d => parsedValue && d === parsedValue.getDate() && viewMonth === parsedValue.getMonth() && viewYear === parsedValue.getFullYear()
+  const cells = []
+  for (let i = 0; i < firstDay; i++) cells.push(null)
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d)
+  return (
+    <div>
+      {label && <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>{label}</div>}
+      <button onClick={() => setOpen(o => !o)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', background: C.paperHi, border: `1.5px solid ${open ? C.warmDark : C.border}`, borderRadius: open ? '10px 10px 0 0' : 10, color: C.ink, fontSize: 14, fontFamily: 'inherit', cursor: 'pointer', transition: 'border-color 0.15s', textAlign: 'left' }}>
+        <span>📅</span>
+        <span style={{ flex: 1, color: parsedValue ? C.ink : C.inkMute }}>{displayLabel}</span>
+        <span style={{ color: C.inkMute, fontSize: 11, display: 'inline-block', transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}>›</span>
+      </button>
+      {open && (
+        <div style={{ background: C.paperHi, border: `1.5px solid ${C.warmDark}`, borderTop: 'none', borderRadius: '0 0 12px 12px', overflow: 'hidden' }}>
+          <div style={{ padding: '12px 12px 8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <button onClick={() => navMonth(-1)} style={{ background: 'none', border: 'none', color: C.ink, fontSize: 18, cursor: 'pointer', padding: '2px 8px', borderRadius: 6, fontFamily: 'inherit' }}>‹</button>
+              <span style={{ fontSize: 13, fontWeight: 700, color: C.ink }}>{CAL_MONTHS[viewMonth]} {viewYear}</span>
+              <button onClick={() => navMonth(1)}  style={{ background: 'none', border: 'none', color: C.ink, fontSize: 18, cursor: 'pointer', padding: '2px 8px', borderRadius: 6, fontFamily: 'inherit' }}>›</button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 4 }}>
+              {['Su','Mo','Tu','We','Th','Fr','Sa'].map(d => (
+                <div key={d} style={{ textAlign: 'center', fontSize: 10, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', padding: '2px 0' }}>{d}</div>
+              ))}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
+              {cells.map((d, idx) => {
+                if (!d) return <div key={idx} />
+                const sel = isSel(d), tod = isToday(d)
+                return (
+                  <button key={idx} onClick={() => pick(d)} style={{ aspectRatio: '1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: sel || tod ? 700 : 400, color: sel ? C.cream : tod ? C.rust : C.ink, background: sel ? C.warmDark : 'transparent', border: 'none', borderRadius: '50%', cursor: 'pointer', fontFamily: 'inherit', transition: 'background 0.12s' }}
+                    onMouseEnter={e => { if (!sel) e.currentTarget.style.background = C.bellySoft }}
+                    onMouseLeave={e => { if (!sel) e.currentTarget.style.background = 'transparent' }}
+                  >{d}</button>
+                )
+              })}
+            </div>
+          </div>
+          <button onClick={() => { onChange?.(null); setOpen(false) }} style={{ display: 'block', width: '100%', padding: 8, background: 'none', border: 'none', borderTop: `1px solid ${C.border}`, color: C.inkMute, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Clear date</button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── PlanBubble ──────────────────────────────────────────────────
+function PlanBubble({ plan, index = 0, onSelect }) {
+  const doneCount  = plan.tasks ? plan.tasks.filter(t => t.done).length : 0
+  const totalCount = plan.tasks ? plan.tasks.length : 0
+  const pct = plan.type === 'goal'
+    ? (plan.goalKind === 'milestone'
+        ? (plan.achieved ? 100 : 0)
+        : plan.target > 0 ? Math.min(100, Math.round((plan.current ?? 0) / plan.target * 100)) : 0)
+    : totalCount > 0 ? Math.round(doneCount / totalCount * 100) : 0
+  const ringColor = plan.type === 'project' ? C.rust : plan.type === 'goal' ? C.ochre : C.sage
+  const rawDate   = plan.type === 'event' ? plan.eventDate : plan.type === 'goal' ? plan.targetDate : plan.dueDate
+  const parsedDate = rawDate ? new Date(rawDate + (rawDate.includes('T') ? '' : 'T00:00:00')) : null
+  const dateLabel  = parsedDate && !isNaN(parsedDate) ? parsedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'No date'
+  const circ   = 345.6
+  const offset = circ * (1 - pct / 100)
+  return (
+    <div onClick={() => onSelect?.(plan.id)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: 6, cursor: 'pointer', marginTop: index % 2 === 1 ? 32 : 0, animation: `heed-fadeIn 0.25s ease ${index * 60}ms both`, WebkitTapHighlightColor: 'transparent' }}>
+      <div style={{ position: 'relative', width: 120, height: 120 }}>
+        <svg viewBox="0 0 120 120" style={{ position: 'absolute', inset: 0, width: 120, height: 120, transform: 'rotate(-90deg)' }}>
+          <circle fill="none" stroke={C.bellySoft} strokeWidth={5} cx={60} cy={60} r={55} />
+          <circle fill="none" stroke={ringColor} strokeWidth={5} strokeLinecap="round" cx={60} cy={60} r={55} strokeDasharray={circ} strokeDashoffset={offset} style={{ transition: 'stroke-dashoffset 0.5s ease' }} />
+        </svg>
+        <div style={{ position: 'absolute', top: 8, left: 8, width: 104, height: 104, borderRadius: '50%', background: C.paper, overflow: 'hidden', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
+          {plan.imageUrl
+            ? <img src={plan.imageUrl} style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: '50%' }} alt=""/>
+            : <span style={{ fontSize: 34, lineHeight: 1 }}>{plan.icon}</span>
+          }
+          <span style={{ fontSize: 11, fontWeight: 700, color: ringColor, lineHeight: 1 }}>{pct}%</span>
+        </div>
+      </div>
+      <div style={{ textAlign: 'center', maxWidth: 120 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: C.ink, lineHeight: 1.3 }}>{plan.title}</div>
+        <div style={{ fontSize: 11, color: C.inkMute, marginTop: 2 }}>{dateLabel}</div>
+      </div>
+    </div>
+  )
+}
+
+// ── TaskDetailScreen ────────────────────────────────────────────
+function TaskDetailScreen({ plan, taskIndex, onBack, onCheck, onRename, onDelete }) {
+  const task = plan?.tasks?.[taskIndex]
+  const [name, setName]       = useState(task?.label ?? '')
+  const [notes, setNotes]     = useState(task?.notes ?? '')
+  const [dueDate, setDueDate] = useState(task?.dueDate ?? null)
+  useEffect(() => {
+    if (!task) return
+    setName(task.label ?? ''); setNotes(task.notes ?? ''); setDueDate(task.dueDate ?? null)
+  }, [plan?.id, taskIndex])
+  if (!task) return null
+  function save() {
+    if (name.trim() && name.trim() !== task.label) onRename?.(plan.id, taskIndex, name.trim())
+    onBack?.()
+  }
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 230, background: C.paper, display: 'flex', flexDirection: 'column', animation: 'heed-slideIn 0.3s cubic-bezier(0.16,1,0.3,1)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '18px 16px 12px', borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
+        <button onClick={onBack} style={{ background: 'none', border: 'none', color: C.ink, fontSize: 22, cursor: 'pointer', padding: '2px 8px 2px 0', lineHeight: 1, fontFamily: 'inherit' }}>←</button>
+        <span style={{ flex: 1, fontSize: 16, fontWeight: 700, color: C.ink }}>Task detail</span>
+        <button onClick={() => { onCheck?.(plan.id, taskIndex); onBack?.() }} style={{ background: 'none', border: 'none', color: task.done ? C.inkMute : C.rust, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>{task.done ? 'Mark undone' : 'Mark done'}</button>
+      </div>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '20px 20px 32px' }}>
+        <div onClick={() => onCheck?.(plan.id, taskIndex)} style={{ display: 'flex', alignItems: 'center', gap: 14, paddingBottom: 20, borderBottom: `1px solid ${C.border}`, marginBottom: 20, cursor: 'pointer' }}>
+          <div style={{ width: 28, height: 28, borderRadius: '50%', border: `2px solid ${task.done ? C.rust : C.border}`, background: task.done ? C.rust : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.2s' }}>
+            {task.done && <span style={{ color: C.cream, fontSize: 14, fontWeight: 700 }}>✓</span>}
+          </div>
+          <span style={{ fontSize: 15, fontWeight: 600, color: task.done ? C.inkMute : C.ink, textDecoration: task.done ? 'line-through' : 'none' }}>{task.label}</span>
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Task name</div>
+          <input value={name} onChange={e => setName(e.target.value)} style={{ width: '100%', padding: '11px 14px', background: C.paperHi, border: `1.5px solid ${C.border}`, borderRadius: 10, color: C.ink, fontSize: 14, fontFamily: 'inherit', outline: 'none' }} onFocus={e => e.target.style.borderColor = C.warmDark} onBlur={e => e.target.style.borderColor = C.border} />
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Notes</div>
+          <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Add notes…" rows={3} style={{ width: '100%', padding: '11px 14px', background: C.paperHi, border: `1.5px solid ${C.border}`, borderRadius: 10, color: C.ink, fontSize: 14, fontFamily: 'inherit', outline: 'none', resize: 'none' }} onFocus={e => e.target.style.borderColor = C.warmDark} onBlur={e => e.target.style.borderColor = C.border} />
+        </div>
+        <div style={{ marginBottom: 20 }}>
+          <CalendarPicker value={dueDate} onChange={setDueDate} label="Due date" />
+        </div>
+        <button onClick={save} style={{ ...getBtnPrimary(), width: '100%', padding: 14, fontSize: 15 }}>Save task</button>
+        <button onClick={() => { onDelete?.(plan.id, taskIndex); onBack?.() }} style={{ width: '100%', padding: 13, background: 'none', border: `1.5px solid ${C.border}`, borderRadius: 10, color: '#e05050', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', marginTop: 10 }}>Delete task</button>
+      </div>
+    </div>
+  )
+}
+
+// ── EditPlanScreen ──────────────────────────────────────────────
+function EditPlanScreen({ plan, onBack, onSave, onAddTask, onDeleteTask, onRenameTask }) {
+  const [title, setTitle]         = useState(plan.title ?? '')
+  const [desc, setDesc]           = useState(plan.description ?? '')
+  const rawDate = plan.type === 'event' ? plan.eventDate : plan.type === 'goal' ? plan.targetDate : plan.dueDate
+  const [dueDate, setDueDate]     = useState(rawDate ?? null)
+  const [taskInputs, setTaskInputs] = useState(plan.tasks ? plan.tasks.map(t => t.label) : [])
+  const [newTaskLabel, setNewTaskLabel] = useState('')
+  const dateLabel = plan.type === 'event' ? 'Event date' : plan.type === 'goal' ? 'Target date' : 'Due date'
+  function save() {
+    const updates = { title: title.trim() || plan.title, description: desc }
+    if (plan.type === 'project') updates.dueDate = dueDate
+    else if (plan.type === 'goal') updates.targetDate = dueDate
+    else if (plan.type === 'event') updates.eventDate = dueDate
+    onSave?.(plan.id, updates)
+    taskInputs.forEach((label, i) => { if (plan.tasks?.[i] && label !== plan.tasks[i].label) onRenameTask?.(plan.id, i, label) })
+    onBack?.()
+  }
+  function addNewTask() {
+    if (!newTaskLabel.trim()) return
+    onAddTask?.(plan.id, newTaskLabel.trim())
+    setTaskInputs(arr => [...arr, newTaskLabel.trim()])
+    setNewTaskLabel('')
+  }
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 225, background: C.paper, display: 'flex', flexDirection: 'column', animation: 'heed-slideIn 0.3s cubic-bezier(0.16,1,0.3,1)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '18px 16px 12px', borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
+        <button onClick={onBack} style={{ background: 'none', border: 'none', color: C.ink, fontSize: 22, cursor: 'pointer', padding: '2px 8px 2px 0', lineHeight: 1, fontFamily: 'inherit' }}>←</button>
+        <span style={{ flex: 1, fontSize: 16, fontWeight: 700, color: C.ink }}>Edit plan</span>
+      </div>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '20px 20px 32px' }}>
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Plan name</div>
+          <input value={title} onChange={e => setTitle(e.target.value)} style={{ width: '100%', padding: '11px 14px', background: C.paperHi, border: `1.5px solid ${C.border}`, borderRadius: 10, color: C.ink, fontSize: 14, fontFamily: 'inherit', outline: 'none' }} onFocus={e => e.target.style.borderColor = C.warmDark} onBlur={e => e.target.style.borderColor = C.border} />
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Description</div>
+          <textarea value={desc} onChange={e => setDesc(e.target.value)} placeholder="What's this plan about?" rows={3} style={{ width: '100%', padding: '11px 14px', background: C.paperHi, border: `1.5px solid ${C.border}`, borderRadius: 10, color: C.ink, fontSize: 14, fontFamily: 'inherit', outline: 'none', resize: 'none' }} onFocus={e => e.target.style.borderColor = C.warmDark} onBlur={e => e.target.style.borderColor = C.border} />
+        </div>
+        <div style={{ marginBottom: 20 }}>
+          <CalendarPicker value={dueDate} onChange={setDueDate} label={dateLabel} />
+        </div>
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>Tasks</div>
+          {taskInputs.map((label, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <span style={{ color: C.inkMute, fontSize: 16, cursor: 'grab', flexShrink: 0, letterSpacing: -2 }}>⠿</span>
+              <input value={label} onChange={e => { const arr = [...taskInputs]; arr[i] = e.target.value; setTaskInputs(arr) }} style={{ flex: 1, padding: '9px 12px', background: C.paperHi, border: `1.5px solid ${C.border}`, borderRadius: 8, color: C.ink, fontSize: 13, fontFamily: 'inherit', outline: 'none' }} onFocus={e => e.target.style.borderColor = C.warmDark} onBlur={e => e.target.style.borderColor = C.border} />
+              <button onClick={() => { setTaskInputs(arr => arr.filter((_, j) => j !== i)); onDeleteTask?.(plan.id, i) }} style={{ background: 'none', border: 'none', color: C.inkMute, fontSize: 16, cursor: 'pointer', padding: '4px', flexShrink: 0, fontFamily: 'inherit' }}>✕</button>
+            </div>
+          ))}
+          <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+            <input value={newTaskLabel} onChange={e => setNewTaskLabel(e.target.value)} onKeyDown={e => e.key === 'Enter' && addNewTask()} placeholder="New task…" style={{ flex: 1, padding: '9px 12px', background: C.paperHi, border: `1.5px dashed ${C.border}`, borderRadius: 8, color: C.ink, fontSize: 13, fontFamily: 'inherit', outline: 'none' }} onFocus={e => e.target.style.borderColor = C.warmDark} onBlur={e => e.target.style.borderColor = C.border} />
+            <button onClick={addNewTask} style={{ ...getBtnPrimary(), padding: '9px 14px', fontSize: 13 }}>Add</button>
+          </div>
+        </div>
+      </div>
+      <div style={{ padding: '12px 20px 20px', borderTop: `1px solid ${C.border}`, flexShrink: 0 }}>
+        <button onClick={save} style={{ ...getBtnPrimary(), width: '100%', padding: 14, fontSize: 15 }}>Save changes</button>
+      </div>
+    </div>
+  )
+}
+
+// ── PlanBubbleDetailScreen ──────────────────────────────────────
+function PlanBubbleDetailScreen({ plan, onBack, onEdit, onCheck, onTaskSelect, onArchive }) {
+  const doneCount  = plan.tasks ? plan.tasks.filter(t => t.done).length : 0
+  const totalCount = plan.tasks ? plan.tasks.length : 0
+  const pct = plan.type === 'goal'
+    ? (plan.goalKind === 'milestone'
+        ? (plan.achieved ? 100 : 0)
+        : plan.target > 0 ? Math.min(100, Math.round((plan.current ?? 0) / plan.target * 100)) : 0)
+    : totalCount > 0 ? Math.round(doneCount / totalCount * 100) : 0
+  const ringColor  = plan.type === 'project' ? C.rust : plan.type === 'goal' ? C.ochre : C.sage
+  const heroCirc   = 439.8
+  const heroOffset = heroCirc * (1 - pct / 100)
+  const rawDate    = plan.type === 'event' ? plan.eventDate : plan.type === 'goal' ? plan.targetDate : plan.dueDate
+  const parsedDate = rawDate ? new Date(rawDate + (rawDate.includes('T') ? '' : 'T00:00:00')) : null
+  const dateLabel  = parsedDate && !isNaN(parsedDate) ? parsedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'No date set'
+  const remaining  = totalCount - doneCount
+  const stats = plan.type === 'goal' && plan.goalKind !== 'milestone'
+    ? [{ v: `${plan.unit ?? ''}${(plan.current ?? 0).toLocaleString()}`, l: 'saved' }, { v: `${plan.unit ?? ''}${Math.max(0, (plan.target ?? 0) - (plan.current ?? 0)).toLocaleString()}`, l: 'to go' }, { v: `${pct}%`, l: 'progress' }]
+    : [{ v: String(doneCount), l: 'done' }, { v: String(remaining), l: 'remaining' }, { v: String(totalCount), l: 'total' }]
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 210, background: C.paper, display: 'flex', flexDirection: 'column', animation: 'heed-slideIn 0.3s cubic-bezier(0.16,1,0.3,1)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '18px 16px 12px', borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
+        <button onClick={onBack} style={{ background: 'none', border: 'none', color: C.ink, fontSize: 22, cursor: 'pointer', padding: '2px 8px 2px 0', lineHeight: 1, fontFamily: 'inherit' }}>←</button>
+        <span style={{ flex: 1, fontSize: 16, fontWeight: 700, color: C.ink, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{plan.title}</span>
+        <button onClick={onEdit} style={{ background: 'none', border: 'none', color: C.inkSoft, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Edit</button>
+      </div>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '20px 20px 32px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 24 }}>
+          <div style={{ position: 'relative', width: 160, height: 160 }}>
+            <svg viewBox="0 0 160 160" style={{ position: 'absolute', inset: 0, width: 160, height: 160, transform: 'rotate(-90deg)' }}>
+              <circle fill="none" stroke={C.bellySoft} strokeWidth={6} cx={80} cy={80} r={70} />
+              <circle fill="none" stroke={ringColor} strokeWidth={6} strokeLinecap="round" cx={80} cy={80} r={70} strokeDasharray={heroCirc} strokeDashoffset={heroOffset} style={{ transition: 'stroke-dashoffset 0.6s ease' }} />
+            </svg>
+            <div style={{ position: 'absolute', top: 10, left: 10, width: 140, height: 140, borderRadius: '50%', background: C.paperHi, overflow: 'hidden', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+              {plan.imageUrl
+                ? <img src={plan.imageUrl} style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: '50%' }} alt=""/>
+                : <span style={{ fontSize: 52, lineHeight: 1 }}>{plan.icon}</span>
+              }
+              <span style={{ fontSize: 15, fontWeight: 700, color: ringColor, lineHeight: 1 }}>{pct}%</span>
+            </div>
+          </div>
+          <div style={{ fontSize: 20, fontWeight: 700, color: C.ink, marginTop: 14 }}>{plan.title}</div>
+          <div style={{ fontSize: 12, color: C.inkMute, marginTop: 4 }}>{dateLabel}</div>
+          {plan.description && <div style={{ fontSize: 13, color: C.inkSoft, fontStyle: 'italic', marginTop: 8, textAlign: 'center', lineHeight: 1.5 }}>{plan.description}</div>}
+        </div>
+        <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+          {stats.map((s, i) => (
+            <div key={i} style={{ flex: 1, background: C.paperHi, border: `1px solid ${C.border}`, borderRadius: 12, padding: 12, textAlign: 'center' }}>
+              <div style={{ fontSize: 20, fontWeight: 700, color: C.ink }}>{s.v}</div>
+              <div style={{ fontSize: 10, color: C.inkMute, marginTop: 2 }}>{s.l}</div>
+            </div>
+          ))}
+        </div>
+        {plan.type === 'goal' && plan.goalKind === 'milestone' && (
+          <div style={{ marginBottom: 20, textAlign: 'center' }}>
+            <span style={{ background: plan.achieved ? '#d4edda' : C.bellySoft, color: plan.achieved ? '#2d6a4f' : C.inkMute, borderRadius: 999, padding: '4px 14px', fontSize: 13, fontWeight: 600 }}>{plan.achieved ? '✓ Achieved!' : 'In progress'}</span>
+          </div>
+        )}
+        {(plan.tasks?.length ?? 0) > 0 && (
+          <>
+            <div style={{ fontSize: 12, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Tasks</div>
+            {plan.tasks.map((t, i) => (
+              <div key={i} onClick={() => onTaskSelect?.(i)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', background: C.paperHi, border: `1.5px solid ${C.border}`, borderRadius: 10, marginBottom: 6, cursor: 'pointer', transition: 'border-color 0.12s' }}
+                onMouseEnter={e => e.currentTarget.style.borderColor = C.inkMute}
+                onMouseLeave={e => e.currentTarget.style.borderColor = C.border}
+              >
+                <div onClick={e => { e.stopPropagation(); onCheck?.(plan.id, i) }} style={{ width: 18, height: 18, borderRadius: '50%', border: `2px solid ${t.done ? C.rust : C.border}`, background: t.done ? C.rust : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.15s', cursor: 'pointer' }}>
+                  {t.done && <span style={{ color: C.cream, fontSize: 10, fontWeight: 700 }}>✓</span>}
+                </div>
+                <span style={{ flex: 1, fontSize: 13, color: t.done ? C.inkMute : C.ink, textDecoration: t.done ? 'line-through' : 'none' }}>{t.label}</span>
+                <span style={{ color: C.border, fontSize: 16 }}>›</span>
+              </div>
+            ))}
+          </>
+        )}
+        <button onClick={onArchive} style={{ width: '100%', padding: 12, background: 'none', border: `1px solid ${C.border}`, borderRadius: 10, color: C.inkMute, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', marginTop: 16 }}>Archive this plan</button>
+      </div>
+    </div>
+  )
+}
+
+// ── PastPlanDetailScreen ─────────────────────────────────────────
+function PastPlanDetailScreen({ plan, onBack, onRestore }) {
+  const d       = plan.archivedDate ? new Date(plan.archivedDate + 'T00:00:00') : null
+  const dateStr = d ? d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : ''
+  const doneCount  = plan.tasks ? plan.tasks.filter(t => t.done).length : 0
+  const ringColor  = plan.type === 'project' ? C.rust : plan.type === 'goal' ? C.ochre : C.sage
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 235, background: C.paper, display: 'flex', flexDirection: 'column', animation: 'heed-slideIn 0.3s cubic-bezier(0.16,1,0.3,1)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '18px 16px 12px', borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
+        <button onClick={onBack} style={{ background: 'none', border: 'none', color: C.ink, fontSize: 22, cursor: 'pointer', padding: '2px 8px 2px 0', lineHeight: 1, fontFamily: 'inherit' }}>←</button>
+        <span style={{ flex: 1, fontSize: 16, fontWeight: 700, color: C.ink, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{plan.title}</span>
+        <span style={{ background: '#d4edda', color: '#2d6a4f', fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 999 }}>✓ Done</span>
+      </div>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '20px 20px 32px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 24 }}>
+          <div style={{ width: 100, height: 100, borderRadius: '50%', background: C.paperHi, border: `4px solid ${ringColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 44, marginBottom: 14, overflow: 'hidden', flexShrink: 0 }}>
+            {plan.imageUrl ? <img src={plan.imageUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt=""/> : plan.icon}
+          </div>
+          <div style={{ fontSize: 18, fontWeight: 700, color: C.ink }}>{plan.title}</div>
+          {dateStr && <div style={{ fontSize: 12, color: C.inkMute, marginTop: 4 }}>Archived {dateStr}</div>}
+          <div style={{ marginTop: 12, background: C.paperHi, border: `1px solid ${C.border}`, borderRadius: 12, padding: '10px 24px', textAlign: 'center' }}>
+            <div style={{ fontSize: 22, fontWeight: 700, color: C.sage }}>{doneCount}/{plan.tasks?.length ?? 0}</div>
+            <div style={{ fontSize: 11, color: C.inkMute, marginTop: 2 }}>tasks completed</div>
+          </div>
+        </div>
+        {plan.description && <div style={{ fontSize: 13, color: C.inkSoft, fontStyle: 'italic', marginBottom: 20, lineHeight: 1.5 }}>{plan.description}</div>}
+        {(plan.tasks?.length ?? 0) > 0 && (
+          <>
+            <div style={{ fontSize: 12, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Tasks</div>
+            {plan.tasks.map((t, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', background: C.paperHi, border: `1px solid ${C.border}`, borderRadius: 10, marginBottom: 6, opacity: 0.75 }}>
+                <div style={{ width: 18, height: 18, borderRadius: '50%', background: C.rust, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <span style={{ color: C.cream, fontSize: 10, fontWeight: 700 }}>✓</span>
+                </div>
+                <span style={{ fontSize: 13, color: C.inkMute, textDecoration: 'line-through' }}>{t.label}</span>
+              </div>
+            ))}
+          </>
+        )}
+        <button onClick={onRestore} style={{ width: '100%', padding: 12, background: 'none', border: `1px solid ${C.border}`, borderRadius: 10, color: C.inkSoft, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', marginTop: 16 }}>Restore to active plans</button>
+      </div>
+    </div>
+  )
+}
+
+// ── PastPlansScreen ──────────────────────────────────────────────
+const PAST_SORT_OPTIONS = [{ key: 'newest', label: 'Newest first' }, { key: 'oldest', label: 'Oldest first' }, { key: 'az', label: 'A → Z' }]
+function PastPlansScreen({ plans, onBack, onRestore }) {
+  const [sort, setSort]         = useState('newest')
+  const [selectedId, setSelectedId] = useState(null)
+  const archivedPlans = plans.filter(p => p.archived)
+  const sorted = [...archivedPlans].sort((a, b) => {
+    if (sort === 'newest') return (b.archivedDate ?? '').localeCompare(a.archivedDate ?? '')
+    if (sort === 'oldest') return (a.archivedDate ?? '').localeCompare(b.archivedDate ?? '')
+    return (a.title ?? '').localeCompare(b.title ?? '')
+  })
+  const selectedPlan = sorted.find(p => p.id === selectedId)
+  const ringColor = p => p.type === 'project' ? C.rust : p.type === 'goal' ? C.ochre : C.sage
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 220, background: C.paper, display: 'flex', flexDirection: 'column', animation: 'heed-slideIn 0.3s cubic-bezier(0.16,1,0.3,1)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '18px 16px 12px', borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
+        <button onClick={onBack} style={{ background: 'none', border: 'none', color: C.ink, fontSize: 22, cursor: 'pointer', padding: '2px 8px 2px 0', lineHeight: 1, fontFamily: 'inherit' }}>←</button>
+        <span style={{ flex: 1, fontSize: 16, fontWeight: 700, color: C.ink }}>Past Plans</span>
+        <select value={sort} onChange={e => setSort(e.target.value)} style={{ background: C.paperHi, border: `1px solid ${C.border}`, color: C.inkSoft, fontSize: 12, fontWeight: 600, borderRadius: 8, padding: '4px 8px', fontFamily: 'inherit', cursor: 'pointer', outline: 'none' }}>
+          {PAST_SORT_OPTIONS.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
+        </select>
+      </div>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px 32px' }}>
+        {sorted.length === 0 && (
+          <div style={{ textAlign: 'center', padding: '32px 16px', color: C.inkMute, fontSize: 13, fontStyle: 'italic' }}>No archived plans yet. Archive a plan from its detail screen.</div>
+        )}
+        {sorted.map((p, i) => {
+          const d = p.archivedDate ? new Date(p.archivedDate + 'T00:00:00') : null
+          const dateStr = d ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''
+          return (
+            <div key={p.id} onClick={() => setSelectedId(p.id)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 14px', background: C.paperHi, border: `1px solid ${C.border}`, borderRadius: 12, marginBottom: 8, cursor: 'pointer', transition: 'border-color 0.15s', animation: `heed-fadeIn 0.2s ease ${i * 40}ms both` }}
+              onMouseEnter={e => e.currentTarget.style.borderColor = C.inkMute}
+              onMouseLeave={e => e.currentTarget.style.borderColor = C.border}
+            >
+              <div style={{ width: 42, height: 42, borderRadius: '50%', background: C.paper, border: `2px solid ${ringColor(p)}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0, overflow: 'hidden' }}>
+                {p.imageUrl ? <img src={p.imageUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt=""/> : p.icon}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: C.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.title}</div>
+                <div style={{ fontSize: 11, color: C.inkMute, marginTop: 3 }}>Archived {dateStr} · {p.tasks?.length ?? 0} tasks</div>
+              </div>
+              <div style={{ background: '#d4edda', color: '#2d6a4f', fontSize: 10, fontWeight: 700, padding: '3px 9px', borderRadius: 999, flexShrink: 0 }}>✓ Done</div>
+            </div>
+          )
+        })}
+      </div>
+      {selectedPlan && (
+        <PastPlanDetailScreen plan={selectedPlan} onBack={() => setSelectedId(null)} onRestore={() => { onRestore?.(selectedPlan.id); setSelectedId(null) }} />
+      )}
     </div>
   )
 }
@@ -5641,56 +6068,72 @@ function GoalUpdateSheet({ plan, onClose, onSave }) {
 }
 
 // ── PlansPanel ───────────────────────────────────────────────────
-function PlansPanel({ plans, checkTask, renameTask, addTask, deleteTask, reorderTasks, addPlan, updatePlan }) {
+function PlansPanel({ plans, checkTask, renameTask, addTask, deleteTask, reorderTasks, addPlan, updatePlan, archivePlan, restorePlan }) {
   const [addOpen, setAddOpen] = useState(false)
   const [selectedPlanId, setSelectedPlanId] = useState(null)
+  const [editPlanId, setEditPlanId] = useState(null)
+  const [taskDetail, setTaskDetail] = useState(null)  // { planId, taskIndex }
+  const [pastPlansOpen, setPastPlansOpen] = useState(false)
 
-  const selectedPlan = plans.find(p => p.id === selectedPlanId) ?? null
-
-  if (selectedPlan && selectedPlan.type !== 'goal') {
-    return (
-      <PlanDetailScreen
-        plan={selectedPlan}
-        onBack={() => setSelectedPlanId(null)}
-        onCheck={checkTask}
-        onRename={renameTask}
-        onAddTask={addTask}
-        onDeleteTask={deleteTask}
-        onReorder={reorderTasks}
-        onUpdatePlan={updatePlan}
-      />
-    )
-  }
-
-  if (selectedPlan && selectedPlan.type === 'goal') {
-    return (
-      <GoalDetailScreen
-        plan={selectedPlan}
-        onBack={() => setSelectedPlanId(null)}
-        onUpdatePlan={updatePlan}
-      />
-    )
-  }
+  const activePlans = plans.filter(p => !p.archived)
+  const selectedPlan = activePlans.find(p => p.id === selectedPlanId) ?? null
+  const editPlan = activePlans.find(p => p.id === editPlanId) ?? null
+  const taskDetailPlan = taskDetail ? activePlans.find(p => p.id === taskDetail.planId) : null
 
   return (
     <div style={{ animation: 'heed-fadeIn 0.2s ease' }}>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+        <button onClick={() => setPastPlansOpen(true)} style={{ background: 'none', border: 'none', color: C.inkSoft, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 5, padding: 0 }}>🗂 Past Plans</button>
         <button onClick={() => setAddOpen(true)} style={getBtnPrimary()}>+ Add plan</button>
       </div>
-      {plans.length === 0 && (
+      {activePlans.length === 0 && (
         <div style={{ textAlign: 'center', padding: '32px 16px', color: C.inkMute, fontSize: 13, fontStyle: 'italic' }}>
           No plans yet. Tap "+ Add plan" to create a goal, project, or event.
         </div>
       )}
-      {plans.map((p, i) => (
-        <PlanCard
-          key={p.id}
-          plan={p}
-          delay={i * 50}
-          onSelectPlan={(id) => setSelectedPlanId(id)}
-        />
-      ))}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 0' }}>
+        {activePlans.map((p, i) => (
+          <PlanBubble key={p.id} plan={p} index={i} onSelect={id => setSelectedPlanId(id)} />
+        ))}
+      </div>
       {addOpen && <AddPlanSheet onClose={() => setAddOpen(false)} onAdd={p => { addPlan(p); setAddOpen(false) }}/>}
+      {selectedPlan && (
+        <PlanBubbleDetailScreen
+          plan={selectedPlan}
+          onBack={() => setSelectedPlanId(null)}
+          onEdit={() => { setEditPlanId(selectedPlan.id); setSelectedPlanId(null) }}
+          onCheck={checkTask}
+          onTaskSelect={i => setTaskDetail({ planId: selectedPlan.id, taskIndex: i })}
+          onArchive={() => { archivePlan?.(selectedPlan.id); setSelectedPlanId(null) }}
+        />
+      )}
+      {editPlan && (
+        <EditPlanScreen
+          plan={editPlan}
+          onBack={() => setEditPlanId(null)}
+          onSave={updatePlan}
+          onAddTask={addTask}
+          onDeleteTask={deleteTask}
+          onRenameTask={renameTask}
+        />
+      )}
+      {taskDetailPlan && taskDetail && (
+        <TaskDetailScreen
+          plan={taskDetailPlan}
+          taskIndex={taskDetail.taskIndex}
+          onBack={() => setTaskDetail(null)}
+          onCheck={checkTask}
+          onRename={renameTask}
+          onDelete={deleteTask}
+        />
+      )}
+      {pastPlansOpen && (
+        <PastPlansScreen
+          plans={plans}
+          onBack={() => setPastPlansOpen(false)}
+          onRestore={id => { restorePlan?.(id) }}
+        />
+      )}
     </div>
   )
 }
@@ -8921,7 +9364,7 @@ export default function HeedApp() {
           {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} plans={plansHook.plans} upcomingContexts={upcomingContexts} skippedTasks={skippedTasks} userName={username} efMode={efMode} onSetEfMode={handleSetEfMode} onMarkDone={handleMarkDone} onSkip={handleSkip} onUnskip={handleUnskip} onMarkRoutineDone={handleMarkRoutineDone} onSkipRoutineToday={handleSkipRoutineToday} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAskHeed={handleAskHeed} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onAddTask={() => setModalOpen(true)} onEditTask={handleEditTask} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }} onNavigateToPlans={() => setTab('context')} onCapture={handleCaptureTask} onCaptureRoutine={handleAddRoutine} onViewTask={task => { setEditingTask(task); setModalOpen(true) }} onToast={setToast}/>}
           {tab === 'calendar' && <CalendarTab tasks={apiTasks} contexts={[...(apiContexts.active||[]), ...(apiContexts.upcoming||[])]} routines={routines} recentSkips={recentSkips} onReschedule={handleReschedule} onMarkDone={handleMarkDone} onSkip={handleSkip} onAddTask={() => setModalOpen(true)} onAddContext={() => setContextModalOpen(true)} onEditRoutine={handleEditRoutine} onApplyRetroSuggestion={handleApplyRetroSuggestion}/>}
           {tab === 'ask' && <AskTab prefill={askPrefill} autoSend={askAutoSend} onAutoSendDone={() => { setAskAutoSend(false); setAskPrefill('') }} onLightenRoutine={handleLightenRoutine} onTaskAdded={handleTaskAdded} onRoutineAdded={handleAddRoutine} onViewTask={task => { setEditingTask(task); setModalOpen(true) }}/>}
-          {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onMarkRoutineDay={handleMarkRoutineDay} onEditTask={handleEditTask} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }}/>}
+          {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} plans={plansHook.plans} checkTask={plansHook.checkTask} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onMarkRoutineDay={handleMarkRoutineDay} onEditTask={handleEditTask} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }}/>}
           {tab === 'context' && <LifeTab upcoming={apiContexts.upcoming} active={apiContexts.active} activeContext={activeContext} plansHook={plansHook} onAddContext={() => setContextModalOpen(true)} onQuickContext={type => setQuickContextType(type)} onImBetter={() => setRecoveryOpen(true)} onExtend={handleExtendContext} onDetailOpen={handleDetailOpen}/>}
         </div>
       </main>

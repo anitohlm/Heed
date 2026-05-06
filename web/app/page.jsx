@@ -4093,6 +4093,12 @@ function AskTab({ prefill = '', autoSend = false, onAutoSendDone, onLightenRouti
           border: `1px solid ${C.border}`,
           borderRadius: 14,
           boxShadow: '0 -2px 12px rgba(0,0,0,0.10)',
+          // Explicit font + color — portaled to document.body which is
+          // outside the app div where these inherit from. Without this
+          // the bar reverts to the browser default (Times) on a
+          // black-on-white background that doesn't match the theme.
+          fontFamily: '"Nunito Sans", -apple-system, BlinkMacSystemFont, sans-serif',
+          color: C.ink,
         }}>
           {micSupported && <MicButton listening={listening} onToggle={toggleMic} disabled={busy}/>}
           <input
@@ -4103,7 +4109,7 @@ function AskTab({ prefill = '', autoSend = false, onAutoSendDone, onLightenRouti
             onFocus={e => { e.target.style.borderColor = C.warmDark }}
             onBlur={e => { if (!listening) e.target.style.borderColor = C.border }}
           />
-          <button onClick={() => send(input)} disabled={busy || !input.trim()} style={{ ...getBtnPrimary(), padding: '12px 18px', fontSize: 13, opacity: (busy || !input.trim()) ? 0.5 : 1, flexShrink: 0 }}>Send</button>
+          <button onClick={() => send(input)} disabled={busy || !input.trim()} style={{ ...getBtnPrimary(), padding: '12px 18px', fontSize: 13, opacity: (busy || !input.trim()) ? 0.5 : 1, flexShrink: 0, fontFamily: 'inherit' }}>Send</button>
         </div>,
         document.body
       )}

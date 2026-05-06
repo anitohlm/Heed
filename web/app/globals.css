@@ -49,20 +49,27 @@ input, select, textarea {
   /* Hide hover-revealed task actions on touch devices — swipe replaces them */
   .heed-task-actions { display: none !important; }
 
-  /* Mobile: pin AskTab input bar above the bottom nav. The 46px = nav
-     content height (8 padding + 17 icon + 3 gap + 11 label + 7 padding);
-     +12 breathing room; env(safe-area-inset-bottom) handles the iOS
-     home bar. */
+  /* Mobile: pin AskTab input bar flush against the bottom nav, full
+     width, no side margins, no gap. The 46px = nav content height
+     (8 padding + 17 icon + 3 gap + 11 label + 7 padding);
+     env(safe-area-inset-bottom) handles the iOS home bar. */
   .heed-ask-inputbar {
-    bottom: calc(46px + 12px + env(safe-area-inset-bottom)) !important;
-    width: calc(100vw - 24px) !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: calc(46px + env(safe-area-inset-bottom)) !important;
+    width: 100vw !important;
+    max-width: none !important;
+    transform: none !important;
+    border-radius: 0 !important;
+    border-left: none !important;
+    border-right: none !important;
   }
 }
 
 /* AskTab portaled input bar — lives at document.body so it escapes the
    tab wrapper's transform-containing-block. Default styles apply on
-   every screen size; the @media (max-width: 767px) block above only
-   adjusts the bottom offset to clear the mobile bottom nav. */
+   every screen size; the @media (max-width: 767px) block above turns
+   it into a full-width dock flush with the bottom nav. */
 .heed-ask-inputbar {
   position: fixed;
   left: 50%;

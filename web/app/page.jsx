@@ -5033,14 +5033,17 @@ function AddPlanSheet({ onClose, onAdd }) {
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 200 }} onClick={onClose}>
-      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(2px)' }}/>
-      <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: C.paper, borderRadius: '20px 20px 0 0', padding: `22px 22px calc(22px + env(safe-area-inset-bottom)) 22px`, animation: 'heed-slideUp 0.28s cubic-bezier(0.32,0.72,0,1)', boxShadow: '0 -8px 32px rgba(0,0,0,0.12)', maxHeight: '80vh', overflowY: 'auto' }}>
-        <div style={{ width: 40, height: 4, borderRadius: 2, background: C.border, margin: '0 auto 18px' }}/>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: C.paper, display: 'flex', flexDirection: 'column', animation: 'heed-slideIn 0.3s cubic-bezier(0.16,1,0.3,1)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', padding: '14px 16px 10px', gap: 10, background: C.paperHi, borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
+        <button onClick={step === 'form' ? () => setStep('pick') : onClose} aria-label="Back" style={{ background: 'transparent', border: 'none', color: C.warmDark, cursor: 'pointer', fontSize: 20, padding: '2px 8px 2px 0', lineHeight: 1, fontFamily: 'inherit', fontWeight: 700 }}>←</button>
+        <span style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 17, fontWeight: 700, color: C.warmDark, letterSpacing: -0.2, flex: 1 }}>
+          {step === 'form' && type ? `${PLAN_TYPES.find(p => p.type === type)?.icon} New ${PLAN_TYPES.find(p => p.type === type)?.label}` : 'New plan'}
+        </span>
+      </div>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '18px 16px' }}>
 
         {step === 'pick' && (
           <>
-            <div style={{ fontFamily: 'Lora, serif', fontSize: 17, fontWeight: 600, color: C.warmDark, marginBottom: 4 }}>What kind of plan?</div>
             <div style={{ fontSize: 12.5, color: C.inkMute, marginBottom: 18 }}>Choose a type to get started</div>
             {PLAN_TYPES.map(pt => (
               <button key={pt.type} onClick={() => { setType(pt.type); setStep('form') }}
@@ -5052,19 +5055,11 @@ function AddPlanSheet({ onClose, onAdd }) {
                 </div>
               </button>
             ))}
-            <button onClick={onClose} style={{ width: '100%', background: 'transparent', border: 'none', color: C.inkMute, fontSize: 13, cursor: 'pointer', padding: '10px 0', fontFamily: 'inherit' }}>Cancel</button>
           </>
         )}
 
         {step === 'form' && type && (
           <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-              <button onClick={() => setStep('pick')} style={{ background: 'none', border: 'none', color: C.inkMute, fontSize: 13, cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>← Back</button>
-              <div style={{ fontFamily: 'Lora, serif', fontSize: 17, fontWeight: 600, color: C.warmDark }}>
-                {PLAN_TYPES.find(p => p.type === type).icon} New {PLAN_TYPES.find(p => p.type === type).label}
-              </div>
-            </div>
-
             <label style={labelStyle}>Name *</label>
             <input style={inputStyle} placeholder="e.g. Move apartments" value={title} onChange={e => setTitle(e.target.value)} autoFocus/>
 
@@ -5115,13 +5110,14 @@ function AddPlanSheet({ onClose, onAdd }) {
                 <textarea style={{ ...inputStyle, minHeight: 80, resize: 'vertical' }} placeholder={"Research the company\nIron outfit"} value={tasksText} onChange={e => setTasksText(e.target.value)}/>
               </>
             )}
-
-            <button onClick={handleSubmit} style={{ ...getBtnPrimary(), width: '100%', marginTop: 18, padding: '11px 0', fontSize: 14, borderRadius: 10 }}>
-              Create plan
-            </button>
           </>
         )}
       </div>
+      {step === 'form' && type && (
+        <div style={{ flexShrink: 0, padding: '12px 16px', background: C.paperHi, borderTop: `1px solid ${C.border}` }}>
+          <button onClick={handleSubmit} style={{ ...getBtnPrimary(), width: '100%', padding: '11px 0', fontSize: 14, borderRadius: 10 }}>Create plan</button>
+        </div>
+      )}
     </div>
   )
 }
@@ -6359,17 +6355,15 @@ function AddTaskModal({ open, onClose, onSubmit, onDelete, initialData = null, c
   if (!open) return null
   return (
     <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(44,24,16,0.45)', backdropFilter: 'blur(4px)', animation: 'heed-fadeIn 0.2s ease' }}/>
-      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 101, display: 'flex', justifyContent: 'center', animation: 'heed-slideUp 0.3s cubic-bezier(0.16,1,0.3,1)', pointerEvents: 'none' }}>
-        <div style={{ background: C.paperHi, width: '100%', maxWidth: 520, margin: '0 16px 16px 16px', borderRadius: '20px 20px 14px 14px', padding: '22px 22px 18px 22px', boxShadow: '0 -8px 40px rgba(124,83,51,0.25)', border: `1px solid ${C.border}`, pointerEvents: 'auto' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
-            <div style={{ width: 40, height: 40, borderRadius: '50%', background: C.ochreSoft, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><MayaOwl size={28} idle={false}/></div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 19, fontWeight: 600, color: C.warmDark, letterSpacing: -0.3, lineHeight: 1.1, marginBottom: 2 }}>{isEdit ? 'Edit task' : 'What should I help you remember?'}</div>
-              <div style={{ fontSize: 12, color: C.inkMute, fontStyle: 'italic' }}>{isEdit ? 'Update the details below.' : "I'll figure out the best schedule for it."}</div>
-            </div>
-            <button onClick={onClose} aria-label="Close" style={{ background: 'transparent', border: 'none', color: C.inkMute, cursor: 'pointer', fontSize: 20, padding: 4, lineHeight: 1, fontFamily: 'inherit' }}>×</button>
-          </div>
+      <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: C.paper, display: 'flex', flexDirection: 'column', animation: 'heed-slideIn 0.3s cubic-bezier(0.16,1,0.3,1)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', padding: '14px 16px 10px', gap: 10, background: C.paperHi, borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
+          <button onClick={onClose} aria-label="Back" style={{ background: 'transparent', border: 'none', color: C.warmDark, cursor: 'pointer', fontSize: 20, padding: '2px 8px 2px 0', lineHeight: 1, fontFamily: 'inherit', fontWeight: 700 }}>←</button>
+          <span style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 17, fontWeight: 700, color: C.warmDark, letterSpacing: -0.2, flex: 1 }}>{isEdit ? 'Edit task' : 'Add a task'}</span>
+          {isEdit && onDelete && (
+            <button onClick={() => setConfirmingDelete(true)} style={{ background: 'transparent', border: `1px solid ${C.rust}66`, color: C.rust, padding: '5px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Delete</button>
+          )}
+        </div>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '18px 16px' }}>
           <div style={{ marginBottom: 14 }}>
             <label style={getFieldLabel()}>Task name</label>
             <input ref={inputRef} value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === 'Enter' && submit()} placeholder="e.g. Clean the aircon filter"
@@ -6523,22 +6517,13 @@ function AddTaskModal({ open, onClose, onSubmit, onDelete, initialData = null, c
               onFocus={e => { e.target.style.borderColor = C.warmDark }} onBlur={e => { e.target.style.borderColor = C.border }}
             />
           </div>
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center' }}>
-            {isEdit && onDelete && (
-              <button
-                onClick={() => setConfirmingDelete(true)}
-                style={{ background: 'transparent', border: `1px solid ${C.rust}66`, color: C.rust, padding: '7px 14px', borderRadius: 8, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', marginRight: 'auto' }}
-              >
-                Delete
-              </button>
-            )}
-            <button onClick={onClose} style={getBtnGhost()}>Cancel</button>
-            <button onClick={submit} disabled={!name.trim()} style={{ ...getBtnPrimary(), padding: '8px 18px', opacity: name.trim() ? 1 : 0.5, cursor: name.trim() ? 'pointer' : 'not-allowed' }}>{isEdit ? 'Save changes' : 'Add task'}</button>
-          </div>
+        </div>
+        <div style={{ flexShrink: 0, padding: '12px 16px', background: C.paperHi, borderTop: `1px solid ${C.border}` }}>
+          <button onClick={submit} disabled={!name.trim()} style={{ ...getBtnPrimary(), width: '100%', padding: '11px 0', fontSize: 14, borderRadius: 10, opacity: name.trim() ? 1 : 0.5, cursor: name.trim() ? 'pointer' : 'not-allowed' }}>{isEdit ? 'Save changes' : 'Add task'}</button>
         </div>
       </div>
       {confirmingDelete && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 200 }}>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 300 }}>
           <div onClick={() => setConfirmingDelete(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(2px)', animation: 'heed-fadeIn 0.18s ease' }}/>
           <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, display: 'flex', justifyContent: 'center', animation: 'heed-slideUp 0.28s cubic-bezier(0.16,1,0.3,1)', pointerEvents: 'none' }}>
             <div style={{ background: C.paperHi, width: '100%', maxWidth: 440, margin: '0 16px 16px 16px', borderRadius: '20px 20px 14px 14px', padding: '22px 22px 18px 22px', boxShadow: '0 -8px 40px rgba(0,0,0,0.35)', border: `1px solid ${C.border}`, pointerEvents: 'auto' }}>
@@ -6596,19 +6581,13 @@ function AddContextModal({ open, onClose, onSubmit }) {
   ]
   const inputStyle = { width: '100%', boxSizing: 'border-box', background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '10px 14px', fontSize: 14, color: C.ink, outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.15s' }
   return (
-    <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(44,24,16,0.45)', backdropFilter: 'blur(4px)', animation: 'heed-fadeIn 0.2s ease' }}/>
-      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 101, display: 'flex', justifyContent: 'center', animation: 'heed-slideUp 0.3s cubic-bezier(0.16,1,0.3,1)', pointerEvents: 'none' }}>
-        <div style={{ background: C.paperHi, width: '100%', maxWidth: 520, margin: '0 16px 16px 16px', borderRadius: '20px 20px 14px 14px', padding: '22px 22px 18px 22px', boxShadow: '0 -8px 40px rgba(124,83,51,0.25)', border: `1px solid ${C.border}`, pointerEvents: 'auto' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
-            <div style={{ width: 40, height: 40, borderRadius: '50%', background: C.bellySoft, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><MayaOwl size={28} idle={false}/></div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 19, fontWeight: 600, color: C.warmDark, letterSpacing: -0.3, lineHeight: 1.1, marginBottom: 2 }}>What's coming up?</div>
-              <div style={{ fontSize: 12, color: C.inkMute, fontStyle: 'italic' }}>I'll plan around it. No nag, no missed-pattern flags.</div>
-            </div>
-            <button onClick={onClose} aria-label="Close" style={{ background: 'transparent', border: 'none', color: C.inkMute, cursor: 'pointer', fontSize: 20, padding: 4, lineHeight: 1, fontFamily: 'inherit' }}>×</button>
-          </div>
-          <div style={{ marginBottom: 14 }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: C.paper, display: 'flex', flexDirection: 'column', animation: 'heed-slideIn 0.3s cubic-bezier(0.16,1,0.3,1)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', padding: '14px 16px 10px', gap: 10, background: C.paperHi, borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
+        <button onClick={onClose} aria-label="Back" style={{ background: 'transparent', border: 'none', color: C.warmDark, cursor: 'pointer', fontSize: 20, padding: '2px 8px 2px 0', lineHeight: 1, fontFamily: 'inherit', fontWeight: 700 }}>←</button>
+        <span style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 17, fontWeight: 700, color: C.warmDark, letterSpacing: -0.2, flex: 1 }}>Add a context</span>
+      </div>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '18px 16px' }}>
+        <div style={{ marginBottom: 14 }}>
             <label style={getFieldLabel()}>Type</label>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {typeOptions.map(({v,label,icon,tone}) => (
@@ -6643,13 +6622,11 @@ function AddContextModal({ open, onClose, onSubmit }) {
               onFocus={e=>{e.target.style.borderColor=C.warmDark}} onBlur={e=>{e.target.style.borderColor=C.border}}
             />
           </div>
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            <button onClick={onClose} style={getBtnGhost()}>Cancel</button>
-            <button onClick={submit} disabled={!isValid} style={{ ...getBtnPrimary(), padding: '8px 18px', opacity: isValid ? 1 : 0.5, cursor: isValid ? 'pointer' : 'not-allowed' }}>Add context</button>
-          </div>
-        </div>
       </div>
-    </>
+      <div style={{ flexShrink: 0, padding: '12px 16px', background: C.paperHi, borderTop: `1px solid ${C.border}` }}>
+        <button onClick={submit} disabled={!isValid} style={{ ...getBtnPrimary(), width: '100%', padding: '11px 0', fontSize: 14, borderRadius: 10, opacity: isValid ? 1 : 0.5, cursor: isValid ? 'pointer' : 'not-allowed' }}>Add context</button>
+      </div>
+    </div>
   )
 }
 

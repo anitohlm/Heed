@@ -4247,8 +4247,8 @@ function PlanCard({ plan, delay = 0, onSelectPlan }) {
   return (
     <div onClick={onSelectPlan ? () => onSelectPlan(plan.id) : undefined} style={{ background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 14, padding: 14, marginBottom: 10, animation: `heed-fadeIn 0.2s ease ${delay}ms both`, cursor: onSelectPlan ? 'pointer' : 'default' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-        <div style={{ width: 34, height: 34, borderRadius: 9, background: PLAN_ICON_BG[plan.type] || C.bellySoft, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>
-          {plan.icon}
+        <div style={{ width: 34, height: 34, borderRadius: 9, background: PLAN_ICON_BG[plan.type] || C.bellySoft, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0, overflow: 'hidden' }}>
+          {plan.imageUrl ? <img src={plan.imageUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt=""/> : plan.icon}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 14, fontWeight: 600, color: C.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{plan.title}</div>
@@ -4366,8 +4366,8 @@ function TodayPlanCard({ plan, delay = 0, onSelect }) {
         width: 38, height: 38, borderRadius: 10,
         background: `${accent}1f`,
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 18, flexShrink: 0,
-      }}>{plan.icon || '📌'}</div>
+        fontSize: 18, flexShrink: 0, overflow: 'hidden',
+      }}>{plan.imageUrl ? <img src={plan.imageUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt=""/> : (plan.icon || '📌')}</div>
 
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
@@ -4607,7 +4607,10 @@ function PlanDetailScreen({ plan, onBack, onCheck, onRename, onAddTask, onDelete
         <button onClick={onBack} style={{ background: 'none', border: 'none', color: C.ochre, fontSize: 14, fontWeight: 700, cursor: 'pointer', padding: '2px 0', fontFamily: 'inherit' }}>‹ Plans</button>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: plan.description && !editingPlan ? 6 : 14 }}>
-        <span style={{ fontSize: 20 }}>{plan.icon}</span>
+        {plan.imageUrl
+          ? <img src={plan.imageUrl} style={{ width: 28, height: 28, objectFit: 'cover', borderRadius: 7, flexShrink: 0 }} alt=""/>
+          : <span style={{ fontSize: 20 }}>{plan.icon}</span>
+        }
         <span style={{ flex: 1, fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 600, color: C.warmDark, letterSpacing: -0.2 }}>{plan.title}</span>
         <button
           onClick={editingPlan ? cancelEditPlan : openEditPlan}
@@ -4890,6 +4893,28 @@ function getSuggestedTasks(type, title) {
   return []
 }
 
+function resizeImageToDataURL(file, maxPx = 256, quality = 0.82) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const img = new window.Image()
+      img.onload = () => {
+        const scale = Math.min(maxPx / img.width, maxPx / img.height, 1)
+        const w = Math.round(img.width * scale)
+        const h = Math.round(img.height * scale)
+        const canvas = document.createElement('canvas')
+        canvas.width = w; canvas.height = h
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h)
+        resolve(canvas.toDataURL('image/jpeg', quality))
+      }
+      img.onerror = reject
+      img.src = e.target.result
+    }
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
+
 function AddPlanSheet({ onClose, onAdd }) {
   const [step, setStep]   = useState('pick')   // 'pick' | 'form'
   const [type, setType]   = useState(null)
@@ -4909,6 +4934,12 @@ function AddPlanSheet({ onClose, onAdd }) {
   const [aiSuggestions, setAiSuggestions] = useState(null)
   const [aiLoading, setAiLoading] = useState(false)
   const [aiError, setAiError] = useState(null)
+  const [imageUrl, setImageUrl] = useState(null)
+  const imageInputRef = useRef(null)
+  const handleImageFile = async (file) => {
+    if (!file || !file.type.startsWith('image/')) return
+    try { setImageUrl(await resizeImageToDataURL(file)) } catch {}
+  }
 
   const inputStyle = { width: '100%', background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '9px 12px', fontSize: 14, color: C.ink, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box', marginTop: 4 }
   const labelStyle = { fontSize: 12, fontWeight: 600, color: C.inkMute, display: 'block', marginTop: 12 }
@@ -5030,8 +5061,9 @@ function AddPlanSheet({ onClose, onAdd }) {
     if (type === 'goal' && goalKind === 'milestone') { plan.goalKind = 'milestone'; plan.targetDate = targetDate || 'No date set'; plan.achieved = false }
     if (type === 'goal' && goalKind === 'numeric')   { plan.goalKind = 'numeric'; plan.current = 0; plan.target = parseFloat(targetAmt) || 0; plan.unit = unit || ''; plan.targetDate = targetDate || 'No target date' }
     if (type === 'event')   { plan.eventDate = eventDate ? new Date(eventDate) : null; plan.tasks = parsedTasks }
+    if (imageUrl) plan.imageUrl = imageUrl
     onAdd(plan)
-    setStep('pick'); setType(null); setTitle(''); setDescription(''); setDueDate(''); setTasksText(''); setTargetAmt(''); setUnit('₱'); setTargetDate(''); setEventDate(''); setGoalKind('milestone')
+    setStep('pick'); setType(null); setTitle(''); setDescription(''); setDueDate(''); setTasksText(''); setTargetAmt(''); setUnit('₱'); setTargetDate(''); setEventDate(''); setGoalKind('milestone'); setImageUrl(null)
   }
 
   return (
@@ -5067,6 +5099,21 @@ function AddPlanSheet({ onClose, onAdd }) {
 
             <label style={labelStyle}>Description <span style={{ fontWeight: 400, color: C.inkMute }}>(optional)</span></label>
             <textarea style={{ ...inputStyle, minHeight: 60, resize: 'vertical' }} placeholder="What's this plan for?" value={description} onChange={e => setDescription(e.target.value)}/>
+
+            <label style={labelStyle}>Logo or photo <span style={{ fontWeight: 400, color: C.inkMute }}>(optional)</span></label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 6 }}>
+              <div onClick={() => imageInputRef.current?.click()} style={{ width: 72, height: 72, borderRadius: 12, border: `1.5px dashed ${imageUrl ? 'transparent' : C.border}`, background: C.paperHi, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', overflow: 'hidden', flexShrink: 0 }}>
+                {imageUrl
+                  ? <img src={imageUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Plan logo"/>
+                  : <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 4v14M4 11h14" stroke={C.inkMute} strokeWidth="2" strokeLinecap="round"/></svg>
+                }
+              </div>
+              <div>
+                <div style={{ fontSize: 12.5, color: C.inkSoft, marginBottom: 5 }}>{imageUrl ? 'Tap to change' : 'Tap to upload an image'}</div>
+                {imageUrl && <button type="button" onClick={() => setImageUrl(null)} style={{ background: 'none', border: 'none', color: C.rust, fontSize: 12, cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>Remove</button>}
+              </div>
+              <input ref={imageInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { handleImageFile(e.target.files?.[0]); e.target.value = '' }}/>
+            </div>
 
             {type === 'project' && (
               <>
@@ -5147,7 +5194,10 @@ function GoalDetailScreen({ plan, onBack, onUpdatePlan }) {
         <button onClick={onBack} style={{ background: 'none', border: 'none', color: C.ochre, fontSize: 14, fontWeight: 700, cursor: 'pointer', padding: '2px 0', fontFamily: 'inherit' }}>‹ Plans</button>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: plan.description ? 6 : 14 }}>
-        <span style={{ fontSize: 20 }}>{plan.icon}</span>
+        {plan.imageUrl
+          ? <img src={plan.imageUrl} style={{ width: 28, height: 28, objectFit: 'cover', borderRadius: 7, flexShrink: 0 }} alt=""/>
+          : <span style={{ fontSize: 20 }}>{plan.icon}</span>
+        }
         <span style={{ flex: 1, fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 600, color: C.warmDark, letterSpacing: -0.2 }}>{plan.title}</span>
       </div>
       {plan.description && (
@@ -5212,7 +5262,9 @@ function GoalUpdateSheet({ plan, onClose, onSave }) {
       <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: C.paper, borderRadius: '20px 20px 0 0', padding: `22px 22px calc(22px + env(safe-area-inset-bottom)) 22px`, animation: 'heed-slideUp 0.28s cubic-bezier(0.32,0.72,0,1)', boxShadow: '0 -8px 32px rgba(0,0,0,0.12)' }}>
         <div style={{ width: 40, height: 4, borderRadius: 2, background: C.border, margin: '0 auto 18px' }}/>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 9, background: '#f5f0d8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>{plan.icon}</div>
+          <div style={{ width: 36, height: 36, borderRadius: 9, background: '#f5f0d8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0, overflow: 'hidden' }}>
+            {plan.imageUrl ? <img src={plan.imageUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt=""/> : plan.icon}
+          </div>
           <div>
             <div style={{ fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 600, color: C.warmDark }}>{plan.title}</div>
             <div style={{ fontSize: 12, color: C.inkMute, marginTop: 2 }}>

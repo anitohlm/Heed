@@ -488,7 +488,7 @@ test.describe('Settings avatar', () => {
   test('Settings sheet shows camera badge', async ({ page }) => {
     await page.getByRole('button', { name: 'Settings' }).first().click()
     await page.waitForTimeout(300)
-    await expect(page.locator('text=📷')).toBeVisible()
+    await expect(page.getByText('📷')).toBeVisible()
   })
 
   test('hidden file input exists in settings sheet', async ({ page }) => {

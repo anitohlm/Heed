@@ -11,7 +11,7 @@ function getUsername() {
 }
 
 function getAvatar() {
-  try { return localStorage.getItem('heed.avatar') || '' } catch { return '' }
+  try { return localStorage.getItem('heed.avatar') || null } catch { return null }
 }
 
 // ── Module-level tab definitions (shared by HeedApp and MobileDrawer) ─────

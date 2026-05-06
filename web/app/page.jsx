@@ -1328,10 +1328,10 @@ function MobileBottomNav({ tab, onTab, onMicAsk, overdueCount = 0 }) {
             the nav surface up around the owl. */}
         <div aria-hidden="true" style={{
           position: 'absolute',
-          top: -15, left: '50%', transform: 'translateX(-50%)',
-          width: 42, height: 15,
+          top: -30, left: '50%', transform: 'translateX(-50%)',
+          width: 84, height: 30,
           background: C.paper,
-          borderRadius: '21px 21px 0 0',
+          borderRadius: '42px 42px 0 0',
           zIndex: 51,
           pointerEvents: 'none',
         }}/>
@@ -1347,19 +1347,19 @@ function MobileBottomNav({ tab, onTab, onMicAsk, overdueCount = 0 }) {
           aria-current={askActive ? 'page' : undefined}
           style={{
             position: 'absolute',
-            top: -15,
+            top: -30,
             left: '50%',
             transform: `translateX(-50%) scale(${pressing ? 1.12 : 1})`,
-            width: 34,
-            height: 34,
+            width: 68,
+            height: 68,
             borderRadius: '50%',
             background: C.paper,
-            border: `2px solid ${micListening ? '#e53e3e' : askActive ? C.warmDark : `${C.warmDark}99`}`,
+            border: `2.5px solid ${micListening ? '#e53e3e' : askActive ? C.warmDark : `${C.warmDark}99`}`,
             boxShadow: micListening
-              ? `0 0 0 2px #fff3f3, 0 0 0 4px rgba(229,62,62,0.35), 0 -2px 10px rgba(229,62,62,0.3)`
+              ? `0 0 0 3px #fff3f3, 0 0 0 8px rgba(229,62,62,0.35), 0 -4px 20px rgba(229,62,62,0.3)`
               : askActive
-              ? `0 0 0 2px ${C.paper}, 0 0 0 3px ${C.warmDark}55, 0 -3px 12px rgba(0,0,0,0.28)`
-              : `0 0 0 2px ${C.paper}, 0 0 0 3px ${C.border}, 0 -2px 10px rgba(0,0,0,0.22)`,
+              ? `0 0 0 3px ${C.paper}, 0 0 0 6px ${C.warmDark}55, 0 -6px 24px rgba(0,0,0,0.28)`
+              : `0 0 0 3px ${C.paper}, 0 0 0 5px ${C.border}, 0 -4px 20px rgba(0,0,0,0.22)`,
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
@@ -1367,12 +1367,12 @@ function MobileBottomNav({ tab, onTab, onMicAsk, overdueCount = 0 }) {
             padding: 0,
             zIndex: 52,
             transition: 'box-shadow 0.2s ease, border-color 0.2s ease, transform 0.15s ease',
-            animation: micListening ? 'heed-mic-pulse-sm 1.2s ease-in-out infinite' : 'none',
+            animation: micListening ? 'heed-mic-pulse 1.2s ease-in-out infinite' : 'none',
             userSelect: 'none',
             WebkitUserSelect: 'none',
           }}
         >
-          <MayaOwl size={25} idle={false} mood={micListening ? 'thinking' : 'calm'} speaking={micListening}/>
+          <MayaOwl size={50} idle={false} mood={micListening ? 'thinking' : 'calm'} speaking={micListening}/>
         </button>
 
         {APP_TABS.map(t => {
@@ -8476,7 +8476,6 @@ export default function HeedApp() {
         @keyframes heed-check-draw { to { stroke-dashoffset: 0; } }
         @keyframes heed-done-out { 0% { transform: translateX(0); opacity: 1; max-height: 120px; margin-bottom: 10px; } 50% { transform: translateX(14px); opacity: 0.4; } 100% { transform: translateX(80px); opacity: 0; max-height: 0; margin-bottom: 0; } }
         @keyframes heed-mic-pulse { 0%,100% { box-shadow: 0 0 0 3px #fff3f3, 0 0 0 6px rgba(229,62,62,0.2), 0 -4px 20px rgba(229,62,62,0.2); } 50% { box-shadow: 0 0 0 3px #fff3f3, 0 0 0 11px rgba(229,62,62,0.45), 0 -4px 24px rgba(229,62,62,0.35); } }
-        @keyframes heed-mic-pulse-sm { 0%,100% { box-shadow: 0 0 0 2px #fff3f3, 0 0 0 3px rgba(229,62,62,0.2), 0 -2px 10px rgba(229,62,62,0.2); } 50% { box-shadow: 0 0 0 2px #fff3f3, 0 0 0 6px rgba(229,62,62,0.45), 0 -2px 12px rgba(229,62,62,0.35); } }
         @keyframes heed-blink { 0%,50%,100% { opacity:1; } 25%,75% { opacity:0.3; } }
         @keyframes heed-bob { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-2px); } }
         @keyframes heed-dot-bounce { 0%,60%,100% { transform:translateY(0); opacity:0.4; } 30% { transform:translateY(-6px); opacity:1; } }

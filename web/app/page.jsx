@@ -3976,6 +3976,26 @@ function TracksTab({ tasks, routines, onMarkDone, onSkip, onMarkRoutineDone, onL
   const [subtab, setSubtab] = useState('routines')
   const [filter, setFilter] = useState('all')
   const [sortBy, setSortBy] = useState('due')
+  const [sortMenuOpen, setSortMenuOpen] = useState(false)
+  const sortMenuRef = useRef(null)
+  useEffect(() => {
+    if (!sortMenuOpen) return
+    const onDoc = (e) => { if (sortMenuRef.current && !sortMenuRef.current.contains(e.target)) setSortMenuOpen(false) }
+    const onKey = (e) => { if (e.key === 'Escape') setSortMenuOpen(false) }
+    document.addEventListener('mousedown', onDoc)
+    document.addEventListener('keydown', onKey)
+    return () => { document.removeEventListener('mousedown', onDoc); document.removeEventListener('keydown', onKey) }
+  }, [sortMenuOpen])
+  const SORT_OPTIONS = [
+    { key: 'due',      label: 'Due date',  hint: 'Overdue first' },
+    { key: 'alpha',    label: 'A–Z',       hint: 'Alphabetical' },
+    { key: 'severity', label: 'Severity',  hint: 'Most pressing' },
+  ]
+  const currentSort = SORT_OPTIONS.find(s => s.key === sortBy) || SORT_OPTIONS[0]
+  const CATEGORY_KEYS = ['all','home','finance','relationships','health','admin','work']
+  const categoryCount = (cat) => cat === 'all'
+    ? tasks.length
+    : tasks.filter(t => t.category === cat).length
   const filteredTasks = useMemo(() => {
     const base = filter === 'all' ? tasks : tasks.filter(t => t.category === filter)
     if (sortBy === 'alpha') return [...base].sort((a, b) => a.name.localeCompare(b.name))
@@ -4010,20 +4030,201 @@ function TracksTab({ tasks, routines, onMarkDone, onSkip, onMarkRoutineDone, onL
       )}
       {subtab === 'tasks' && (
         <div style={{ animation: 'heed-fadeIn 0.2s ease' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, gap: 8, flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {['all','home','finance','relationships','health','admin','work'].map(cat => (
-                <button key={cat} onClick={() => setFilter(cat)} style={{ background: filter === cat ? C.warmDark : C.paper, color: filter === cat ? C.cream : C.warmDark, border: `1px solid ${filter === cat ? C.warmDark : C.border}`, padding: '5px 12px', borderRadius: 999, fontSize: 12, fontWeight: 500, cursor: 'pointer', textTransform: 'capitalize', fontFamily: 'inherit', transition: 'all 0.15s' }}>{cat}</button>
-              ))}
+          {/* Row 1 — horizontal-scroll category chips with task counts.
+              Single row, no wrap, snap. The right-edge fade hints at more
+              content. Each chip is 36px tall — under 44pt strict but the
+              touch hit-area extends via padding + the row-level scroll. */}
+          <div style={{ position: 'relative', marginBottom: 10 }}>
+            <div
+              role="tablist"
+              aria-label="Filter tasks by category"
+              style={{
+                display: 'flex', gap: 6,
+                overflowX: 'auto', overflowY: 'hidden',
+                paddingBottom: 4,
+                scrollbarWidth: 'none',
+                msOverflowStyle: 'none',
+                WebkitOverflowScrolling: 'touch',
+              }}
+            >
+              <style>{`.heed-filter-row::-webkit-scrollbar{display:none}`}</style>
+              {CATEGORY_KEYS.map(cat => {
+                const active = filter === cat
+                const count = categoryCount(cat)
+                return (
+                  <button
+                    key={cat}
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setFilter(cat)}
+                    style={{
+                      flexShrink: 0,
+                      display: 'inline-flex', alignItems: 'center', gap: 7,
+                      background: active ? C.warmDark : C.paper,
+                      color: active ? C.cream : C.ink,
+                      border: `1px solid ${active ? C.warmDark : C.border}`,
+                      padding: '8px 14px',
+                      height: 36,
+                      borderRadius: 999,
+                      fontSize: 13,
+                      fontWeight: active ? 600 : 500,
+                      textTransform: 'capitalize',
+                      cursor: 'pointer',
+                      fontFamily: 'inherit',
+                      transition: 'all 0.15s',
+                      touchAction: 'manipulation',
+                      WebkitTapHighlightColor: 'transparent',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    <span>{cat}</span>
+                    <span aria-hidden="true" style={{
+                      fontSize: 11, fontWeight: 700,
+                      lineHeight: 1,
+                      background: active ? 'rgba(253,248,238,0.22)' : C.bellySoft,
+                      color: active ? C.cream : C.inkMute,
+                      padding: '3px 7px', borderRadius: 999,
+                      minWidth: 18, textAlign: 'center',
+                    }}>{count}</span>
+                  </button>
+                )
+              })}
             </div>
-            <button onClick={onAddTask} style={getBtnPrimary()}>+ Add task</button>
+            {/* Right-edge fade — visual cue that more chips exist off-screen. */}
+            <div aria-hidden="true" style={{
+              position: 'absolute', top: 0, right: 0, bottom: 4, width: 24,
+              background: `linear-gradient(to right, transparent, ${C.cream})`,
+              pointerEvents: 'none',
+            }}/>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 14 }}>
-            <span style={{ fontSize: 11, color: C.inkMute, marginRight: 2 }}>Sort:</span>
-            {[{ key: 'due', label: 'Due date' }, { key: 'alpha', label: 'A–Z' }, { key: 'severity', label: 'Severity' }].map(({ key, label }) => (
-              <button key={key} onClick={() => setSortBy(key)} style={{ background: sortBy === key ? C.warmDark : C.paper, color: sortBy === key ? C.cream : C.inkSoft, border: `1px solid ${sortBy === key ? C.warmDark : C.border}`, padding: '4px 11px', borderRadius: 999, fontSize: 11.5, fontWeight: sortBy === key ? 600 : 400, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s', minHeight: 28 }}>{label}</button>
-            ))}
+
+          {/* Row 2 — sort + add toolbar. Sort is a compact dropdown
+              showing the current option; Add task is a single right-aligned
+              button. Together they replace the previous two-row pile. */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 14 }}>
+            <div ref={sortMenuRef} style={{ position: 'relative' }}>
+              <button
+                type="button"
+                onClick={() => setSortMenuOpen(o => !o)}
+                aria-haspopup="listbox"
+                aria-expanded={sortMenuOpen}
+                aria-label={`Sort by ${currentSort.label}`}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                  background: sortMenuOpen ? C.bellySoft : 'transparent',
+                  color: C.ink,
+                  border: `1px solid ${C.border}`,
+                  padding: '8px 12px',
+                  height: 36,
+                  borderRadius: 8,
+                  fontSize: 13,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  transition: 'all 0.15s',
+                  touchAction: 'manipulation',
+                  WebkitTapHighlightColor: 'transparent',
+                }}
+              >
+                {/* Sort icon (three lines, descending widths) */}
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                  <path d="M2 3.5h10M3 7h8M5 10.5h4" stroke={C.inkSoft} strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
+                <span style={{ color: C.inkMute, fontSize: 12, fontWeight: 500 }}>Sort:</span>
+                <span>{currentSort.label}</span>
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true" style={{ transition: 'transform 0.2s', transform: sortMenuOpen ? 'rotate(180deg)' : 'none' }}>
+                  <path d="M2 3.5l3 3 3-3" stroke={C.inkSoft} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+              {sortMenuOpen && (
+                <div
+                  role="listbox"
+                  style={{
+                    position: 'absolute', top: 'calc(100% + 4px)', left: 0,
+                    minWidth: 200,
+                    background: C.paperHi,
+                    border: `1px solid ${C.border}`,
+                    borderRadius: 10,
+                    boxShadow: '0 8px 24px rgba(44,24,16,0.15)',
+                    overflow: 'hidden',
+                    zIndex: 30,
+                    animation: 'heed-fadeIn 0.15s ease',
+                  }}
+                >
+                  {SORT_OPTIONS.map(({ key, label, hint }, i) => {
+                    const active = sortBy === key
+                    return (
+                      <button
+                        key={key}
+                        role="option"
+                        aria-selected={active}
+                        onClick={() => { setSortBy(key); setSortMenuOpen(false) }}
+                        style={{
+                          width: '100%',
+                          display: 'flex', alignItems: 'center', gap: 10,
+                          padding: '10px 14px',
+                          minHeight: 44,
+                          background: active ? C.bellySoft : 'transparent',
+                          border: 'none',
+                          borderBottom: i < SORT_OPTIONS.length - 1 ? `1px solid ${C.hairline}` : 'none',
+                          color: C.ink,
+                          textAlign: 'left',
+                          cursor: 'pointer',
+                          fontFamily: 'inherit',
+                          touchAction: 'manipulation',
+                        }}
+                        onMouseEnter={e => { if (!active) e.currentTarget.style.background = C.bellySoft }}
+                        onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}
+                      >
+                        <span aria-hidden="true" style={{
+                          width: 16, height: 16, flexShrink: 0,
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                          color: active ? C.warmDark : 'transparent',
+                        }}>
+                          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                            <path d="M3 7l3 3 5-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </span>
+                        <span style={{ flex: 1 }}>
+                          <span style={{ fontSize: 13.5, fontWeight: active ? 600 : 500, color: C.ink, display: 'block' }}>{label}</span>
+                          <span style={{ fontSize: 11, color: C.inkMute, marginTop: 1, display: 'block' }}>{hint}</span>
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={onAddTask}
+              aria-label="Add task"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                background: C.warmDark,
+                color: C.cream,
+                border: 'none',
+                padding: '8px 14px',
+                height: 36,
+                borderRadius: 8,
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent',
+                boxShadow: '0 1px 0 rgba(0,0,0,0.08)',
+                transition: 'all 0.15s',
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                <path d="M7 2v10M2 7h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+              <span>Add task</span>
+            </button>
           </div>
+
           <div>
             {filteredTasks.map((t, i) => <TaskCard key={t.id} task={t} delay={i * 30} onMarkDone={onMarkDone} onSkip={onSkip} onEdit={onEditTask} onAddToRoutine={onAddToRoutine} onBuildRoutine={onBuildRoutine}/>)}
           </div>

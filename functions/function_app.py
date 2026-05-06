@@ -12,6 +12,8 @@ Six functions:
   POST /context              — create a context window
   GET  /today                — aggregated today view
   POST /memory_keeper_run    — manual trigger (timer runs on schedule)
+  GET  /user_avatar          — get user avatar
+  PUT  /user_avatar          — set user avatar
 
 Timer: memory_keeper_timer — runs every 6 hours.
 
@@ -33,6 +35,7 @@ import json
 import logging
 import asyncio
 import re
+import base64
 import uuid
 from datetime import datetime, timezone
 import azure.functions as func
@@ -889,12 +892,13 @@ def user_avatar(req: func.HttpRequest) -> func.HttpResponse:
             body = req.get_json()
         except ValueError:
             return _error("Invalid JSON body", 400)
+        if not body:
+            return _error("Request body is required", 400)
 
         raw_b64 = body.get("avatar_b64", "")
         if not raw_b64 or not isinstance(raw_b64, str):
             return _error("avatar_b64 is required", 400)
 
-        import base64
         try:
             if raw_b64.startswith("data:"):
                 raw_b64 = raw_b64.split(",", 1)[-1]

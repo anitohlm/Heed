@@ -6773,27 +6773,39 @@ function EventsPanel({ allUpcoming, activeContext, onAddContext, onQuickContext,
     const heedLines = evtCfg(newEventType).heedText.split('\n')
     const isLow = newEventType === 'low'
     const LOW_DURATIONS = [
-      { key: 'today',    label: 'Just today',              sub: 'Check in tomorrow morning' },
-      { key: 'few-days', label: 'A few days',              sub: 'Heed checks in after 3 days' },
-      { key: 'check-in', label: 'Let Heed check in',       sub: 'I\'ll tell you when I\'m ready' },
+      { key: 'today',    label: 'Just today',        sub: 'Check in tomorrow morning' },
+      { key: 'few-days', label: 'A few days',         sub: 'Heed checks in after 3 days' },
+      { key: 'check-in', label: 'Let Heed check in', sub: 'I\'ll tell you when I\'m ready' },
     ]
+    // When low day is active, the whole screen shifts to a periwinkle palette
+    const bg       = isLow ? C.lowSoft  : C.paper
+    const hdrBg    = isLow ? C.lowSoft  : C.paperHi
+    const hdrBord  = isLow ? `${C.low}60` : C.border
+    const accent   = isLow ? C.low      : C.warmDark
+    const cardBg   = isLow ? `${C.low}12` : C.paper
+    const cardBord = isLow ? `${C.low}40` : C.border
+    const inputBg  = isLow ? `${C.low}10` : C.paperHi
+    const ftrBg    = isLow ? C.lowSoft  : C.paperHi
+    const ftrBord  = isLow ? `${C.low}60` : C.border
+    const lblCol   = isLow ? C.low      : C.inkMute
     return (
-      <div style={{ position: 'fixed', inset: 0, zIndex: 260, background: C.paper, display: 'flex', flexDirection: 'column', animation: 'heed-slideIn 0.3s cubic-bezier(0.16,1,0.3,1)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px 10px', background: C.paperHi, borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
-          <button onClick={() => setScreen(null)} aria-label="Back" style={{ background: 'transparent', border: 'none', color: C.warmDark, cursor: 'pointer', fontSize: 20, padding: '2px 8px 2px 0', lineHeight: 1, fontFamily: 'inherit', fontWeight: 700 }}>←</button>
-          <span style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 17, fontWeight: 700, color: C.warmDark, letterSpacing: -0.2, flex: 1 }}>New Event</span>
+      <div style={{ position: 'fixed', inset: 0, zIndex: 260, background: bg, display: 'flex', flexDirection: 'column', animation: 'heed-slideIn 0.3s cubic-bezier(0.16,1,0.3,1)', transition: 'background 0.25s' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px 10px', background: hdrBg, borderBottom: `1px solid ${hdrBord}`, flexShrink: 0, transition: 'all 0.25s' }}>
+          <button onClick={() => setScreen(null)} aria-label="Back" style={{ background: 'transparent', border: 'none', color: accent, cursor: 'pointer', fontSize: 20, padding: '2px 8px 2px 0', lineHeight: 1, fontFamily: 'inherit', fontWeight: 700, transition: 'color 0.25s' }}>←</button>
+          <span style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 17, fontWeight: 700, color: accent, letterSpacing: -0.2, flex: 1, transition: 'color 0.25s' }}>New Event</span>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '20px 20px 32px' }}>
-          <p style={{ fontSize: 12.5, color: C.inkMute, marginBottom: 18, lineHeight: 1.5 }}>
+          <p style={{ fontSize: 12.5, color: isLow ? `${C.low}CC` : C.inkMute, marginBottom: 18, lineHeight: 1.5, transition: 'color 0.25s' }}>
             {isLow ? 'No pressure. Tell Heed how you\'re feeling and it will quietly make space for you.' : 'What\'s coming up? Heed will adjust your tasks and routines around it.'}
           </p>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>Type</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: lblCol, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8, transition: 'color 0.25s' }}>Type</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 18 }}>
             {ADD_TYPES.map(t => {
-              const sel = newEventType === t.type
-              const borderCol = sel ? (t.type === 'low' ? C.low : C.warmDark) : C.border
-              const bgCol     = sel ? (t.type === 'low' ? C.lowSoft : C.bellySoft) : C.paper
-              const iconBg    = t.type === 'low' ? C.lowSoft : C.bellySoft
+              const sel       = newEventType === t.type
+              const isLowType = t.type === 'low'
+              const borderCol = sel ? (isLowType ? C.low : C.warmDark) : (isLow ? `${C.low}40` : C.border)
+              const bgCol     = sel ? (isLowType ? `${C.low}30` : C.bellySoft) : (isLow ? `${C.low}08` : C.paper)
+              const iconBg    = isLowType ? `${C.low}22` : (isLow ? `${C.low}10` : C.bellySoft)
               return (
                 <button key={t.type} onClick={() => setNewEventType(t.type)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 13px', border: `1.5px solid ${borderCol}`, borderRadius: 12, background: bgCol, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', transition: 'all 0.15s' }}>
                   <div style={{ width: 36, height: 36, borderRadius: 9, background: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, flexShrink: 0 }}>{t.icon}</div>
@@ -6808,20 +6820,23 @@ function EventsPanel({ allUpcoming, activeContext, onAddContext, onQuickContext,
 
           {isLow ? (
             <>
-              <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>How long?</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: lblCol, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>How long?</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
-                {LOW_DURATIONS.map(d => (
-                  <button key={d.key} onClick={() => setNewLowDuration(d.key)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', border: `1.5px solid ${newLowDuration === d.key ? C.low : C.border}`, borderRadius: 12, background: newLowDuration === d.key ? C.lowSoft : C.paper, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', transition: 'all 0.15s' }}>
-                    <div style={{ width: 16, height: 16, borderRadius: '50%', border: `2px solid ${newLowDuration === d.key ? C.low : C.border}`, background: newLowDuration === d.key ? C.low : 'transparent', flexShrink: 0, transition: 'all 0.15s' }}/>
-                    <div>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>{d.label}</div>
-                      <div style={{ fontSize: 11, color: C.inkMute, marginTop: 1 }}>{d.sub}</div>
-                    </div>
-                  </button>
-                ))}
+                {LOW_DURATIONS.map(d => {
+                  const sel = newLowDuration === d.key
+                  return (
+                    <button key={d.key} onClick={() => setNewLowDuration(d.key)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', border: `1.5px solid ${sel ? C.low : `${C.low}40`}`, borderRadius: 12, background: sel ? `${C.low}22` : `${C.low}08`, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', transition: 'all 0.15s' }}>
+                      <div style={{ width: 16, height: 16, borderRadius: '50%', border: `2px solid ${sel ? C.low : `${C.low}60`}`, background: sel ? C.low : 'transparent', flexShrink: 0, transition: 'all 0.15s' }}/>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>{d.label}</div>
+                        <div style={{ fontSize: 11, color: C.inkMute, marginTop: 1 }}>{d.sub}</div>
+                      </div>
+                    </button>
+                  )
+                })}
               </div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Note for Heed <span style={{ fontWeight: 400, textTransform: 'none', fontSize: 10, letterSpacing: 0 }}>(optional)</span></div>
-              <input value={newEventDesc} onChange={e => setNewEventDesc(e.target.value)} placeholder="e.g. Feeling flat today" style={{ width: '100%', padding: '11px 14px', background: C.paperHi, border: `1.5px solid ${C.border}`, borderRadius: 10, color: C.ink, fontSize: 14, fontFamily: 'inherit', outline: 'none', marginBottom: 16, boxSizing: 'border-box' }} onFocus={e => e.target.style.borderColor = C.low} onBlur={e => e.target.style.borderColor = C.border}/>
+              <div style={{ fontSize: 11, fontWeight: 700, color: lblCol, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Note for Heed <span style={{ fontWeight: 400, textTransform: 'none', fontSize: 10, letterSpacing: 0 }}>(optional)</span></div>
+              <input value={newEventDesc} onChange={e => setNewEventDesc(e.target.value)} placeholder="e.g. Feeling flat today" style={{ width: '100%', padding: '11px 14px', background: inputBg, border: `1.5px solid ${C.low}40`, borderRadius: 10, color: C.ink, fontSize: 14, fontFamily: 'inherit', outline: 'none', marginBottom: 16, boxSizing: 'border-box' }} onFocus={e => e.target.style.borderColor = C.low} onBlur={e => e.target.style.borderColor = `${C.low}40`}/>
             </>
           ) : (
             <>
@@ -6838,13 +6853,13 @@ function EventsPanel({ allUpcoming, activeContext, onAddContext, onQuickContext,
             </>
           )}
 
-          <div style={{ background: isLow ? C.lowSoft : C.bellySoft, border: `1px solid ${isLow ? C.low : C.border}`, borderRadius: 10, padding: '12px 14px', fontSize: 12.5, color: C.inkSoft, lineHeight: 1.6 }}>
-            <strong style={{ color: isLow ? C.low : C.ink, display: 'block', marginBottom: 4 }}>What Heed will do:</strong>
+          <div style={{ background: cardBg, border: `1px solid ${cardBord}`, borderRadius: 10, padding: '12px 14px', fontSize: 12.5, color: C.inkSoft, lineHeight: 1.6, transition: 'all 0.25s' }}>
+            <strong style={{ color: accent, display: 'block', marginBottom: 4, transition: 'color 0.25s' }}>What Heed will do:</strong>
             {heedLines.map((l, i) => <div key={i}>{l}</div>)}
           </div>
         </div>
-        <div style={{ flexShrink: 0, padding: '12px 16px', background: C.paperHi, borderTop: `1px solid ${C.border}` }}>
-          <button onClick={handleSaveEvent} style={{ width: '100%', padding: 13, background: isLow ? C.low : C.warmDark, color: isLow ? C.lowSoft : C.cream, border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+        <div style={{ flexShrink: 0, padding: '12px 16px', background: ftrBg, borderTop: `1px solid ${ftrBord}`, transition: 'all 0.25s' }}>
+          <button onClick={handleSaveEvent} style={{ width: '100%', padding: 13, background: accent, color: isLow ? '#fff' : C.cream, border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'background 0.25s' }}>
             {isLow ? "I'm having a low day" : 'Save event'}
           </button>
         </div>

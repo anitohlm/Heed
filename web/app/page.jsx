@@ -4758,7 +4758,7 @@ function CalendarPicker({ value, onChange, label = 'Due date' }) {
   for (let d = 1; d <= daysInMonth; d++) cells.push(d)
   return (
     <div>
-      {label && <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>{label}</div>}
+      {label && <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 6 }}>{label}</div>}
       <button onClick={() => setOpen(o => !o)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', background: C.paperHi, border: `1.5px solid ${open ? C.warmDark : C.border}`, borderRadius: open ? '10px 10px 0 0' : 10, color: C.ink, fontSize: 14, fontFamily: 'inherit', cursor: 'pointer', transition: 'border-color 0.15s', textAlign: 'left' }}>
         <span>📅</span>
         <span style={{ flex: 1, color: parsedValue ? C.ink : C.inkMute }}>{displayLabel}</span>
@@ -4881,11 +4881,11 @@ function TaskDetailScreen({ plan, taskIndex, onBack, onCheck, onRename, onDelete
           <span style={{ fontSize: 15, fontWeight: 600, color: task.done ? C.inkMute : C.ink, textDecoration: task.done ? 'line-through' : 'none' }}>{task.label}</span>
         </div>
         <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Task name</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 6 }}>Task name</div>
           <input value={name} onChange={e => setName(e.target.value)} style={{ width: '100%', padding: '11px 14px', background: C.paperHi, border: `1.5px solid ${C.border}`, borderRadius: 10, color: C.ink, fontSize: 14, fontFamily: 'inherit', outline: 'none' }} onFocus={e => e.target.style.borderColor = C.warmDark} onBlur={e => e.target.style.borderColor = C.border} />
         </div>
         <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Notes</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 6 }}>Notes</div>
           <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Add notes…" rows={3} style={{ width: '100%', padding: '11px 14px', background: C.paperHi, border: `1.5px solid ${C.border}`, borderRadius: 10, color: C.ink, fontSize: 14, fontFamily: 'inherit', outline: 'none', resize: 'none' }} onFocus={e => e.target.style.borderColor = C.warmDark} onBlur={e => e.target.style.borderColor = C.border} />
         </div>
         <div style={{ marginBottom: 20 }}>
@@ -4931,18 +4931,18 @@ function EditPlanScreen({ plan, onBack, onSave, onAddTask, onDeleteTask, onRenam
       </div>
       <div style={{ flex: 1, overflowY: 'auto', padding: '20px 20px 32px' }}>
         <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Plan name</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 6 }}>Plan name</div>
           <input value={title} onChange={e => setTitle(e.target.value)} style={{ width: '100%', padding: '11px 14px', background: C.paperHi, border: `1.5px solid ${C.border}`, borderRadius: 10, color: C.ink, fontSize: 14, fontFamily: 'inherit', outline: 'none' }} onFocus={e => e.target.style.borderColor = C.warmDark} onBlur={e => e.target.style.borderColor = C.border} />
         </div>
         <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Description</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 6 }}>Description</div>
           <textarea value={desc} onChange={e => setDesc(e.target.value)} placeholder="What's this plan about?" rows={3} style={{ width: '100%', padding: '11px 14px', background: C.paperHi, border: `1.5px solid ${C.border}`, borderRadius: 10, color: C.ink, fontSize: 14, fontFamily: 'inherit', outline: 'none', resize: 'none' }} onFocus={e => e.target.style.borderColor = C.warmDark} onBlur={e => e.target.style.borderColor = C.border} />
         </div>
         <div style={{ marginBottom: 20 }}>
           <CalendarPicker value={dueDate} onChange={setDueDate} label={dateLabel} />
         </div>
         <div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>Tasks</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 10 }}>Tasks</div>
           {taskInputs.map((label, i) => (
             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
               <span style={{ color: C.inkMute, fontSize: 16, cursor: 'grab', flexShrink: 0, letterSpacing: -2 }}>⠿</span>
@@ -5816,7 +5816,7 @@ function AddPlanSheet({ onClose, onAdd }) {
   }
 
   const inputStyle = { width: '100%', background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '9px 12px', fontSize: 14, color: C.ink, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box', marginTop: 4 }
-  const labelStyle = { fontSize: 12, fontWeight: 600, color: C.inkMute, display: 'block', marginTop: 12 }
+  const labelStyle = { ...getFieldLabel(), marginTop: 14 }
 
   // Reset AI suggestions whenever the title or type changes — they're stale.
   useEffect(() => { setAiSuggestions(null); setAiError(null) }, [title, type])
@@ -6798,7 +6798,7 @@ function EventsPanel({ allUpcoming, activeContext, onAddContext, onQuickContext,
           <p style={{ fontSize: 12.5, color: isLow ? `${C.low}CC` : C.inkMute, marginBottom: 18, lineHeight: 1.5, transition: 'color 0.25s' }}>
             {isLow ? 'No pressure. Tell Heed how you\'re feeling and it will quietly make space for you.' : 'What\'s coming up? Heed will adjust your tasks and routines around it.'}
           </p>
-          <div style={{ fontSize: 11, fontWeight: 700, color: lblCol, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8, transition: 'color 0.25s' }}>Type</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: lblCol, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 6, transition: 'color 0.25s' }}>Type</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 18 }}>
             {ADD_TYPES.map(t => {
               const sel       = newEventType === t.type
@@ -6820,7 +6820,7 @@ function EventsPanel({ allUpcoming, activeContext, onAddContext, onQuickContext,
 
           {isLow ? (
             <>
-              <div style={{ fontSize: 11, fontWeight: 700, color: lblCol, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>How long?</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: lblCol, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 6 }}>How long?</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
                 {LOW_DURATIONS.map(d => {
                   const sel = newLowDuration === d.key
@@ -6835,17 +6835,17 @@ function EventsPanel({ allUpcoming, activeContext, onAddContext, onQuickContext,
                   )
                 })}
               </div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: lblCol, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Note for Heed <span style={{ fontWeight: 400, textTransform: 'none', fontSize: 10, letterSpacing: 0 }}>(optional)</span></div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: lblCol, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 6 }}>Note for Heed <span style={{ fontWeight: 400, textTransform: 'none', fontSize: 10, letterSpacing: 0 }}>(optional)</span></div>
               <input value={newEventDesc} onChange={e => setNewEventDesc(e.target.value)} placeholder="e.g. Feeling flat today" style={{ width: '100%', padding: '11px 14px', background: inputBg, border: `1.5px solid ${C.low}40`, borderRadius: 10, color: C.ink, fontSize: 14, fontFamily: 'inherit', outline: 'none', marginBottom: 16, boxSizing: 'border-box' }} onFocus={e => e.target.style.borderColor = C.low} onBlur={e => e.target.style.borderColor = `${C.low}40`}/>
             </>
           ) : (
             <>
-              <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Description <span style={{ fontWeight: 400, textTransform: 'none', fontSize: 10, letterSpacing: 0 }}>(optional)</span></div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 6 }}>Description <span style={{ fontWeight: 400, textTransform: 'none', fontSize: 10, letterSpacing: 0 }}>(optional)</span></div>
               <input value={newEventDesc} onChange={e => setNewEventDesc(e.target.value)} placeholder={evtCfg(newEventType).placeholder} style={{ width: '100%', padding: '11px 14px', background: C.paperHi, border: `1.5px solid ${C.border}`, borderRadius: 10, color: C.ink, fontSize: 14, fontFamily: 'inherit', outline: 'none', marginBottom: 16, boxSizing: 'border-box' }} onFocus={e => e.target.style.borderColor = C.warmDark} onBlur={e => e.target.style.borderColor = C.border}/>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 18 }}>
                 {['Start', 'End'].map((lbl, i) => (
                   <div key={lbl}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>{lbl}{i === 1 && <span style={{ fontWeight: 400, textTransform: 'none', fontSize: 10, letterSpacing: 0 }}> (optional)</span>}</div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 6 }}>{lbl}{i === 1 && <span style={{ fontWeight: 400, textTransform: 'none', fontSize: 10, letterSpacing: 0 }}> (optional)</span>}</div>
                     <input type="date" style={{ width: '100%', padding: '10px 12px', background: C.paperHi, border: `1.5px solid ${C.border}`, borderRadius: 10, color: C.ink, fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}/>
                   </div>
                 ))}

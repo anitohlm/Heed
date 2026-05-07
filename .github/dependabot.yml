@@ -1,0 +1,24 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/web"
+    schedule:
+      interval: "weekly"
+    ignore:
+      # All 5 CVEs require Next.js 16 (breaking major bump).
+      # Heed uses `output: 'export'` (static HTML/JS, no server) and
+      # `images: { unoptimized: true }`, so every flagged CVE is a
+      # server-side attack that cannot reach this deployment.
+      # Re-evaluate when upgrading to Next.js 16.
+      - dependency-name: "next"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "pip"
+    directory: "/functions"
+    schedule:
+      interval: "weekly"

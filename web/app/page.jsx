@@ -196,6 +196,19 @@ const CONTEXTS_PAST = [
     ],
   },
 ]
+const ACTIVE_CONTEXT_DEMO = {
+  id: 'ctx-demo-busy',
+  type: 'busy',
+  label: 'Busy period',
+  desc: 'Client deadline week',
+  icon: '🌾',
+  start: 'May 6, 2026',
+  end: 'May 10, 2026',
+  startDate: new Date('2026-05-06'),
+  endDate: new Date('2026-05-10'),
+  heldTaskIds: [],
+  routinesPaused: 1,
+}
 const CONTEXTS_UPCOMING_DEMO = [
   {
     type: 'travel',
@@ -9519,7 +9532,7 @@ export default function HeedApp() {
   const [taskOptionsTask, setTaskOptionsTask] = useState(null)
   const [addToRoutineTask, setAddToRoutineTask] = useState(null)
   const [buildRoutineTask, setBuildRoutineTask] = useState(null)
-  const [activeContext, setActiveContext] = useState(null)
+  const [activeContext, setActiveContext] = useState(() => isDemoMode() ? ACTIVE_CONTEXT_DEMO : null)
   const [recoveryOpen, setRecoveryOpen] = useState(false)
   const [quickContextType, setQuickContextType] = useState(null)
   const [detailCtx, setDetailCtx] = useState(null)

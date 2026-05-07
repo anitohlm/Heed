@@ -14,3 +14,7 @@ local.settings.json
 .claude/worktrees/
 # Word lock files — auto-created when a .docx is open, should never be tracked
 ~$*.docx
+
+# Agent reports — contain security findings and test failures, never commit
+docs/qa-reports/
+docs/security-reports/

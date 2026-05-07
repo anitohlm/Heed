@@ -6235,44 +6235,46 @@ function PlansPanel({ plans, checkTask, renameTask, addTask, deleteTask, reorder
           <PlanBubble key={p.id} plan={p} index={i} onSelect={id => setSelectedPlanId(id)} />
         ))}
       </div>
-      {addOpen && <AddPlanSheet onClose={() => setAddOpen(false)} onAdd={p => { addPlan(p); setAddOpen(false) }}/>}
-      {selectedPlan && (
-        <PlanBubbleDetailScreen
-          plan={selectedPlan}
-          onBack={() => setSelectedPlanId(null)}
-          onEdit={() => { setEditPlanId(selectedPlan.id); setSelectedPlanId(null) }}
-          onCheck={checkTask}
-          onTaskSelect={i => setTaskDetail({ planId: selectedPlan.id, taskIndex: i })}
-          onArchive={() => { archivePlan?.(selectedPlan.id); setSelectedPlanId(null) }}
-        />
-      )}
-      {editPlan && (
-        <EditPlanScreen
-          plan={editPlan}
-          onBack={() => setEditPlanId(null)}
-          onSave={updatePlan}
-          onAddTask={addTask}
-          onDeleteTask={deleteTask}
-          onRenameTask={renameTask}
-        />
-      )}
-      {taskDetailPlan && taskDetail && (
-        <TaskDetailScreen
-          plan={taskDetailPlan}
-          taskIndex={taskDetail.taskIndex}
-          onBack={() => setTaskDetail(null)}
-          onCheck={checkTask}
-          onRename={renameTask}
-          onDelete={deleteTask}
-        />
-      )}
-      {pastPlansOpen && (
-        <PastPlansScreen
-          plans={plans}
-          onBack={() => setPastPlansOpen(false)}
-          onRestore={id => { restorePlan?.(id) }}
-        />
-      )}
+      {typeof document !== 'undefined' && createPortal(<>
+        {addOpen && <AddPlanSheet onClose={() => setAddOpen(false)} onAdd={p => { addPlan(p); setAddOpen(false) }}/>}
+        {selectedPlan && (
+          <PlanBubbleDetailScreen
+            plan={selectedPlan}
+            onBack={() => setSelectedPlanId(null)}
+            onEdit={() => { setEditPlanId(selectedPlan.id); setSelectedPlanId(null) }}
+            onCheck={checkTask}
+            onTaskSelect={i => setTaskDetail({ planId: selectedPlan.id, taskIndex: i })}
+            onArchive={() => { archivePlan?.(selectedPlan.id); setSelectedPlanId(null) }}
+          />
+        )}
+        {editPlan && (
+          <EditPlanScreen
+            plan={editPlan}
+            onBack={() => setEditPlanId(null)}
+            onSave={updatePlan}
+            onAddTask={addTask}
+            onDeleteTask={deleteTask}
+            onRenameTask={renameTask}
+          />
+        )}
+        {taskDetailPlan && taskDetail && (
+          <TaskDetailScreen
+            plan={taskDetailPlan}
+            taskIndex={taskDetail.taskIndex}
+            onBack={() => setTaskDetail(null)}
+            onCheck={checkTask}
+            onRename={renameTask}
+            onDelete={deleteTask}
+          />
+        )}
+        {pastPlansOpen && (
+          <PastPlansScreen
+            plans={plans}
+            onBack={() => setPastPlansOpen(false)}
+            onRestore={id => { restorePlan?.(id) }}
+          />
+        )}
+      </>, document.body)}
     </div>
   )
 }
@@ -6805,6 +6807,7 @@ function EventsPanel({ allUpcoming, activeContext, onAddContext, onQuickContext,
 
   // ── Main render ────────────────────────────────────────────────
   return (
+  <>
     <div style={{ animation: 'heed-fadeIn 0.2s ease' }}>
       {/* Action row */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
@@ -6831,7 +6834,11 @@ function EventsPanel({ allUpcoming, activeContext, onAddContext, onQuickContext,
         </div>
       )}
 
-      {/* Overlays */}
+    </div>
+
+    {/* Overlays and modals — portaled to body so position:fixed escapes
+        the tab-content transform stacking context */}
+    {typeof document !== 'undefined' && createPortal(<>
       {screen === 'detail'      && <EventDetailScreen/>}
       {screen === 'past'        && <PastEventsScreen/>}
       {screen === 'past-detail' && <PastDetailScreen/>}
@@ -6965,7 +6972,8 @@ function EventsPanel({ allUpcoming, activeContext, onAddContext, onQuickContext,
         </div>
         <SheetActions primary="Confirm" ghost="Cancel" onPrimary={() => { setModal(null) }} onGhost={() => setModal(null)}/>
       </HeedSheet>
-    </div>
+    </>, document.body)}
+  </>
   )
 }
 

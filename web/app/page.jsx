@@ -6534,7 +6534,7 @@ function EventsPanel({ allUpcoming, activeContext, onAddContext, onQuickContext,
         onMouseEnter={e => e.currentTarget.style.borderColor = ring}
         onMouseLeave={e => e.currentTarget.style.borderColor = `${ring}40`}
       >
-        <div style={{ width: 36, height: 36, borderRadius: '50%', background: `${ring}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0, animation: 'heed-pulse 2s ease infinite' }}>{ctx.icon || cfg.icon}</div>
+        <div style={{ width: 36, height: 36, borderRadius: '50%', background: `${ring}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0, animation: 'heed-breathe 2s ease infinite' }}>{ctx.icon || cfg.icon}</div>
         <div style={{ flex: 1 }}>
           <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', background: `${ring}20`, color: ring, borderRadius: 999, padding: '2px 7px', display: 'inline-block', marginBottom: 3 }}>● Active</span>
           <div style={{ fontSize: 14, fontWeight: 600, color: C.ink }}>{ctx.label || ctx.desc}</div>
@@ -6972,7 +6972,8 @@ function EventsPanel({ allUpcoming, activeContext, onAddContext, onQuickContext,
 // ── LifeTab ──────────────────────────────────────────────────────
 function LifeTab({ upcoming, active, activeContext, plansHook, onAddContext, onQuickContext, onImBetter, onExtend, onDetailOpen }) {
   const [subtab, setSubtab] = useState('plans')
-  const allUpcoming = [...(active || []).map(mapApiContext), ...(upcoming || []).map(mapApiContext)]
+  const apiUpcoming = [...(active || []).map(mapApiContext), ...(upcoming || []).map(mapApiContext)]
+  const allUpcoming = apiUpcoming.length > 0 ? apiUpcoming : (isDemoMode() ? CONTEXTS_UPCOMING_DEMO : [])
   return (
     <div>
       <div style={{ marginBottom: 18 }}>
@@ -6981,7 +6982,7 @@ function LifeTab({ upcoming, active, activeContext, plansHook, onAddContext, onQ
       </div>
       <div style={{ display: 'flex', background: C.paper, border: `1px solid ${C.border}`, borderRadius: 10, padding: 4, marginBottom: 18, gap: 4 }}>
         <SegmentButton active={subtab === 'plans'} onClick={() => setSubtab('plans')} label="Plans" count={plansHook.plans.length} accent={C.warmDark}/>
-        <SegmentButton active={subtab === 'events'} onClick={() => setSubtab('events')} label="Life Events" count={allUpcoming.length} accent={C.sage}/>
+        <SegmentButton active={subtab === 'events'} onClick={() => setSubtab('events')} label="Events" count={allUpcoming.length} accent={C.sage}/>
       </div>
       {subtab === 'plans'  && <PlansPanel {...plansHook}/>}
       {subtab === 'events' && (

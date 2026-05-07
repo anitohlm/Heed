@@ -6765,9 +6765,9 @@ function EventsPanel({ allUpcoming, activeContext, onAddContext, onQuickContext,
     const heedLines = evtCfg(newEventType).heedText.split('\n')
     return (
       <div style={{ position: 'fixed', inset: 0, zIndex: 260, background: C.paper, display: 'flex', flexDirection: 'column', animation: 'heed-slideIn 0.3s cubic-bezier(0.16,1,0.3,1)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '18px 16px 12px', borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
-          <button onClick={() => setScreen(null)} style={{ background: 'none', border: 'none', color: C.ink, fontSize: 22, cursor: 'pointer', padding: '2px 8px 2px 0', lineHeight: 1, fontFamily: 'inherit' }}>←</button>
-          <span style={{ flex: 1, fontSize: 16, fontWeight: 700, color: C.ink, fontFamily: 'Lora, Georgia, serif' }}>New Event</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px 10px', background: C.paperHi, borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
+          <button onClick={() => setScreen(null)} aria-label="Back" style={{ background: 'transparent', border: 'none', color: C.warmDark, cursor: 'pointer', fontSize: 20, padding: '2px 8px 2px 0', lineHeight: 1, fontFamily: 'inherit', fontWeight: 700 }}>←</button>
+          <span style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 17, fontWeight: 700, color: C.warmDark, letterSpacing: -0.2, flex: 1 }}>New Event</span>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '20px 20px 32px' }}>
           <p style={{ fontSize: 12.5, color: C.inkMute, marginBottom: 18, lineHeight: 1.5 }}>What's coming up? Heed will adjust your tasks and routines around it.</p>
@@ -6798,7 +6798,7 @@ function EventsPanel({ allUpcoming, activeContext, onAddContext, onQuickContext,
             {heedLines.map((l, i) => <div key={i}>{l}</div>)}
           </div>
         </div>
-        <div style={{ flexShrink: 0, padding: '12px 16px', background: C.paper, borderBottom: `1px solid ${C.border}` }}>
+        <div style={{ flexShrink: 0, padding: '12px 16px', background: C.paperHi, borderTop: `1px solid ${C.border}` }}>
           <button onClick={handleSaveEvent} style={{ width: '100%', padding: 13, background: C.warmDark, color: C.cream, border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Save event</button>
         </div>
       </div>

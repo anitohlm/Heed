@@ -28,7 +28,7 @@ const APP_TABS = [
 const C = {}
 ;['cream','paper','paperHi','border','hairline','ink','inkSoft','inkMute',
   'warm','warmDark','warmDeep','belly','bellySoft','rust','rustSoft','sage','sageSoft',
-  'ochre','ochreSoft','rose','shadowSoft','shadowMed'].forEach(key => {
+  'ochre','ochreSoft','rose','low','lowSoft','shadowSoft','shadowMed'].forEach(key => {
   Object.defineProperty(C, key, {
     get() { return THEMES[themeState.current][key] },
     enumerable: true,
@@ -6287,6 +6287,7 @@ const EVENT_TYPE_CONFIG = {
   sick:        { icon: '🤒',  label: 'Sick / Rest', ringKey: 'ochre',   softKey: 'ochreSoft', placeholder: 'e.g. Flu and fever',              heedText: '• Pause all routines while you rest\n• Hold non-urgent tasks so nothing piles up\n• Check in after a few days to see how you\'re doing\n• Resume everything when you say "Feeling better"' },
   illness:     { icon: '🤒',  label: 'Sick / Rest', ringKey: 'ochre',   softKey: 'ochreSoft', placeholder: 'e.g. Flu and fever',              heedText: '• Pause all routines while you rest\n• Hold non-urgent tasks so nothing piles up\n• Check in after a few days to see how you\'re doing\n• Resume everything when you say "Feeling better"' },
   celebration: { icon: '🌸',  label: 'Celebration', ringKey: 'rose',    softKey: 'bellySoft', placeholder: 'e.g. Sister\'s graduation party', heedText: '• Mark the date so Heed plans around it\n• Remind you of any prep tasks beforehand\n• Log it as a memory after the event' },
+  low:         { icon: '🌙',  label: 'Low day',     ringKey: 'low',     softKey: 'lowSoft',   placeholder: 'e.g. Feeling flat today',        heedText: '• Quietly pause non-essential routines\n• Hold tasks that can wait — no pressure\n• Check in gently after 24 hours' },
 }
 function evtCfg(type) { return EVENT_TYPE_CONFIG[type] || EVENT_TYPE_CONFIG.travel }
 function evtRingColor(type) { return C[evtCfg(type).ringKey] || C.sage }
@@ -6420,6 +6421,7 @@ function EventsPanel({ allUpcoming, activeContext, onAddContext, onQuickContext,
   const [conflictMode, setConflictMode] = useState('rest')
   const [newEventType, setNewEventType] = useState('sick')
   const [newEventDesc, setNewEventDesc] = useState('')
+  const [newLowDuration, setNewLowDuration] = useState('today')
   const [deferredResults, setDeferredResults] = useState({})
   const [summaryItems, setSummaryItems] = useState([])
   const [recoveryWantDeferred, setRecoveryWantDeferred] = useState(false)
@@ -6435,7 +6437,10 @@ function EventsPanel({ allUpcoming, activeContext, onAddContext, onQuickContext,
   // ── Save event flow ────────────────────────────────────────────
   function handleSaveEvent() {
     const name = newEventDesc.trim() || evtCfg(newEventType).label
-    if (newEventType === 'sick' || newEventType === 'illness' || newEventType === 'busy' || newEventType === 'travel') {
+    if (newEventType === 'low') {
+      setScreen(null)
+      onAddContext?.({ type: 'low', desc: name, icon: '🌙', lowDuration: newLowDuration })
+    } else if (newEventType === 'sick' || newEventType === 'illness' || newEventType === 'busy' || newEventType === 'travel') {
       setScreen(null)
       if (activeEvt) {
         setModal('conflict')
@@ -6540,7 +6545,9 @@ function EventsPanel({ allUpcoming, activeContext, onAddContext, onQuickContext,
         <div style={{ flex: 1 }}>
           <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', background: `${ring}20`, color: ring, borderRadius: 999, padding: '2px 7px', display: 'inline-block', marginBottom: 3 }}>● Active</span>
           <div style={{ fontSize: 14, fontWeight: 600, color: C.ink }}>{ctx.label || ctx.desc}</div>
-          <div style={{ fontSize: 12, color: C.inkMute, marginTop: 1 }}>{ctx.start} – {ctx.end} · {label}</div>
+          <div style={{ fontSize: 12, color: C.inkMute, marginTop: 1 }}>
+            {ctx.type === 'low' ? `Low day · ${label}` : `${ctx.start} – ${ctx.end} · ${label}`}
+          </div>
         </div>
         <span style={{ color: C.inkMute, fontSize: 14 }}>›</span>
       </div>
@@ -6557,7 +6564,7 @@ function EventsPanel({ allUpcoming, activeContext, onAddContext, onQuickContext,
     const innerLbl = eventInnerLabel(selEvt)
     const isActive = selEvt._status === 'active'
     const isUpcoming = selEvt._status === 'upcoming'
-    const endLabel = isActive ? (selEvt.label === 'Sick — rest mode' || selEvt.type === 'sick' || selEvt.type === 'illness' ? '😌 Feeling better' : selEvt.type === 'busy' ? '✅ All done' : '✅ I\'m back') : null
+    const endLabel = isActive ? (selEvt.type === 'low' ? '🌤 Feeling a bit better' : selEvt.label === 'Sick — rest mode' || selEvt.type === 'sick' || selEvt.type === 'illness' ? '😌 Feeling better' : selEvt.type === 'busy' ? '✅ All done' : '✅ I\'m back') : null
     return (
       <div style={{ position: 'fixed', inset: 0, zIndex: 270, background: C.paper, display: 'flex', flexDirection: 'column', animation: 'heed-slideIn 0.3s cubic-bezier(0.16,1,0.3,1)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '18px 16px 12px', borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
@@ -6759,10 +6766,17 @@ function EventsPanel({ allUpcoming, activeContext, onAddContext, onQuickContext,
     { type: 'busy',        icon: '🌾', name: 'Busy period',  sub: 'Work sprint' },
     { type: 'sick',        icon: '🤒', name: 'Sick / Rest',  sub: 'Recovery time' },
     { type: 'celebration', icon: '🌸', name: 'Celebration',  sub: 'Special occasion' },
+    { type: 'low',         icon: '🌙', name: 'Low day',      sub: 'Low energy or mood' },
   ]
 
   function AddEventScreen() {
     const heedLines = evtCfg(newEventType).heedText.split('\n')
+    const isLow = newEventType === 'low'
+    const LOW_DURATIONS = [
+      { key: 'today',    label: 'Just today',              sub: 'Check in tomorrow morning' },
+      { key: 'few-days', label: 'A few days',              sub: 'Heed checks in after 3 days' },
+      { key: 'check-in', label: 'Let Heed check in',       sub: 'I\'ll tell you when I\'m ready' },
+    ]
     return (
       <div style={{ position: 'fixed', inset: 0, zIndex: 260, background: C.paper, display: 'flex', flexDirection: 'column', animation: 'heed-slideIn 0.3s cubic-bezier(0.16,1,0.3,1)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px 10px', background: C.paperHi, borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
@@ -6770,36 +6784,145 @@ function EventsPanel({ allUpcoming, activeContext, onAddContext, onQuickContext,
           <span style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 17, fontWeight: 700, color: C.warmDark, letterSpacing: -0.2, flex: 1 }}>New Event</span>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '20px 20px 32px' }}>
-          <p style={{ fontSize: 12.5, color: C.inkMute, marginBottom: 18, lineHeight: 1.5 }}>What's coming up? Heed will adjust your tasks and routines around it.</p>
+          <p style={{ fontSize: 12.5, color: C.inkMute, marginBottom: 18, lineHeight: 1.5 }}>
+            {isLow ? 'No pressure. Tell Heed how you\'re feeling and it will quietly make space for you.' : 'What\'s coming up? Heed will adjust your tasks and routines around it.'}
+          </p>
           <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>Type</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 18 }}>
-            {ADD_TYPES.map(t => (
-              <button key={t.type} onClick={() => setNewEventType(t.type)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 13px', border: `1.5px solid ${newEventType === t.type ? C.warmDark : C.border}`, borderRadius: 12, background: newEventType === t.type ? C.bellySoft : C.paper, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', transition: 'all 0.15s' }}>
-                <div style={{ width: 36, height: 36, borderRadius: 9, background: C.bellySoft, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, flexShrink: 0 }}>{t.icon}</div>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>{t.name}</div>
-                  <div style={{ fontSize: 11, color: C.inkMute, marginTop: 1 }}>{t.sub}</div>
-                </div>
-              </button>
-            ))}
+            {ADD_TYPES.map(t => {
+              const sel = newEventType === t.type
+              const borderCol = sel ? (t.type === 'low' ? C.low : C.warmDark) : C.border
+              const bgCol     = sel ? (t.type === 'low' ? C.lowSoft : C.bellySoft) : C.paper
+              const iconBg    = t.type === 'low' ? C.lowSoft : C.bellySoft
+              return (
+                <button key={t.type} onClick={() => setNewEventType(t.type)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 13px', border: `1.5px solid ${borderCol}`, borderRadius: 12, background: bgCol, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', transition: 'all 0.15s' }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 9, background: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, flexShrink: 0 }}>{t.icon}</div>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>{t.name}</div>
+                    <div style={{ fontSize: 11, color: C.inkMute, marginTop: 1 }}>{t.sub}</div>
+                  </div>
+                </button>
+              )
+            })}
           </div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Description <span style={{ fontWeight: 400, textTransform: 'none', fontSize: 10, letterSpacing: 0 }}>(optional)</span></div>
-          <input value={newEventDesc} onChange={e => setNewEventDesc(e.target.value)} placeholder={evtCfg(newEventType).placeholder} style={{ width: '100%', padding: '11px 14px', background: C.paperHi, border: `1.5px solid ${C.border}`, borderRadius: 10, color: C.ink, fontSize: 14, fontFamily: 'inherit', outline: 'none', marginBottom: 16, boxSizing: 'border-box' }} onFocus={e => e.target.style.borderColor = C.warmDark} onBlur={e => e.target.style.borderColor = C.border}/>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 18 }}>
-            {['Start', 'End'].map((lbl, i) => (
-              <div key={lbl}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>{lbl}{i === 1 && <span style={{ fontWeight: 400, textTransform: 'none', fontSize: 10, letterSpacing: 0 }}> (optional)</span>}</div>
-                <input type="date" style={{ width: '100%', padding: '10px 12px', background: C.paperHi, border: `1.5px solid ${C.border}`, borderRadius: 10, color: C.ink, fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}/>
+
+          {isLow ? (
+            <>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>How long?</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
+                {LOW_DURATIONS.map(d => (
+                  <button key={d.key} onClick={() => setNewLowDuration(d.key)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', border: `1.5px solid ${newLowDuration === d.key ? C.low : C.border}`, borderRadius: 12, background: newLowDuration === d.key ? C.lowSoft : C.paper, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', transition: 'all 0.15s' }}>
+                    <div style={{ width: 16, height: 16, borderRadius: '50%', border: `2px solid ${newLowDuration === d.key ? C.low : C.border}`, background: newLowDuration === d.key ? C.low : 'transparent', flexShrink: 0, transition: 'all 0.15s' }}/>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>{d.label}</div>
+                      <div style={{ fontSize: 11, color: C.inkMute, marginTop: 1 }}>{d.sub}</div>
+                    </div>
+                  </button>
+                ))}
               </div>
-            ))}
-          </div>
-          <div style={{ background: C.bellySoft, border: `1px solid ${C.border}`, borderRadius: 10, padding: '12px 14px', fontSize: 12.5, color: C.inkSoft, lineHeight: 1.6 }}>
-            <strong style={{ color: C.ink, display: 'block', marginBottom: 4 }}>What Heed will do:</strong>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Note for Heed <span style={{ fontWeight: 400, textTransform: 'none', fontSize: 10, letterSpacing: 0 }}>(optional)</span></div>
+              <input value={newEventDesc} onChange={e => setNewEventDesc(e.target.value)} placeholder="e.g. Feeling flat today" style={{ width: '100%', padding: '11px 14px', background: C.paperHi, border: `1.5px solid ${C.border}`, borderRadius: 10, color: C.ink, fontSize: 14, fontFamily: 'inherit', outline: 'none', marginBottom: 16, boxSizing: 'border-box' }} onFocus={e => e.target.style.borderColor = C.low} onBlur={e => e.target.style.borderColor = C.border}/>
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Description <span style={{ fontWeight: 400, textTransform: 'none', fontSize: 10, letterSpacing: 0 }}>(optional)</span></div>
+              <input value={newEventDesc} onChange={e => setNewEventDesc(e.target.value)} placeholder={evtCfg(newEventType).placeholder} style={{ width: '100%', padding: '11px 14px', background: C.paperHi, border: `1.5px solid ${C.border}`, borderRadius: 10, color: C.ink, fontSize: 14, fontFamily: 'inherit', outline: 'none', marginBottom: 16, boxSizing: 'border-box' }} onFocus={e => e.target.style.borderColor = C.warmDark} onBlur={e => e.target.style.borderColor = C.border}/>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 18 }}>
+                {['Start', 'End'].map((lbl, i) => (
+                  <div key={lbl}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>{lbl}{i === 1 && <span style={{ fontWeight: 400, textTransform: 'none', fontSize: 10, letterSpacing: 0 }}> (optional)</span>}</div>
+                    <input type="date" style={{ width: '100%', padding: '10px 12px', background: C.paperHi, border: `1.5px solid ${C.border}`, borderRadius: 10, color: C.ink, fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}/>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          <div style={{ background: isLow ? C.lowSoft : C.bellySoft, border: `1px solid ${isLow ? C.low : C.border}`, borderRadius: 10, padding: '12px 14px', fontSize: 12.5, color: C.inkSoft, lineHeight: 1.6 }}>
+            <strong style={{ color: isLow ? C.low : C.ink, display: 'block', marginBottom: 4 }}>What Heed will do:</strong>
             {heedLines.map((l, i) => <div key={i}>{l}</div>)}
           </div>
         </div>
         <div style={{ flexShrink: 0, padding: '12px 16px', background: C.paperHi, borderTop: `1px solid ${C.border}` }}>
-          <button onClick={handleSaveEvent} style={{ width: '100%', padding: 13, background: C.warmDark, color: C.cream, border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Save event</button>
+          <button onClick={handleSaveEvent} style={{ width: '100%', padding: 13, background: isLow ? C.low : C.warmDark, color: isLow ? C.lowSoft : C.cream, border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+            {isLow ? "I'm having a low day" : 'Save event'}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Low day check-in screen ────────────────────────────────────
+  function LowCheckinScreen() {
+    const REPLIES = [
+      { key: 'better',    emoji: '🌤', label: 'Feeling a bit better',    sub: 'Heed will ease things back in gently' },
+      { key: 'still-low', emoji: '🌧', label: 'Still having a low day',  sub: 'Keep things quiet for now' },
+      { key: 'few-more',  emoji: '🌙', label: 'A few more days',          sub: 'Extend the low period' },
+    ]
+    return (
+      <div style={{ position: 'fixed', inset: 0, zIndex: 260, background: C.paper, display: 'flex', flexDirection: 'column', animation: 'heed-slideIn 0.3s cubic-bezier(0.16,1,0.3,1)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px 10px', background: C.paperHi, borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
+          <button onClick={() => setScreen(null)} aria-label="Back" style={{ background: 'transparent', border: 'none', color: C.warmDark, cursor: 'pointer', fontSize: 20, padding: '2px 8px 2px 0', lineHeight: 1, fontFamily: 'inherit', fontWeight: 700 }}>←</button>
+          <span style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 17, fontWeight: 700, color: C.warmDark, letterSpacing: -0.2, flex: 1 }}>How are you doing?</span>
+        </div>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '24px 20px 32px' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 28 }}>
+            <span style={{ fontSize: 28, flexShrink: 0 }}>🦉</span>
+            <div style={{ background: C.paperHi, border: `1px solid ${C.border}`, borderRadius: '4px 14px 14px 14px', padding: '12px 14px', fontSize: 14, color: C.ink, lineHeight: 1.6 }}>
+              Hey, just checking in gently. No rush — how's today feeling?
+            </div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {REPLIES.map(r => (
+              <button key={r.key} onClick={() => { setScreen(r.key === 'better' ? 'low-ease-back' : null) }} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', background: C.paperHi, border: `1.5px solid ${C.border}`, borderRadius: 14, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', transition: 'all 0.15s' }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = C.low; e.currentTarget.style.background = C.lowSoft }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.background = C.paperHi }}>
+                <span style={{ fontSize: 24, flexShrink: 0 }}>{r.emoji}</span>
+                <div>
+                  <div style={{ fontSize: 13.5, fontWeight: 600, color: C.ink }}>{r.label}</div>
+                  <div style={{ fontSize: 11.5, color: C.inkMute, marginTop: 2 }}>{r.sub}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Low day ease-back screen ────────────────────────────────────
+  function LowEaseBackScreen() {
+    return (
+      <div style={{ position: 'fixed', inset: 0, zIndex: 260, background: C.paper, display: 'flex', flexDirection: 'column', animation: 'heed-slideIn 0.3s cubic-bezier(0.16,1,0.3,1)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px 10px', background: C.paperHi, borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
+          <button onClick={() => setScreen(null)} aria-label="Back" style={{ background: 'transparent', border: 'none', color: C.warmDark, cursor: 'pointer', fontSize: 20, padding: '2px 8px 2px 0', lineHeight: 1, fontFamily: 'inherit', fontWeight: 700 }}>←</button>
+          <span style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 17, fontWeight: 700, color: C.warmDark, letterSpacing: -0.2, flex: 1 }}>Easing back in</span>
+        </div>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '24px 20px 32px' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 24 }}>
+            <span style={{ fontSize: 28, flexShrink: 0 }}>🦉</span>
+            <div style={{ background: C.paperHi, border: `1px solid ${C.border}`, borderRadius: '4px 14px 14px 14px', padding: '12px 14px', fontSize: 14, color: C.ink, lineHeight: 1.6 }}>
+              Glad you're feeling a bit better. I'll bring things back slowly — no pile-on, just the essentials first.
+            </div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
+            {[
+              { icon: '✓', color: C.sage, label: 'Tasks spread over the next 3 days', sub: 'Nothing dumped all at once' },
+              { icon: '✓', color: C.sage, label: 'Routines restart tomorrow',          sub: 'One day of breathing room' },
+              { icon: '✓', color: C.sage, label: 'Low day logged quietly',             sub: 'No labels, just a note for Heed' },
+            ].map((item, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, background: C.paperHi, border: `1px solid ${C.border}`, borderRadius: 12, padding: '12px 14px' }}>
+                <span style={{ color: item.color, fontWeight: 700, fontSize: 15, flexShrink: 0, marginTop: 1 }}>{item.icon}</span>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>{item.label}</div>
+                  <div style={{ fontSize: 11.5, color: C.inkMute, marginTop: 2 }}>{item.sub}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div style={{ flexShrink: 0, padding: '12px 16px', background: C.paperHi, borderTop: `1px solid ${C.border}` }}>
+          <button onClick={() => { setScreen(null); onImBetter?.() }} style={{ width: '100%', padding: 13, background: C.sage, color: C.cream, border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Thanks, I'm ready</button>
         </div>
       </div>
     )
@@ -6822,6 +6945,18 @@ function EventsPanel({ allUpcoming, activeContext, onAddContext, onQuickContext,
       {/* Active event banner */}
       {activeEvt && <ActiveBanner ctx={activeEvt}/>}
 
+      {/* Low day check-in nudge */}
+      {activeEvt?.type === 'low' && (
+        <div onClick={() => setScreen('low-checkin')} style={{ display: 'flex', alignItems: 'center', gap: 12, background: C.lowSoft, border: `1px solid ${C.low}`, borderRadius: 12, padding: '12px 14px', marginBottom: 16, cursor: 'pointer', animation: 'heed-fadeIn 0.3s ease' }}>
+          <span style={{ fontSize: 24, flexShrink: 0 }}>🌙</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: C.low, marginBottom: 2 }}>How are you feeling?</div>
+            <div style={{ fontSize: 12, color: C.inkMute, lineHeight: 1.4 }}>Tap to check in with Heed — no pressure.</div>
+          </div>
+          <span style={{ color: C.low, fontSize: 18, fontWeight: 700 }}>›</span>
+        </div>
+      )}
+
       {/* Upcoming section */}
       <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8, paddingLeft: 2 }}>Upcoming</div>
       {upcomingEvts.length === 0 ? (
@@ -6839,10 +6974,12 @@ function EventsPanel({ allUpcoming, activeContext, onAddContext, onQuickContext,
     {/* Overlays and modals — portaled to body so position:fixed escapes
         the tab-content transform stacking context */}
     {typeof document !== 'undefined' && createPortal(<>
-      {screen === 'detail'      && <EventDetailScreen/>}
-      {screen === 'past'        && <PastEventsScreen/>}
-      {screen === 'past-detail' && <PastDetailScreen/>}
-      {screen === 'add'         && <AddEventScreen/>}
+      {screen === 'detail'       && <EventDetailScreen/>}
+      {screen === 'past'         && <PastEventsScreen/>}
+      {screen === 'past-detail'  && <PastDetailScreen/>}
+      {screen === 'add'          && <AddEventScreen/>}
+      {screen === 'low-checkin'  && <LowCheckinScreen/>}
+      {screen === 'low-ease-back'&& <LowEaseBackScreen/>}
 
       {/* ── Modals ── */}
 

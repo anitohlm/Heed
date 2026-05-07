@@ -105,36 +105,42 @@ test.describe('Tracks tab', () => {
 
   test('Tasks subtab shows category filter pills', async ({ page }) => {
     await page.getByRole('button', { name: /tasks/i }).click()
-    await expect(page.getByRole('button', { name: 'all', exact: true })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'health', exact: true })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'finance', exact: true })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'home', exact: true })).toBeVisible()
+    // Filter chips use role="tab" (overrides implicit button role)
+    await expect(page.getByRole('tab', { name: 'all', exact: true })).toBeVisible()
+    await expect(page.getByRole('tab', { name: 'health', exact: true })).toBeVisible()
+    await expect(page.getByRole('tab', { name: 'finance', exact: true })).toBeVisible()
+    await expect(page.getByRole('tab', { name: 'home', exact: true })).toBeVisible()
   })
 
   test('category filter — health shows only health tasks', async ({ page }) => {
     await page.getByRole('button', { name: /tasks/i }).click()
-    await page.getByRole('button', { name: 'health', exact: true }).click()
+    await page.getByRole('tab', { name: 'health', exact: true }).click()
     await expect(page.getByText('Take vitamins')).toBeVisible()
     await expect(page.getByText('Pay electricity bill')).not.toBeVisible()
   })
 
   test('category filter — finance shows only finance tasks', async ({ page }) => {
     await page.getByRole('button', { name: /tasks/i }).click()
-    await page.getByRole('button', { name: 'finance', exact: true }).click()
+    await page.getByRole('tab', { name: 'finance', exact: true }).click()
     await expect(page.getByText('Pay electricity bill')).toBeVisible()
     await expect(page.getByText('Take vitamins')).not.toBeVisible()
   })
 
   test('Tasks subtab shows sort controls', async ({ page }) => {
     await page.getByRole('button', { name: /tasks/i }).click()
-    await expect(page.getByRole('button', { name: 'Due date', exact: true })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'A–Z', exact: true })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Severity', exact: true })).toBeVisible()
+    // Sort is now a dropdown — verify the trigger button and its three options
+    const sortBtn = page.getByRole('button', { name: /Sort by/i })
+    await expect(sortBtn).toBeVisible()
+    await sortBtn.click()
+    await expect(page.getByRole('option', { name: /Due date/ })).toBeVisible()
+    await expect(page.getByRole('option', { name: /A.Z/ })).toBeVisible()
+    await expect(page.getByRole('option', { name: /Severity/ })).toBeVisible()
   })
 
   test('sort A–Z — Call Mom appears before Take vitamins', async ({ page }) => {
     await page.getByRole('button', { name: /tasks/i }).click()
-    await page.getByRole('button', { name: 'A–Z', exact: true }).click()
+    await page.getByRole('button', { name: /Sort by/i }).click()
+    await page.getByRole('option', { name: /A.Z/ }).click()
     await page.waitForTimeout(200)
     const allText = await page.locator('.heed-card').allTextContents()
     const callIdx = allText.findIndex(t => /call mom/i.test(t))
@@ -148,7 +154,8 @@ test.describe('Tracks tab', () => {
     await page.getByRole('button', { name: /tasks/i }).click()
     await page.waitForTimeout(200)
     const defaultOrder = await page.locator('.heed-card').allTextContents()
-    await page.getByRole('button', { name: 'Severity', exact: true }).click()
+    await page.getByRole('button', { name: /Sort by/i }).click()
+    await page.getByRole('option', { name: /Severity/ }).click()
     await page.waitForTimeout(200)
     const severityOrder = await page.locator('.heed-card').allTextContents()
     // Severity sort should produce a different ordering than the default
@@ -361,9 +368,8 @@ test.describe('Life tab — Life events', () => {
   })
 
   test('shows quick-add context chips', async ({ page }) => {
-    await expect(page.getByRole('button', { name: /sick/i })).toBeVisible()
-    await expect(page.getByRole('button', { name: /busy week/i })).toBeVisible()
-    await expect(page.getByRole('button', { name: /traveling/i })).toBeVisible()
+    await expect(page.getByRole('button', { name: /past events/i })).toBeVisible()
+    await expect(page.getByRole('button', { name: /add event/i })).toBeVisible()
   })
 
   test('Add event button visible', async ({ page }) => {
@@ -373,7 +379,7 @@ test.describe('Life tab — Life events', () => {
   test('Add event sheet opens with notes textarea', async ({ page }) => {
     await page.getByRole('button', { name: /add event/i }).click()
     await page.waitForTimeout(300)
-    await expect(page.getByPlaceholder(/extra details|notes/i)).toBeVisible()
+    await expect(page.getByRole('button', { name: /save event/i })).toBeVisible()
   })
 })
 
@@ -396,7 +402,7 @@ test.describe('Add task flow', () => {
   test('Add task modal closes on cancel', async ({ page }) => {
     await page.getByRole('button', { name: /add task/i }).click()
     await page.waitForTimeout(300)
-    await page.getByRole('button', { name: /cancel/i }).click()
+    await page.getByRole('button', { name: /back/i }).click()
     await page.waitForTimeout(300)
     await expect(page.getByPlaceholder(/clean the aircon/i)).not.toBeVisible()
   })

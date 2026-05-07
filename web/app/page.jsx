@@ -202,6 +202,7 @@ const CONTEXTS_UPCOMING_DEMO = [
     start: 'Jun 5, 2026',
     end: 'Jun 9, 2026',
     desc: 'Singapore trip',
+    icon: '✈️',
     _startDate: new Date('2026-06-05'),
     routinesPaused: 2,
     askQuery: 'Plan around my Singapore trip',
@@ -219,6 +220,15 @@ const CONTEXTS_UPCOMING_DEMO = [
         'Aircon cleaning can wait until that weekend',
       ],
     },
+  },
+  {
+    type: 'celebration',
+    start: 'Jun 30, 2026',
+    end: 'Jun 30, 2026',
+    desc: "Sister's Graduation",
+    icon: '🌸',
+    _startDate: new Date('2026-06-30'),
+    routinesPaused: 0,
   },
 ]
 const DEMO_PLANS = [
@@ -6254,50 +6264,694 @@ function PlansPanel({ plans, checkTask, renameTask, addTask, deleteTask, reorder
   )
 }
 
-// ── LifeEventsPanel ─────────────────────────────────────────────
-function LifeEventsPanel({ allUpcoming, activeContext, onAddContext, onQuickContext, onImBetter, onExtend, onDetailOpen }) {
+// ── EventsPanel helpers ──────────────────────────────────────────
+
+const EVENT_TYPE_CONFIG = {
+  travel:      { icon: '✈️',  label: 'Travel',      ringKey: 'sage',    softKey: 'sageSoft',  placeholder: 'e.g. Work trip to Singapore',    heedText: '• Pause your routines while you\'re away\n• Hold non-urgent tasks until you\'re back\n• Resume everything automatically on your return date' },
+  busy:        { icon: '🌾',  label: 'Busy period', ringKey: 'rust',    softKey: 'rustSoft',  placeholder: 'e.g. Client deadline sprint',     heedText: '• Lighten your daily routine so you can focus\n• Defer low-priority tasks to after the period\n• Check in when it ends to help you catch up' },
+  sick:        { icon: '🤒',  label: 'Sick / Rest', ringKey: 'ochre',   softKey: 'ochreSoft', placeholder: 'e.g. Flu and fever',              heedText: '• Pause all routines while you rest\n• Hold non-urgent tasks so nothing piles up\n• Check in after a few days to see how you\'re doing\n• Resume everything when you say "Feeling better"' },
+  illness:     { icon: '🤒',  label: 'Sick / Rest', ringKey: 'ochre',   softKey: 'ochreSoft', placeholder: 'e.g. Flu and fever',              heedText: '• Pause all routines while you rest\n• Hold non-urgent tasks so nothing piles up\n• Check in after a few days to see how you\'re doing\n• Resume everything when you say "Feeling better"' },
+  celebration: { icon: '🌸',  label: 'Celebration', ringKey: 'rose',    softKey: 'bellySoft', placeholder: 'e.g. Sister\'s graduation party', heedText: '• Mark the date so Heed plans around it\n• Remind you of any prep tasks beforehand\n• Log it as a memory after the event' },
+}
+function evtCfg(type) { return EVENT_TYPE_CONFIG[type] || EVENT_TYPE_CONFIG.travel }
+function evtRingColor(type) { return C[evtCfg(type).ringKey] || C.sage }
+
+const APPROACH_WINDOW_DAYS = 60
+const EVT_CIRC = 2 * Math.PI * 60  // r=60 → ≈376.99
+
+function eventFillPct(evt) {
+  const now = new Date()
+  if (evt._status === 'active') {
+    const start = evt._startDate || new Date()
+    const end   = evt._endDate   || new Date()
+    const total = Math.max(1, Math.round((end - start) / 86400000) + 1)
+    const elapsed = Math.max(0, Math.floor((now - start) / 86400000))
+    return Math.min(1, elapsed / total)
+  }
+  if (evt._status === 'past') return 1
+  // upcoming
+  const start = evt._startDate || new Date()
+  const daysUntil = Math.max(0, Math.ceil((start - now) / 86400000))
+  return Math.max(0, (APPROACH_WINDOW_DAYS - daysUntil) / APPROACH_WINDOW_DAYS)
+}
+
+function eventInnerLabel(evt) {
+  const now = new Date()
+  if (evt._status === 'past') return 'done'
+  if (evt._status === 'active') {
+    const start = evt._startDate || new Date()
+    const day = Math.max(1, Math.floor((now - start) / 86400000) + 1)
+    return `day ${day}`
+  }
+  const start = evt._startDate || new Date()
+  const d = Math.max(0, Math.ceil((start - now) / 86400000))
+  return d === 0 ? 'today' : `in ${d}d`
+}
+
+function EventBubble({ evt, onClick, stagger, animDelay = 0 }) {
+  const cfg = evtCfg(evt.type)
+  const ring = evt._status === 'past' ? C.sage : evtRingColor(evt.type)
+  const fill = eventFillPct(evt)
+  const offset = EVT_CIRC * (1 - fill)
+  const label = eventInnerLabel(evt)
+  return (
+    <div
+      onClick={onClick}
+      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: 6, cursor: 'pointer', marginTop: stagger ? 32 : 0, animation: `heed-fadeIn 0.3s ease ${animDelay}ms both`, WebkitTapHighlightColor: 'transparent' }}
+    >
+      <div style={{ position: 'relative', width: 130, height: 130 }}>
+        <svg style={{ position: 'absolute', top: 0, left: 0, width: 130, height: 130, transform: 'rotate(-90deg)' }} viewBox="0 0 130 130">
+          <circle fill="none" stroke={C.hairline} strokeWidth={5} cx={65} cy={65} r={60}/>
+          <circle fill="none" stroke={ring} strokeWidth={5} strokeLinecap="round" cx={65} cy={65} r={60} strokeDasharray={EVT_CIRC} strokeDashoffset={offset} style={{ transition: 'stroke-dashoffset 0.5s ease' }}/>
+        </svg>
+        <div style={{ position: 'absolute', top: 8, left: 8, width: 114, height: 114, borderRadius: '50%', background: C.paper, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
+          <span style={{ fontSize: 36 }}>{evt.icon || cfg.icon}</span>
+          <span style={{ fontSize: 12, fontWeight: 700, color: ring, lineHeight: 1 }}>{label}</span>
+        </div>
+      </div>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ color: C.ink, fontSize: 13, fontWeight: 600, lineHeight: 1.3, maxWidth: 120 }}>{evt.desc || evt.label}</div>
+        <div style={{ color: C.inkMute, fontSize: 11, marginTop: 2 }}>{evt.start}{evt.end && evt.end !== evt.start ? ` – ${evt.end}` : ''}</div>
+      </div>
+    </div>
+  )
+}
+
+// Generic bottom sheet for Heed modals
+function HeedSheet({ open, onClose, children }) {
+  if (!open) return null
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 310, display: 'flex', alignItems: 'flex-end' }} onClick={onClose}>
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.42)', backdropFilter: 'blur(2px)' }}/>
+      <div onClick={e => e.stopPropagation()} style={{ position: 'relative', width: '100%', background: C.paper, borderRadius: '22px 22px 0 0', border: `1px solid ${C.border}`, paddingBottom: 'calc(20px + env(safe-area-inset-bottom))', animation: 'heed-slideUp 0.3s cubic-bezier(0.16,1,0.3,1)', maxHeight: '88vh', overflowY: 'auto' }}>
+        <div style={{ width: 36, height: 4, borderRadius: 2, background: C.border, margin: '10px auto 0' }}/>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+function HeedBubble({ emoji = '🌿', title, body }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '16px 18px 12px' }}>
+      <div style={{ width: 34, height: 34, borderRadius: '50%', background: C.sageSoft, border: `1.5px solid ${C.sage}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, flexShrink: 0, marginTop: 2 }}>{emoji}</div>
+      <div style={{ flex: 1, background: C.bellySoft, border: `1px solid ${C.border}`, borderRadius: '4px 14px 14px 14px', padding: '10px 13px', fontSize: 13.5, color: C.ink, lineHeight: 1.55 }}>
+        {title && <strong style={{ display: 'block', marginBottom: 3 }}>{title}</strong>}
+        {body}
+      </div>
+    </div>
+  )
+}
+
+function SheetCheckRow({ id, defaultChecked, label, sub, onChange }) {
+  return (
+    <label htmlFor={id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '9px 12px', borderRadius: 10, background: C.bellySoft, border: `1px solid ${C.border}`, marginBottom: 6, cursor: 'pointer' }}>
+      <input id={id} type="checkbox" defaultChecked={defaultChecked} onChange={onChange} style={{ width: 16, height: 16, accentColor: C.sage, cursor: 'pointer', flexShrink: 0, marginTop: 2 }}/>
+      <div>
+        <div style={{ fontSize: 13, color: C.ink }}>{label}</div>
+        {sub && <div style={{ fontSize: 11, color: C.inkMute, marginTop: 1 }}>{sub}</div>}
+      </div>
+    </label>
+  )
+}
+
+function SheetActions({ primary, ghost, onPrimary, onGhost }) {
+  return (
+    <div style={{ display: 'flex', gap: 10, padding: '14px 18px 0' }}>
+      <button onClick={onPrimary} style={{ flex: 1, padding: 12, background: C.sage, color: C.cream, border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>{primary}</button>
+      <button onClick={onGhost} style={{ flex: 1, padding: 12, background: 'transparent', color: C.inkSoft, border: `1.5px solid ${C.border}`, borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>{ghost}</button>
+    </div>
+  )
+}
+
+function SummaryRow({ icon, iconColor, label, sub }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '9px 0', borderTop: `1px solid ${C.hairline}` }}>
+      <span style={{ fontSize: 13, color: iconColor, fontWeight: 700, flexShrink: 0, marginTop: 1 }}>{icon}</span>
+      <div>
+        <div style={{ fontSize: 13, color: C.ink, fontWeight: 500 }}>{label}</div>
+        {sub && <div style={{ fontSize: 11, color: C.inkMute, marginTop: 2 }}>{sub}</div>}
+      </div>
+    </div>
+  )
+}
+
+// ── EventsPanel ─────────────────────────────────────────────────
+function EventsPanel({ allUpcoming, activeContext, onAddContext, onQuickContext, onImBetter, onExtend, onDetailOpen }) {
+  const [screen, setScreen] = useState(null) // null | 'detail' | 'past' | 'past-detail' | 'add'
+  const [modal, setModal]   = useState(null) // null | 'save-confirm' | 'conflict' | 'im-back' | 'conflict-summary' | 'recovery-summary' | 'deferred' | 'extend'
+  const [selEvt, setSelEvt]   = useState(null)
+  const [pastDetail, setPastDetail] = useState(null)
+  const [conflictMode, setConflictMode] = useState('rest')
+  const [newEventType, setNewEventType] = useState('sick')
+  const [newEventDesc, setNewEventDesc] = useState('')
+  const [deferredResults, setDeferredResults] = useState({})
+  const [summaryItems, setSummaryItems] = useState([])
+  const [recoveryWantDeferred, setRecoveryWantDeferred] = useState(false)
+
+  // refs for checkbox reads
+  const chkRefs = { routines: React.useRef(null), movePast: React.useRef(null), deferred: React.useRef(null) }
+
+  const now = new Date()
+
+  const upcomingEvts = allUpcoming.map(e => ({ ...e, _status: 'upcoming' }))
+  const activeEvt = activeContext ? { ...activeContext, _status: 'active', _startDate: activeContext.startDate, _endDate: activeContext.endDate } : null
+
+  // ── Save event flow ────────────────────────────────────────────
+  function handleSaveEvent() {
+    const name = newEventDesc.trim() || evtCfg(newEventType).label
+    if (newEventType === 'sick' || newEventType === 'illness' || newEventType === 'busy' || newEventType === 'travel') {
+      setScreen(null)
+      if (activeEvt) {
+        setModal('conflict')
+      } else {
+        setModal('save-confirm')
+      }
+    } else {
+      setScreen(null)
+      onAddContext?.()
+    }
+  }
+
+  function buildSaveConfirmItems(mode) {
+    const base = [
+      { icon: '✓', color: C.sage,    label: 'Routines paused',           sub: 'Morning routine · Evening wind-down' },
+      { icon: '✓', color: C.sage,    label: 'Non-urgent tasks on hold',   sub: 'They\'ll surface when you\'re better' },
+      { icon: '✓', color: C.sage,    label: 'Check-in set for 3 days',    sub: '"Still resting?" — extend or close then' },
+    ]
+    if (mode === 'rest') return [
+      { icon: '✓', color: C.sage,    label: `${activeEvt?.label || 'Active event'} ended early`, sub: 'Sick event takes over' },
+      ...base,
+      { icon: '⚠', color: C.ochre,  label: '3 deadline tasks flagged',   sub: 'Still need your attention' },
+    ]
+    if (mode === 'push') return [
+      { icon: '✓', color: C.sage,    label: 'Deadline period still active',  sub: 'Work tasks stay visible' },
+      { icon: '✓', color: C.sage,    label: 'Personal routines paused',       sub: 'Morning routine · Evening wind-down' },
+      { icon: '✓', color: C.sage,    label: 'Personal tasks held',            sub: 'Non-work items deferred' },
+      { icon: '⚠', color: C.ochre,  label: '3 deadline tasks remain due',    sub: 'Pay bill · Submit timesheet · Sprint retro' },
+    ]
+    return [
+      { icon: '✓', color: C.sage,    label: `${activeEvt?.label || 'Active event'} closed`,   sub: 'Marked complete as of today' },
+      ...base,
+      { icon: '⚠', color: C.ochre,  label: '3 deadline tasks flagged',   sub: 'Were still open when period closed' },
+    ]
+  }
+
+  function handleApplyConflict() {
+    const items = buildSaveConfirmItems(conflictMode)
+    setSummaryItems(items)
+    setModal('conflict-summary')
+  }
+
+  function handleApplySaveConfirm() {
+    const items = buildSaveConfirmItems(null)
+    setSummaryItems(items)
+    setModal('conflict-summary')
+  }
+
+  // ── Im back / Feeling better flow ─────────────────────────────
+  function handleApplyImBack() {
+    const wantDeferred = chkRefs.deferred.current?.checked ?? false
+    setRecoveryWantDeferred(wantDeferred)
+    const ctx = selEvt || activeEvt
+    const items = [
+      { icon: '✓', color: C.sage,   label: `${ctx?.desc || ctx?.label || 'Event'} closed`, sub: 'Moved to Past Events' },
+      { icon: '✓', color: C.sage,   label: 'Routines resumed',          sub: 'Morning routine · Evening wind-down back on' },
+      { icon: '✓', color: C.sage,   label: 'Held tasks surfaced',        sub: 'Ready in your task list whenever you are' },
+    ]
+    if (wantDeferred) items.push({ icon: '→', color: C.inkSoft, label: 'Held tasks queued for review', sub: 'Check Tracks tab to go through them' })
+    setSummaryItems(items)
+    setModal('recovery-summary')
+    onImBetter?.()
+  }
+
+  function handleDismissRecovery() {
+    if (recoveryWantDeferred) {
+      setModal('deferred')
+    } else {
+      setModal(null)
+      setScreen(null)
+    }
+  }
+
+  const deferredTasks = [
+    { id: 1, label: '30-min walk',            sub: 'Held 1 day · Daily Habits' },
+    { id: 2, label: 'Read for 20 min',         sub: 'Held 1 day · Daily Habits' },
+    { id: 3, label: 'Water the plants',        sub: 'Held 1 day · Home' },
+    { id: 4, label: 'Update expense tracker',  sub: 'Held 1 day · Finance' },
+    { id: 5, label: 'Evening wind-down',       sub: 'Held 1 day · Routine' },
+  ]
+
+  const allDeferredResolved = deferredTasks.every(t => deferredResults[t.id])
+
+  function resolveDeferred(id, action) {
+    setDeferredResults(r => ({ ...r, [id]: action }))
+  }
+
+  // ── Active event banner ────────────────────────────────────────
+  function ActiveBanner({ ctx }) {
+    const ring = evtRingColor(ctx.type)
+    const cfg = evtCfg(ctx.type)
+    const daysIn = Math.max(0, Math.floor((now - (ctx._startDate || ctx.startDate || now)) / 86400000))
+    const label = daysIn === 0 ? 'started today' : `day ${daysIn + 1}`
+    return (
+      <div
+        onClick={() => { setSelEvt({ ...ctx, _status: 'active' }); setScreen('detail') }}
+        style={{ background: C.bellySoft, border: `2px solid ${ring}40`, borderRadius: 14, padding: '13px 14px', marginBottom: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, transition: 'border-color 0.15s' }}
+        onMouseEnter={e => e.currentTarget.style.borderColor = ring}
+        onMouseLeave={e => e.currentTarget.style.borderColor = `${ring}40`}
+      >
+        <div style={{ width: 36, height: 36, borderRadius: '50%', background: `${ring}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0, animation: 'heed-pulse 2s ease infinite' }}>{ctx.icon || cfg.icon}</div>
+        <div style={{ flex: 1 }}>
+          <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', background: `${ring}20`, color: ring, borderRadius: 999, padding: '2px 7px', display: 'inline-block', marginBottom: 3 }}>● Active</span>
+          <div style={{ fontSize: 14, fontWeight: 600, color: C.ink }}>{ctx.label || ctx.desc}</div>
+          <div style={{ fontSize: 12, color: C.inkMute, marginTop: 1 }}>{ctx.start} – {ctx.end} · {label}</div>
+        </div>
+        <span style={{ color: C.inkMute, fontSize: 14 }}>›</span>
+      </div>
+    )
+  }
+
+  // ── Event detail overlay ───────────────────────────────────────
+  function EventDetailScreen() {
+    if (!selEvt) return null
+    const cfg = evtCfg(selEvt.type)
+    const ring = selEvt._status === 'past' ? C.sage : evtRingColor(selEvt.type)
+    const fill = eventFillPct(selEvt)
+    const offset = EVT_CIRC * (1 - fill)
+    const innerLbl = eventInnerLabel(selEvt)
+    const isActive = selEvt._status === 'active'
+    const isUpcoming = selEvt._status === 'upcoming'
+    const endLabel = isActive ? (selEvt.label === 'Sick — rest mode' || selEvt.type === 'sick' || selEvt.type === 'illness' ? '😌 Feeling better' : selEvt.type === 'busy' ? '✅ All done' : '✅ I\'m back') : null
+    return (
+      <div style={{ position: 'fixed', inset: 0, zIndex: 270, background: C.paper, display: 'flex', flexDirection: 'column', animation: 'heed-slideIn 0.3s cubic-bezier(0.16,1,0.3,1)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '18px 16px 12px', borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
+          <button onClick={() => setScreen(null)} style={{ background: 'none', border: 'none', color: C.ink, fontSize: 22, cursor: 'pointer', padding: '2px 8px 2px 0', lineHeight: 1, fontFamily: 'inherit' }}>←</button>
+          <span style={{ flex: 1, fontSize: 16, fontWeight: 700, color: C.ink, fontFamily: 'Lora, Georgia, serif' }}>Event</span>
+        </div>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '20px 20px 48px' }}>
+          {/* Hero ring */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 20 }}>
+            <div style={{ position: 'relative', width: 160, height: 160 }}>
+              <svg style={{ position: 'absolute', top: 0, left: 0, width: 160, height: 160, transform: 'rotate(-90deg)' }} viewBox="0 0 160 160">
+                <circle fill="none" stroke={C.hairline} strokeWidth={6} cx={80} cy={80} r={74}/>
+                <circle fill="none" stroke={ring} strokeWidth={6} strokeLinecap="round" cx={80} cy={80} r={74} strokeDasharray={465} strokeDashoffset={465 * (1 - fill)} style={{ transition: 'stroke-dashoffset 0.6s ease' }}/>
+              </svg>
+              <div style={{ position: 'absolute', top: 10, left: 10, width: 140, height: 140, borderRadius: '50%', background: C.paper, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                <span style={{ fontSize: 52 }}>{selEvt.icon || cfg.icon}</span>
+                <span style={{ fontSize: 15, fontWeight: 700, color: ring }}>{innerLbl}</span>
+              </div>
+            </div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: C.ink, marginTop: 14, fontFamily: 'Lora, Georgia, serif' }}>{selEvt.desc || selEvt.label}</div>
+            <div style={{ fontSize: 12, color: C.inkMute, marginTop: 4 }}>{selEvt.start}{selEvt.end && selEvt.end !== selEvt.start ? ` – ${selEvt.end}` : ''}</div>
+            <span style={{ marginTop: 8, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', borderRadius: 999, padding: '3px 10px', background: `${ring}20`, color: ring }}>{cfg.icon} {cfg.label}</span>
+          </div>
+          {/* Stats */}
+          <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+            {isActive && <div style={{ flex: 1, background: C.bellySoft, border: `1px solid ${C.border}`, borderRadius: 12, padding: 12, textAlign: 'center' }}><div style={{ fontSize: 20, fontWeight: 700, color: ring }}>{Math.max(1, Math.floor((now - (selEvt._startDate || now)) / 86400000) + 1)}</div><div style={{ fontSize: 10, color: C.inkMute, marginTop: 2 }}>day in</div></div>}
+            {isUpcoming && <div style={{ flex: 1, background: C.bellySoft, border: `1px solid ${C.border}`, borderRadius: 12, padding: 12, textAlign: 'center' }}><div style={{ fontSize: 20, fontWeight: 700, color: ring }}>{Math.max(0, Math.ceil(((selEvt._startDate || now) - now) / 86400000))}</div><div style={{ fontSize: 10, color: C.inkMute, marginTop: 2 }}>days until</div></div>}
+            <div style={{ flex: 1, background: C.bellySoft, border: `1px solid ${C.border}`, borderRadius: 12, padding: 12, textAlign: 'center' }}><div style={{ fontSize: 20, fontWeight: 700, color: C.ink }}>{selEvt.routinesPaused || 2}</div><div style={{ fontSize: 10, color: C.inkMute, marginTop: 2 }}>routines paused</div></div>
+            <div style={{ flex: 1, background: C.bellySoft, border: `1px solid ${C.border}`, borderRadius: 12, padding: 12, textAlign: 'center' }}><div style={{ fontSize: 20, fontWeight: 700, color: C.ink }}>0</div><div style={{ fontSize: 10, color: C.inkMute, marginTop: 2 }}>tasks held</div></div>
+          </div>
+          {/* Action buttons */}
+          {isActive && (
+            <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+              <button onClick={() => setModal('im-back')} style={{ flex: 1, padding: 13, background: C.sage, color: C.cream, border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>{endLabel}</button>
+              <button onClick={() => setModal('extend')} style={{ flex: 1, padding: 13, background: 'transparent', color: C.ink, border: `1.5px solid ${C.border}`, borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Extend</button>
+            </div>
+          )}
+          {isUpcoming && (
+            <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+              <button onClick={() => setModal('extend')} style={{ flex: 1, padding: 13, background: 'transparent', color: C.ink, border: `1.5px solid ${C.border}`, borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Edit</button>
+            </div>
+          )}
+          <button onClick={() => { setScreen(null) }} style={{ width: '100%', padding: 13, background: 'transparent', color: C.rust, border: `1.5px solid ${C.rust}40`, borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Remove event</button>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Past events overlay ────────────────────────────────────────
+  function PastEventsScreen() {
+    return (
+      <div style={{ position: 'fixed', inset: 0, zIndex: 260, background: C.paper, display: 'flex', flexDirection: 'column', animation: 'heed-slideIn 0.3s cubic-bezier(0.16,1,0.3,1)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '18px 16px 12px', borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
+          <button onClick={() => setScreen(null)} style={{ background: 'none', border: 'none', color: C.ink, fontSize: 22, cursor: 'pointer', padding: '2px 8px 2px 0', lineHeight: 1, fontFamily: 'inherit' }}>←</button>
+          <span style={{ flex: 1, fontSize: 16, fontWeight: 700, color: C.ink, fontFamily: 'Lora, Georgia, serif' }}>Past Events</span>
+        </div>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 16px 48px' }}>
+          {CONTEXTS_PAST.map((c, i) => {
+            const cfg = evtCfg(c.type)
+            const ring = C.sage
+            return (
+              <div key={i} onClick={() => { setPastDetail(c); setScreen('past-detail') }} style={{ display: 'flex', alignItems: 'center', gap: 12, background: C.bellySoft, border: `1px solid ${C.border}`, borderRadius: 12, padding: '13px 14px', marginBottom: 8, cursor: 'pointer', transition: 'border-color 0.15s' }} onMouseEnter={e => e.currentTarget.style.borderColor = C.sage} onMouseLeave={e => e.currentTarget.style.borderColor = C.border}>
+                <div style={{ width: 42, height: 42, borderRadius: '50%', background: `${ring}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 19, flexShrink: 0 }}>{c.icon || cfg.icon}</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: C.ink }}>{c.desc}</div>
+                  <div style={{ fontSize: 12, color: C.inkMute, marginTop: 2 }}>{c.start} – {c.end}</div>
+                  <span style={{ fontSize: 10, background: C.bellySoft, color: C.inkMute, borderRadius: 999, padding: '2px 8px', fontWeight: 600, display: 'inline-block', marginTop: 4, border: `1px solid ${C.border}` }}>{c.skipped} items held</span>
+                </div>
+                <span style={{ color: C.inkMute }}>›</span>
+              </div>
+            )
+          })}
+          <div style={{ marginTop: 8, padding: '12px 14px', background: C.bellySoft, borderRadius: 10, fontSize: 12, color: C.inkMute, display: 'flex', gap: 8 }}>
+            <span>🗄️</span>
+            <span>Heed held your tasks and routines during these periods. Everything resumed automatically when each event ended.</span>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Past event detail overlay ──────────────────────────────────
+  function PastDetailScreen() {
+    if (!pastDetail) return null
+    const c = pastDetail
+    const cfg = evtCfg(c.type)
+
+    const HEED_SUGGESTIONS = {
+      travel:  [
+        { applied: true,  label: 'Pause routines while traveling',     sub: `${c.desc} – routines held` },
+        { applied: true,  label: 'Resume routines on return',          sub: 'Auto-resumed when "I\'m back" was tapped' },
+        { applied: true,  label: `Review ${c.skipped} deferred tasks`, sub: 'Surfaced on return' },
+        { applied: true,  label: 'Saved as a memory',                  sub: 'Logged to your journal' },
+      ],
+      illness: [
+        { applied: true,  label: 'Pause both daily routines',          sub: `Morning & evening held for ${Math.round((new Date(c.end) - new Date(c.start)) / 86400000) || 5} days` },
+        { applied: true,  label: 'Hold all non-essential tasks',       sub: `${c.skipped} tasks deferred` },
+        { applied: true,  label: 'Resume everything when recovered',   sub: 'Auto-resumed when you marked "Feeling better"' },
+        { applied: false, label: 'Reschedule missed gym sessions',     sub: 'You chose to skip these permanently' },
+      ],
+      busy:    [
+        { applied: true,  label: 'Resume normal routine',              sub: 'Morning routine turned back on after event' },
+        { applied: true,  label: `Review ${c.skipped} deferred tasks`, sub: '30-min walk · Read 20 min · Weekly review' },
+        { applied: false, label: 'Log as a past busy period',          sub: 'You tapped "Not now"' },
+      ],
+    }
+
+    const ACTIVITY_LOGS = {
+      travel:  [
+        { green: true,  time: `${c.end.split(',')[0]}, 2025 · 6:20 PM`, title: 'Marked "I\'m back"',       desc: `Heed suggested 4 actions. You applied all 4.` },
+        { green: false, time: 'Dec 25, 2025',                            title: 'Heed check-in: still traveling?', desc: 'You confirmed. 5 more tasks added to hold queue.' },
+        { green: false, time: `${c.start.split(',')[0]}, 2025 · 4:00 AM`, title: 'Event started — departure day', desc: `Heed paused 2 routines and set 4 tasks to hold.` },
+      ],
+      illness: [
+        { green: true,  time: `${c.end.split(',')[0]}, 2026 · 10:30 AM`, title: 'Marked "Feeling better"', desc: 'Heed resumed both routines and surfaced the deferred tasks.' },
+        { green: false, time: 'Feb 12, 2026',                             title: 'Heed checked in',         desc: '"Still resting?" — You extended by 2 days.' },
+        { green: false, time: `${c.start.split(',')[0]}, 2026 · 7:45 AM`, title: 'Event started', desc: `Added via plain-language input. Heed paused 2 routines and held ${c.skipped} tasks.` },
+      ],
+      busy:    [
+        { green: true,  time: `${c.end.split(',')[0]}, 2026 · 8:14 AM`, title: 'Event ended — "All done" tapped', desc: 'Heed prompted you with suggestions. You applied 2 of 3.' },
+        { green: false, time: 'Mar 20, 2026',                             title: '3 tasks auto-deferred',   desc: '30-min walk, Read 20 min, Weekly review moved to queue.' },
+        { green: false, time: `${c.start.split(',')[0]}, 2026 · 9:00 AM`, title: 'Event started', desc: 'Morning routine lightened. Non-essential tasks set to hold.' },
+      ],
+    }
+
+    const suggestions = HEED_SUGGESTIONS[c.type] || HEED_SUGGESTIONS.busy
+    const logs = ACTIVITY_LOGS[c.type] || ACTIVITY_LOGS.busy
+
+    return (
+      <div style={{ position: 'fixed', inset: 0, zIndex: 280, background: C.paper, display: 'flex', flexDirection: 'column', animation: 'heed-slideIn 0.3s cubic-bezier(0.16,1,0.3,1)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '18px 16px 12px', borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
+          <button onClick={() => setScreen('past')} style={{ background: 'none', border: 'none', color: C.ink, fontSize: 22, cursor: 'pointer', padding: '2px 8px 2px 0', lineHeight: 1, fontFamily: 'inherit' }}>←</button>
+          <span style={{ flex: 1, fontSize: 16, fontWeight: 700, color: C.ink, fontFamily: 'Lora, Georgia, serif' }}>Past Event</span>
+        </div>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '20px 20px 48px' }}>
+          {/* Hero */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 20 }}>
+            <div style={{ position: 'relative', width: 160, height: 160 }}>
+              <svg style={{ position: 'absolute', top: 0, left: 0, width: 160, height: 160, transform: 'rotate(-90deg)' }} viewBox="0 0 160 160">
+                <circle fill="none" stroke={C.hairline} strokeWidth={6} cx={80} cy={80} r={74}/>
+                <circle fill="none" stroke={C.sage} strokeWidth={6} strokeLinecap="round" cx={80} cy={80} r={74} strokeDasharray={465} strokeDashoffset={0}/>
+              </svg>
+              <div style={{ position: 'absolute', top: 10, left: 10, width: 140, height: 140, borderRadius: '50%', background: C.paper, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                <span style={{ fontSize: 52 }}>{c.icon || cfg.icon}</span>
+                <span style={{ fontSize: 15, fontWeight: 700, color: C.sage }}>done</span>
+              </div>
+            </div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: C.ink, marginTop: 14, fontFamily: 'Lora, Georgia, serif' }}>{c.desc}</div>
+            <div style={{ fontSize: 12, color: C.inkMute, marginTop: 4 }}>{c.start} – {c.end}</div>
+            <span style={{ marginTop: 8, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', borderRadius: 999, padding: '3px 10px', background: C.sageSoft, color: C.sage }}>✓ Completed · {cfg.icon} {cfg.label}</span>
+          </div>
+          {/* Stats */}
+          <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+            {[
+              { v: Math.round((new Date(c.end) - new Date(c.start)) / 86400000) + 1 || 7, l: 'days' },
+              { v: c.skipped,   l: 'items held' },
+              { v: c.routinesPaused || 2, l: 'routines paused' },
+            ].map((s, i) => (
+              <div key={i} style={{ flex: 1, background: C.bellySoft, border: `1px solid ${C.border}`, borderRadius: 12, padding: 12, textAlign: 'center' }}>
+                <div style={{ fontSize: 20, fontWeight: 700, color: C.ink }}>{s.v}</div>
+                <div style={{ fontSize: 10, color: C.inkMute, marginTop: 2 }}>{s.l}</div>
+              </div>
+            ))}
+          </div>
+          {/* Heed suggestions */}
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>What Heed suggested</div>
+          {suggestions.map((s, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 0', borderTop: `1px solid ${C.hairline}` }}>
+              <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 6, padding: '3px 8px', background: s.applied ? C.sageSoft : C.bellySoft, color: s.applied ? C.sage : C.inkMute, flexShrink: 0, marginTop: 2 }}>{s.applied ? '✓ Applied' : '✗ Skipped'}</span>
+              <div>
+                <div style={{ fontSize: 13, color: C.ink, fontWeight: 500 }}>{s.label}</div>
+                <div style={{ fontSize: 11, color: C.inkMute, marginTop: 2 }}>{s.sub}</div>
+              </div>
+            </div>
+          ))}
+          {/* Activity log */}
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4, marginTop: 20 }}>Activity log</div>
+          <div style={{ paddingLeft: 4 }}>
+            {logs.map((lg, i) => (
+              <div key={i} style={{ display: 'flex', gap: 12, position: 'relative' }}>
+                {i < logs.length - 1 && <div style={{ position: 'absolute', left: 4, top: 16, bottom: -6, width: 1.5, background: C.hairline }}/>}
+                <div style={{ width: 10, height: 10, borderRadius: '50%', flexShrink: 0, marginTop: 5, position: 'relative', zIndex: 1, background: lg.green ? C.sage : C.border, boxShadow: lg.green ? `0 0 0 3px ${C.sage}30` : 'none' }}/>
+                <div style={{ flex: 1, paddingBottom: 18 }}>
+                  <div style={{ fontSize: 10, color: C.inkMute, fontWeight: 600, marginBottom: 3 }}>{lg.time}</div>
+                  <div style={{ fontSize: 13, color: C.ink, fontWeight: 600, marginBottom: 3 }}>{lg.title}</div>
+                  <div style={{ fontSize: 12, color: C.inkSoft, lineHeight: 1.5 }}>{lg.desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Add event overlay ──────────────────────────────────────────
+  const ADD_TYPES = [
+    { type: 'travel',      icon: '🗺️', name: 'Travel',       sub: 'Trip away' },
+    { type: 'busy',        icon: '🌾', name: 'Busy period',  sub: 'Work sprint' },
+    { type: 'sick',        icon: '🤒', name: 'Sick / Rest',  sub: 'Recovery time' },
+    { type: 'celebration', icon: '🌸', name: 'Celebration',  sub: 'Special occasion' },
+  ]
+
+  function AddEventScreen() {
+    const heedLines = evtCfg(newEventType).heedText.split('\n')
+    return (
+      <div style={{ position: 'fixed', inset: 0, zIndex: 260, background: C.paper, display: 'flex', flexDirection: 'column', animation: 'heed-slideIn 0.3s cubic-bezier(0.16,1,0.3,1)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '18px 16px 12px', borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
+          <button onClick={() => setScreen(null)} style={{ background: 'none', border: 'none', color: C.ink, fontSize: 22, cursor: 'pointer', padding: '2px 8px 2px 0', lineHeight: 1, fontFamily: 'inherit' }}>←</button>
+          <span style={{ flex: 1, fontSize: 16, fontWeight: 700, color: C.ink, fontFamily: 'Lora, Georgia, serif' }}>New Event</span>
+        </div>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '20px 20px 32px' }}>
+          <p style={{ fontSize: 12.5, color: C.inkMute, marginBottom: 18, lineHeight: 1.5 }}>What's coming up? Heed will adjust your tasks and routines around it.</p>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>Type</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 18 }}>
+            {ADD_TYPES.map(t => (
+              <button key={t.type} onClick={() => setNewEventType(t.type)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 13px', border: `1.5px solid ${newEventType === t.type ? C.warmDark : C.border}`, borderRadius: 12, background: newEventType === t.type ? C.bellySoft : C.paper, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', transition: 'all 0.15s' }}>
+                <div style={{ width: 36, height: 36, borderRadius: 9, background: C.bellySoft, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, flexShrink: 0 }}>{t.icon}</div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>{t.name}</div>
+                  <div style={{ fontSize: 11, color: C.inkMute, marginTop: 1 }}>{t.sub}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Description <span style={{ fontWeight: 400, textTransform: 'none', fontSize: 10, letterSpacing: 0 }}>(optional)</span></div>
+          <input value={newEventDesc} onChange={e => setNewEventDesc(e.target.value)} placeholder={evtCfg(newEventType).placeholder} style={{ width: '100%', padding: '11px 14px', background: C.paperHi, border: `1.5px solid ${C.border}`, borderRadius: 10, color: C.ink, fontSize: 14, fontFamily: 'inherit', outline: 'none', marginBottom: 16, boxSizing: 'border-box' }} onFocus={e => e.target.style.borderColor = C.warmDark} onBlur={e => e.target.style.borderColor = C.border}/>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 18 }}>
+            {['Start', 'End'].map((lbl, i) => (
+              <div key={lbl}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>{lbl}{i === 1 && <span style={{ fontWeight: 400, textTransform: 'none', fontSize: 10, letterSpacing: 0 }}> (optional)</span>}</div>
+                <input type="date" style={{ width: '100%', padding: '10px 12px', background: C.paperHi, border: `1.5px solid ${C.border}`, borderRadius: 10, color: C.ink, fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}/>
+              </div>
+            ))}
+          </div>
+          <div style={{ background: C.bellySoft, border: `1px solid ${C.border}`, borderRadius: 10, padding: '12px 14px', fontSize: 12.5, color: C.inkSoft, lineHeight: 1.6 }}>
+            <strong style={{ color: C.ink, display: 'block', marginBottom: 4 }}>What Heed will do:</strong>
+            {heedLines.map((l, i) => <div key={i}>{l}</div>)}
+          </div>
+        </div>
+        <div style={{ flexShrink: 0, padding: '12px 16px', background: C.paper, borderBottom: `1px solid ${C.border}` }}>
+          <button onClick={handleSaveEvent} style={{ width: '100%', padding: 13, background: C.warmDark, color: C.cream, border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Save event</button>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Main render ────────────────────────────────────────────────
   return (
     <div style={{ animation: 'heed-fadeIn 0.2s ease' }}>
-      <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginBottom: 14 }}>
-        {CONTEXT_CHIPS.map(c => (
-          <button key={c.type} onClick={() => onQuickContext(c.type)}
-            style={{ background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 999, padding: '6px 14px', fontSize: 12, color: C.ink, fontFamily: 'inherit', fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s' }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = C.ochre; e.currentTarget.style.background = C.ochreSoft }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.background = C.paper }}
-          >{c.label}</button>
-        ))}
-        <button onClick={onAddContext}
-          style={{ background: 'transparent', border: `1.5px solid ${C.border}`, borderRadius: 999, padding: '6px 14px', fontSize: 12, color: C.inkSoft, fontFamily: 'inherit', fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s' }}
-          onMouseEnter={e => { e.currentTarget.style.borderColor = C.ochre }}
-          onMouseLeave={e => { e.currentTarget.style.borderColor = C.border }}
-        >+ Add event</button>
+      {/* Action row */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <button onClick={() => setScreen('past')} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', color: C.inkMute, fontSize: 13, fontWeight: 600, fontFamily: 'inherit', padding: 0 }}
+          onMouseEnter={e => e.currentTarget.style.color = C.ink} onMouseLeave={e => e.currentTarget.style.color = C.inkMute}>
+          <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.5"/><path d="M7 4.5V7l2 1.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+          Past Events
+        </button>
+        <button onClick={() => { setNewEventType('sick'); setNewEventDesc(''); setScreen('add') }} style={{ background: C.warmDark, color: C.cream, border: 'none', borderRadius: 8, padding: '6px 13px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>+ Add event</button>
       </div>
-      {activeContext && (
-        <ActiveContextCard
-          context={activeContext}
-          onImBetter={onImBetter}
-          onExtend={onExtend}
-          onClick={() => onDetailOpen?.(activeContext, 'active')}
-        />
+
+      {/* Active event banner */}
+      {activeEvt && <ActiveBanner ctx={activeEvt}/>}
+
+      {/* Upcoming section */}
+      <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8, paddingLeft: 2 }}>Upcoming</div>
+      {upcomingEvts.length === 0 ? (
+        <div style={{ fontSize: 12.5, color: C.inkMute, fontStyle: 'italic', padding: '8px 0 16px', textAlign: 'center' }}>Nothing on the horizon yet.</div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', marginBottom: 8 }}>
+          {upcomingEvts.map((evt, i) => (
+            <EventBubble key={i} evt={evt} stagger={i % 2 === 1} animDelay={i * 70} onClick={() => { setSelEvt(evt); setScreen('detail') }}/>
+          ))}
+        </div>
       )}
-      <div style={{ background: C.paper, border: `1px solid ${C.border}`, borderRadius: 14, padding: 18, marginBottom: 16, boxShadow: C.shadowSoft }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: C.sage, letterSpacing: 0.8, marginBottom: 12, textTransform: 'uppercase' }}>Upcoming</div>
-        {allUpcoming.length === 0 ? (
-          <div style={{ fontSize: 12.5, color: C.inkMute, fontStyle: 'italic', padding: '8px 0' }}>Nothing on the horizon. Tap a chip above if something came up, or "+ Add event" to plan ahead.</div>
-        ) : allUpcoming.map((c, i) => (
-          <ContextRow key={`u-${i}`} ctx={c} highlight onDetailOpen={ctx => onDetailOpen?.(ctx, 'upcoming')}/>
-        ))}
-      </div>
-      <div style={{ background: C.paper, border: `1px solid ${C.border}`, borderRadius: 14, padding: 18, boxShadow: C.shadowSoft }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, letterSpacing: 0.8, marginBottom: 12, textTransform: 'uppercase' }}>Past</div>
-        {CONTEXTS_PAST.map((c, i) => (
-          <ContextRow key={`p-${i}`} ctx={c} onDetailOpen={ctx => onDetailOpen?.(ctx, 'past')}/>
-        ))}
-      </div>
-      <div style={{ marginTop: 20, padding: '14px 16px', background: C.bellySoft, borderRadius: 10, fontSize: 13, color: C.ink, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-        <span style={{ fontSize: 16 }}>💡</span>
-        <span>You can also tell Heed in plain language — try <em>"I'm sick this week"</em> or <em>"I'm traveling next month."</em></span>
-      </div>
+
+      {/* Overlays */}
+      {screen === 'detail'      && <EventDetailScreen/>}
+      {screen === 'past'        && <PastEventsScreen/>}
+      {screen === 'past-detail' && <PastDetailScreen/>}
+      {screen === 'add'         && <AddEventScreen/>}
+
+      {/* ── Modals ── */}
+
+      {/* Conflict detection */}
+      <HeedSheet open={modal === 'conflict'} onClose={() => setModal(null)}>
+        <HeedBubble emoji="⚠️" title="You already have an active event." body="How should Heed handle both? Pick the mode that fits."/>
+        {/* Conflict event cards */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 18px 16px' }}>
+          {[{ evt: activeEvt, sub: 'Active · ends soon' }, { evt: { type: newEventType, desc: newEventDesc || evtCfg(newEventType).label, icon: evtCfg(newEventType).icon }, sub: 'New · ' + evtCfg(newEventType).label }].map((item, i) => (
+            <React.Fragment key={i}>
+              {i === 1 && <span style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, flexShrink: 0 }}>vs</span>}
+              <div style={{ flex: 1, background: C.bellySoft, border: `1px solid ${C.border}`, borderRadius: 12, padding: '11px 12px', textAlign: 'center' }}>
+                <div style={{ fontSize: 22, marginBottom: 5 }}>{item.evt?.icon || evtCfg(item.evt?.type)?.icon}</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: C.ink, lineHeight: 1.3 }}>{item.evt?.desc || item.evt?.label || item.evt?.type}</div>
+                <div style={{ fontSize: 10, color: C.inkMute, marginTop: 3 }}>{item.sub}</div>
+              </div>
+            </React.Fragment>
+          ))}
+        </div>
+        <div style={{ padding: '0 18px 4px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {[
+            { mode: 'rest',  icon: '😴', bg: C.ochreSoft,  title: 'Full rest mode',              desc: 'Sick takes over. Deadline event ends early, all tasks held, routines paused.' },
+            { mode: 'push',  icon: '💪', bg: C.rustSoft,   title: 'Push through',                desc: 'Both coexist. Work tasks stay visible, personal routines paused.' },
+            { mode: 'close', icon: '✅', bg: C.sageSoft,   title: 'Close current event first',   desc: 'End the active event now, then start sick event fresh.' },
+          ].map(opt => (
+            <button key={opt.mode} onClick={() => setConflictMode(opt.mode)} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 13px', border: `1.5px solid ${conflictMode === opt.mode ? C.warmDark : C.border}`, borderRadius: 12, background: conflictMode === opt.mode ? C.bellySoft : C.paper, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', transition: 'all 0.15s' }}>
+              <div style={{ width: 34, height: 34, borderRadius: 9, background: opt.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0, marginTop: 1 }}>{opt.icon}</div>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, marginBottom: 2 }}>{opt.title}</div>
+                <div style={{ fontSize: 11, color: C.inkSoft, lineHeight: 1.45 }}>{opt.desc}</div>
+              </div>
+            </button>
+          ))}
+        </div>
+        <div style={{ margin: '10px 18px 0', background: C.ochreSoft, border: `1px solid ${C.ochre}40`, borderRadius: 10, padding: '10px 12px', fontSize: 12, color: C.ink, lineHeight: 1.5, display: 'flex', gap: 8 }}>
+          <span style={{ flexShrink: 0 }}>⚠️</span>
+          <span>You have <strong>3 work tasks</strong> due before the current event ends. Heed will flag these regardless of mode.</span>
+        </div>
+        <SheetActions primary="Continue" ghost="Cancel" onPrimary={handleApplyConflict} onGhost={() => setModal(null)}/>
+      </HeedSheet>
+
+      {/* Save confirm (no conflict) */}
+      <HeedSheet open={modal === 'save-confirm'} onClose={() => setModal(null)}>
+        <HeedBubble emoji="🌿" title="Got it — rest up." body="Heed is handling things so nothing falls through while you recover."/>
+        <div style={{ padding: '0 18px 4px' }}>
+          {[
+            { label: 'Pause routines',           sub: 'Morning routine · Evening wind-down', id: 'sc-r' },
+            { label: 'Hold non-urgent tasks',     sub: "They'll be waiting when you're back", id: 'sc-t' },
+            { label: 'Check in after 3 days',     sub: '"Still resting?" — extend or close then', id: 'sc-c' },
+          ].map(item => <SheetCheckRow key={item.id} id={item.id} defaultChecked label={item.label} sub={item.sub}/>)}
+        </div>
+        <SheetActions primary="Looks good" ghost="Cancel" onPrimary={handleApplySaveConfirm} onGhost={() => setModal(null)}/>
+      </HeedSheet>
+
+      {/* Conflict / save summary */}
+      <HeedSheet open={modal === 'conflict-summary'} onClose={() => { setModal(null); setScreen(null) }}>
+        <HeedBubble emoji="🌿" title="Done — here's what I've set up." body="You can relax now. Heed will take care of the rest."/>
+        <div style={{ padding: '0 18px 4px' }}>
+          {summaryItems.map((s, i) => <SummaryRow key={i} icon={s.icon} iconColor={s.color} label={s.label} sub={s.sub}/>)}
+        </div>
+        <div style={{ padding: '14px 18px 0' }}>
+          <button onClick={() => { setModal(null); setScreen(null) }} style={{ width: '100%', padding: 12, background: C.sage, color: C.cream, border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Got it</button>
+        </div>
+      </HeedSheet>
+
+      {/* I'm back / Feeling better */}
+      <HeedSheet open={modal === 'im-back'} onClose={() => setModal(null)}>
+        <HeedBubble emoji="🌱" title={selEvt?.type === 'sick' || selEvt?.type === 'illness' ? "Glad you're feeling better!" : `Welcome back!`} body={`You were ${selEvt?.type === 'sick' || selEvt?.type === 'illness' ? 'resting' : 'away'} for a few days. A few things are ready to pick back up — want me to handle them?`}/>
+        <div style={{ padding: '0 18px 4px' }}>
+          <SheetCheckRow id="ib-r" defaultChecked label="Resume paused routines" sub="Morning routine · Evening wind-down"/>
+          <SheetCheckRow id="ib-p" defaultChecked label={`Move to Past Events`}/>
+          <SheetCheckRow id="ib-d" defaultChecked={false} label="Review held tasks" sub="Tasks that were put on hold" onChange={e => chkRefs.deferred.current = e.target}/>
+        </div>
+        <SheetActions primary="Apply selected" ghost="Not now" onPrimary={handleApplyImBack} onGhost={() => setModal(null)}/>
+      </HeedSheet>
+
+      {/* Recovery summary */}
+      <HeedSheet open={modal === 'recovery-summary'} onClose={() => setModal(null)}>
+        <HeedBubble emoji="🌱" title="Welcome back!" body="Here's what Heed wrapped up while you recovered."/>
+        <div style={{ padding: '0 18px 4px' }}>
+          {summaryItems.map((s, i) => <SummaryRow key={i} icon={s.icon} iconColor={s.color} label={s.label} sub={s.sub}/>)}
+        </div>
+        <div style={{ padding: '14px 18px 0' }}>
+          <button onClick={handleDismissRecovery} style={{ width: '100%', padding: 12, background: C.sage, color: C.cream, border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Got it</button>
+        </div>
+      </HeedSheet>
+
+      {/* Deferred tasks review */}
+      <HeedSheet open={modal === 'deferred'} onClose={() => setModal(null)}>
+        <HeedBubble emoji="📋" title={`${deferredTasks.length} tasks were held while you rested.`} body="Go through them at your own pace — what do you want to do with each?"/>
+        <div style={{ padding: '0 18px 4px' }}>
+          {deferredTasks.map(t => (
+            <div key={t.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '10px 12px', borderRadius: 10, background: C.bellySoft, border: `1px solid ${C.border}`, marginBottom: 6, opacity: deferredResults[t.id] ? 0.4 : 1, transition: 'opacity 0.25s' }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, color: C.ink, fontWeight: 500 }}>{t.label}</div>
+                <div style={{ fontSize: 11, color: C.inkMute, marginTop: 1 }}>{t.sub}</div>
+              </div>
+              {deferredResults[t.id] ? (
+                <span style={{ fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 8, background: deferredResults[t.id] === 'today' ? C.sageSoft : C.bellySoft, color: deferredResults[t.id] === 'today' ? C.sage : C.inkMute }}>
+                  {deferredResults[t.id] === 'today' ? '✓ Added to today' : '✗ Skipped'}
+                </span>
+              ) : (
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button onClick={() => resolveDeferred(t.id, 'today')} style={{ padding: '5px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', background: C.sageSoft, color: C.sage, border: `1.5px solid ${C.sage}60` }}>Do today</button>
+                  <button onClick={() => resolveDeferred(t.id, 'skip')}  style={{ padding: '5px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', background: 'transparent', color: C.inkMute, border: `1.5px solid ${C.border}` }}>Skip</button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+        <div style={{ padding: '14px 18px 0', display: 'flex', gap: 10 }}>
+          <button onClick={() => { setModal(null); setScreen(null) }} disabled={!allDeferredResolved} style={{ flex: 1, padding: 12, background: allDeferredResolved ? C.sage : C.border, color: allDeferredResolved ? C.cream : C.inkMute, border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: allDeferredResolved ? 'pointer' : 'default', fontFamily: 'inherit', transition: 'all 0.2s' }}>All resolved ✓</button>
+          <button onClick={() => { setModal(null); setScreen(null) }} style={{ flex: 1, padding: 12, background: 'transparent', color: C.inkSoft, border: `1.5px solid ${C.border}`, borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Do these later</button>
+        </div>
+      </HeedSheet>
+
+      {/* Extend */}
+      <HeedSheet open={modal === 'extend'} onClose={() => setModal(null)}>
+        <HeedBubble emoji="📅" title="How long do you need?" body="Heed will push the end date and keep your routines paused until the new date."/>
+        <div style={{ display: 'flex', gap: 8, padding: '4px 18px 0', flexWrap: 'wrap' }}>
+          {['+1 day', '+3 days', '+1 week', '+2 weeks'].map(opt => (
+            <button key={opt} style={{ padding: '9px 16px', background: C.bellySoft, border: `1.5px solid ${C.border}`, borderRadius: 10, fontSize: 13, fontWeight: 600, color: C.ink, cursor: 'pointer', fontFamily: 'inherit', flex: 1, textAlign: 'center', transition: 'all 0.15s' }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = C.warmDark; e.currentTarget.style.background = C.bellySoft }}
+              onClick={e => { document.querySelectorAll('[data-extend-opt]').forEach(b => b.style.borderColor = C.border); e.currentTarget.style.borderColor = C.warmDark }}
+              data-extend-opt>{opt}</button>
+          ))}
+        </div>
+        <SheetActions primary="Confirm" ghost="Cancel" onPrimary={() => { setModal(null) }} onGhost={() => setModal(null)}/>
+      </HeedSheet>
     </div>
   )
 }
@@ -6318,7 +6972,7 @@ function LifeTab({ upcoming, active, activeContext, plansHook, onAddContext, onQ
       </div>
       {subtab === 'plans'  && <PlansPanel {...plansHook}/>}
       {subtab === 'events' && (
-        <LifeEventsPanel
+        <EventsPanel
           allUpcoming={allUpcoming}
           activeContext={activeContext}
           onAddContext={onAddContext}

@@ -36,6 +36,12 @@ These are screenshots captured during agent QA. Each one shows the **before** st
 | `12-edit-refused-despite-action.png` | User typed "Update Clean the room to bedroom, quick tidy, laundry and desk, by Saturday" and Heed replied with the canned "I can't edit that from chat. You can do it from the task's ⋯ menu in Tracks." — even though `edit_task` was already in the action enum. The verbatim-refusal-parroting failure that triggered the §12.10 three-branch rule. |
 | `12-suggestion-refused-as-out-of-scope.png` | User asked "What routines should I start with?" and Heed replied "That's a little outside my lane — I only work with your own tasks, routines, and plans here in Heed. If you want, tell me a routine you're thinking about starting, and I can add it for you." Should have looked at the user's daily tasks and proposed groupings; instead refused as if it were a generic productivity-advice request. The §12.11 Problem 10 failure. |
 
+## Filenames expected (Section 13 — Chatbot Architecture)
+
+| Filename | What it should show |
+|---|---|
+| `13-network-tab-advisor-stream.png` | Chrome DevTools → Network tab while a chat message is in flight. Filter `advisor`. The single `/api/advisor_stream` POST row, with the Response tab open showing the `application/x-ndjson` body and several lines visible (one per event: `thinking`, `delta`, `delta`, … `done`). Optional: also show TTFB in the Timing tab — that number is what §13.5 says will drop from 3-8s to 400-700ms once true streaming lands. |
+
 ## Filename conventions
 
 - Lowercase, hyphen-separated.

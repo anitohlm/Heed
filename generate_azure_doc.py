@@ -149,6 +149,14 @@ toc_items = [
     ("    12.10", "Problem 9 — Agent Refused Edits Even Though edit_task Exists"),
     ("    12.11", "Problem 10 — Agent Declined Data-Grounded Suggestions as Out-of-Scope"),
     ("    12.12", "Pattern Summary and Operating Principle"),
+    ("13", "Ask Heed Chatbot — End-to-End Architecture"),
+    ("    13.1", "Request Flow (browser → backend → OpenAI → browser)"),
+    ("    13.2", "The Agent Loop"),
+    ("    13.3", "Tool Catalog"),
+    ("    13.4", "NDJSON Event Contract"),
+    ("    13.5", "Streaming Today vs Ideal"),
+    ("    13.6", "Files of Interest"),
+    ("14", "Avatar Upload"),
 ]
 for num, item in toc_items:
     p = doc.add_paragraph(style="List Bullet" if num.startswith("    ") else "Normal")
@@ -1703,9 +1711,353 @@ doc.add_paragraph(
 )
 
 
-# ── 13. Avatar Upload ─────────────────────────────────────────────────────────
+# ── 13. Ask Heed Chatbot — End-to-End Architecture ────────────────────────────
 add_horizontal_rule(doc)
-doc.add_heading("13. Avatar Upload", level=1)
+doc.add_heading("13. Ask Heed Chatbot — End-to-End Architecture", level=1)
+doc.add_paragraph(
+    "This section is the architectural reference for the Ask Heed chat "
+    "feature. §9 covered the security/scope discipline of the system "
+    "prompt, §12 documented behaviour bugs and their fixes — but neither "
+    "described how a user's message actually travels through the system. "
+    "This is that map. If you need to extend the agent (new tool, new "
+    "event type, new transport), start here."
+)
+
+# ── 13.1 ──────────────────────────────────────────────────────────────────────
+doc.add_heading("13.1 Request Flow (browser → backend → OpenAI → browser)", level=2)
+doc.add_paragraph(
+    "End-to-end path for a single chat turn. The numbered steps line up "
+    "with the diagram below."
+)
+add_code_block(
+    doc,
+    "Browser (web/app/page.jsx)            Functions backend            Azure OpenAI\n"
+    "──────────────────────────────────    ─────────────────────        ─────────────\n"
+    "1. user types, taps Send / Enter\n"
+    "2. useChat.send(text)\n"
+    "     ├ append user message to React state\n"
+    "     ├ setBusy(true) / setThinking([])\n"
+    "     └ POST /api/advisor_stream  ─────►  3. advisor_stream handler\n"
+    "        body: { message, history }                 (function_app.py)\n"
+    "                                                    ├ validate body\n"
+    "                                                    └ async for event in\n"
+    "                                                       stream_response(...)  ───►  4. agent loop\n"
+    "                                                                                    (advisor.py)\n"
+    "                                                                                    ├ system prompt\n"
+    "                                                                                    │  + history + msg\n"
+    "                                                                                    └ for iteration in\n"
+    "                                                                                       range(max_iterations):\n"
+    "                                                                                       OpenAI chat.completions\n"
+    "                                                                                       (stream=True, tools)  ───► 5. model streams\n"
+    "                                                                                                                 deltas + tool_calls\n"
+    "                                                                                                                 back to agent\n"
+    "                                                              ◄───  6. yield NDJSON events one\n"
+    "                                                                       at a time as the agent\n"
+    "                                                                       produces them:\n"
+    "                                                                       thinking → delta → action\n"
+    "                                                                       → chips → done\n"
+    "7. response.body.getReader()  ◄───  collected + sent as one\n"
+    "    parses NDJSON line by line       application/x-ndjson body\n"
+    "    dispatches each event to React   (today: buffered; see §13.5)\n"
+    "    state\n"
+    "8. setMessages(...) on done\n"
+    "   setBusy(false)",
+)
+doc.add_paragraph(
+    "Key contracts in this flow:"
+)
+flow_bullets = [
+    "useChat.send is the only entry point. Suggestion chips, follow-up chips, action confirmations, and the input bar all funnel through it. Local state (input, busy, thinking, streaming) is owned by useChat — never by AskTab directly.",
+    "advisor_stream is async (`async def`). It runs the agent's async generator and joins the events into one NDJSON body. The Functions runtime then sends that body as the HTTP response.",
+    "stream_response IS the agent. It owns the OpenAI client, the system prompt, and the iteration loop. It yields events; advisor_stream just collects them.",
+    "The browser reader walks the response body chunk-by-chunk and parses each newline-delimited event independently. Even though the body is buffered today (§13.5), the reader doesn't care — it works the same in either mode.",
+]
+for b in flow_bullets:
+    doc.add_paragraph(b, style="List Bullet")
+add_screenshot(
+    doc,
+    "13-network-tab-advisor-stream.png",
+    "DevTools Network tab showing a single /api/advisor_stream POST. The "
+    "Response body is application/x-ndjson with one event per line.",
+)
+
+# ── 13.2 ──────────────────────────────────────────────────────────────────────
+doc.add_heading("13.2 The Agent Loop", level=2)
+doc.add_paragraph(
+    "Inside stream_response (agents/advisor.py), the agent runs a "
+    "function-calling loop with a hard cap of max_iterations = 6. Each "
+    "iteration is one round trip to OpenAI: stream the model's response, "
+    "accumulate any tool calls, dispatch them, feed results back, repeat. "
+    "The loop terminates when the model finishes with stop OR when the "
+    "only tool calls in an iteration are 'terminal' (see below)."
+)
+add_code_block(
+    doc,
+    "for iteration in range(max_iterations):\n"
+    "    yield {\"type\": \"thinking\", \"step\": f\"Reasoning (pass {iteration + 1})…\"}\n"
+    "\n"
+    "    response = client.chat.completions.create(\n"
+    "        model=deployment, messages=messages,\n"
+    "        tools=TOOLS, tool_choice=\"auto\",\n"
+    "        stream=True,                    # OpenAI streams deltas back\n"
+    "    )\n"
+    "\n"
+    "    # 1. Accumulate the streamed response\n"
+    "    for chunk in response:\n"
+    "        if delta.content:\n"
+    "            yield {\"type\": \"delta\", \"text\": delta.content}\n"
+    "        if delta.tool_calls:\n"
+    "            tool_calls_acc[idx] = …merged fragment…\n"
+    "\n"
+    "    # 2. Stop / continue decision\n"
+    "    if finish_reason == \"stop\" or (no tool calls and current_text):\n"
+    "        final_text = current_text; break\n"
+    "    if all calls in this iteration are in _TERMINAL_TOOLS: break\n"
+    "\n"
+    "    # 3. Dispatch tools in parallel, append results to messages\n"
+    "    with ThreadPoolExecutor() as ex:\n"
+    "        futures = [ex.submit(_dispatch_tool, name, args, user_id)\n"
+    "                   for tc in tool_calls_acc.values()]\n"
+    "        for tc, fut in zip(tool_calls_acc.values(), futures):\n"
+    "            messages.append({\"role\": \"tool\", \"content\": fut.result(), …})\n"
+    "\n"
+    "yield {\"type\": \"done\", \"final_text\": final_text}",
+)
+doc.add_paragraph(
+    "Two performance / correctness optimisations in this loop:"
+)
+loop_bullets = [
+    "_TERMINAL_TOOLS = {'propose_action', 'suggest_followups'}. These tools have no agent-readable result — they only emit a frontend event (action chip, follow-up chips). If the model already produced answer text and the only outstanding tool calls are terminal, there is nothing to feed back, so the loop breaks early. Saves one full LLM round trip per response.",
+    "Tool dispatch uses ThreadPoolExecutor. Multiple tool calls in the same iteration (e.g., 'check today + check active contexts') run in parallel. Cosmos and AI Search calls are I/O-bound, so this cuts wall time roughly in half when the model fans out.",
+]
+for b in loop_bullets:
+    doc.add_paragraph(b, style="List Bullet")
+
+# ── 13.3 ──────────────────────────────────────────────────────────────────────
+doc.add_heading("13.3 Tool Catalog", level=2)
+doc.add_paragraph(
+    "The TOOLS array in advisor.py is the full surface the model can "
+    "invoke. Each row below names the tool, its data source, what it "
+    "returns, and what kind of question it's meant to answer. This is "
+    "the canonical reference; if a question keeps getting punted, check "
+    "whether a tool actually surfaces the data needed (the §12 fix "
+    "pattern)."
+)
+tool_table = doc.add_table(rows=1, cols=4)
+tool_table.style = "Light Grid Accent 1"
+hdr = tool_table.rows[0].cells
+hdr[0].text = "Tool"
+hdr[1].text = "Source"
+hdr[2].text = "Returns"
+hdr[3].text = "Use for"
+for h in hdr:
+    h.paragraphs[0].runs[0].bold = True
+tool_rows = [
+    ("get_today_view",     "Cosmos: tasks + user_context",
+     "overdue / due_today / upcoming_this_week + active_contexts",
+     "'what should I do', 'what's on my plate'"),
+    ("search_task_memory", "Azure AI Search: task-memory index",
+     "semantic search results (no created_at)",
+     "'what am I forgetting', 'anything related to home maintenance'"),
+    ("list_recent_tasks",  "Cosmos: tasks",
+     "tasks sorted by created_at desc; supports has_due_date filter",
+     "'latest task', 'tasks with no due date', 'list all'"),
+    ("get_user_routines",  "Cosmos: user_state (kind=routines)",
+     "routines + per-day completion (done_today, last_7_days, etc.)",
+     "'did I do my routine today', 'how's morning going'"),
+    ("get_user_plans",     "Cosmos: user_state (kind=plans)",
+     "plans shaped per type (project / numeric goal / event)",
+     "'how's my Singapore plan', 'what plans do I have'"),
+    ("get_task_history",   "Cosmos: completions",
+     "all completion records for one task, asc by completed_at",
+     "'why did I skip X', 'when did I last do Y'"),
+    ("get_active_contexts","Cosmos: user_context",
+     "active + upcoming context windows (travel/illness/busy)",
+     "context-aware planning before any future-date answer"),
+    ("search_ph_calendar", "Azure AI Search: ph-calendar index",
+     "PH holidays, payday cycles, bill cycles within a date range",
+     "schedule questions tied to PH dates"),
+    ("grounded_bing_search","Bing v7 (deprecated, see §3.5)",
+     "web search results",
+     "external info NOT in indexed PH calendar (rare)"),
+    ("propose_action",     "EFFECT — emits a frontend event",
+     "structured action chip the user confirms before execution",
+     "mark_done, skip, defer, lighten_routine, add_context, add_task, add_routine, edit_task"),
+    ("suggest_followups",  "EFFECT — emits a frontend event",
+     "2–3 follow-up chips for the next user turn",
+     "always called at end of every response"),
+]
+for tool, source, returns, use_for in tool_rows:
+    row = tool_table.add_row().cells
+    row[0].text = tool
+    row[1].text = source
+    row[2].text = returns
+    row[3].text = use_for
+doc.add_paragraph()
+doc.add_paragraph(
+    "Three kinds of tools by side-effect: (a) Cosmos reads — pure data "
+    "retrieval. (b) AI Search reads — RAG-flavoured retrieval (this is "
+    "where Heed becomes a 'partial RAG' system). (c) Effects — propose_action "
+    "and suggest_followups don't return data the agent reads; they emit "
+    "frontend events that the browser routes to the UI. Effects don't "
+    "block the agent loop and are explicitly skipped by the early-break "
+    "logic in §13.2."
+)
+
+# ── 13.4 ──────────────────────────────────────────────────────────────────────
+doc.add_heading("13.4 NDJSON Event Contract", level=2)
+doc.add_paragraph(
+    "The agent yields events; advisor_stream serialises each event as "
+    "JSON + newline; the browser reader parses each line independently "
+    "and dispatches to React state. Adding a new event type requires "
+    "changing this table on both ends — agent emits + browser handles. "
+    "Mismatched event types are silently ignored by the reader."
+)
+event_table = doc.add_table(rows=1, cols=3)
+event_table.style = "Light Grid Accent 1"
+hdr = event_table.rows[0].cells
+hdr[0].text = "type"
+hdr[1].text = "Payload (other fields)"
+hdr[2].text = "Frontend handler"
+for h in hdr:
+    h.paragraphs[0].runs[0].bold = True
+event_rows = [
+    ("thinking", "step (string)",
+     "push to thinkingSteps; setThinking([…]) to render reasoning dots"),
+    ("delta",    "text (string fragment)",
+     "append to finalText; setStreaming(finalText) renders typing animation; clears thinking on first delta"),
+    ("action",   "action_type, task_id?, routine_id?, payload, requires_confirmation?",
+     "buffered into pendingActions; attached to the next assistant message; rendered as a confirm chip"),
+    ("chips",    "chips ([{emoji, text}, …])",
+     "buffered as pendingChips; rendered under the assistant message as follow-up chips"),
+    ("done",     "final_text (canonical full text)",
+     "overrides whatever finalText accumulated from deltas; commits the assistant message"),
+    ("error",    "error (string)",
+     "throws → caught → fallback to scripted response"),
+]
+for ev_type, payload, handler in event_rows:
+    row = event_table.add_row().cells
+    row[0].text = ev_type
+    row[1].text = payload
+    row[2].text = handler
+doc.add_paragraph()
+doc.add_paragraph(
+    "Backwards compatibility: the reader's handleEvent function uses an "
+    "if/else if chain. Unknown event types fall through silently. So the "
+    "agent can ship a new event type before the frontend knows about it "
+    "without breaking existing chat. The reverse is not safe — if the "
+    "frontend expects a type the agent never emits, the relevant UI just "
+    "stays empty."
+)
+
+# ── 13.5 ──────────────────────────────────────────────────────────────────────
+doc.add_heading("13.5 Streaming Today vs Ideal", level=2)
+doc.add_paragraph(
+    "Both ends of the system are *capable* of true incremental streaming "
+    "but they don't connect that way today. Worth being explicit about "
+    "what each layer does and where the buffering happens."
+)
+streaming_table = doc.add_table(rows=1, cols=3)
+streaming_table.style = "Light Grid Accent 1"
+hdr = streaming_table.rows[0].cells
+hdr[0].text = "Layer"
+hdr[1].text = "Today"
+hdr[2].text = "Ideal (deferred)"
+for h in hdr:
+    h.paragraphs[0].runs[0].bold = True
+streaming_rows = [
+    ("Azure OpenAI",
+     "Streams deltas (stream=True). ✓",
+     "Same."),
+    ("Agent (stream_response, advisor.py)",
+     "Yields events one at a time as deltas arrive. ✓",
+     "Same."),
+    ("Functions handler (advisor_stream)",
+     "Collects all events into a list, joins, returns one body. ✗",
+     "Yield bytes via async generator response. Tried in commit 3d3484e, "
+     "reverted in 2652016 — azure-functions HttpResponse doesn't accept "
+     "async-generator body. Real path is ASGI/StreamingResponse via "
+     "azure.functions.AsgiFunctionApp."),
+    ("Browser reader (useChat.send)",
+     "response.body.getReader() — works either way. ✓",
+     "Same code path."),
+]
+for layer, today, ideal in streaming_rows:
+    row = streaming_table.add_row().cells
+    row[0].text = layer
+    row[1].text = today
+    row[2].text = ideal
+doc.add_paragraph()
+doc.add_paragraph(
+    "Concrete impact: first visible token currently lands ~3–8 seconds "
+    "after the user hits Send (depending on agent complexity). With true "
+    "streaming it would land ~400–700 ms. The frontend already renders "
+    "incrementally — drop in real chunks and the UX gain is immediate. "
+    "Tradeoff: ~30–60 minutes of refactor risk to switch the Functions "
+    "handler to ASGI. Deferred for hackathon; tracked in §10.9 open items."
+)
+
+# ── 13.6 ──────────────────────────────────────────────────────────────────────
+doc.add_heading("13.6 Files of Interest", level=2)
+doc.add_paragraph(
+    "Pointer map for the next person on the project. Open these in order "
+    "to follow the request from user message to rendered answer."
+)
+files_table = doc.add_table(rows=1, cols=2)
+files_table.style = "Light Grid Accent 1"
+hdr = files_table.rows[0].cells
+hdr[0].text = "File"
+hdr[1].text = "What lives here"
+for h in hdr:
+    h.paragraphs[0].runs[0].bold = True
+file_rows = [
+    ("web/app/page.jsx → useChat hook",
+     "Browser entry point. Reads response.body, parses NDJSON, dispatches "
+     "to React state, manages busy/thinking/streaming flags. Handles the "
+     "scripted-fallback path when the network or backend fails."),
+    ("web/app/page.jsx → AskTab component",
+     "Renders the empty state, the chat bubble list, and the portaled "
+     "input bar. Talks to useChat; doesn't own state itself."),
+    ("functions/function_app.py → advisor_stream handler",
+     "Async HTTP handler. Validates input, runs stream_response, joins "
+     "events into NDJSON body, returns. CORS preflight branch lives here too."),
+    ("agents/advisor.py → stream_response",
+     "The agent's async generator. System prompt loading, message history "
+     "trimming, OpenAI streaming, the iteration loop, terminal-tool "
+     "early-break, parallel tool dispatch."),
+    ("agents/advisor.py → TOOLS array",
+     "Tool schemas exposed to the model in OpenAI tool-use format. Edit "
+     "this to add/modify tools; pair with a dispatch case in _dispatch_tool."),
+    ("agents/advisor.py → _dispatch_tool",
+     "Maps tool names to their backing functions in cosmos_tool / "
+     "search_tool / bing_tool / action_tools. Shape responses here so the "
+     "model gets exactly the fields it needs (see §12 fixes)."),
+    ("agents/prompts/advisor_system.md",
+     "The system prompt. Scope rules, refusal patterns, action-type "
+     "vocabulary, voice/tone guidance, examples of good/bad responses. "
+     "Single source of truth for how the agent thinks (§9 + §12 are both "
+     "edits to this file)."),
+    ("agents/tools/cosmos_tool.py",
+     "Read helpers for Cosmos containers. Where new tools that read tasks/"
+     "completions/contexts/user_state should grow."),
+    ("agents/tools/action_tools.py",
+     "Side-effect helpers — mark_task_done, skip_task, defer_task, "
+     "lighten_routine, add_user_context, validate_action. Called by the "
+     "execute_action endpoint after user confirmation."),
+    ("functions/function_app.py → execute_action",
+     "Confirms-and-executes path for propose_action chips. Agent NEVER "
+     "writes data directly; it only proposes, the user confirms, this "
+     "endpoint persists. Edit cases here when adding a new action_type."),
+]
+for path, desc in file_rows:
+    row = files_table.add_row().cells
+    row[0].text = path
+    row[1].text = desc
+
+
+# ── 14. Avatar Upload ─────────────────────────────────────────────────────────
+add_horizontal_rule(doc)
+doc.add_heading("14. Avatar Upload", level=1)
 doc.add_paragraph(
     "Users can set a personal avatar photo in Settings. The image is stored as "
     "a base64 string in the Cosmos users container and rendered everywhere the "
@@ -1714,7 +2066,7 @@ doc.add_paragraph(
     "reach the database."
 )
 
-doc.add_heading("13.1 Architecture", level=2)
+doc.add_heading("14.1 Architecture", level=2)
 doc.add_paragraph(
     "Three layers work together:"
 )
@@ -1732,7 +2084,7 @@ for item in arch_items:
     p = doc.add_paragraph(style="List Bullet")
     p.add_run(item)
 
-doc.add_heading("13.2 Frontend Changes", level=2)
+doc.add_heading("14.2 Frontend Changes", level=2)
 doc.add_paragraph(
     "AvatarButton gains an avatar prop (base64 data URL or null). When set it "
     "renders an <img> with objectFit: cover; otherwise it renders the user's "
@@ -1764,7 +2116,7 @@ doc.add_paragraph(
     "reset so the same file can be re-selected. Errors auto-clear after 3 s."
 )
 
-doc.add_heading("13.3 Backend Endpoints", level=2)
+doc.add_heading("14.3 Backend Endpoints", level=2)
 doc.add_paragraph(
     "GET /api/user_avatar — reads the users container document for the "
     "authenticated user (X-User-ID header) and returns {avatar_b64: <string>}. "
@@ -1790,7 +2142,7 @@ for check in server_checks:
     p = doc.add_paragraph(style="List Number")
     p.add_run(check)
 
-doc.add_heading("13.4 Security Model", level=2)
+doc.add_heading("14.4 Security Model", level=2)
 sec_table = doc.add_table(rows=1, cols=3)
 sec_table.style = "Table Grid"
 hdr = sec_table.rows[0].cells
@@ -1815,7 +2167,7 @@ for layer, check, blocks in sec_rows:
     row[2].text = blocks
 doc.add_paragraph()
 
-doc.add_heading("13.5 Data Model", level=2)
+doc.add_heading("14.5 Data Model", level=2)
 doc.add_paragraph(
     "The users container document gains one optional field:"
 )
@@ -1834,7 +2186,7 @@ drow[2].text = (
 )
 doc.add_paragraph()
 
-doc.add_heading("13.6 What Doesn't Change", level=2)
+doc.add_heading("14.6 What Doesn't Change", level=2)
 no_change = [
     "UsernameGate — avatar upload is post-registration only (Settings).",
     "Demo mode — avatar fetch/upload is skipped when isDemoMode() returns true.",

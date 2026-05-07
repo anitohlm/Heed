@@ -363,7 +363,7 @@ test.describe('Life tab — Life events', () => {
     await loadDemo(page)
     await clickTab(page, 'Life')
     await page.waitForTimeout(200)
-    await page.getByRole('button', { name: /life events/i }).click()
+    await page.getByRole('button', { name: /^events/i }).click()
     await page.waitForTimeout(200)
   })
 

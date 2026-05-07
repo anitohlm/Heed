@@ -6769,7 +6769,7 @@ function EventsPanel({ allUpcoming, activeContext, onAddContext, onQuickContext,
     { type: 'low',         icon: '🌙', name: 'Low day',      sub: 'Low energy or mood' },
   ]
 
-  function AddEventScreen() {
+  function renderAddEventScreen() {
     const heedLines = evtCfg(newEventType).heedText.split('\n')
     const isLow = newEventType === 'low'
     const LOW_DURATIONS = [
@@ -6868,7 +6868,7 @@ function EventsPanel({ allUpcoming, activeContext, onAddContext, onQuickContext,
   }
 
   // ── Low day check-in screen ────────────────────────────────────
-  function LowCheckinScreen() {
+  function renderLowCheckinScreen() {
     const REPLIES = [
       { key: 'better',    emoji: '🌤', label: 'Feeling a bit better',    sub: 'Heed will ease things back in gently' },
       { key: 'still-low', emoji: '🌧', label: 'Still having a low day',  sub: 'Keep things quiet for now' },
@@ -6906,7 +6906,7 @@ function EventsPanel({ allUpcoming, activeContext, onAddContext, onQuickContext,
   }
 
   // ── Low day ease-back screen ────────────────────────────────────
-  function LowEaseBackScreen() {
+  function renderLowEaseBackScreen() {
     return (
       <div style={{ position: 'fixed', inset: 0, zIndex: 260, background: C.paper, display: 'flex', flexDirection: 'column', animation: 'heed-slideIn 0.3s cubic-bezier(0.16,1,0.3,1)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px 10px', background: C.paperHi, borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
@@ -6992,9 +6992,9 @@ function EventsPanel({ allUpcoming, activeContext, onAddContext, onQuickContext,
       {screen === 'detail'       && <EventDetailScreen/>}
       {screen === 'past'         && <PastEventsScreen/>}
       {screen === 'past-detail'  && <PastDetailScreen/>}
-      {screen === 'add'          && <AddEventScreen/>}
-      {screen === 'low-checkin'  && <LowCheckinScreen/>}
-      {screen === 'low-ease-back'&& <LowEaseBackScreen/>}
+      {screen === 'add'          && renderAddEventScreen()}
+      {screen === 'low-checkin'  && renderLowCheckinScreen()}
+      {screen === 'low-ease-back'&& renderLowEaseBackScreen()}
 
       {/* ── Modals ── */}
 
@@ -7016,9 +7016,9 @@ function EventsPanel({ allUpcoming, activeContext, onAddContext, onQuickContext,
         </div>
         <div style={{ padding: '0 18px 4px', display: 'flex', flexDirection: 'column', gap: 8 }}>
           {[
-            { mode: 'rest',  icon: '😴', bg: C.ochreSoft,  title: 'Full rest mode',              desc: 'Sick takes over. Deadline event ends early, all tasks held, routines paused.' },
+            { mode: 'rest',  icon: '😴', bg: C.ochreSoft,  title: 'Full rest mode',              desc: `${evtCfg(newEventType).label} takes over. Active event ends early, all tasks held, routines paused.` },
             { mode: 'push',  icon: '💪', bg: C.rustSoft,   title: 'Push through',                desc: 'Both coexist. Work tasks stay visible, personal routines paused.' },
-            { mode: 'close', icon: '✅', bg: C.sageSoft,   title: 'Close current event first',   desc: 'End the active event now, then start sick event fresh.' },
+            { mode: 'close', icon: '✅', bg: C.sageSoft,   title: 'Close current event first',   desc: `End the active event now, then start the new ${evtCfg(newEventType).label.toLowerCase()} event fresh.` },
           ].map(opt => (
             <button key={opt.mode} onClick={() => setConflictMode(opt.mode)} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 13px', border: `1.5px solid ${conflictMode === opt.mode ? C.warmDark : C.border}`, borderRadius: 12, background: conflictMode === opt.mode ? C.bellySoft : C.paper, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', transition: 'all 0.15s' }}>
               <div style={{ width: 34, height: 34, borderRadius: 9, background: opt.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0, marginTop: 1 }}>{opt.icon}</div>
@@ -7142,7 +7142,7 @@ function LifeTab({ upcoming, active, activeContext, plansHook, onAddContext, onQ
       </div>
       <div style={{ display: 'flex', background: C.paper, border: `1px solid ${C.border}`, borderRadius: 10, padding: 4, marginBottom: 18, gap: 4 }}>
         <SegmentButton active={subtab === 'plans'} onClick={() => setSubtab('plans')} label="Plans" count={plansHook.plans.length} accent={C.warmDark}/>
-        <SegmentButton active={subtab === 'events'} onClick={() => setSubtab('events')} label="Events" count={allUpcoming.length} accent={C.sage}/>
+        <SegmentButton active={subtab === 'events'} onClick={() => setSubtab('events')} label="Events" count={(activeContext ? 1 : 0) + allUpcoming.length} accent={C.sage}/>
       </div>
       {subtab === 'plans'  && <PlansPanel {...plansHook}/>}
       {subtab === 'events' && (

@@ -6440,7 +6440,7 @@ function EventsPanel({ allUpcoming, activeContext, onAddContext, onQuickContext,
     if (newEventType === 'low') {
       setScreen(null)
       onAddContext?.({ type: 'low', desc: name, icon: '🌙', lowDuration: newLowDuration })
-    } else if (newEventType === 'sick' || newEventType === 'illness' || newEventType === 'busy' || newEventType === 'travel') {
+    } else if (newEventType === 'sick' || newEventType === 'illness' || newEventType === 'busy' || newEventType === 'travel' || newEventType === 'celebration') {
       setScreen(null)
       if (activeEvt) {
         setModal('conflict')
@@ -10317,7 +10317,7 @@ export default function HeedApp() {
           {tab === 'calendar' && <CalendarTab tasks={apiTasks} contexts={[...(apiContexts.active||[]), ...(apiContexts.upcoming||[])]} routines={routines} recentSkips={recentSkips} onReschedule={handleReschedule} onMarkDone={handleMarkDone} onSkip={handleSkip} onAddTask={() => setModalOpen(true)} onAddContext={() => setContextModalOpen(true)} onEditRoutine={handleEditRoutine} onApplyRetroSuggestion={handleApplyRetroSuggestion}/>}
           {tab === 'ask' && <AskTab prefill={askPrefill} autoSend={askAutoSend} onAutoSendDone={() => { setAskAutoSend(false); setAskPrefill('') }} onLightenRoutine={handleLightenRoutine} onTaskAdded={handleTaskAdded} onRoutineAdded={handleAddRoutine} onViewTask={task => { setEditingTask(task); setModalOpen(true) }}/>}
           {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} plans={plansHook.plans} checkTask={plansHook.checkTask} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onMarkRoutineDay={handleMarkRoutineDay} onEditTask={handleEditTask} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }}/>}
-          {tab === 'context' && <LifeTab upcoming={apiContexts.upcoming} active={apiContexts.active} activeContext={activeContext} plansHook={plansHook} onAddContext={() => setContextModalOpen(true)} onQuickContext={type => setQuickContextType(type)} onImBetter={() => setRecoveryOpen(true)} onExtend={handleExtendContext} onDetailOpen={handleDetailOpen}/>}
+          {tab === 'context' && <LifeTab upcoming={apiContexts.upcoming} active={apiContexts.active} activeContext={activeContext} plansHook={plansHook} onAddContext={(data) => data?.type ? handleAddContext({ type: data.type, description: data.desc || data.description }) : setContextModalOpen(true)} onQuickContext={type => setQuickContextType(type)} onImBetter={() => setRecoveryOpen(true)} onExtend={handleExtendContext} onDetailOpen={handleDetailOpen}/>}
         </div>
       </main>
 

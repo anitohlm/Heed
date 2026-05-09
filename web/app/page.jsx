@@ -2284,20 +2284,31 @@ function Bubble({ role, content, streaming: isStreaming, actions, chips, onConfi
   const hasActions = !isUser && actions?.length > 0
   const hasChips = !isUser && chips?.length > 0
 
+  // Plan-advice queries: show a clean card instead of the raw context dump
+  const isPlanAdvice = isUser && content.startsWith('Give me advice on this plan:')
+  const planAdviceTitle = isPlanAdvice
+    ? (content.split('\n').find(l => l.startsWith('Plan: '))?.replace('Plan: ', '') ?? 'a plan')
+    : null
+
   return (
     <div style={{ display: 'flex', justifyContent: isUser ? 'flex-end' : 'flex-start', marginBottom: 12, animation: 'heed-fadeUp 0.3s ease' }}>
       <div style={{
         maxWidth: '84%',
         background: isUser ? C.warmDark : C.paper,
         color: isUser ? C.cream : C.ink,
-        padding: '12px 16px',
+        padding: isPlanAdvice ? '10px 14px' : '12px 16px',
         borderRadius: isUser ? '14px 14px 3px 14px' : '14px 14px 14px 3px',
         border: isUser ? 'none' : `1px solid ${C.border}`,
         fontSize: 14, lineHeight: 1.55,
         whiteSpace: isStreaming ? 'pre-wrap' : 'normal',
         boxShadow: isUser ? C.shadowSoft : 'none', fontFamily: 'inherit',
       }}>
-        {isUser || isStreaming ? content : renderMarkdown(content)}
+        {isPlanAdvice ? (
+          <div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: C.cream, opacity: 0.65, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Asking Heed about</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: C.cream }}>📋 {planAdviceTitle}</div>
+          </div>
+        ) : isUser || isStreaming ? content : renderMarkdown(content)}
         {isStreaming && <span style={{ opacity: 0.5, animation: 'heed-blink 1s infinite' }}>▍</span>}
 
         {hasActions && (

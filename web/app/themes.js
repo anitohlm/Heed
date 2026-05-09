@@ -95,8 +95,11 @@ export const THEMES = {
     bellySoft:  '#FBEDE8',
     rust:       '#C24A4A',
     rustSoft:   '#FBE0DE',
-    sage:       '#5C8E80',
-    sageSoft:   '#D8E6E0',
+    // sage normally means "done / good / on track". In flamingo we use a deep
+    // mulberry rather than green so completion states fit the warm palette
+    // without breaking the convention that sage = positive.
+    sage:       '#9C5566',
+    sageSoft:   '#F0DDE2',
     ochre:      '#C4742E',
     ochreSoft:  '#F4E2C8',
     rose:       '#E8716E',
@@ -169,7 +172,7 @@ export const OWL_THEMES = {
     body:    '#D85940',
     eyeRing: '#FDF5F2',
     pupil:   '#3A2530',
-    tuft:    '#5C8E80',
+    tuft:    '#9C5566',
     beak:    '#C4742E',
     cheek:   '#E8716E',
   },

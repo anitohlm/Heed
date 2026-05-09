@@ -2439,11 +2439,11 @@ function Bubble({ role, content, streaming: isStreaming, actions, chips, onConfi
               if (action.confirmed) {
                 if (action.action_type === 'add_task' && action.result) {
                   return (
-                    <div key={i} style={{ background: '#f0faf0', border: '1.5px solid #7c9e6e', borderRadius: 10, padding: '8px 12px', marginTop: 4, animation: 'heed-fadeIn 0.3s ease' }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: '#4a7a4a', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 3 }}>✓ Task added</div>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: '#2d4a2d' }}>{action.payload?.name || action.result?.name}</div>
+                    <div key={i} style={{ background: C.sageSoft, border: `1.5px solid ${C.sage}`, borderRadius: 10, padding: '8px 12px', marginTop: 4, animation: 'heed-fadeIn 0.3s ease' }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: C.sage, textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 3 }}>✓ Task added</div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>{action.payload?.name || action.result?.name}</div>
                       {onViewTask && (
-                        <button onClick={() => onViewTask(action.result, action.planId)} style={{ fontSize: 11, color: '#7c5333', fontWeight: 600, background: 'none', border: 'none', padding: '4px 0 0', cursor: 'pointer', fontFamily: 'inherit' }}>View →</button>
+                        <button onClick={() => onViewTask(action.result, action.planId)} style={{ fontSize: 11, color: C.warmDark, fontWeight: 600, background: 'none', border: 'none', padding: '4px 0 0', cursor: 'pointer', fontFamily: 'inherit' }}>View →</button>
                       )}
                     </div>
                   )
@@ -2827,7 +2827,7 @@ function TaskCard({ task, delay = 0, onMarkDone, onSkip, onEdit, onAddToRoutine,
         {completing && (
           <div style={{
             position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)',
-            width: 24, height: 24, borderRadius: '50%', background: '#4a7c59',
+            width: 24, height: 24, borderRadius: '50%', background: C.sage,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             animation: 'heed-done-check 0.22s ease forwards',
             zIndex: 2,
@@ -5213,13 +5213,13 @@ function PlanBubbleDetailScreen({ plan, onBack, onEdit, onCheck, onTaskSelect, o
         <button onClick={onEdit} style={{ background: 'none', border: 'none', color: C.inkSoft, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Edit</button>
       </div>
       {showAddedBanner && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', background: '#e8f5e9', borderBottom: '1px solid #a5d6a7', flexShrink: 0, animation: 'heed-slideDown 0.35s cubic-bezier(0.16,1,0.3,1)' }}>
-          <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#4caf50', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', background: C.sageSoft, borderBottom: `1px solid ${C.sage}55`, flexShrink: 0, animation: 'heed-slideDown 0.35s cubic-bezier(0.16,1,0.3,1)' }}>
+          <div style={{ width: 28, height: 28, borderRadius: '50%', background: C.sage, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke={C.cream} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </div>
           <div>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#2e7d32', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Task added</div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#1b5e20', lineHeight: 1.3 }}>{bannerLabel}</div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: C.sage, textTransform: 'uppercase', letterSpacing: '0.4px' }}>Task added</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: C.ink, lineHeight: 1.3 }}>{bannerLabel}</div>
           </div>
         </div>
       )}
@@ -8981,7 +8981,18 @@ function Toast({ message, onView, onUndo, onDismiss, reasons, onReason }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 15, lineHeight: 1, flexShrink: 0 }}>✓</span>
           <span style={{ fontSize: 13, color: '#e8e0d0', fontWeight: 500, flex: 1 }}>{message}</span>
-          <button onClick={onDismiss} aria-label="Dismiss" style={{ background: 'none', border: 'none', color: C.inkMute, fontSize: 18, cursor: 'pointer', lineHeight: 1, padding: 0, flexShrink: 0 }}>×</button>
+          <button onClick={onDismiss} aria-label="Dismiss"
+            style={{
+              background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)',
+              color: '#e8e0d0', fontSize: 16, fontWeight: 600, cursor: 'pointer',
+              width: 26, height: 26, borderRadius: '50%',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              lineHeight: 1, padding: 0, flexShrink: 0, fontFamily: 'inherit',
+              transition: 'background 0.15s, border-color 0.15s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.18)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.3)' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)' }}
+          >×</button>
         </div>
         {/* Row 2 — chips + Undo/View, when present */}
         {hasSecondRow && (
@@ -9931,7 +9942,7 @@ function UsernameGate({ onComplete }) {
             />
           </div>
           {mode === 'new' && isValid && (status === 'available' || status === 'taken') && (
-            <div style={{ fontSize: 11, color: status === 'available' ? '#4a7a4a' : C.rust, paddingLeft: 4 }}>
+            <div style={{ fontSize: 11, color: status === 'available' ? C.sage : C.rust, paddingLeft: 4 }}>
               {status === 'available' ? '✓ Available' : '✗ Already taken'}
             </div>
           )}

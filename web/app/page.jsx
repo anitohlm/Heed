@@ -39,20 +39,27 @@ const APP_TABS = [
 const C = {}
 ;['cream','paper','paperHi','border','hairline','ink','inkSoft','inkMute',
   'warm','warmDark','warmDeep','belly','bellySoft','rust','rustSoft','sage','sageSoft',
-  'ochre','ochreSoft','rose','low','lowSoft','shadowSoft','shadowMed'].forEach(key => {
+  'ochre','ochreSoft','rose','low','lowSoft','scrim','scrimLight','shadowSoft','shadowMed'].forEach(key => {
   Object.defineProperty(C, key, {
     get() { return THEMES[themeState.current][key] },
     enumerable: true,
   })
 })
+// Category palette. `color` is the brand-static accent (orange for
+// relationships, blue-green for home, etc.) so categories stay visually
+// distinct across themes. `bg` is a low-alpha tint of the same color so
+// the chip surface adapts: on midnight-fern / inkwash it sits as a soft
+// dark tint, on candy / flamingo / parchment-light it shows as a soft
+// pastel tint of the accent. The previous hardcoded dark-brown bgs
+// rendered as black blobs on every light theme.
 const CATEGORY = {
-  relationships: { color: '#E8714C', bg: '#3A1F18', icon: '✿' },
-  finance:       { color: '#E0B36A', bg: '#2D2618', icon: '◈' },
-  admin:         { color: '#A89B82', bg: '#26221A', icon: '◷' },
-  home:          { color: '#8FB89A', bg: '#1F2D24', icon: '⌂' },
-  health:        { color: '#D4A24C', bg: '#2D2618', icon: '✚' },
-  work:          { color: '#C9A989', bg: '#2A2218', icon: '◰' },
-  self_care:     { color: '#D9907F', bg: '#33211C', icon: '◐' },
+  relationships: { color: '#E8714C', bg: '#E8714C22', icon: '✿' },
+  finance:       { color: '#E0B36A', bg: '#E0B36A22', icon: '◈' },
+  admin:         { color: '#A89B82', bg: '#A89B8222', icon: '◷' },
+  home:          { color: '#8FB89A', bg: '#8FB89A22', icon: '⌂' },
+  health:        { color: '#D4A24C', bg: '#D4A24C22', icon: '✚' },
+  work:          { color: '#C9A989', bg: '#C9A98922', icon: '◰' },
+  self_care:     { color: '#D9907F', bg: '#D9907F22', icon: '◐' },
 }
 
 // ── Static seed data (offline/demo fallback) ───────────────────
@@ -82,10 +89,15 @@ const ROUTINES = [
 ]
 
 const IMPORTANCE_LABELS = { 'nice-to-have': 'Nice-to-have', 'core': 'Core habit', 'non-negotiable': 'Non-negotiable' }
-const IMPORTANCE_STYLES = {
-  'nice-to-have': { bg: '#f5f2ed', fg: '#9e9080' },
-  'core':         { bg: '#fdf0d8', fg: '#a06c20' },
-  'non-negotiable': { bg: '#fdeaea', fg: '#9b3535' },
+// Theme-aware. The previous hardcoded #f5f2ed / #fdf0d8 / #fdeaea were
+// designed for a light parchment background and washed out (or worse,
+// floated as bright pills) against midnight-fern / inkwash, and clashed
+// with candy / flamingo. Now resolves from C tokens at call time so the
+// pill always sits inside the active palette.
+const getImportanceStyle = (level) => {
+  if (level === 'core')           return { bg: C.ochreSoft, fg: C.ochre }
+  if (level === 'non-negotiable') return { bg: C.rustSoft,  fg: C.rust  }
+  return { bg: C.bellySoft, fg: C.inkSoft }  // nice-to-have / fallback
 }
 function deriveSchedule(routine) {
   if (!routine.frequency) return routine.schedule
@@ -1132,7 +1144,7 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
 
   return (
     <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(44,24,16,0.45)', backdropFilter: 'blur(4px)', animation: 'heed-fadeIn 0.2s ease' }}/>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 200, background: C.scrim, backdropFilter: 'blur(4px)', animation: 'heed-fadeIn 0.2s ease' }}/>
       <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 201, display: 'flex', justifyContent: 'center', animation: 'heed-slideUp 0.3s cubic-bezier(0.16,1,0.3,1)' }}>
         <div ref={containerRef} style={{ background: C.paperHi, width: '100%', maxWidth: 520, borderRadius: '22px 22px 0 0', padding: '0 16px 0 16px', boxShadow: '0 -12px 48px rgba(124,83,51,0.22)', border: `1px solid ${C.border}`, maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
 
@@ -1743,9 +1755,9 @@ function MobileBottomNav({ tab, onTab, onMicAsk, overdueCount = 0 }) {
             height: 38,
             borderRadius: '50%',
             background: C.paper,
-            border: `1.5px solid ${micListening ? '#e53e3e' : askActive ? C.warmDark : `${C.warmDark}99`}`,
+            border: `1.5px solid ${micListening ? C.rust : askActive ? C.warmDark : `${C.warmDark}99`}`,
             boxShadow: micListening
-              ? `0 0 0 1.5px #fff3f3, 0 0 0 3px rgba(229,62,62,0.35), 0 1px 6px rgba(229,62,62,0.28)`
+              ? `0 0 0 1.5px ${C.rustSoft}, 0 0 0 3px ${C.rust}55, 0 1px 6px ${C.rust}44`
               : askActive
               ? `0 0 0 1.5px ${C.paper}, 0 0 0 2.5px ${C.warmDark}55, 0 1px 6px rgba(0,0,0,0.18)`
               : `0 0 0 1.5px ${C.paper}, 0 0 0 2px ${C.border}, 0 1px 5px rgba(0,0,0,0.14)`,
@@ -2961,7 +2973,7 @@ function TaskCard({ task, delay = 0, onMarkDone, onSkip, onEdit, onAddToRoutine,
                 <div data-testid="task-menu" style={{
                   position: 'absolute', top: 'calc(100% + 2px)', right: 0, zIndex: 50,
                   background: C.paperHi, border: `1px solid ${C.border}`, borderRadius: 12,
-                  boxShadow: '0 8px 24px rgba(44,24,16,0.15)', minWidth: 172, overflow: 'hidden',
+                  boxShadow: C.shadowMed, minWidth: 172, overflow: 'hidden',
                   animation: 'heed-fadeIn 0.15s ease',
                 }}>
                   {menuItems.map((item, i) => (
@@ -3554,8 +3566,8 @@ function RoutineCard({ routine, delay = 0, onMarkDone, onLighten, onEdit, onShar
             <span style={{ fontFamily: 'Lora, serif', fontSize: 17, fontWeight: 600, color: C.ink, letterSpacing: -0.2 }}>{routine.name}</span>
             {routine.importance && (
               <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999,
-                background: IMPORTANCE_STYLES[routine.importance].bg,
-                color: IMPORTANCE_STYLES[routine.importance].fg }}>
+                background: getImportanceStyle(routine.importance).bg,
+                color: getImportanceStyle(routine.importance).fg }}>
                 {IMPORTANCE_LABELS[routine.importance]}
               </span>
             )}
@@ -3645,7 +3657,7 @@ function RoutineCard({ routine, delay = 0, onMarkDone, onLighten, onEdit, onShar
               <div style={{
                 position: 'absolute', top: 'calc(100% + 2px)', right: 0, zIndex: 50,
                 background: C.paperHi, border: `1px solid ${C.border}`, borderRadius: 12,
-                boxShadow: '0 8px 24px rgba(44,24,16,0.15)', minWidth: 188, overflow: 'hidden',
+                boxShadow: C.shadowMed, minWidth: 188, overflow: 'hidden',
                 animation: 'heed-fadeIn 0.15s ease',
               }}>
                 {menuItems.map((item, i) => (
@@ -4326,13 +4338,13 @@ function MicButton({ listening, onToggle, disabled }) {
       aria-label={listening ? 'Stop recording' : 'Speak your question'}
       style={{
         width: 44, height: 44, borderRadius: '50%', flexShrink: 0,
-        background: listening ? '#e53e3e' : C.paper,
-        border: `1.5px solid ${listening ? '#e53e3e' : C.border}`,
+        background: listening ? C.rust : C.paper,
+        border: `1.5px solid ${listening ? C.rust : C.border}`,
         color: listening ? '#fff' : C.inkMute,
         cursor: disabled ? 'not-allowed' : 'pointer',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: 0, transition: 'all 0.2s ease',
-        boxShadow: listening ? '0 0 0 4px rgba(229,62,62,0.25)' : 'none',
+        boxShadow: listening ? `0 0 0 4px ${C.rust}40` : 'none',
         animation: listening ? 'heed-mic-pulse 1.2s ease-in-out infinite' : 'none',
         opacity: disabled ? 0.4 : 1,
       }}
@@ -4438,7 +4450,7 @@ function AskTab({ prefill = '', autoSend = false, onAutoSendDone, onLightenRouti
             value={input} onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && send(input)}
             placeholder={listening ? 'Listening…' : 'Ask Heed anything…'} disabled={busy}
-            style={{ flex: 1, background: C.paper, border: `1.5px solid ${listening ? '#e53e3e' : C.border}`, borderRadius: 10, padding: '12px 14px', fontSize: 14, color: C.ink, outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.15s', minWidth: 0 }}
+            style={{ flex: 1, background: C.paper, border: `1.5px solid ${listening ? C.rust : C.border}`, borderRadius: 10, padding: '12px 14px', fontSize: 14, color: C.ink, outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.15s', minWidth: 0 }}
             onFocus={e => { e.target.style.borderColor = C.warmDark }}
             onBlur={e => { if (!listening) e.target.style.borderColor = C.border }}
           />
@@ -4665,7 +4677,7 @@ function TracksTab({ tasks, routines, plans, checkTask, onMarkDone, onSkip, onMa
                     background: C.paperHi,
                     border: `1px solid ${C.border}`,
                     borderRadius: 10,
-                    boxShadow: '0 8px 24px rgba(44,24,16,0.15)',
+                    boxShadow: C.shadowMed,
                     overflow: 'hidden',
                     zIndex: 30,
                     animation: 'heed-fadeIn 0.15s ease',
@@ -6493,7 +6505,7 @@ function GoalUpdateSheet({ plan, onClose, onSave }) {
   }
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 200 }} onClick={onClose}>
-      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(2px)' }}/>
+      <div style={{ position: 'absolute', inset: 0, background: C.scrim, backdropFilter: 'blur(2px)' }}/>
       <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: C.paper, borderRadius: '20px 20px 0 0', padding: `22px 22px calc(22px + env(safe-area-inset-bottom)) 22px`, animation: 'heed-slideUp 0.28s cubic-bezier(0.32,0.72,0,1)', boxShadow: '0 -8px 32px rgba(0,0,0,0.12)' }}>
         <div style={{ width: 40, height: 4, borderRadius: 2, background: C.border, margin: '0 auto 18px' }}/>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
@@ -6727,7 +6739,7 @@ function HeedSheet({ open, onClose, children }) {
   if (!open) return null
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 310, display: 'flex', alignItems: 'flex-end' }} onClick={onClose}>
-      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.42)', backdropFilter: 'blur(2px)' }}/>
+      <div style={{ position: 'absolute', inset: 0, background: C.scrim, backdropFilter: 'blur(2px)' }}/>
       <div onClick={e => e.stopPropagation()} style={{ position: 'relative', width: '100%', background: C.paper, borderRadius: '22px 22px 0 0', border: `1px solid ${C.border}`, paddingBottom: 'calc(20px + env(safe-area-inset-bottom))', animation: 'heed-slideUp 0.3s cubic-bezier(0.16,1,0.3,1)', maxHeight: '88vh', overflowY: 'auto' }}>
         <div style={{ width: 36, height: 4, borderRadius: 2, background: C.border, margin: '10px auto 0' }}/>
         {children}
@@ -8379,7 +8391,7 @@ function HeedFAB({ onAddTask, onAskHeed, onAddRoutine }) {
   }, [open])
   return (
     <>
-      {open && <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 49, background: 'rgba(44,24,16,0.18)', animation: 'heed-fadeIn 0.18s ease' }}/>}
+      {open && <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 49, background: C.scrimLight, animation: 'heed-fadeIn 0.18s ease' }}/>}
       {open && (
         <div style={{ position: 'fixed', bottom: 96, right: 28, zIndex: 51, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10 }}>
           <SpeedDialItem label="Add a task" sublabel="Track something new" icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="3.5" stroke="currentColor" strokeWidth="1.9"/><path d="M12 8v8M8 12h8" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"/></svg>} iconBg={C.ochre} iconFg={C.warmDeep} onClick={() => { setOpen(false); onAddTask() }} delay={0}/>
@@ -8433,7 +8445,7 @@ function AskInlineModal({ open, onClose, onLightenRoutine, onTaskAdded, onRoutin
   if (!open) return null
   return (
     <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(44,24,16,0.45)', backdropFilter: 'blur(4px)', animation: 'heed-fadeIn 0.2s ease' }}/>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 100, background: C.scrim, backdropFilter: 'blur(4px)', animation: 'heed-fadeIn 0.2s ease' }}/>
       <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 101, display: 'flex', justifyContent: 'center', animation: 'heed-slideUp 0.3s cubic-bezier(0.16,1,0.3,1)', pointerEvents: 'none' }}>
         <div ref={containerRef} style={{ background: C.paperHi, width: '100%', maxWidth: 560, margin: '0 16px 16px 16px', borderRadius: '20px 20px 14px 14px', padding: '20px 22px 16px 22px', boxShadow: '0 -8px 40px rgba(124,83,51,0.25)', border: `1px solid ${C.border}`, pointerEvents: 'auto', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, flexShrink: 0 }}>
@@ -8492,7 +8504,7 @@ function AskInlineModal({ open, onClose, onLightenRoutine, onTaskAdded, onRoutin
             )}
             {micSupported && <MicButton listening={listening} onToggle={toggleMic} disabled={busy}/>}
             <input ref={inputRef} value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && send(input)} placeholder={listening ? 'Listening…' : 'Ask Heed anything…'} disabled={busy}
-              style={{ flex: 1, background: C.paper, border: `1.5px solid ${listening ? '#e53e3e' : C.border}`, borderRadius: 10, padding: '10px 14px', fontSize: 14, color: C.ink, outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.15s' }}
+              style={{ flex: 1, background: C.paper, border: `1.5px solid ${listening ? C.rust : C.border}`, borderRadius: 10, padding: '10px 14px', fontSize: 14, color: C.ink, outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.15s' }}
               onFocus={e => { e.target.style.borderColor = C.warmDark }} onBlur={e => { if (!listening) e.target.style.borderColor = C.border }}
             />
             <button onClick={() => send(input)} disabled={busy || !input.trim()} style={{ ...getBtnPrimary(), padding: '10px 18px', fontSize: 13, opacity: (busy || !input.trim()) ? 0.5 : 1 }}>Send</button>
@@ -8748,7 +8760,7 @@ function AddTaskModal({ open, onClose, onSubmit, onDelete, initialData = null, c
       </div>
       {confirmingDelete && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 300 }}>
-          <div onClick={() => setConfirmingDelete(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(2px)', animation: 'heed-fadeIn 0.18s ease' }}/>
+          <div onClick={() => setConfirmingDelete(false)} style={{ position: 'absolute', inset: 0, background: C.scrim, backdropFilter: 'blur(2px)', animation: 'heed-fadeIn 0.18s ease' }}/>
           <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, display: 'flex', justifyContent: 'center', animation: 'heed-slideUp 0.28s cubic-bezier(0.16,1,0.3,1)', pointerEvents: 'none' }}>
             <div style={{ background: C.paperHi, width: '100%', maxWidth: 440, margin: '0 16px 16px 16px', borderRadius: '20px 20px 14px 14px', padding: '22px 22px 18px 22px', boxShadow: '0 -8px 40px rgba(0,0,0,0.35)', border: `1px solid ${C.border}`, pointerEvents: 'auto' }}>
               <div style={{ fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 600, color: C.warmDark, marginBottom: 6 }}>
@@ -8996,7 +9008,7 @@ function BuildRoutineScreen({ open, onClose, onSubmit, initialData = null, seedT
           <label style={fieldLabel}>Importance</label>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {impOptions.map(({ v, label }) => (
-              <button key={v} onClick={() => setImportance(v)} style={{ ...pillBase, background: IMPORTANCE_STYLES[v].bg, color: IMPORTANCE_STYLES[v].fg, borderColor: importance === v ? IMPORTANCE_STYLES[v].fg : '#e0d8ce', outline: importance === v ? `2.5px solid ${IMPORTANCE_STYLES[v].fg}` : 'none', outlineOffset: importance === v ? '2px' : '0' }}>{label}</button>
+              <button key={v} onClick={() => setImportance(v)} style={{ ...pillBase, background: getImportanceStyle(v).bg, color: getImportanceStyle(v).fg, borderColor: importance === v ? getImportanceStyle(v).fg : C.border, outline: importance === v ? `2.5px solid ${getImportanceStyle(v).fg}` : 'none', outlineOffset: importance === v ? '2px' : '0' }}>{label}</button>
             ))}
           </div>
         </div>
@@ -9422,7 +9434,7 @@ function TaskOptionsSheet({ task, onClose, onMarkDone, onSkip, onEdit, onAddToRo
   if (!task) return null
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 200 }} onClick={onClose}>
-      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(2px)' }}/>
+      <div style={{ position: 'absolute', inset: 0, background: C.scrim, backdropFilter: 'blur(2px)' }}/>
       <div ref={containerRef} onClick={e => e.stopPropagation()} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: C.paper, borderRadius: '20px 20px 0 0', padding: `24px 24px calc(24px + env(safe-area-inset-bottom)) 24px`, animation: 'heed-slideUp 0.28s cubic-bezier(0.32,0.72,0,1)', boxShadow: '0 -8px 32px rgba(0,0,0,0.12)' }}>
         <div style={{ width: 40, height: 4, borderRadius: 2, background: C.border, margin: '0 auto 20px' }}/>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
@@ -9512,7 +9524,7 @@ function AddToRoutineSheet({ task, routines, onClose, onSelect }) {
   if (!task) return null
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 200 }} onClick={onClose}>
-      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(2px)' }}/>
+      <div style={{ position: 'absolute', inset: 0, background: C.scrim, backdropFilter: 'blur(2px)' }}/>
       <div ref={containerRef} onClick={e => e.stopPropagation()} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: C.paper, borderRadius: '20px 20px 0 0', padding: `24px 24px calc(24px + env(safe-area-inset-bottom)) 24px`, animation: 'heed-slideUp 0.28s cubic-bezier(0.32,0.72,0,1)', boxShadow: '0 -8px 32px rgba(0,0,0,0.12)', maxHeight: '70vh', overflowY: 'auto' }}>
         <div style={{ width: 40, height: 4, borderRadius: 2, background: C.border, margin: '0 auto 20px' }}/>
         <div style={{ fontFamily: 'Lora, serif', fontSize: 17, fontWeight: 600, color: C.ink, marginBottom: 3 }}>Add to a routine</div>
@@ -9560,7 +9572,7 @@ function QuickContextSheet({ type, onClose, onActivate }) {
   if (!type) return null
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 200 }} onClick={onClose}>
-      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(2px)' }}/>
+      <div style={{ position: 'absolute', inset: 0, background: C.scrim, backdropFilter: 'blur(2px)' }}/>
       <div ref={containerRef} onClick={e => e.stopPropagation()} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: C.paper, borderRadius: '20px 20px 0 0', padding: `24px 24px calc(24px + env(safe-area-inset-bottom)) 24px`, animation: 'heed-slideUp 0.28s cubic-bezier(0.32,0.72,0,1)', boxShadow: '0 -8px 32px rgba(0,0,0,0.12)' }}>
         <div style={{ width: 40, height: 4, borderRadius: 2, background: C.border, margin: '0 auto 20px' }}/>
         <div style={{ fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 600, color: C.ink, marginBottom: 4 }}>{cfg.icon} {cfg.question}</div>
@@ -9622,7 +9634,7 @@ function RecoverySummarySheet({ open, context, heldTasks, onClose, onResumeAll, 
   const gladEmoji = QUICK_CONTEXT_CONFIG[context.type]?.icon || '✨'
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 200 }} onClick={onClose}>
-      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(2px)' }}/>
+      <div style={{ position: 'absolute', inset: 0, background: C.scrim, backdropFilter: 'blur(2px)' }}/>
       <div ref={containerRef} onClick={e => e.stopPropagation()} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: C.paper, borderRadius: '20px 20px 0 0', padding: `24px 24px calc(24px + env(safe-area-inset-bottom)) 24px`, animation: 'heed-slideUp 0.28s cubic-bezier(0.32,0.72,0,1)', boxShadow: '0 -8px 32px rgba(0,0,0,0.12)' }}>
         <div style={{ width: 40, height: 4, borderRadius: 2, background: C.border, margin: '0 auto 20px' }}/>
         <div style={{ fontFamily: 'Lora, serif', fontSize: 17, fontWeight: 600, color: C.ink, marginBottom: 4 }}>Glad you're back {gladEmoji}</div>
@@ -9720,7 +9732,7 @@ function ShareCardSheet({ routine, onClose }) {
   const THEME_DOT_COLORS = { B: '#c8a450', D: '#a8c5a0', E: '#8a5444' }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.45)' }} onClick={onClose}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: C.scrim }} onClick={onClose}>
       <div ref={containerRef} onClick={e => e.stopPropagation()} style={{
         position: 'absolute', bottom: 0, left: 0, right: 0,
         background: C.paper, borderRadius: '20px 20px 0 0',
@@ -9857,7 +9869,7 @@ function ContextDetailSheet({ open, ctx, heldTasks, onClose, onImBetter, onExten
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 200 }} onClick={onClose}>
-      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(2px)' }}/>
+      <div style={{ position: 'absolute', inset: 0, background: C.scrim, backdropFilter: 'blur(2px)' }}/>
       <div ref={containerRef} onClick={e => e.stopPropagation()} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: C.paper, borderRadius: '20px 20px 0 0', padding: `24px 24px calc(24px + env(safe-area-inset-bottom)) 24px`, animation: 'heed-slideUp 0.28s cubic-bezier(0.32,0.72,0,1)', boxShadow: '0 -8px 32px rgba(0,0,0,0.12)', maxHeight: '80vh', overflowY: 'auto' }}>
         <div style={{ width: 40, height: 4, borderRadius: 2, background: C.border, margin: '0 auto 20px' }}/>
 

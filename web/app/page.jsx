@@ -492,9 +492,17 @@ function formatContextDate(iso) {
 }
 
 function mapApiContext(ctx) {
+  // The backend's valid_types set doesn't include 'low' — Low Day is stored
+  // as context_type: 'other' (see TYPE_ALIAS in handleAddContext). Recover the
+  // original intent from the description so EVENT_TYPE_CONFIG resolves to the
+  // moon icon and periwinkle ring instead of falling back to travel/airplane.
+  const rawType = ctx.context_type || ctx.type || 'other'
+  const desc = ctx.description || ctx.desc || ''
+  const looksLowDay = rawType === 'other' && /low\s*day/i.test(desc)
   return {
-    type: ctx.context_type || ctx.type || 'other',
-    desc: ctx.description || ctx.desc || '',
+    id: ctx.id || ctx._id || null,
+    type: looksLowDay ? 'low' : rawType,
+    desc,
     start: formatContextDate(ctx.start_date) || ctx.start || '',
     end: formatContextDate(ctx.end_date) || ctx.end || '',
     _endDate: ctx.end_date ? new Date(ctx.end_date) : new Date(),
@@ -7402,7 +7410,11 @@ function LifeTab({ upcoming, active, activeContext, plansHook, onAddContext, onQ
   // through the API. Real records are removed by the parent via onRemoveUpcoming
   // → DELETE /api/context/{id} → refresh apiContexts.
   const [hiddenLocalIds, setHiddenLocalIds] = useState(new Set())
-  const apiUpcoming = [...(active || []).map(mapApiContext), ...(upcoming || []).map(mapApiContext)]
+  // The "Upcoming" section is for events that haven't started yet. Active
+  // contexts are surfaced via the activeContext banner instead — including
+  // them here was double-rendering Low Day records (banner + duplicate
+  // upcoming card per record).
+  const apiUpcoming = (upcoming || []).map(mapApiContext)
   const allUpcoming = (apiUpcoming.length > 0 ? apiUpcoming : (isDemoMode() ? CONTEXTS_UPCOMING_DEMO : []))
     .filter(c => !hiddenLocalIds.has(c.id || c.desc))
   return (
@@ -10447,6 +10459,30 @@ export default function HeedApp() {
     const fallbackEnd = new Date(); fallbackEnd.setDate(fallbackEnd.getDate() + days - 1)
     const startIso = toIso(data.startDate) || todayIso
     const endIso = toIso(data.endDate) || fallbackEnd.toISOString().slice(0, 10)
+
+    // Dedup: if there's already an active context that matches what the user
+    // is activating (same UI type + overlapping today), adopt it as
+    // activeContext instead of creating another row. Avoids the "two Low day
+    // bubbles in Upcoming after re-tapping the FAB" bug.
+    const existing = (apiContexts.active || []).find(c => {
+      const mapped = mapApiContext(c)
+      return mapped.type === data.type
+    })
+    if (existing) {
+      const heldTaskIds = apiTasks.filter(t => t.status === 'active' && !dismissedIds.has(t.id)).map(t => t.id)
+      setActiveContext({
+        id: existing.id,
+        type: data.type,
+        label: existing.description || desc,
+        icon: data.icon || ecfg?.icon || qcfg?.icon || '📍',
+        startDate: existing.start_date ? new Date(existing.start_date) : new Date(startIso),
+        endDate: existing.end_date ? new Date(existing.end_date) : new Date(endIso),
+        heldTaskIds,
+      })
+      setToast({ message: "Already on it — keeping things gentle." })
+      return
+    }
+
     const body = { context_type: apiType, start_date: startIso, end_date: endIso, description: desc }
     // Optimistic local update so the UI responds immediately
     const heldTaskIds = apiTasks.filter(t => t.status === 'active' && !dismissedIds.has(t.id)).map(t => t.id)
@@ -10479,7 +10515,7 @@ export default function HeedApp() {
         setToast({ message: "Noted. I'll plan around it." })
       }
     } catch {}
-  }, [FUNCTIONS_URL, apiTasks, dismissedIds])
+  }, [FUNCTIONS_URL, apiTasks, dismissedIds, apiContexts])
 
   function handleTaskAdded(task) {
     if (task) setApiTasks(t => [...t, { status: 'active', next_due_at: new Date().toISOString(), ...task }])

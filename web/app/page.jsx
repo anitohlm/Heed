@@ -8385,23 +8385,49 @@ function WeekDetail({ tasks, weekStart, onTaskTap, onWeekOffsetChange, onAddTask
       </div>
       {routines.length > 0 && (
         <div style={{ marginBottom: 14 }}>
-          <div style={{ fontSize: 9, fontWeight: 700, color: C.inkMute, letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 6, paddingLeft: 4 }}>
-            Routines
+          <div style={{
+            fontSize: 9, fontWeight: 700, color: C.inkMute, letterSpacing: 0.6,
+            textTransform: 'uppercase', marginBottom: 6, paddingLeft: 4,
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          }}>
+            <span>Routines · this week</span>
+            <span style={{ fontSize: 8, color: C.inkMute, opacity: 0.7 }}>tap to edit</span>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div style={{ background: C.paper, border: `1px solid ${C.border}`, borderRadius: 10, padding: '8px 10px' }}>
             {routines.map(r => {
-              const days = routineDays(r)
+              const stateBg = { done: C.sage, missed: C.border, future: C.bellySoft, off: C.bellySoft }
+              const stateFg = { done: C.cream, missed: C.inkMute, future: C.inkMute, off: C.inkMute }
+              const stateOpacity = { done: 1, missed: 1, future: 1, off: 0.4 }
               return (
                 <button key={r.id} onClick={() => onEditRoutine && onEditRoutine(r)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 10px', borderRadius: 8, background: C.sage + '14', border: 'none', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', width: '100%' }}>
-                  <div style={{ flexShrink: 0, width: 110, fontSize: 12, fontWeight: 600, color: C.warmDark, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {r.name}
-                  </div>
-                  <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
+                  style={{
+                    display: 'grid', gridTemplateColumns: '110px 1fr', gap: 8,
+                    alignItems: 'center', width: '100%', padding: '4px 0',
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    fontFamily: 'inherit', textAlign: 'left',
+                  }}>
+                  <div style={{
+                    fontSize: 11, fontWeight: 600, color: C.warmDark,
+                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                  }}>{r.name}</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 3 }}>
                     {[0,1,2,3,4,5,6].map(i => {
-                      const on = days.includes(i)
+                      const date = addDays(weekStart, i)
+                      const state = routineDayState(r, date, today)
+                      const isToday = sameDay(date, today)
                       return (
-                        <div key={i} style={{ height: 6, borderRadius: 3, background: on ? C.sage + 'BB' : C.sage + '22' }}/>
+                        <div key={i} style={{
+                          aspectRatio: '1 / 1', minWidth: 16, maxHeight: 22,
+                          borderRadius: 4,
+                          background: stateBg[state],
+                          color: stateFg[state],
+                          opacity: stateOpacity[state],
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 8, fontWeight: 700,
+                          boxShadow: isToday ? `inset 0 0 0 1.5px ${C.warmDark}` : 'none',
+                        }}>
+                          {['M','T','W','T','F','S','S'][i]}
+                        </div>
                       )
                     })}
                   </div>

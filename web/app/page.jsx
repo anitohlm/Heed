@@ -8779,44 +8779,75 @@ function WeekDetail({ tasks, weekStart, onTaskTap, onWeekOffsetChange, onAddTask
           const dayTasks = tasks.filter(t => { const d = parseDue(t.next_due_at); return d && sameDay(d, date) })
           const dayCtxs  = contextsOnDay(date)
           const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
+          const showCardHere = expandedTask && (() => {
+            const d = parseDue(expandedTask.next_due_at)
+            return d && sameDay(d, date)
+          })()
           return (
-            <div key={i}
-              style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '8px 10px', borderRadius: 8, background: isToday ? C.bellySoft + '80' : 'transparent', minHeight: 40 }}>
-              <div style={{ flexShrink: 0, width: 44, display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 2 }}>
-                <div style={{ fontSize: 9, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: 0.5 }}>{dayNames[i]}</div>
-                <div style={{ fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600, color: isToday ? C.cream : C.warmDark, width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: isToday ? C.warmDark : 'transparent', marginTop: 2 }}>
-                  {date.getDate()}
+            <React.Fragment key={i}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '8px 10px', borderRadius: 8, background: isToday ? C.bellySoft + '80' : 'transparent', minHeight: 40 }}>
+                <div style={{ flexShrink: 0, width: 44, display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 2 }}>
+                  <div style={{ fontSize: 9, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: 0.5 }}>{dayNames[i]}</div>
+                  <div className={isToday ? 'heed-today-glow' : ''}
+                    style={{ fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600, color: isToday ? C.cream : C.warmDark, width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: isToday ? C.warmDark : 'transparent', marginTop: 2 }}>
+                    {date.getDate()}
+                  </div>
+                </div>
+                <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center', paddingTop: 6 }}>
+                  {dayCtxs.map((ctx, j) => {
+                    const cfg = QUICK_CONTEXT_CONFIG[ctx.context_type] || {}
+                    return (
+                      <div key={j} style={{ background: C.ochreSoft, border: `1px solid ${C.ochre}55`, borderRadius: 5, padding: '3px 8px', fontSize: 10.5, color: C.warmDark, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3, whiteSpace: 'nowrap', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {cfg.icon || '📅'} {ctx.description || cfg.label || ctx.context_type}
+                      </div>
+                    )
+                  })}
+                  {dayTasks.map(task => {
+                    const imp  = task.importance || 'medium'
+                    const bg   = ({ high: C.rust, medium: C.ochre, low: C.sage })[imp] || C.ochre
+                    const icon = ({ high: '●', medium: '◆', low: '○' })[imp] || '◆'
+                    const isExpanded = expandedTaskId === task.id
+                    return (
+                      <div key={task.id}
+                        data-task-chip
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setExpandedTaskId(prev => prev === task.id ? null : task.id)
+                        }}
+                        onPointerDown={e => { e.currentTarget.style.transform = 'scale(0.96)' }}
+                        onPointerUp={e => { e.currentTarget.style.transform = 'scale(1)' }}
+                        onPointerLeave={e => { e.currentTarget.style.transform = 'scale(1)' }}
+                        style={{
+                          background: bg, borderRadius: 5, padding: '4px 10px',
+                          fontSize: 11, color: C.cream, fontWeight: 600, cursor: 'pointer',
+                          userSelect: 'none', whiteSpace: 'nowrap',
+                          boxShadow: isExpanded ? `inset 0 0 0 1.5px ${C.warmDark}` : 'none',
+                          transition: 'transform 80ms ease-out',
+                        }}>
+                        {icon} {task.name}
+                      </div>
+                    )
+                  })}
+                  {dayTasks.length === 0 && dayCtxs.length === 0 && (
+                    <button onClick={() => onAddTask(date)}
+                      style={{ background: 'none', border: `1px dashed ${C.border}`, color: C.inkMute, padding: '3px 10px', borderRadius: 5, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit', opacity: 0.55, transition: 'opacity 140ms' }}
+                      onMouseEnter={e => { e.currentTarget.style.opacity = 1 }}
+                      onMouseLeave={e => { e.currentTarget.style.opacity = 0.55 }}>
+                      + Add task
+                    </button>
+                  )}
                 </div>
               </div>
-              <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center', paddingTop: 6 }}>
-                {dayCtxs.map((ctx, j) => {
-                  const cfg = QUICK_CONTEXT_CONFIG[ctx.context_type] || {}
-                  return (
-                    <div key={j} style={{ background: C.ochreSoft, border: `1px solid ${C.ochre}55`, borderRadius: 5, padding: '3px 8px', fontSize: 10.5, color: C.warmDark, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3, whiteSpace: 'nowrap', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {cfg.icon || '📅'} {ctx.description || cfg.label || ctx.context_type}
-                    </div>
-                  )
-                })}
-                {dayTasks.map(task => {
-                  const imp  = task.importance || 'medium'
-                  const bg   = impColor[imp] || C.ochre
-                  const icon = impIcon[imp]  || '◆'
-                  return (
-                    <div key={task.id}
-                      onClick={() => onTaskTap(task)}
-                      style={{ background: bg, borderRadius: 5, padding: '4px 10px', fontSize: 11, color: C.cream, fontWeight: 600, cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
-                      {icon} {task.name}
-                    </div>
-                  )
-                })}
-                {dayTasks.length === 0 && (
-                  <button onClick={() => onAddTask(date)}
-                    style={{ background: 'none', border: `1px dashed ${C.border}`, color: C.inkMute, padding: '3px 10px', borderRadius: 5, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit', opacity: 0.6 }}>
-                    + Add task
-                  </button>
-                )}
-              </div>
-            </div>
+              {showCardHere && (
+                <InlineTaskDetail
+                  task={expandedTask}
+                  onClose={() => setExpandedTaskId(null)}
+                  onMarkDone={onMarkDone}
+                  onSkip={onSkip}
+                  onReschedule={onReschedule}
+                />
+              )}
+            </React.Fragment>
           )
         })}
       </div>

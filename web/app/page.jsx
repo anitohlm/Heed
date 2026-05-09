@@ -7939,6 +7939,23 @@ function routineDays(routine) {
   return [0,1,2,3,4,5,6] // 'Custom' / unknown — treat as daily until we have structured day data
 }
 
+// Classify one day-cell of a routine streak grid.
+// Returns 'done' | 'missed' | 'future' | 'off' (off = routine not scheduled this weekday).
+// `completion14d` is indexed 0..13 where 13 = today, 0 = 13 days ago.
+function routineDayState(routine, date, today = new Date()) {
+  const t = new Date(today); t.setHours(0,0,0,0)
+  const d = new Date(date);  d.setHours(0,0,0,0)
+  const wd = (d.getDay() + 6) % 7  // Mon=0 … Sun=6
+  const scheduled = routineDays(routine).includes(wd)
+  if (!scheduled) return 'off'
+  const daysFromToday = Math.round((t - d) / 86400000)
+  if (daysFromToday < 0) return 'future'
+  const arr = routine.completion14d || []
+  const idx = arr.length - 1 - daysFromToday
+  if (idx < 0 || idx >= arr.length) return 'missed'  // older than the window
+  return arr[idx] ? 'done' : 'missed'
+}
+
 // ── Monthly retrospective ─────────────────────────────────────────
 // Builds a Retrospective object client-side from current state. Phase 1:
 // approximations in places where we don't yet have backend completion

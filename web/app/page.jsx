@@ -3787,14 +3787,31 @@ function CaptureBar({ onCreateTask, onCreateRoutine, onViewTask, onToast }) {
   const [state, setState] = useState('idle') // 'idle' | 'submitting' | 'error'
   const [errorMsg, setErrorMsg] = useState('')
 
+  // Build an undo handler that DELETEs the just-created task. Passed into
+  // the toast so the user can reverse a misclassification (e.g. parse_capture
+  // routed something to task that shouldn't have been one).
+  const buildTaskUndo = useCallback((createdTask) => {
+    if (!createdTask?.id) return undefined
+    return () => {
+      fetch(`${FUNCTIONS_URL}/api/tasks/${createdTask.id}`, { method: 'DELETE', headers: authHeaders() }).catch(() => {})
+      // Tell the parent to drop it from the local apiTasks list. Reusing the
+      // onViewTask channel would be wrong; instead we rely on the next
+      // /api/tasks fetch (handleTaskAdded(null)) which the parent runs on
+      // most refresh paths. For instant feedback, dispatch a custom event
+      // the parent listens for via window.
+      try { window.dispatchEvent(new CustomEvent('heed:task-removed', { detail: { id: createdTask.id } })) } catch (_) {}
+    }
+  }, [])
+
   const submit = useCallback(async (submitText) => {
     const t = (submitText || text).trim()
     if (!t) return
     setState('submitting')
     const fallbackCreate = async () => {
-      await onCreateTask({ name: t, category: 'admin', importance: 'medium' })
+      const created = await onCreateTask({ name: t, category: 'admin', importance: 'medium' })
       setText('')
       setState('idle')
+      return created
     }
     try {
       const res = await fetch(`${FUNCTIONS_URL}/api/parse_capture`, {
@@ -3808,29 +3825,37 @@ function CaptureBar({ onCreateTask, onCreateRoutine, onViewTask, onToast }) {
         const createdTask = await onCreateTask(data.payload)
         setText('')
         setState('idle')
-        onToast?.({ message: 'Task added — ' + (data.payload?.name || t), onView: () => onViewTask?.(createdTask), showView: !!onViewTask, duration: 4000 })
+        onToast?.({
+          message: 'Task added — ' + (data.payload?.name || t),
+          onView: () => onViewTask?.(createdTask),
+          showView: !!onViewTask,
+          duration: 4000,
+          onUndo: buildTaskUndo(createdTask),
+        })
       } else if (data.type === 'routine') {
+        // Don't override the parent's toast here — handleAddRoutine already
+        // shows one with its own onUndo (snapshot+restore of the routines
+        // array). Setting another toast right after would clobber that undo.
         await onCreateRoutine(data.payload)
         setText('')
         setState('idle')
-        onToast?.({ message: 'Routine added — ' + (data.payload?.name || t) })
       } else {
         // unknown type — fallback to task
-        await fallbackCreate()
-        onToast?.({ message: 'Item added — ' + t })
+        const createdTask = await fallbackCreate()
+        onToast?.({ message: 'Item added — ' + t, onUndo: buildTaskUndo(createdTask) })
       }
     } catch (_) {
       // Fallback: never lose the text
       try {
-        await fallbackCreate()
-        onToast?.({ message: 'Item added — ' + t })
+        const createdTask = await fallbackCreate()
+        onToast?.({ message: 'Item added — ' + t, onUndo: buildTaskUndo(createdTask) })
       } catch (_2) {
         setErrorMsg('Could not save — try again')
         setState('error')
         setTimeout(() => { setState('idle'); setErrorMsg('') }, 3000)
       }
     }
-  }, [text, onCreateTask, onCreateRoutine, onViewTask, onToast])
+  }, [text, onCreateTask, onCreateRoutine, onViewTask, onToast, buildTaskUndo])
 
   const latestMicText = useRef('')
   const { listening: micListening, toggle: toggleMic, supported: micSupported } = useMic(
@@ -10692,6 +10717,19 @@ export default function HeedApp() {
     if (task) setApiTasks(t => [...t, { status: 'active', next_due_at: new Date().toISOString(), ...task }])
     else fetch(`${FUNCTIONS_URL}/api/tasks`, { headers: authHeaders() }).then(r => r.json()).then(d => Array.isArray(d) && setApiTasks(d)).catch(() => {})
   }
+
+  // CaptureBar dispatches this when the user undoes a just-captured task.
+  // The DELETE has already fired client-side; we just drop the row locally
+  // so the UI matches the backend without waiting for the next refetch.
+  useEffect(() => {
+    const fn = (e) => {
+      const id = e?.detail?.id
+      if (!id) return
+      setApiTasks(t => t.filter(x => x.id !== id))
+    }
+    window.addEventListener('heed:task-removed', fn)
+    return () => window.removeEventListener('heed:task-removed', fn)
+  }, [])
 
   // Demo-mode defer simulation. Real-mode defer goes through the regular
   // execute_action HTTP path; this only fires when the chat hook short-circuits

@@ -9002,10 +9002,18 @@ function Toast({ message, onView, onUndo, onDismiss, reasons, onReason }) {
         display: 'flex', flexDirection: 'column', gap: 8,
         minWidth: 240,
       }}>
-        {/* Row 1 — message + dismiss */}
+        {/* Row 1 — message + dismiss. Message is constrained to a single line
+            with ellipsis on overflow so long messages don't wrap and bloat the
+            toast vertically. The full text is exposed via the title attribute
+            for hover / a11y. */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 15, lineHeight: 1, flexShrink: 0 }}>✓</span>
-          <span style={{ fontSize: 13, color: '#e8e0d0', fontWeight: 500, flex: 1 }}>{message}</span>
+          <span title={typeof message === 'string' ? message : undefined}
+            style={{
+              fontSize: 13, color: '#e8e0d0', fontWeight: 500, flex: 1,
+              minWidth: 0,
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            }}>{message}</span>
           <button onClick={onDismiss} aria-label="Dismiss"
             style={{
               background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)',
@@ -10426,11 +10434,32 @@ export default function HeedApp() {
       if (resp.ok) {
         const updated = await resp.json()
         if (isEdit) {
+          // Capture the pre-edit task so undo PATCHes the original fields back.
+          const prev = apiTasks.find(x => x.id === data.id) || null
           setApiTasks(t => t.map(x => x.id === data.id ? updated : x))
-          setToast({ message: 'Updated.' })
+          setToast({
+            message: 'Updated.',
+            onUndo: prev ? () => {
+              setApiTasks(t => t.map(x => x.id === data.id ? prev : x))
+              fetch(`${FUNCTIONS_URL}/api/tasks/${data.id}`, {
+                method: 'PATCH',
+                headers: authHeaders({ 'Content-Type': 'application/json' }),
+                body: JSON.stringify({ name: prev.name, category: prev.category, importance: prev.importance, explicit_cadence_days: prev.explicit_cadence_days || null, description: prev.description || null }),
+              }).catch(() => {})
+              setToast(null)
+            } : undefined,
+          })
         } else {
           setApiTasks(t => [...t, updated])
-          setToast({ message: "Got it. I'll watch this one.", showView: true })
+          setToast({
+            message: "Got it. I'll watch this one.",
+            showView: true,
+            onUndo: () => {
+              setApiTasks(t => t.filter(x => x.id !== updated.id))
+              fetch(`${FUNCTIONS_URL}/api/tasks/${updated.id}`, { method: 'DELETE', headers: authHeaders() }).catch(() => {})
+              setToast(null)
+            },
+          })
           setTab('today')
         }
       }
@@ -10451,7 +10480,27 @@ export default function HeedApp() {
     } catch { return }
     setApiTasks(t => t.filter(x => x.id !== task.id))
     setEditingTask(null)
-    setToast({ message: `${task.name || 'Task'} removed.` })
+    setToast({
+      message: `${task.name || 'Task'} removed.`,
+      // Undo re-creates the task via POST. We get back a new id since the old
+      // record is gone — the user shouldn't notice unless they had something
+      // referencing the original id by hand.
+      onUndo: () => {
+        fetch(`${FUNCTIONS_URL}/api/tasks`, {
+          method: 'POST',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({
+            name: task.name, category: task.category, importance: task.importance,
+            explicit_cadence_days: task.explicit_cadence_days || null,
+            description: task.description || null,
+          }),
+        })
+          .then(r => r.ok ? r.json() : null)
+          .then(restored => { if (restored?.id) setApiTasks(t => [...t, restored]) })
+          .catch(() => {})
+        setToast(null)
+      },
+    })
   }, [FUNCTIONS_URL])
 
   // Apply a Phase 2 retrospective suggestion. Returns true if the action
@@ -10514,6 +10563,8 @@ export default function HeedApp() {
       if (suggestion.action_type === 'adjust_cadence') {
         const newDays = suggestion.payload?.new_cadence_days
         if (!newDays || !suggestion.target_id) return false
+        const prev = apiTasks.find(x => x.id === suggestion.target_id) || null
+        const oldDays = prev?.explicit_cadence_days || null
         const resp = await fetch(`${FUNCTIONS_URL}/api/tasks/${suggestion.target_id}`, {
           method: 'PATCH',
           headers: authHeaders({ 'Content-Type': 'application/json' }),
@@ -10522,14 +10573,25 @@ export default function HeedApp() {
         if (!resp.ok) return false
         const updated = await resp.json()
         setApiTasks(t => t.map(x => x.id === suggestion.target_id ? updated : x))
-        setToast({ message: `${suggestion.target_name || 'Task'} cadence pushed to ${newDays}d` })
+        setToast({
+          message: `${suggestion.target_name || 'Task'} cadence pushed to ${newDays}d`,
+          onUndo: prev ? () => {
+            setApiTasks(t => t.map(x => x.id === suggestion.target_id ? prev : x))
+            fetch(`${FUNCTIONS_URL}/api/tasks/${suggestion.target_id}`, {
+              method: 'PATCH',
+              headers: authHeaders({ 'Content-Type': 'application/json' }),
+              body: JSON.stringify({ explicit_cadence_days: oldDays }),
+            }).catch(() => {})
+            setToast(null)
+          } : undefined,
+        })
         return true
       }
       return false
     } catch {
       return false
     }
-  }, [FUNCTIONS_URL])
+  }, [FUNCTIONS_URL, apiTasks])
 
   const handleAddContext = useCallback(async (data) => {
     if (!data || !data.type) return
@@ -10600,16 +10662,28 @@ export default function HeedApp() {
       })
       if (resp.ok) {
         const created = await resp.json().catch(() => null)
-        if (created?.context_id) {
+        const newId = created?.context_id || null
+        if (newId) {
           // Replace the optimistic synthesized id with the real backend id so
           // later PATCH / DELETE calls target the persisted record.
-          setActiveContext(ctx => ctx ? { ...ctx, id: created.context_id } : ctx)
+          setActiveContext(ctx => ctx ? { ...ctx, id: newId } : ctx)
         }
         fetch(`${FUNCTIONS_URL}/api/context`, { headers: authHeaders() })
           .then(r => r.json())
           .then(d => d && setApiContexts(d))
           .catch(() => {})
-        setToast({ message: "Noted. I'll plan around it." })
+        setToast({
+          message: "Noted. I'll plan around it.",
+          onUndo: newId ? () => {
+            setActiveContext(null)
+            fetch(`${FUNCTIONS_URL}/api/context/${newId}`, { method: 'DELETE', headers: authHeaders() })
+              .then(() => fetch(`${FUNCTIONS_URL}/api/context`, { headers: authHeaders() }))
+              .then(r => r?.json())
+              .then(d => d && setApiContexts(d))
+              .catch(() => {})
+            setToast(null)
+          } : undefined,
+        })
       }
     } catch {}
   }, [FUNCTIONS_URL, apiTasks, dismissedIds, apiContexts])
@@ -10639,72 +10713,118 @@ export default function HeedApp() {
 
   const handleAddRoutine = useCallback((routineData, { navigate = false } = {}) => {
     const isEdit = !!routineData.id && !routineData.id.startsWith('custom_')
-    setRoutines(rs =>
-      isEdit
+    let prevRoutines = null
+    setRoutines(rs => {
+      prevRoutines = rs
+      return isEdit
         ? rs.map(r => r.id === routineData.id ? { ...r, name: routineData.name, items: routineData.items } : r)
         : [...rs, routineData]
-    )
-    setToast({ message: isEdit ? 'Routine updated.' : 'Routine added — building up history.', showView: true })
+    })
+    setToast({
+      message: isEdit ? 'Routine updated.' : 'Routine added — building up history.',
+      showView: true,
+      onUndo: () => { if (prevRoutines) setRoutines(prevRoutines); setToast(null) },
+    })
     setEditingRoutine(null)
     if (navigate) setTab('today')
   }, [])
 
   const handleMarkRoutineDone = useCallback((routineId) => {
+    let prevValue = null
     setRoutines(rs => rs.map(r => {
       if (r.id !== routineId) return r
       const updated = [...r.completion14d]
+      prevValue = updated[updated.length - 1]
       updated[updated.length - 1] = true
       return { ...r, completion14d: updated }
     }))
-    setToast({ message: 'Done for today. Nice.' })
+    setToast({
+      message: 'Done for today. Nice.',
+      onUndo: () => {
+        setRoutines(rs => rs.map(r => {
+          if (r.id !== routineId) return r
+          const reverted = [...r.completion14d]
+          reverted[reverted.length - 1] = !!prevValue
+          return { ...r, completion14d: reverted }
+        }))
+        setToast(null)
+      },
+    })
   }, [])
 
+  // Skip is intentionally a soft no-op on history — the day stays unmarked
+  // rather than flipping to false, which would penalise the user's streak.
+  // Undo just dismisses the toast since there's no state to revert.
   const handleSkipRoutineToday = useCallback((routineId) => {
-    setToast({ message: 'Skipped for today.' })
+    setToast({
+      message: 'Skipped for today.',
+      onUndo: () => setToast(null),
+    })
   }, [])
 
   // Toggle a single day in the routine's 14-day completion strip,
   // OR toggle a single ITEM done for today when index === '__item__'.
   // Index 0 is the oldest day, length-1 is today.
   const handleMarkRoutineDay = useCallback((routineId, index, value) => {
+    let prevSnapshot = null
     if (index === '__item__') {
       // value is the item name; toggle in todayItemsDone array.
-      setRoutines(rs => rs.map(r => {
-        if (r.id !== routineId) return r
-        const cur = r.todayItemsDone || []
-        const next = cur.includes(value) ? cur.filter(x => x !== value) : [...cur, value]
-        // Filter out lightened items so they never count.
-        const live = (r.items || []).filter(it => !(r.lightenedItems || []).includes(it))
-        const allDone = live.length > 0 && live.every(it => next.includes(it))
-        const updatedC14 = [...(r.completion14d || [])]
-        if (updatedC14.length && allDone) updatedC14[updatedC14.length - 1] = true
-        return { ...r, todayItemsDone: next, completion14d: updatedC14 }
-      }))
+      setRoutines(rs => {
+        prevSnapshot = rs
+        return rs.map(r => {
+          if (r.id !== routineId) return r
+          const cur = r.todayItemsDone || []
+          const next = cur.includes(value) ? cur.filter(x => x !== value) : [...cur, value]
+          // Filter out lightened items so they never count.
+          const live = (r.items || []).filter(it => !(r.lightenedItems || []).includes(it))
+          const allDone = live.length > 0 && live.every(it => next.includes(it))
+          const updatedC14 = [...(r.completion14d || [])]
+          if (updatedC14.length && allDone) updatedC14[updatedC14.length - 1] = true
+          return { ...r, todayItemsDone: next, completion14d: updatedC14 }
+        })
+      })
+      setToast({
+        message: 'Item toggled.',
+        onUndo: () => { if (prevSnapshot) setRoutines(prevSnapshot); setToast(null) },
+      })
       return
     }
-    setRoutines(rs => rs.map(r => {
-      if (r.id !== routineId) return r
-      const updated = [...r.completion14d]
-      if (index < 0 || index >= updated.length) return r
-      updated[index] = !!value
-      return { ...r, completion14d: updated }
-    }))
+    setRoutines(rs => {
+      prevSnapshot = rs
+      return rs.map(r => {
+        if (r.id !== routineId) return r
+        const updated = [...r.completion14d]
+        if (index < 0 || index >= updated.length) return r
+        updated[index] = !!value
+        return { ...r, completion14d: updated }
+      })
+    })
     const daysAgo = (() => {
       const r = routines.find(x => x.id === routineId)
       if (!r) return 0
       return (r.completion14d.length - 1) - index
     })()
     const when = daysAgo === 0 ? 'today' : daysAgo === 1 ? 'yesterday' : `${daysAgo} days ago`
-    setToast({ message: value ? `Marked ${when} done.` : `Cleared ${when}.` })
+    setToast({
+      message: value ? `Marked ${when} done.` : `Cleared ${when}.`,
+      onUndo: () => { if (prevSnapshot) setRoutines(prevSnapshot); setToast(null) },
+    })
   }, [routines])
 
   const handleLightenRoutine = useCallback((routineId, itemsToStrike = null) => {
-    setRoutines(rs => rs.map(r => {
-      if (r.id !== routineId) return r
-      const strike = itemsToStrike || r.items.slice(Math.ceil(r.items.length / 2))
-      return { ...r, suggestion: null, insight: 'Lightened for this week.', lightenedItems: strike }
-    }))
-    setToast({ message: "Lightened. I'll keep it gentle this week." })
+    let prevRoutines = null
+    setRoutines(rs => {
+      prevRoutines = rs
+      return rs.map(r => {
+        if (r.id !== routineId) return r
+        const strike = itemsToStrike || r.items.slice(Math.ceil(r.items.length / 2))
+        return { ...r, suggestion: null, insight: 'Lightened for this week.', lightenedItems: strike }
+      })
+    })
+    setToast({
+      message: "Lightened. I'll keep it gentle this week.",
+      onUndo: () => { if (prevRoutines) setRoutines(prevRoutines); setToast(null) },
+    })
   }, [])
 
   const handleShareOpen = useCallback((routine) => setShareCtx(routine), [])
@@ -10723,41 +10843,61 @@ export default function HeedApp() {
   const handleQuickContext = useCallback((type, days) => {
     const cfg = QUICK_CONTEXT_CONFIG[type]
     if (!cfg) return
-    // Persist via the same path as the regular add flow so extend / end / refresh
-    // can target the backend record. handleAddContext sets activeContext
-    // optimistically and replaces the synthesized id with the real one once
-    // the POST returns.
+    // Persist via the same path as the regular add flow. We don't override the
+    // toast here because handleAddContext already shows one with onUndo wired
+    // to the just-created context id; replacing it would lose the undo.
     handleAddContext({ type, lowDuration: days, description: cfg.label, icon: cfg.icon })
-    setToast({ message: cfg.toastMsg })
   }, [handleAddContext])
 
   const handleExtendContext = useCallback(async () => {
+    let prevEndDate = null
+    let prevEndIso = null
     let extendedEndIso = null
+    let ctxId = null
     setActiveContext(ctx => {
       if (!ctx) return ctx
+      prevEndDate = new Date(ctx.endDate)
+      prevEndIso = prevEndDate.toISOString().slice(0, 10)
+      ctxId = ctx.id
       const newEnd = new Date(ctx.endDate)
       newEnd.setDate(newEnd.getDate() + 2)
       extendedEndIso = newEnd.toISOString().slice(0, 10)
       return { ...ctx, endDate: newEnd }
     })
-    setToast({ message: "+2 days. I'll hold the line." })
+    const isPersisted = ctxId && !String(ctxId).startsWith('ctx-')
+    setToast({
+      message: "+2 days. I'll hold the line.",
+      onUndo: () => {
+        setActiveContext(c => c ? { ...c, endDate: prevEndDate } : c)
+        if (isPersisted) {
+          fetch(`${FUNCTIONS_URL}/api/context/${ctxId}`, {
+            method: 'PATCH',
+            headers: authHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify({ end_date: prevEndIso }),
+          }).then(() => {
+            fetch(`${FUNCTIONS_URL}/api/context`, { headers: authHeaders() })
+              .then(r => r.json())
+              .then(d => d && setApiContexts(d))
+              .catch(() => {})
+          }).catch(() => {})
+        }
+        setToast(null)
+      },
+    })
     // Persist if we have a real backend id (created via handleAddContext POST).
     // Local-only optimistic ids start with `ctx-` and have no server record yet.
-    setActiveContext(curr => {
-      if (curr && curr.id && !String(curr.id).startsWith('ctx-') && extendedEndIso) {
-        fetch(`${FUNCTIONS_URL}/api/context/${curr.id}`, {
-          method: 'PATCH',
-          headers: authHeaders({ 'Content-Type': 'application/json' }),
-          body: JSON.stringify({ end_date: extendedEndIso }),
-        }).then(() => {
-          fetch(`${FUNCTIONS_URL}/api/context`, { headers: authHeaders() })
-            .then(r => r.json())
-            .then(d => d && setApiContexts(d))
-            .catch(() => {})
-        }).catch(() => {})
-      }
-      return curr
-    })
+    if (isPersisted && extendedEndIso) {
+      fetch(`${FUNCTIONS_URL}/api/context/${ctxId}`, {
+        method: 'PATCH',
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ end_date: extendedEndIso }),
+      }).then(() => {
+        fetch(`${FUNCTIONS_URL}/api/context`, { headers: authHeaders() })
+          .then(r => r.json())
+          .then(d => d && setApiContexts(d))
+          .catch(() => {})
+      }).catch(() => {})
+    }
   }, [FUNCTIONS_URL])
 
   const handleRemoveUpcoming = useCallback((ctx) => {
@@ -10774,7 +10914,9 @@ export default function HeedApp() {
   }, [FUNCTIONS_URL])
 
   const handleEndContext = useCallback((mode) => {
+    let prevContext = null
     setActiveContext(prev => {
+      prevContext = prev
       // Persist end-of-context to backend so reload doesn't bring it back.
       if (prev?.id && !String(prev.id).startsWith('ctx-')) {
         fetch(`${FUNCTIONS_URL}/api/context/${prev.id}`, {
@@ -10799,7 +10941,36 @@ export default function HeedApp() {
       return null
     })
     setRecoveryOpen(false)
-    setToast({ message: mode === 'resume' ? "You're back — tasks resumed" : 'Easing you back in — top tasks surfaced' })
+    setToast({
+      message: mode === 'resume' ? "You're back — tasks resumed" : 'Easing you back in — top tasks surfaced',
+      // Undo recreates the context via POST. The id will differ from the
+      // original (the old record is gone), but type / dates / heldTaskIds
+      // are restored so the user gets the same banner + held-task behaviour.
+      onUndo: prevContext ? () => {
+        setEaseBackState(null)
+        const TYPE_ALIAS = { sick: 'illness', low: 'other' }
+        const BACKEND_TYPES = new Set(['travel', 'illness', 'busy', 'celebration', 'other'])
+        const aliased = TYPE_ALIAS[prevContext.type] || prevContext.type
+        const apiType = BACKEND_TYPES.has(aliased) ? aliased : 'other'
+        const startIso = prevContext.startDate ? new Date(prevContext.startDate).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10)
+        const endIso = prevContext.endDate ? new Date(prevContext.endDate).toISOString().slice(0, 10) : startIso
+        fetch(`${FUNCTIONS_URL}/api/context`, {
+          method: 'POST',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ context_type: apiType, start_date: startIso, end_date: endIso, description: prevContext.label || '' }),
+        })
+          .then(r => r.ok ? r.json() : null)
+          .then(created => {
+            const newId = created?.context_id || `ctx-${Date.now()}`
+            setActiveContext({ ...prevContext, id: newId })
+            return fetch(`${FUNCTIONS_URL}/api/context`, { headers: authHeaders() })
+          })
+          .then(r => r?.json())
+          .then(d => d && setApiContexts(d))
+          .catch(() => {})
+        setToast(null)
+      } : undefined,
+    })
   }, [FUNCTIONS_URL])
 
   const handleDetailOpen = useCallback((ctx, status) => {
@@ -10813,12 +10984,20 @@ export default function HeedApp() {
 
 
   const handleAddTaskToRoutine = useCallback((task, routineId) => {
+    let didAdd = false
     setRoutines(rs => rs.map(r => {
       if (r.id !== routineId) return r
       if (r.items.includes(task.name)) return r
+      didAdd = true
       return { ...r, items: [...r.items, task.name] }
     }))
-    setToast({ message: `"${task.name}" added to routine` })
+    setToast({
+      message: `"${task.name}" added to routine`,
+      onUndo: didAdd ? () => {
+        setRoutines(rs => rs.map(r => r.id === routineId ? { ...r, items: r.items.filter(it => it !== task.name) } : r))
+        setToast(null)
+      } : undefined,
+    })
   }, [])
 
   const tabs = APP_TABS

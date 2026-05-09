@@ -533,7 +533,7 @@ function parsePlanAdviceActions(text, planId = null) {
 }
 
 // ── useChat hook ───────────────────────────────────────────────
-function useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded } = {}) {
+function useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded, onTaskDeferred, onToast } = {}) {
   const [messages, setMessages] = useState(() => {
     if (typeof window === 'undefined') return []
     try {
@@ -709,6 +709,19 @@ function useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded } = {}) {
         }))
         return
       }
+      if (action.action_type === 'defer') {
+        const taskId = action.task_id || action.payload?.task_id
+        const deferUntil = action.payload?.defer_until
+        if (taskId && deferUntil) {
+          onTaskDeferred?.(taskId, deferUntil)
+        }
+        const prettyDate = deferUntil ? deferUntil.slice(0, 10) : 'later'
+        setMessages(msgs => msgs.map((m, i) => i !== messageIndex ? m : {
+          ...m,
+          actions: m.actions.map((a, j) => j !== actionIndex ? a : { ...a, confirmed: true, summary: `Deferred to ${prettyDate}` }),
+        }))
+        return
+      }
     }
 
     try {
@@ -757,8 +770,12 @@ function useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded } = {}) {
           ),
         }
       }))
+      // Surface the failure outside the bubble too. The inline error field is
+      // easy to miss on a long thread, especially after the user has scrolled
+      // away from the action card. A toast pulls attention back.
+      onToast?.({ message: 'Action failed — try again' })
     }
-  }, [messages, onLightenRoutine, onTaskAdded, onRoutineAdded])
+  }, [messages, onLightenRoutine, onTaskAdded, onRoutineAdded, onToast])
 
   const clearChat = useCallback(() => {
     setMessages([])
@@ -4220,8 +4237,8 @@ function MicButton({ listening, onToggle, disabled }) {
   )
 }
 
-function AskTab({ prefill = '', autoSend = false, onAutoSendDone, onLightenRoutine, onTaskAdded, onRoutineAdded, onViewTask }) {
-  const { messages, input, setInput, thinking, streaming, busy, send, executeAction } = useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded })
+function AskTab({ prefill = '', autoSend = false, onAutoSendDone, onLightenRoutine, onTaskAdded, onRoutineAdded, onTaskDeferred, onViewTask, onToast }) {
+  const { messages, input, setInput, thinking, streaming, busy, send, executeAction } = useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded, onTaskDeferred, onToast })
   const scrollRef = useRef(null)
   const { listening, toggle: toggleMic, supported: micSupported } = useMic(useCallback((text, isFinal) => { if (isFinal) send(text) }, [send]))
   useEffect(() => {
@@ -8240,8 +8257,11 @@ function HeedFAB({ onAddTask, onAskHeed, onAddRoutine }) {
 }
 
 // ── AskInlineModal ─────────────────────────────────────────────
-function AskInlineModal({ open, onClose, onLightenRoutine, onTaskAdded, onRoutineAdded, onViewTask, prefill = '', autoSend = false, onAutoSendDone, contextPlanId = null }) {
-  const { messages, input, setInput, thinking, streaming, busy, send, executeAction } = useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded })
+function AskInlineModal({ open, onClose, onLightenRoutine, onTaskAdded, onRoutineAdded, onTaskDeferred, onViewTask, prefill = '', autoSend = false, onAutoSendDone, contextPlanId = null, onToast }) {
+  const { messages, input, setInput, thinking, streaming, busy, send: rawSend, executeAction } = useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded, onTaskDeferred, onToast })
+  // Bind contextPlanId to every send so plan-advice mode keeps the same plan
+  // attached across follow-up messages, chip clicks, and mic input.
+  const send = useCallback((text) => rawSend(text, contextPlanId), [rawSend, contextPlanId])
   const scrollRef = useRef(null)
   const inputRef = useRef(null)
   const { listening, toggle: toggleMic, supported: micSupported } = useMic(useCallback((text, isFinal) => { if (isFinal) send(text) }, [send]))
@@ -8249,7 +8269,7 @@ function AskInlineModal({ open, onClose, onLightenRoutine, onTaskAdded, onRoutin
   useEffect(() => {
     if (!open || !prefill) return
     if (autoSend) {
-      send(prefill, contextPlanId)
+      send(prefill)
       onAutoSendDone?.()
     } else {
       setInput(prefill)
@@ -10466,6 +10486,13 @@ export default function HeedApp() {
     else fetch(`${FUNCTIONS_URL}/api/tasks`, { headers: authHeaders() }).then(r => r.json()).then(d => Array.isArray(d) && setApiTasks(d)).catch(() => {})
   }
 
+  // Demo-mode defer simulation. Real-mode defer goes through the regular
+  // execute_action HTTP path; this only fires when the chat hook short-circuits
+  // for demo data so the user sees the deferred date take effect immediately.
+  const handleTaskDeferred = useCallback((taskId, deferUntilIso) => {
+    setApiTasks(t => t.map(x => x.id === taskId ? { ...x, next_due_at: deferUntilIso } : x))
+  }, [])
+
   const handleCaptureTask = useCallback(async (payload) => {
     const res = await fetch(`${FUNCTIONS_URL}/api/tasks`, {
       method: 'POST',
@@ -10753,7 +10780,7 @@ export default function HeedApp() {
         <div key={tab} style={{ animation: 'heed-tab-in 0.28s cubic-bezier(0.32,0.72,0,1) both', display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
           {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} plans={plansHook.plans} upcomingContexts={upcomingContexts} skippedTasks={skippedTasks} userName={username} efMode={efMode} onSetEfMode={handleSetEfMode} onMarkDone={handleMarkDone} onSkip={handleSkip} onUnskip={handleUnskip} onMarkRoutineDone={handleMarkRoutineDone} onSkipRoutineToday={handleSkipRoutineToday} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAskHeed={handleAskHeed} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onAddTask={() => setModalOpen(true)} onEditTask={handleEditTask} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }} onNavigateToPlans={() => setTab('context')} onCapture={handleCaptureTask} onCaptureRoutine={handleAddRoutine} onViewTask={task => { setEditingTask(task); setModalOpen(true) }} onToast={setToast}/>}
           {tab === 'calendar' && <CalendarTab tasks={apiTasks} contexts={[...(apiContexts.active||[]), ...(apiContexts.upcoming||[])]} routines={routines} recentSkips={recentSkips} onReschedule={handleReschedule} onMarkDone={handleMarkDone} onSkip={handleSkip} onAddTask={() => setModalOpen(true)} onAddContext={() => setContextModalOpen(true)} onEditRoutine={handleEditRoutine} onApplyRetroSuggestion={handleApplyRetroSuggestion}/>}
-          {tab === 'ask' && <AskTab prefill={askPrefill} autoSend={askAutoSend} onAutoSendDone={() => { setAskAutoSend(false); setAskPrefill('') }} onLightenRoutine={handleLightenRoutine} onTaskAdded={handleTaskAdded} onRoutineAdded={handleAddRoutine} onViewTask={() => setTab('context')}/>}
+          {tab === 'ask' && <AskTab prefill={askPrefill} autoSend={askAutoSend} onAutoSendDone={() => { setAskAutoSend(false); setAskPrefill('') }} onLightenRoutine={handleLightenRoutine} onTaskAdded={handleTaskAdded} onRoutineAdded={handleAddRoutine} onTaskDeferred={handleTaskDeferred} onViewTask={() => setTab('context')} onToast={setToast}/>}
           {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} plans={plansHook.plans} checkTask={plansHook.checkTask} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onMarkRoutineDay={handleMarkRoutineDay} onEditTask={handleEditTask} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }}/>}
           {tab === 'context' && <LifeTab upcoming={apiContexts.upcoming} active={apiContexts.active} activeContext={activeContext} plansHook={plansHook} onAddContext={(data) => data?.type ? handleAddContext({ type: data.type, description: data.desc || data.description, icon: data.icon }) : setContextModalOpen(true)} onQuickContext={type => setQuickContextType(type)} onImBetter={() => setRecoveryOpen(true)} onExtend={handleExtendContext} onDetailOpen={handleDetailOpen} onAskHeed={handleAskHeed} onRemoveUpcoming={handleRemoveUpcoming} openPlanId={navigateToPlanId} onOpenPlanIdConsumed={() => setNavigateToPlanId(null)} addedTaskLabel={navigateToTaskLabel} onAddedTaskLabelConsumed={() => setNavigateToTaskLabel(null)}/>}
         </div>
@@ -10766,7 +10793,7 @@ export default function HeedApp() {
       <AddTaskModal open={modalOpen} onClose={() => { setModalOpen(false); setEditingTask(null) }} onSubmit={handleAddTask} onDelete={handleDeleteTask} initialData={editingTask} customCategories={customCategories}/>
       <BuildRoutineScreen open={routineModalOpen} onClose={() => { setRoutineModalOpen(false); setEditingRoutine(null); setBuildRoutineTask(null) }} onSubmit={data => handleAddRoutine(data, { navigate: true })} initialData={editingRoutine} seedTask={buildRoutineTask} tasks={displayTasks}/>
       <AddContextModal open={contextModalOpen} onClose={() => setContextModalOpen(false)} onSubmit={handleAddContext}/>
-      <AskInlineModal open={askOpen} onClose={() => setAskOpen(false)} onLightenRoutine={handleLightenRoutine} onTaskAdded={handleTaskAdded} onRoutineAdded={handleAddRoutine} onViewTask={(task, planId) => { setAskOpen(false); setNavigateToTaskLabel(task?.name || null); if (planId) { setNavigateToPlanId(planId); setTab('context') } else { setTab('context') } }} prefill={askPrefill} autoSend={askAutoSend} onAutoSendDone={() => { setAskAutoSend(false); setAskPrefill('') }} contextPlanId={askContextPlanId}/>
+      <AskInlineModal open={askOpen} onClose={() => setAskOpen(false)} onLightenRoutine={handleLightenRoutine} onTaskAdded={handleTaskAdded} onRoutineAdded={handleAddRoutine} onTaskDeferred={handleTaskDeferred} onViewTask={(task, planId) => { setAskOpen(false); setNavigateToTaskLabel(task?.name || null); if (planId) { setNavigateToPlanId(planId); setTab('context') } else { setTab('context') } }} prefill={askPrefill} autoSend={askAutoSend} onAutoSendDone={() => { setAskAutoSend(false); setAskPrefill('') }} contextPlanId={askContextPlanId} onToast={setToast}/>
       <TaskOptionsSheet task={taskOptionsTask} onClose={() => setTaskOptionsTask(null)} onMarkDone={handleMarkDone} onSkip={handleSkip} onEdit={handleEditTask} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }}/>
       <AddToRoutineSheet task={addToRoutineTask} routines={routines} onClose={() => setAddToRoutineTask(null)} onSelect={handleAddTaskToRoutine}/>
       <QuickContextSheet type={quickContextType} onClose={() => setQuickContextType(null)} onActivate={handleQuickContext}/>

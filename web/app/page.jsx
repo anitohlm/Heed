@@ -1134,10 +1134,23 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
   const fieldLabel = (text, htmlFor) => (
     <label htmlFor={htmlFor} style={{ display: 'block', fontSize: 11, color: C.inkSoft, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 6 }}>{text}</label>
   )
-  const secLabel = (text, sub) => (
-    <div style={{ marginBottom: 6, marginTop: 20, paddingLeft: 4 }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: C.inkSoft, letterSpacing: 0.5, textTransform: 'uppercase' }}>{text}</div>
-      {sub && <div style={{ fontSize: 12, color: C.inkSoft, marginTop: 2, lineHeight: 1.4 }}>{sub}</div>}
+  // Section label. Upgraded from a flat uppercase rule to a serif title +
+  // optional subtitle and a small icon tile, so the eight sections in this
+  // sheet read like distinct chapters instead of a monotonous run of caps.
+  const secLabel = (text, sub, icon) => (
+    <div style={{ marginBottom: 8, marginTop: 22, paddingLeft: 2, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+      {icon && (
+        <div style={{
+          width: 28, height: 28, borderRadius: 8,
+          background: C.bellySoft, border: `1px solid ${C.hairline}`,
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 14, flexShrink: 0, marginTop: 1,
+        }}>{icon}</div>
+      )}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 14.5, fontWeight: 600, color: C.ink, letterSpacing: -0.1, lineHeight: 1.2 }}>{text}</div>
+        {sub && <div style={{ fontSize: 11.5, color: C.inkMute, marginTop: 2, lineHeight: 1.4 }}>{sub}</div>}
+      </div>
     </div>
   )
   const iconTile = (icon, bg) => (
@@ -1152,19 +1165,28 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
       <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 201, display: 'flex', justifyContent: 'center', animation: 'heed-slideUp 0.3s cubic-bezier(0.16,1,0.3,1)' }}>
         <div ref={containerRef} style={{ background: C.paperHi, width: '100%', maxWidth: 520, borderRadius: '22px 22px 0 0', padding: '0 16px 0 16px', boxShadow: '0 -12px 48px rgba(124,83,51,0.22)', border: `1px solid ${C.border}`, maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
 
-          {/* Handle + Header */}
-          <div style={{ flexShrink: 0, paddingTop: 12, paddingBottom: 16 }}>
-            <div style={{ width: 36, height: 4, borderRadius: 2, background: C.border, margin: '0 auto 18px' }}/>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ flex: 1, fontFamily: 'Lora, Georgia, serif', fontSize: 21, fontWeight: 600, color: C.ink }}>Settings</div>
+          {/* Handle + hero header — owl + serif title + warm subtitle, same
+              opening pattern the four creation flows use. Keeps the close X
+              on the right because this is a bottom sheet and X is the
+              expected dismiss affordance. */}
+          <div style={{ flexShrink: 0, paddingTop: 12, paddingBottom: 14 }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: C.border, margin: '0 auto 14px' }}/>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+              <div style={{ flexShrink: 0, marginTop: 1 }}>
+                <MayaOwl size={38} idle={true}/>
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 21, fontWeight: 600, color: C.ink, letterSpacing: -0.3, lineHeight: 1.1 }}>Settings</div>
+                <div style={{ fontSize: 12.5, color: C.inkMute, marginTop: 3, lineHeight: 1.4 }}>Tune Heed to fit you.</div>
+              </div>
               <button
                 onClick={onClose}
                 aria-label="Close settings"
-                style={{ width: 44, height: 44, borderRadius: '50%', background: C.paper, border: `1px solid ${C.border}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'background 0.12s', touchAction: 'manipulation' }}
+                style={{ width: 40, height: 40, borderRadius: '50%', background: C.paper, border: `1px solid ${C.border}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'background 0.12s', touchAction: 'manipulation' }}
                 onMouseEnter={e => { e.currentTarget.style.background = C.bellySoft }}
                 onMouseLeave={e => { e.currentTarget.style.background = C.paper }}
               >
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
                   <path d="M1 1l12 12M13 1L1 13" stroke={C.inkSoft} strokeWidth="1.8" strokeLinecap="round"/>
                 </svg>
               </button>
@@ -1252,7 +1274,7 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
             </div>
 
             {/* Appearance */}
-            {secLabel('Appearance')}
+            {secLabel('Appearance', null, '🎨')}
             <div style={group}>
               <SettingsRow last>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1 }}>
@@ -1276,7 +1298,7 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
             </div>
 
             {/* Task Categories */}
-            {secLabel('Task Categories', 'Used to tag and group your tasks')}
+            {secLabel('Task Categories', 'Used to tag and group your tasks', '🏷')}
             <div style={group}>
               {builtinCategories.map((cat, i) => (
                 <SettingsRow key={cat.id} last={i === builtinCategories.length - 1 && customCategories.length === 0 && !catOpen}>
@@ -1334,7 +1356,7 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
             </div>
 
             {/* Life Event Types */}
-            {secLabel('Life Event Types', 'Modes that adjust your task flow')}
+            {secLabel('Life Event Types', 'Modes that adjust your task flow', '🗓')}
             <div style={group}>
               {builtinEvents.map((evt, i) => (
                 <SettingsRow key={evt.id} last={i === builtinEvents.length - 1 && customEventTypes.length === 0 && !evtOpen}>
@@ -1385,7 +1407,7 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
             {/* Focus mode toggle — surfaces "Just one thing" mode for crash
                 days. Same flag the Today header toggles, so this is a calm
                 discoverability path for users who don't notice the inline pill. */}
-            {secLabel('Focus')}
+            {secLabel('Focus', null, '🎯')}
             <div style={group}>
               <SettingsRow last
                 onClick={() => onSetEfMode?.(!efMode)}>
@@ -1441,7 +1463,7 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
             </div>
 
             {/* Demo data — toggle between demo and real data modes */}
-            {secLabel('Demo data')}
+            {secLabel('Demo data', null, '✨')}
             {isDemoMode() ? (
               <div style={{
                 background: C.paper,
@@ -1552,7 +1574,7 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
             )}
 
             {/* Heed AI */}
-            {secLabel('Heed AI')}
+            {secLabel('Heed AI', null, '🦉')}
             <div style={group}>
               <SettingsRow onClick={() => { onClearChatToday?.(); onClose() }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1 }}>
@@ -1583,7 +1605,7 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
             {/* Danger zone — pulled out of the standard list group so the
                 destructive action has visual weight, breathing room, and a
                 clear "this is different" treatment. */}
-            {secLabel('Danger zone')}
+            {secLabel('Danger zone', null, '⚠️')}
             <div style={{
               background: C.paper,
               border: `1px solid ${C.rust}55`,
@@ -1641,7 +1663,7 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
             </div>
 
             {/* About */}
-            {secLabel('About')}
+            {secLabel('About', null, '✦')}
             <div style={group}>
               <SettingsRow>
                 {iconTile(
@@ -8821,7 +8843,7 @@ function AskInlineModal({ open, onClose, onLightenRoutine, onTaskAdded, onRoutin
 function AddTaskModal({ open, onClose, onSubmit, onDelete, initialData = null, customCategories = [] }) {
   const isEdit = !!initialData
   const [confirmingDelete, setConfirmingDelete] = useState(false)
-  useEffect(() => { if (!open) { setConfirmingDelete(false); setShowImportanceInfo(false) } }, [open])
+  useEffect(() => { if (!open) { setConfirmingDelete(false); setShowImportanceInfo(false); setShowCadenceInfo(false) } }, [open])
   const [name, setName] = useState('')
   const [category, setCategory] = useState('home')
   const [importance, setImportance] = useState('medium')
@@ -8843,6 +8865,21 @@ function AddTaskModal({ open, onClose, onSubmit, onDelete, initialData = null, c
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [showImportanceInfo])
+  // Tooltip for the "How often?" cadence picker — explains what 'Let Heed
+  // learn it' actually does, since the term is jargon users haven't met
+  // anywhere else in the app. Mirrors the importance ? popover.
+  const [showCadenceInfo, setShowCadenceInfo] = useState(false)
+  const cadenceInfoRef = useRef(null)
+  useEffect(() => {
+    if (!showCadenceInfo) return
+    const handler = (e) => {
+      if (cadenceInfoRef.current && !cadenceInfoRef.current.contains(e.target)) {
+        setShowCadenceInfo(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [showCadenceInfo])
   const inputRef = useRef(null)
   useEffect(() => {
     if (!open) return
@@ -9026,7 +9063,43 @@ function AddTaskModal({ open, onClose, onSubmit, onDelete, initialData = null, c
             </div>
           </div>
           <div style={{ marginBottom: 18 }}>
-            <label style={getFieldLabel()}>How often?</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, position: 'relative' }} ref={cadenceInfoRef}>
+              <label style={getFieldLabel()}>How often?</label>
+              <button
+                onClick={() => setShowCadenceInfo(v => !v)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', color: C.inkMute, lineHeight: 1, marginBottom: 6 }}
+                aria-label="What does 'Let Heed learn it' do?"
+                aria-expanded={showCadenceInfo}
+              >
+                <svg width="15" height="15" viewBox="0 0 15 15" aria-hidden="true">
+                  <circle cx="7.5" cy="7.5" r="6.5" fill="none" stroke={C.inkMute} strokeWidth="1.5"/>
+                  <text x="7.5" y="11.5" textAnchor="middle" fontSize="9" fontWeight="700" fill={C.inkMute} fontFamily="inherit">?</text>
+                </svg>
+              </button>
+              {showCadenceInfo && (
+                <div role="tooltip" style={{
+                  position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 30,
+                  background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 10,
+                  padding: '12px 14px', boxShadow: C.shadowMed, maxWidth: 280,
+                  animation: 'heed-fadeIn 0.15s ease',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 10 }}>
+                    <span style={{ fontSize: 13, color: C.sage, flexShrink: 0, marginTop: 1 }}>✨</span>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 12.5, color: C.ink, marginBottom: 2 }}>Let Heed learn it</div>
+                      <div style={{ fontSize: 12, color: C.inkMute, lineHeight: 1.45 }}>Heed watches when you complete this and figures out the right rhythm — no schedule needed.</div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                    <span style={{ fontSize: 13, color: C.warmDark, flexShrink: 0, marginTop: 1 }}>⏱</span>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 12.5, color: C.ink, marginBottom: 2 }}>I'll set it</div>
+                      <div style={{ fontSize: 12, color: C.inkMute, lineHeight: 1.45 }}>Pick the days yourself when you already know the cadence — bills, taxes, oil changes.</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
             <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
               <button onClick={() => { setCadenceMode('learn'); markCadenceTouched() }} style={{ flex: 1, background: cadenceMode === 'learn' ? C.bellySoft : C.paper, color: cadenceMode === 'learn' ? C.warmDark : C.inkSoft, border: `1.5px solid ${cadenceMode === 'learn' ? C.warmDark + '66' : C.border}`, padding: '8px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, transition: 'all 0.15s' }}>
                 <span style={{ color: C.sage }}>✨</span>Let Heed learn it

@@ -10538,6 +10538,9 @@ export default function HeedApp() {
         setToast(null)
       },
     })
+    // demo_* IDs are frontend-only mock tasks — never persisted to Cosmos.
+    // Hitting the API with them yields a 400 "Task not found".
+    if (typeof taskId === 'string' && taskId.startsWith('demo_')) return
     fetch(`${FUNCTIONS_URL}/api/completions`, {
       method: 'POST',
       headers: authHeaders({ 'Content-Type': 'application/json' }),
@@ -10564,12 +10567,15 @@ export default function HeedApp() {
     // the reason. Without this, the advisor's slip-pattern logic only ever
     // sees "other" and can't tell "too busy" from "forgot".
     // We also keep a local copy in recentSkips for retrospective patterns.
+    const isDemoTask = typeof taskId === 'string' && taskId.startsWith('demo_')
     const recordSkip = (reason) => {
-      fetch(`${FUNCTIONS_URL}/api/completions`, {
-        method: 'POST',
-        headers: authHeaders({ 'Content-Type': 'application/json' }),
-        body: JSON.stringify({ task_id: taskId, event_type: 'skipped', skip_reason: reason }),
-      }).catch(() => {})
+      if (!isDemoTask) {
+        fetch(`${FUNCTIONS_URL}/api/completions`, {
+          method: 'POST',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ task_id: taskId, event_type: 'skipped', skip_reason: reason }),
+        }).catch(() => {})
+      }
       setRecentSkips(s => {
         // Replace any earlier 'other'-reason entry for the same task in the
         // last 60 seconds with the refined reason — keeps the local log clean.
@@ -10605,6 +10611,10 @@ export default function HeedApp() {
   const handleReschedule = useCallback(async (taskId, newDate) => {
     const d = new Date(newDate)
     if (isNaN(d.getTime())) return
+    if (typeof taskId === 'string' && taskId.startsWith('demo_')) {
+      setApiTasks(t => t.map(x => x.id === taskId ? { ...x, next_due_at: d.toISOString() } : x))
+      return
+    }
     try {
       const res = await fetch(`${FUNCTIONS_URL}/api/tasks/${taskId}`, {
         method: 'PATCH',

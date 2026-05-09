@@ -862,6 +862,7 @@ const THEME_META = {
   'parchment-light': { dot: '#8B2E16', label: 'Parchment Light' },
   'midnight-fern':   { dot: '#6A9E6A', label: 'Midnight Fern' },
   'inkwash':         { dot: '#A0682A', label: 'Inkwash' },
+  'flamingo':        { dot: '#E8755A', label: 'Flamingo' },
 }
 function ThemeSwitcher({ theme, onTheme }) {
   return (

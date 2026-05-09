@@ -1066,16 +1066,20 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
     const file = e.target.files?.[0]
     if (!file) return
 
+    // Clear stale error from a previous failed attempt before validating.
+    // Errors below now persist until the user dismisses them or starts
+    // another upload, instead of auto-vanishing after 3s where they could
+    // be missed if the user scrolled away from the avatar section.
+    setAvatarError('')
+
     const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
     if (!allowed.includes(file.type)) {
       setAvatarError('Please use a JPEG, PNG, WebP, or GIF image.')
-      setTimeout(() => setAvatarError(''), 3000)
       return
     }
 
     if (file.size > 1_048_576) {
       setAvatarError('Image must be under 1 MB.')
-      setTimeout(() => setAvatarError(''), 3000)
       return
     }
 
@@ -1088,7 +1092,6 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
     const isGif  = bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x38
     if (!isJpeg && !isPng && !isWebp && !isGif) {
       setAvatarError('File does not appear to be a valid image.')
-      setTimeout(() => setAvatarError(''), 3000)
       return
     }
 
@@ -1119,7 +1122,6 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
       onAvatarChange(dataUrl)
     } catch {
       setAvatarError('Upload failed — try again.')
-      setTimeout(() => setAvatarError(''), 3000)
     } finally {
       setAvatarUploading(false)
       e.target.value = ''
@@ -1205,8 +1207,19 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
                   )}
                 </div>
                 {avatarError && (
-                  <div style={{ color: C.rust, fontSize: 12, textAlign: 'center', marginBottom: 8 }}>
-                    {avatarError}
+                  <div role="alert" style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 8,
+                    background: C.rustSoft, border: `1px solid ${C.rust}55`,
+                    color: C.rust, fontSize: 12, fontWeight: 500,
+                    padding: '6px 10px 6px 12px', borderRadius: 999,
+                    margin: '0 auto 10px',
+                  }}>
+                    <span>{avatarError}</span>
+                    <button onClick={() => setAvatarError('')} aria-label="Dismiss" style={{
+                      background: 'transparent', border: 'none', color: C.rust,
+                      cursor: 'pointer', padding: 0, lineHeight: 1, fontSize: 16,
+                      fontFamily: 'inherit', fontWeight: 600,
+                    }}>×</button>
                   </div>
                 )}
                 <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatarFile}/>
@@ -6841,7 +6854,7 @@ function SummaryRow({ icon, iconColor, label, sub }) {
 }
 
 // ── EventsPanel ─────────────────────────────────────────────────
-function EventsPanel({ allUpcoming, activeContext, onAddContext, onQuickContext, onImBetter, onExtend, onDetailOpen, onRemoveUpcoming }) {
+function EventsPanel({ allUpcoming, activeContext, routines = [], onAddContext, onQuickContext, onImBetter, onExtend, onDetailOpen, onRemoveUpcoming }) {
   const [screen, setScreen] = useState(null) // null | 'detail' | 'past' | 'past-detail' | 'add'
   const [modal, setModal]   = useState(null) // null | 'save-confirm' | 'conflict' | 'im-back' | 'conflict-summary' | 'recovery-summary' | 'deferred' | 'extend'
   const [selEvt, setSelEvt]   = useState(null)
@@ -6891,26 +6904,45 @@ function EventsPanel({ allUpcoming, activeContext, onAddContext, onQuickContext,
     const tasksOnHoldSub = (newEventType === 'sick' || newEventType === 'illness')
       ? 'They\'ll surface when you\'re better'
       : `They\'ll surface when ${newLower} ends`
+    // Real routine count + names from the parent's routines list. Falls back
+    // to a generic phrasing when the user has no routines instead of inventing
+    // 'Morning routine · Evening wind-down'.
+    const routineCount = routines.length
+    const routineNamesSub = routineCount === 0
+      ? 'No routines to pause'
+      : routineCount === 1
+        ? routines[0].name
+        : routineCount === 2
+          ? `${routines[0].name} · ${routines[1].name}`
+          : `${routines[0].name} · ${routines[1].name} +${routineCount - 2} more`
+    const routinesPausedRow = { icon: '✓', color: C.sage, label: routineCount === 0 ? 'No routines to pause' : 'Routines paused', sub: routineNamesSub }
     const base = [
-      { icon: '✓', color: C.sage,    label: 'Routines paused',           sub: 'Morning routine · Evening wind-down' },
-      { icon: '✓', color: C.sage,    label: 'Non-urgent tasks on hold',   sub: tasksOnHoldSub },
-      { icon: '✓', color: C.sage,    label: 'Check-in set for 3 days',    sub: checkInCopy },
+      routinesPausedRow,
+      { icon: '✓', color: C.sage, label: 'Non-urgent tasks on hold', sub: tasksOnHoldSub },
+      { icon: '✓', color: C.sage, label: 'Check-in set for 3 days',  sub: checkInCopy },
     ]
+    // The 'deadline tasks flagged / remain due' row used to invent a count
+    // and fake task names. Without passing the full task list down here we
+    // can't compute it accurately, so the row is now a generic acknowledgement
+    // that deadline-style tasks stay visible (for push mode) or get flagged
+    // (for rest / close modes) — no specific count, no fake names.
     if (mode === 'rest') return [
       { icon: '✓', color: C.sage,    label: `${activeEvt?.label || 'Active event'} ended early`, sub: `${newLabel} takes over` },
       ...base,
-      { icon: '⚠', color: C.ochre,  label: '3 deadline tasks flagged',   sub: 'Still need your attention' },
+      { icon: '⚠', color: C.ochre,  label: 'Deadline tasks stay flagged',  sub: 'Still need your attention' },
     ]
     if (mode === 'push') return [
       { icon: '✓', color: C.sage,    label: 'Deadline period still active',  sub: 'Work tasks stay visible' },
-      { icon: '✓', color: C.sage,    label: 'Personal routines paused',       sub: 'Morning routine · Evening wind-down' },
-      { icon: '✓', color: C.sage,    label: 'Personal tasks held',            sub: 'Non-work items deferred' },
-      { icon: '⚠', color: C.ochre,  label: '3 deadline tasks remain due',    sub: 'Pay bill · Submit timesheet · Sprint retro' },
+      routineCount === 0
+        ? { icon: '✓', color: C.sage, label: 'Personal tasks held',         sub: 'Non-work items deferred' }
+        : { icon: '✓', color: C.sage, label: 'Personal routines paused',    sub: routineNamesSub },
+      { icon: '✓', color: C.sage,    label: 'Personal tasks held',          sub: 'Non-work items deferred' },
+      { icon: '⚠', color: C.ochre,  label: 'Deadline tasks remain due',    sub: 'Heed will keep them visible' },
     ]
     return [
       { icon: '✓', color: C.sage,    label: `${activeEvt?.label || 'Active event'} closed`,   sub: 'Marked complete as of today' },
       ...base,
-      { icon: '⚠', color: C.ochre,  label: '3 deadline tasks flagged',   sub: 'Were still open when period closed' },
+      { icon: '⚠', color: C.ochre,  label: 'Deadline tasks stay flagged',  sub: 'Were still open when period closed' },
     ]
   }
 
@@ -7590,7 +7622,7 @@ function EventsPanel({ allUpcoming, activeContext, onAddContext, onQuickContext,
 }
 
 // ── LifeTab ──────────────────────────────────────────────────────
-function LifeTab({ upcoming, active, activeContext, plansHook, onAddContext, onQuickContext, onImBetter, onExtend, onDetailOpen, onAskHeed, onRemoveUpcoming, openPlanId, onOpenPlanIdConsumed, addedTaskLabel, onAddedTaskLabelConsumed }) {
+function LifeTab({ upcoming, active, activeContext, routines, plansHook, onAddContext, onQuickContext, onImBetter, onExtend, onDetailOpen, onAskHeed, onRemoveUpcoming, openPlanId, onOpenPlanIdConsumed, addedTaskLabel, onAddedTaskLabelConsumed }) {
   const [subtab, setSubtab] = useState('plans')
   useEffect(() => {
     if (!openPlanId) return
@@ -7622,6 +7654,7 @@ function LifeTab({ upcoming, active, activeContext, plansHook, onAddContext, onQ
         <EventsPanel
           allUpcoming={allUpcoming}
           activeContext={activeContext}
+          routines={routines}
           onAddContext={onAddContext}
           onQuickContext={onQuickContext}
           onImBetter={onImBetter}
@@ -10171,6 +10204,20 @@ function UsernameGate({ onComplete }) {
 // ── Main App ───────────────────────────────────────────────────
 export default function HeedApp() {
   const [username, setUsername] = React.useState(() => getUsername())
+  // displayName is a UI-only label (greetings, initials). It defaults to
+  // username on first load but can be changed independently in Settings
+  // without affecting the X-User-ID identity used for API calls. Without
+  // this split, editing the Settings name field swapped the user's whole
+  // backend identity and risked colliding with another registered user.
+  const [displayName, setDisplayName] = React.useState(() => {
+    try {
+      const stored = localStorage.getItem('heed.display-name')
+      return stored || getUsername()
+    } catch { return getUsername() }
+  })
+  useEffect(() => {
+    try { localStorage.setItem('heed.display-name', displayName || '') } catch (_) {}
+  }, [displayName])
   const [avatar, setAvatar] = React.useState(() => getAvatar())
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
@@ -11251,12 +11298,12 @@ export default function HeedApp() {
         <div className="heed-header-date" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontSize: 13, color: C.inkSoft, fontWeight: 500 }}>{todayStr}</div>
-            <div style={{ fontSize: 11.5, color: C.inkMute, marginTop: 2 }}>Hi, {username} 👋</div>
+            <div style={{ fontSize: 11.5, color: C.inkMute, marginTop: 2 }}>Hi, {displayName || username} 👋</div>
           </div>
-          <AvatarButton name={username} avatar={avatar} onClick={() => setSettingsOpen(true)}/>
+          <AvatarButton name={displayName || username} avatar={avatar} onClick={() => setSettingsOpen(true)}/>
         </div>
         <div className="heed-theme-mobile" style={{ alignItems: 'center' }}>
-          <AvatarButton name={username} avatar={avatar} onClick={() => setSettingsOpen(true)}/>
+          <AvatarButton name={displayName || username} avatar={avatar} onClick={() => setSettingsOpen(true)}/>
         </div>
       </header>
 
@@ -11275,11 +11322,11 @@ export default function HeedApp() {
             replays. Slide-in from a few px right + fade gives a native-feeling
             transition without tracking previous tab for direction. */}
         <div key={tab} style={{ animation: 'heed-tab-in 0.28s cubic-bezier(0.32,0.72,0,1) both', display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
-          {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} plans={plansHook.plans} upcomingContexts={upcomingContexts} skippedTasks={skippedTasks} userName={username} efMode={efMode} onSetEfMode={handleSetEfMode} onMarkDone={handleMarkDone} onSkip={handleSkip} onUnskip={handleUnskip} onMarkRoutineDone={handleMarkRoutineDone} onSkipRoutineToday={handleSkipRoutineToday} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAskHeed={handleAskHeed} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onAddTask={() => setModalOpen(true)} onEditTask={handleEditTask} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }} onNavigateToPlans={() => setTab('context')} onCapture={handleCaptureTask} onCaptureRoutine={handleAddRoutine} onViewTask={task => { setEditingTask(task); setModalOpen(true) }} onToast={setToast}/>}
+          {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} plans={plansHook.plans} upcomingContexts={upcomingContexts} skippedTasks={skippedTasks} userName={displayName || username} efMode={efMode} onSetEfMode={handleSetEfMode} onMarkDone={handleMarkDone} onSkip={handleSkip} onUnskip={handleUnskip} onMarkRoutineDone={handleMarkRoutineDone} onSkipRoutineToday={handleSkipRoutineToday} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAskHeed={handleAskHeed} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onAddTask={() => setModalOpen(true)} onEditTask={handleEditTask} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }} onNavigateToPlans={() => setTab('context')} onCapture={handleCaptureTask} onCaptureRoutine={handleAddRoutine} onViewTask={task => { setEditingTask(task); setModalOpen(true) }} onToast={setToast}/>}
           {tab === 'calendar' && <CalendarTab tasks={apiTasks} contexts={[...(apiContexts.active||[]), ...(apiContexts.upcoming||[])]} routines={routines} recentSkips={recentSkips} onReschedule={handleReschedule} onMarkDone={handleMarkDone} onSkip={handleSkip} onAddTask={() => setModalOpen(true)} onAddContext={() => setContextModalOpen(true)} onEditRoutine={handleEditRoutine} onApplyRetroSuggestion={handleApplyRetroSuggestion}/>}
           {tab === 'ask' && <AskTab prefill={askPrefill} autoSend={askAutoSend} onAutoSendDone={() => { setAskAutoSend(false); setAskPrefill('') }} onLightenRoutine={handleLightenRoutine} onTaskAdded={handleTaskAdded} onRoutineAdded={handleAddRoutine} onTaskDeferred={handleTaskDeferred} onViewTask={() => setTab('context')} onToast={setToast}/>}
           {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} plans={plansHook.plans} checkTask={plansHook.checkTask} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onMarkRoutineDay={handleMarkRoutineDay} onEditTask={handleEditTask} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }}/>}
-          {tab === 'context' && <LifeTab upcoming={apiContexts.upcoming} active={apiContexts.active} activeContext={activeContext} plansHook={plansHook} onAddContext={(data) => data?.type ? handleAddContext({ type: data.type, description: data.desc || data.description, icon: data.icon }) : setContextModalOpen(true)} onQuickContext={type => setQuickContextType(type)} onImBetter={() => setRecoveryOpen(true)} onExtend={handleExtendContext} onDetailOpen={handleDetailOpen} onAskHeed={handleAskHeed} onRemoveUpcoming={handleRemoveUpcoming} openPlanId={navigateToPlanId} onOpenPlanIdConsumed={() => setNavigateToPlanId(null)} addedTaskLabel={navigateToTaskLabel} onAddedTaskLabelConsumed={() => setNavigateToTaskLabel(null)}/>}
+          {tab === 'context' && <LifeTab upcoming={apiContexts.upcoming} active={apiContexts.active} activeContext={activeContext} routines={routines} plansHook={plansHook} onAddContext={(data) => data?.type ? handleAddContext({ type: data.type, description: data.desc || data.description, icon: data.icon }) : setContextModalOpen(true)} onQuickContext={type => setQuickContextType(type)} onImBetter={() => setRecoveryOpen(true)} onExtend={handleExtendContext} onDetailOpen={handleDetailOpen} onAskHeed={handleAskHeed} onRemoveUpcoming={handleRemoveUpcoming} openPlanId={navigateToPlanId} onOpenPlanIdConsumed={() => setNavigateToPlanId(null)} addedTaskLabel={navigateToTaskLabel} onAddedTaskLabelConsumed={() => setNavigateToTaskLabel(null)}/>}
         </div>
       </main>
 
@@ -11305,7 +11352,7 @@ export default function HeedApp() {
         onAskHeed={handleAskHeed}
       />
       <ShareCardSheet routine={shareCtx} onClose={handleShareClose}/>
-      <SettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} userName={username} onUserName={name => { setUsername(name); try { localStorage.setItem('heed.username', name) } catch (_) {} }} theme={theme} onTheme={handleSetTheme} customCategories={customCategories} onAddCategory={cat => setCustomCategories(cs => [...cs, cat])} customEventTypes={customEventTypes} onAddEventType={evt => setCustomEventTypes(es => [...es, evt])} onResetAllData={handleResetAllData} onLoadDemoData={handleLoadDemoData} onSwitchToRealData={handleSwitchToRealData} efMode={efMode} onSetEfMode={handleSetEfMode} avatar={avatar} onAvatarChange={handleAvatarChange} onClearChatToday={() => {
+      <SettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} userName={displayName} onUserName={name => setDisplayName(name)} theme={theme} onTheme={handleSetTheme} customCategories={customCategories} onAddCategory={cat => setCustomCategories(cs => [...cs, cat])} customEventTypes={customEventTypes} onAddEventType={evt => setCustomEventTypes(es => [...es, evt])} onResetAllData={handleResetAllData} onLoadDemoData={handleLoadDemoData} onSwitchToRealData={handleSwitchToRealData} efMode={efMode} onSetEfMode={handleSetEfMode} avatar={avatar} onAvatarChange={handleAvatarChange} onClearChatToday={() => {
         try {
           const raw = localStorage.getItem('heed.chat-history.v1')
           if (raw) {

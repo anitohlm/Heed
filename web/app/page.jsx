@@ -5023,7 +5023,18 @@ function EditPlanScreen({ plan, onBack, onSave, onAddTask, onDeleteTask, onRenam
 }
 
 // ── PlanBubbleDetailScreen ──────────────────────────────────────
-function PlanBubbleDetailScreen({ plan, onBack, onEdit, onCheck, onTaskSelect, onArchive, onAskHeed }) {
+function PlanBubbleDetailScreen({ plan, onBack, onEdit, onCheck, onTaskSelect, onArchive, onAskHeed, addedTaskLabel, onAddedTaskLabelConsumed }) {
+  const [showAddedBanner, setShowAddedBanner] = useState(false)
+  const [bannerLabel, setBannerLabel] = useState('')
+  useEffect(() => {
+    if (!addedTaskLabel) return
+    setBannerLabel(addedTaskLabel)
+    setShowAddedBanner(true)
+    onAddedTaskLabelConsumed?.()
+    const t = setTimeout(() => setShowAddedBanner(false), 3000)
+    return () => clearTimeout(t)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addedTaskLabel])
   const doneCount  = plan.tasks ? plan.tasks.filter(t => t.done).length : 0
   const totalCount = plan.tasks ? plan.tasks.length : 0
   const pct = plan.type === 'goal'
@@ -5049,6 +5060,17 @@ function PlanBubbleDetailScreen({ plan, onBack, onEdit, onCheck, onTaskSelect, o
         <span style={{ flex: 1, fontSize: 16, fontWeight: 700, color: C.ink, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{plan.title}</span>
         <button onClick={onEdit} style={{ background: 'none', border: 'none', color: C.inkSoft, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Edit</button>
       </div>
+      {showAddedBanner && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', background: '#e8f5e9', borderBottom: '1px solid #a5d6a7', flexShrink: 0, animation: 'heed-slideDown 0.35s cubic-bezier(0.16,1,0.3,1)' }}>
+          <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#4caf50', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </div>
+          <div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#2e7d32', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Task added</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#1b5e20', lineHeight: 1.3 }}>{bannerLabel}</div>
+          </div>
+        </div>
+      )}
       <div style={{ flex: 1, overflowY: 'auto', padding: '20px 20px 32px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 24 }}>
           <div style={{ position: 'relative', width: 160, height: 160 }}>
@@ -6289,7 +6311,7 @@ function GoalUpdateSheet({ plan, onClose, onSave }) {
 }
 
 // ── PlansPanel ───────────────────────────────────────────────────
-function PlansPanel({ plans, checkTask, renameTask, addTask, deleteTask, reorderTasks, addPlan, updatePlan, archivePlan, restorePlan, onAskHeed, openPlanId, onOpenPlanIdConsumed }) {
+function PlansPanel({ plans, checkTask, renameTask, addTask, deleteTask, reorderTasks, addPlan, updatePlan, archivePlan, restorePlan, onAskHeed, openPlanId, onOpenPlanIdConsumed, addedTaskLabel, onAddedTaskLabelConsumed }) {
   const [addOpen, setAddOpen] = useState(false)
   const [selectedPlanId, setSelectedPlanId] = useState(null)
   useEffect(() => {
@@ -6333,6 +6355,8 @@ function PlansPanel({ plans, checkTask, renameTask, addTask, deleteTask, reorder
             onTaskSelect={i => setTaskDetail({ planId: selectedPlan.id, taskIndex: i })}
             onArchive={() => { archivePlan?.(selectedPlan.id); setSelectedPlanId(null) }}
             onAskHeed={(query, planId) => { setSelectedPlanId(null); onAskHeed?.(query, planId) }}
+            addedTaskLabel={addedTaskLabel}
+            onAddedTaskLabelConsumed={onAddedTaskLabelConsumed}
           />
         )}
         {editPlan && (
@@ -7221,7 +7245,7 @@ function EventsPanel({ allUpcoming, activeContext, onAddContext, onQuickContext,
 }
 
 // ── LifeTab ──────────────────────────────────────────────────────
-function LifeTab({ upcoming, active, activeContext, plansHook, onAddContext, onQuickContext, onImBetter, onExtend, onDetailOpen, onAskHeed, openPlanId, onOpenPlanIdConsumed }) {
+function LifeTab({ upcoming, active, activeContext, plansHook, onAddContext, onQuickContext, onImBetter, onExtend, onDetailOpen, onAskHeed, openPlanId, onOpenPlanIdConsumed, addedTaskLabel, onAddedTaskLabelConsumed }) {
   const [subtab, setSubtab] = useState('plans')
   useEffect(() => {
     if (!openPlanId) return
@@ -7239,7 +7263,7 @@ function LifeTab({ upcoming, active, activeContext, plansHook, onAddContext, onQ
         <SegmentButton active={subtab === 'plans'} onClick={() => setSubtab('plans')} label="Plans" count={plansHook.plans.length} accent={C.warmDark}/>
         <SegmentButton active={subtab === 'events'} onClick={() => setSubtab('events')} label="Events" count={(activeContext ? 1 : 0) + allUpcoming.length} accent={C.sage}/>
       </div>
-      {subtab === 'plans'  && <PlansPanel {...plansHook} onAskHeed={onAskHeed} openPlanId={openPlanId} onOpenPlanIdConsumed={onOpenPlanIdConsumed}/>}
+      {subtab === 'plans'  && <PlansPanel {...plansHook} onAskHeed={onAskHeed} openPlanId={openPlanId} onOpenPlanIdConsumed={onOpenPlanIdConsumed} addedTaskLabel={addedTaskLabel} onAddedTaskLabelConsumed={onAddedTaskLabelConsumed}/>}
       {subtab === 'events' && (
         <EventsPanel
           allUpcoming={allUpcoming}
@@ -9828,6 +9852,7 @@ export default function HeedApp() {
   const [askAutoSend, setAskAutoSend] = useState(false)
   const [askContextPlanId, setAskContextPlanId] = useState(null)
   const [navigateToPlanId, setNavigateToPlanId] = useState(null)
+  const [navigateToTaskLabel, setNavigateToTaskLabel] = useState(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [editingTask, setEditingTask] = useState(null)
   const [askOpen, setAskOpen] = useState(false)
@@ -10400,6 +10425,7 @@ export default function HeedApp() {
         @keyframes heed-slideUp { from { opacity:0; transform:translateY(40px); } to { opacity:1; transform:translateY(0); } }
         @keyframes heed-slideRight { from { opacity:0; transform:translateX(20px); } to { opacity:1; transform:translateX(0); } }
         @keyframes heed-slideIn { from { transform:translateX(100%); } to { transform:translateX(0); } }
+        @keyframes heed-slideDown { from { opacity:0; transform:translateY(-10px); } to { opacity:1; transform:translateY(0); } }
         ::selection { background:${C.warmDark}; color:${C.cream}; }
         * { box-sizing: border-box; }
         body { margin: 0; }
@@ -10459,7 +10485,7 @@ export default function HeedApp() {
           {tab === 'calendar' && <CalendarTab tasks={apiTasks} contexts={[...(apiContexts.active||[]), ...(apiContexts.upcoming||[])]} routines={routines} recentSkips={recentSkips} onReschedule={handleReschedule} onMarkDone={handleMarkDone} onSkip={handleSkip} onAddTask={() => setModalOpen(true)} onAddContext={() => setContextModalOpen(true)} onEditRoutine={handleEditRoutine} onApplyRetroSuggestion={handleApplyRetroSuggestion}/>}
           {tab === 'ask' && <AskTab prefill={askPrefill} autoSend={askAutoSend} onAutoSendDone={() => { setAskAutoSend(false); setAskPrefill('') }} onLightenRoutine={handleLightenRoutine} onTaskAdded={handleTaskAdded} onRoutineAdded={handleAddRoutine} onViewTask={() => setTab('context')}/>}
           {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} plans={plansHook.plans} checkTask={plansHook.checkTask} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onMarkRoutineDay={handleMarkRoutineDay} onEditTask={handleEditTask} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }}/>}
-          {tab === 'context' && <LifeTab upcoming={apiContexts.upcoming} active={apiContexts.active} activeContext={activeContext} plansHook={plansHook} onAddContext={(data) => data?.type ? handleAddContext({ type: data.type, description: data.desc || data.description }) : setContextModalOpen(true)} onQuickContext={type => setQuickContextType(type)} onImBetter={() => setRecoveryOpen(true)} onExtend={handleExtendContext} onDetailOpen={handleDetailOpen} onAskHeed={handleAskHeed} openPlanId={navigateToPlanId} onOpenPlanIdConsumed={() => setNavigateToPlanId(null)}/>}
+          {tab === 'context' && <LifeTab upcoming={apiContexts.upcoming} active={apiContexts.active} activeContext={activeContext} plansHook={plansHook} onAddContext={(data) => data?.type ? handleAddContext({ type: data.type, description: data.desc || data.description }) : setContextModalOpen(true)} onQuickContext={type => setQuickContextType(type)} onImBetter={() => setRecoveryOpen(true)} onExtend={handleExtendContext} onDetailOpen={handleDetailOpen} onAskHeed={handleAskHeed} openPlanId={navigateToPlanId} onOpenPlanIdConsumed={() => setNavigateToPlanId(null)} addedTaskLabel={navigateToTaskLabel} onAddedTaskLabelConsumed={() => setNavigateToTaskLabel(null)}/>}
         </div>
       </main>
 
@@ -10470,7 +10496,7 @@ export default function HeedApp() {
       <AddTaskModal open={modalOpen} onClose={() => { setModalOpen(false); setEditingTask(null) }} onSubmit={handleAddTask} onDelete={handleDeleteTask} initialData={editingTask} customCategories={customCategories}/>
       <BuildRoutineScreen open={routineModalOpen} onClose={() => { setRoutineModalOpen(false); setEditingRoutine(null); setBuildRoutineTask(null) }} onSubmit={data => handleAddRoutine(data, { navigate: true })} initialData={editingRoutine} seedTask={buildRoutineTask} tasks={displayTasks}/>
       <AddContextModal open={contextModalOpen} onClose={() => setContextModalOpen(false)} onSubmit={handleAddContext}/>
-      <AskInlineModal open={askOpen} onClose={() => setAskOpen(false)} onLightenRoutine={handleLightenRoutine} onTaskAdded={handleTaskAdded} onRoutineAdded={handleAddRoutine} onViewTask={(task, planId) => { setAskOpen(false); if (planId) { setNavigateToPlanId(planId); setTab('context') } else { setTab('context') } }} prefill={askPrefill} autoSend={askAutoSend} onAutoSendDone={() => { setAskAutoSend(false); setAskPrefill('') }} contextPlanId={askContextPlanId}/>
+      <AskInlineModal open={askOpen} onClose={() => setAskOpen(false)} onLightenRoutine={handleLightenRoutine} onTaskAdded={handleTaskAdded} onRoutineAdded={handleAddRoutine} onViewTask={(task, planId) => { setAskOpen(false); setNavigateToTaskLabel(task?.name || null); if (planId) { setNavigateToPlanId(planId); setTab('context') } else { setTab('context') } }} prefill={askPrefill} autoSend={askAutoSend} onAutoSendDone={() => { setAskAutoSend(false); setAskPrefill('') }} contextPlanId={askContextPlanId}/>
       <TaskOptionsSheet task={taskOptionsTask} onClose={() => setTaskOptionsTask(null)} onMarkDone={handleMarkDone} onSkip={handleSkip} onEdit={handleEditTask} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }}/>
       <AddToRoutineSheet task={addToRoutineTask} routines={routines} onClose={() => setAddToRoutineTask(null)} onSelect={handleAddTaskToRoutine}/>
       <QuickContextSheet type={quickContextType} onClose={() => setQuickContextType(null)} onActivate={handleQuickContext}/>

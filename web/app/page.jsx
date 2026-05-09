@@ -8547,10 +8547,123 @@ function MonthStrip({ tasks, monthOffset, selectedWeekStart, onWeekSelect, onMon
   )
 }
 
-function WeekDetail({ tasks, weekStart, onTaskTap, onWeekOffsetChange, onAddTask, contexts = [], routines = [], onEditRoutine }) {
+function InlineTaskDetail({ task, onClose, onMarkDone, onSkip, onReschedule }) {
+  const dateInputRef = useRef(null)
+  const [pulse, setPulse] = useState(false)
+
+  const cadenceLabel = task.learned_cadence_days
+    ? `every ~${task.learned_cadence_days} days`
+    : task.explicit_cadence_days
+    ? `every ~${task.explicit_cadence_days} days`
+    : 'unset'
+  const lastDoneLabel = task.last_done_at
+    ? new Date(task.last_done_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    : 'Never'
+  const dueLabel = task.next_due_at
+    ? parseDue(task.next_due_at)?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) ?? '—'
+    : '—'
+
+  function reschedule(newDate) {
+    onReschedule(task.id, newDate)
+    onClose()
+  }
+
+  const quickDates = [
+    { label: 'Today',   date: () => new Date() },
+    { label: '+1 day',  date: () => addDays(new Date(), 1) },
+    { label: '+3 days', date: () => addDays(new Date(), 3) },
+    { label: '+1 week', date: () => addDays(new Date(), 7) },
+  ]
+
+  return (
+    <div
+      data-testid="inline-task-detail"
+      onClick={e => e.stopPropagation()}
+      className="heed-inline-detail"
+      style={{
+        margin: '4px 8px',
+        background: C.paperHi,
+        border: `1px solid ${C.border}`,
+        borderRadius: 10,
+        padding: 12,
+        boxShadow: '0 2px 8px rgba(124,83,51,0.06)',
+      }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, marginBottom: 8 }}>
+        <div>
+          <div style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 700, color: C.warmDark }}>{task.name}</div>
+          <div style={{ display: 'flex', gap: 5, marginTop: 4, alignItems: 'center', flexWrap: 'wrap' }}>
+            <ImportanceBadge importance={task.importance}/>
+            {task.category && (
+              <span style={{ background: C.sage, color: C.cream, padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600 }}>{task.category}</span>
+            )}
+          </div>
+        </div>
+        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+          <div style={{ fontSize: 9, color: C.inkMute, textTransform: 'uppercase', letterSpacing: 0.4, fontWeight: 700 }}>Due</div>
+          <div style={{ fontSize: 12, color: C.rust, fontWeight: 700 }}>{dueLabel}</div>
+        </div>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 10 }}>
+        {[{ l: 'Cadence', v: cadenceLabel }, { l: 'Last done', v: lastDoneLabel }].map(({ l, v }) => (
+          <div key={l} style={{ background: C.bellySoft, borderRadius: 6, padding: '6px 8px' }}>
+            <div style={{ fontSize: 9, color: C.inkMute, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4 }}>{l}</div>
+            <div style={{ fontSize: 12, color: C.ink, fontWeight: 600, marginTop: 2 }}>{v}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{ fontSize: 9, color: C.inkMute, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 5 }}>Reschedule to</div>
+      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 10 }}>
+        {quickDates.map(({ label, date }) => (
+          <button key={label} onClick={() => reschedule(date())}
+            style={{ background: C.paper, border: `1.5px solid ${C.border}`, color: C.ink, padding: '5px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+            {label}
+          </button>
+        ))}
+        <button onClick={() => dateInputRef.current?.showPicker?.() || dateInputRef.current?.click()}
+          style={{ background: C.paper, border: `1.5px solid ${C.border}`, color: C.ink, padding: '5px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+          📅 Pick
+        </button>
+        <input ref={dateInputRef} type="date"
+          style={{ position: 'fixed', opacity: 0, pointerEvents: 'none', width: 0, height: 0 }}
+          onChange={e => { if (e.target.value) reschedule(new Date(e.target.value + 'T12:00:00')) }}/>
+      </div>
+      <div style={{ display: 'flex', gap: 6 }}>
+        <button
+          onClick={() => {
+            setPulse(true)
+            setTimeout(() => { onMarkDone(task); onClose() }, 120)
+          }}
+          className={pulse ? 'heed-pulse' : ''}
+          style={{ flex: 1, background: C.sage, color: C.cream, border: 'none', padding: 8, borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+          ✓ Mark done
+        </button>
+        <button onClick={() => { onSkip(task); onClose() }}
+          style={{ flex: 1, background: C.paper, color: C.warmDark, border: `1.5px solid ${C.border}`, padding: 8, borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+          ↷ Skip
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function WeekDetail({ tasks, weekStart, onTaskTap, onWeekOffsetChange, onAddTask, contexts = [], routines = [], onEditRoutine, onMarkDone, onSkip, onReschedule }) {
   const today = new Date()
   const impColor = { high: C.rust, medium: C.ochre, low: C.sage }
   const impIcon  = { high: '●', medium: '◆', low: '○' }
+
+  const [expandedTaskId, setExpandedTaskId] = useState(null)
+  const expandedTask = tasks.find(t => t.id === expandedTaskId) || null
+
+  useEffect(() => {
+    if (!expandedTaskId) return
+    function onDocPointerDown(e) {
+      const el = e.target
+      if (el.closest && (el.closest('[data-task-chip]') || el.closest('[data-testid="inline-task-detail"]'))) return
+      setExpandedTaskId(null)
+    }
+    document.addEventListener('pointerdown', onDocPointerDown)
+    return () => document.removeEventListener('pointerdown', onDocPointerDown)
+  }, [expandedTaskId])
 
   const swipeRef = useRef(null)
   function handleTouchStart(e) {
@@ -8642,44 +8755,75 @@ function WeekDetail({ tasks, weekStart, onTaskTap, onWeekOffsetChange, onAddTask
           const dayTasks = tasks.filter(t => { const d = parseDue(t.next_due_at); return d && sameDay(d, date) })
           const dayCtxs  = contextsOnDay(date)
           const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
+          const showCardHere = expandedTask && (() => {
+            const d = parseDue(expandedTask.next_due_at)
+            return d && sameDay(d, date)
+          })()
           return (
-            <div key={i}
-              style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '8px 10px', borderRadius: 8, background: isToday ? C.bellySoft + '80' : 'transparent', minHeight: 40 }}>
-              <div style={{ flexShrink: 0, width: 44, display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 2 }}>
-                <div style={{ fontSize: 9, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: 0.5 }}>{dayNames[i]}</div>
-                <div style={{ fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600, color: isToday ? C.cream : C.warmDark, width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: isToday ? C.warmDark : 'transparent', marginTop: 2 }}>
-                  {date.getDate()}
+            <React.Fragment key={i}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '8px 10px', borderRadius: 8, background: isToday ? C.bellySoft + '80' : 'transparent', minHeight: 40 }}>
+                <div style={{ flexShrink: 0, width: 44, display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 2 }}>
+                  <div style={{ fontSize: 9, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: 0.5 }}>{dayNames[i]}</div>
+                  <div className={isToday ? 'heed-today-glow' : ''}
+                    style={{ fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600, color: isToday ? C.cream : C.warmDark, width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: isToday ? C.warmDark : 'transparent', marginTop: 2 }}>
+                    {date.getDate()}
+                  </div>
+                </div>
+                <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center', paddingTop: 6 }}>
+                  {dayCtxs.map((ctx, j) => {
+                    const cfg = QUICK_CONTEXT_CONFIG[ctx.context_type] || {}
+                    return (
+                      <div key={j} style={{ background: C.ochreSoft, border: `1px solid ${C.ochre}55`, borderRadius: 5, padding: '3px 8px', fontSize: 10.5, color: C.warmDark, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3, whiteSpace: 'nowrap', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {cfg.icon || '📅'} {ctx.description || cfg.label || ctx.context_type}
+                      </div>
+                    )
+                  })}
+                  {dayTasks.map(task => {
+                    const imp  = task.importance || 'medium'
+                    const bg   = ({ high: C.rust, medium: C.ochre, low: C.sage })[imp] || C.ochre
+                    const icon = ({ high: '●', medium: '◆', low: '○' })[imp] || '◆'
+                    const isExpanded = expandedTaskId === task.id
+                    return (
+                      <div key={task.id}
+                        data-task-chip
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setExpandedTaskId(prev => prev === task.id ? null : task.id)
+                        }}
+                        onPointerDown={e => { e.currentTarget.style.transform = 'scale(0.96)' }}
+                        onPointerUp={e => { e.currentTarget.style.transform = 'scale(1)' }}
+                        onPointerLeave={e => { e.currentTarget.style.transform = 'scale(1)' }}
+                        style={{
+                          background: bg, borderRadius: 5, padding: '4px 10px',
+                          fontSize: 11, color: C.cream, fontWeight: 600, cursor: 'pointer',
+                          userSelect: 'none', whiteSpace: 'nowrap',
+                          boxShadow: isExpanded ? `inset 0 0 0 1.5px ${C.warmDark}` : 'none',
+                          transition: 'transform 80ms ease-out',
+                        }}>
+                        {icon} {task.name}
+                      </div>
+                    )
+                  })}
+                  {dayTasks.length === 0 && dayCtxs.length === 0 && (
+                    <button onClick={() => onAddTask(date)}
+                      style={{ background: 'none', border: `1px dashed ${C.border}`, color: C.inkMute, padding: '3px 10px', borderRadius: 5, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit', opacity: 0.55, transition: 'opacity 140ms' }}
+                      onMouseEnter={e => { e.currentTarget.style.opacity = 1 }}
+                      onMouseLeave={e => { e.currentTarget.style.opacity = 0.55 }}>
+                      + Add task
+                    </button>
+                  )}
                 </div>
               </div>
-              <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center', paddingTop: 6 }}>
-                {dayCtxs.map((ctx, j) => {
-                  const cfg = QUICK_CONTEXT_CONFIG[ctx.context_type] || {}
-                  return (
-                    <div key={j} style={{ background: C.ochreSoft, border: `1px solid ${C.ochre}55`, borderRadius: 5, padding: '3px 8px', fontSize: 10.5, color: C.warmDark, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3, whiteSpace: 'nowrap', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {cfg.icon || '📅'} {ctx.description || cfg.label || ctx.context_type}
-                    </div>
-                  )
-                })}
-                {dayTasks.map(task => {
-                  const imp  = task.importance || 'medium'
-                  const bg   = impColor[imp] || C.ochre
-                  const icon = impIcon[imp]  || '◆'
-                  return (
-                    <div key={task.id}
-                      onClick={() => onTaskTap(task)}
-                      style={{ background: bg, borderRadius: 5, padding: '4px 10px', fontSize: 11, color: C.cream, fontWeight: 600, cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
-                      {icon} {task.name}
-                    </div>
-                  )
-                })}
-                {dayTasks.length === 0 && (
-                  <button onClick={() => onAddTask(date)}
-                    style={{ background: 'none', border: `1px dashed ${C.border}`, color: C.inkMute, padding: '3px 10px', borderRadius: 5, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit', opacity: 0.6 }}>
-                    + Add task
-                  </button>
-                )}
-              </div>
-            </div>
+              {showCardHere && (
+                <InlineTaskDetail
+                  task={expandedTask}
+                  onClose={() => setExpandedTaskId(null)}
+                  onMarkDone={onMarkDone}
+                  onSkip={onSkip}
+                  onReschedule={onReschedule}
+                />
+              )}
+            </React.Fragment>
           )
         })}
       </div>

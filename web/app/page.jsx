@@ -4206,7 +4206,6 @@ function MicButton({ listening, onToggle, disabled }) {
 
 function AskTab({ prefill = '', autoSend = false, onAutoSendDone, onLightenRoutine, onTaskAdded, onRoutineAdded, onViewTask }) {
   const { messages, input, setInput, thinking, streaming, busy, send, executeAction } = useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded })
-  const [showScrollBtn, setShowScrollBtn] = useState(false)
   const scrollRef = useRef(null)
   const { listening, toggle: toggleMic, supported: micSupported } = useMic(useCallback((text, isFinal) => { if (isFinal) send(text) }, [send]))
   useEffect(() => {
@@ -4243,12 +4242,7 @@ function AskTab({ prefill = '', autoSend = false, onAutoSendDone, onLightenRouti
       )}
       {messages.length > 0 && (
         <div style={{ flex: 1, position: 'relative', display: 'flex', flexDirection: 'column', minHeight: 0, marginBottom: 12 }}>
-          <div ref={scrollRef} className="heed-ask-scroll" style={{ flex: 1, overflowY: 'auto', padding: '12px 4px' }}
-            onScroll={e => {
-              const el = e.currentTarget
-              setShowScrollBtn(el.scrollHeight - el.scrollTop - el.clientHeight > 80)
-            }}
-          >
+          <div ref={scrollRef} className="heed-ask-scroll" style={{ flex: 1, overflowY: 'auto', padding: '12px 4px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 18 }}>
               <MayaOwl size={72} mood={owlMood} speaking={busy}/>
             </div>
@@ -4263,16 +4257,13 @@ function AskTab({ prefill = '', autoSend = false, onAutoSendDone, onLightenRouti
             {thinking !== null && <ThinkingBubble steps={thinking}/>}
             {streaming && <Bubble role="assistant" content={streaming} streaming/>}
           </div>
-          {showScrollBtn && (
-            <button
-              onClick={() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight }}
-              aria-label="Scroll to bottom"
-              style={{ position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', gap: 5, background: C.warmDark, color: C.cream, border: 'none', borderRadius: 20, padding: '6px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', boxShadow: '0 2px 10px rgba(44,24,16,0.25)', fontFamily: 'inherit', zIndex: 2, animation: 'heed-fadeIn 0.15s ease', whiteSpace: 'nowrap' }}
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12l7 7 7-7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              Latest
-            </button>
-          )}
+          <button
+            onClick={() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight }}
+            aria-label="Scroll to bottom"
+            style={{ position: 'absolute', bottom: 16, right: 8, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', background: C.warmDark, color: C.cream, border: 'none', borderRadius: '50%', cursor: 'pointer', boxShadow: '0 2px 8px rgba(44,24,16,0.3)', zIndex: 2 }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12l7 7 7-7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
         </div>
       )}
       {/* Input bar — portaled to document.body so position:fixed pins
@@ -8217,7 +8208,6 @@ function HeedFAB({ onAddTask, onAskHeed, onAddRoutine }) {
 // ── AskInlineModal ─────────────────────────────────────────────
 function AskInlineModal({ open, onClose, onLightenRoutine, onTaskAdded, onRoutineAdded, onViewTask, prefill = '', autoSend = false, onAutoSendDone, contextPlanId = null }) {
   const { messages, input, setInput, thinking, streaming, busy, send, executeAction } = useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded })
-  const [showScrollBtn, setShowScrollBtn] = useState(false)
   const scrollRef = useRef(null)
   const inputRef = useRef(null)
   const { listening, toggle: toggleMic, supported: micSupported } = useMic(useCallback((text, isFinal) => { if (isFinal) send(text) }, [send]))
@@ -8264,12 +8254,7 @@ function AskInlineModal({ open, onClose, onLightenRoutine, onTaskAdded, onRoutin
             <button onClick={onClose} aria-label="Close" style={{ background: 'transparent', border: 'none', color: C.inkMute, cursor: 'pointer', fontSize: 20, padding: 4, lineHeight: 1, fontFamily: 'inherit' }}>×</button>
           </div>
           <div style={{ flex: 1, position: 'relative', display: 'flex', flexDirection: 'column', minHeight: messages.length === 0 ? 'auto' : 200, marginBottom: 12 }}>
-            <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', paddingRight: 4 }}
-              onScroll={e => {
-                const el = e.currentTarget
-                setShowScrollBtn(el.scrollHeight - el.scrollTop - el.clientHeight > 80)
-              }}
-            >
+            <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', paddingRight: 4 }}>
               {messages.length === 0 && !busy && (
                 <>
                   <div style={{ fontSize: 13, color: C.inkSoft, fontStyle: 'italic', marginBottom: 12, lineHeight: 1.5 }}>
@@ -8299,14 +8284,13 @@ function AskInlineModal({ open, onClose, onLightenRoutine, onTaskAdded, onRoutin
               {thinking !== null && <ThinkingBubble steps={thinking}/>}
               {streaming && <Bubble role="assistant" content={streaming} streaming/>}
             </div>
-            {showScrollBtn && (
+            {messages.length > 0 && (
               <button
                 onClick={() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight }}
                 aria-label="Scroll to bottom"
-                style={{ position: 'absolute', bottom: 8, left: '50%', transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', gap: 5, background: C.warmDark, color: C.cream, border: 'none', borderRadius: 20, padding: '5px 12px', fontSize: 11.5, fontWeight: 600, cursor: 'pointer', boxShadow: '0 2px 10px rgba(44,24,16,0.25)', fontFamily: 'inherit', zIndex: 2, animation: 'heed-fadeIn 0.15s ease', whiteSpace: 'nowrap' }}
+                style={{ position: 'absolute', bottom: 8, right: 0, width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', background: C.warmDark, color: C.cream, border: 'none', borderRadius: '50%', cursor: 'pointer', boxShadow: '0 2px 8px rgba(44,24,16,0.3)', zIndex: 2 }}
               >
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12l7 7 7-7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                Latest
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12l7 7 7-7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
               </button>
             )}
           </div>

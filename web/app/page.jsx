@@ -2199,13 +2199,13 @@ function DateField({ value, onChange, placeholder = 'Pick a date' }) {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
             <button type="button" onClick={() => setViewMonth(m => new Date(m.getFullYear(), m.getMonth()-1, 1))}
               aria-label="Previous month"
-              style={{ background: 'none', border: 'none', color: C.inkSoft, padding: 6, cursor: 'pointer', fontFamily: 'inherit', borderRadius: 6, lineHeight: 0 }}>
+              style={{ background: 'none', border: 'none', color: C.inkSoft, cursor: 'pointer', fontFamily: 'inherit', borderRadius: 6, width: 40, height: 40, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', touchAction: 'manipulation' }}>
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 2l-5 5 5 5" stroke={C.inkSoft} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/></svg>
             </button>
             <div style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, color: C.warmDark }}>{monthLabel}</div>
             <button type="button" onClick={() => setViewMonth(m => new Date(m.getFullYear(), m.getMonth()+1, 1))}
               aria-label="Next month"
-              style={{ background: 'none', border: 'none', color: C.inkSoft, padding: 6, cursor: 'pointer', fontFamily: 'inherit', borderRadius: 6, lineHeight: 0 }}>
+              style={{ background: 'none', border: 'none', color: C.inkSoft, cursor: 'pointer', fontFamily: 'inherit', borderRadius: 6, width: 40, height: 40, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', touchAction: 'manipulation' }}>
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M5 2l5 5-5 5" stroke={C.inkSoft} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/></svg>
             </button>
           </div>
@@ -3723,7 +3723,7 @@ function RoutineCard({ routine, delay = 0, onMarkDone, onLighten, onEdit, onShar
                 disabled={!onMarkDay}
                 aria-label={`Mark ${label} ${done ? 'not done' : 'done'}`}
                 title={`${done ? 'Done' : 'Not done'} ${label} — click to toggle`}
-                style={{ background: 'transparent', border: 'none', padding: 0, margin: 0, cursor: onMarkDay ? 'pointer' : 'default', lineHeight: 0 }}>
+                style={{ background: 'transparent', border: 'none', padding: '8px 2px', margin: 0, cursor: onMarkDay ? 'pointer' : 'default', lineHeight: 0, touchAction: 'manipulation' }}>
                 <svg width="16" height="18" viewBox="0 0 16 18" fill="none" aria-hidden="true">
                   <path d="M8 1 C8 1, 15 5, 15 10 C15 14, 12 17, 8 17 C4 17, 1 14, 1 10 C1 5, 8 1, 8 1 Z"
                     fill={done ? C.sage : 'transparent'}
@@ -6505,7 +6505,7 @@ function GoalUpdateSheet({ plan, onClose, onSave }) {
   }
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 200 }} onClick={onClose}>
-      <div style={{ position: 'absolute', inset: 0, background: C.scrim, backdropFilter: 'blur(2px)' }}/>
+      <div style={{ position: 'absolute', inset: 0, background: C.scrim, backdropFilter: 'blur(4px)' }}/>
       <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: C.paper, borderRadius: '20px 20px 0 0', padding: `22px 22px calc(22px + env(safe-area-inset-bottom)) 22px`, animation: 'heed-slideUp 0.28s cubic-bezier(0.32,0.72,0,1)', boxShadow: '0 -8px 32px rgba(0,0,0,0.12)' }}>
         <div style={{ width: 40, height: 4, borderRadius: 2, background: C.border, margin: '0 auto 18px' }}/>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
@@ -6739,7 +6739,7 @@ function HeedSheet({ open, onClose, children }) {
   if (!open) return null
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 310, display: 'flex', alignItems: 'flex-end' }} onClick={onClose}>
-      <div style={{ position: 'absolute', inset: 0, background: C.scrim, backdropFilter: 'blur(2px)' }}/>
+      <div style={{ position: 'absolute', inset: 0, background: C.scrim, backdropFilter: 'blur(4px)' }}/>
       <div onClick={e => e.stopPropagation()} style={{ position: 'relative', width: '100%', background: C.paper, borderRadius: '22px 22px 0 0', border: `1px solid ${C.border}`, paddingBottom: 'calc(20px + env(safe-area-inset-bottom))', animation: 'heed-slideUp 0.3s cubic-bezier(0.16,1,0.3,1)', maxHeight: '88vh', overflowY: 'auto' }}>
         <div style={{ width: 36, height: 4, borderRadius: 2, background: C.border, margin: '10px auto 0' }}/>
         {children}
@@ -8760,7 +8760,7 @@ function AddTaskModal({ open, onClose, onSubmit, onDelete, initialData = null, c
       </div>
       {confirmingDelete && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 300 }}>
-          <div onClick={() => setConfirmingDelete(false)} style={{ position: 'absolute', inset: 0, background: C.scrim, backdropFilter: 'blur(2px)', animation: 'heed-fadeIn 0.18s ease' }}/>
+          <div onClick={() => setConfirmingDelete(false)} style={{ position: 'absolute', inset: 0, background: C.scrim, backdropFilter: 'blur(4px)', animation: 'heed-fadeIn 0.18s ease' }}/>
           <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, display: 'flex', justifyContent: 'center', animation: 'heed-slideUp 0.28s cubic-bezier(0.16,1,0.3,1)', pointerEvents: 'none' }}>
             <div style={{ background: C.paperHi, width: '100%', maxWidth: 440, margin: '0 16px 16px 16px', borderRadius: '20px 20px 14px 14px', padding: '22px 22px 18px 22px', boxShadow: '0 -8px 40px rgba(0,0,0,0.35)', border: `1px solid ${C.border}`, pointerEvents: 'auto' }}>
               <div style={{ fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 600, color: C.warmDark, marginBottom: 6 }}>
@@ -9434,7 +9434,7 @@ function TaskOptionsSheet({ task, onClose, onMarkDone, onSkip, onEdit, onAddToRo
   if (!task) return null
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 200 }} onClick={onClose}>
-      <div style={{ position: 'absolute', inset: 0, background: C.scrim, backdropFilter: 'blur(2px)' }}/>
+      <div style={{ position: 'absolute', inset: 0, background: C.scrim, backdropFilter: 'blur(4px)' }}/>
       <div ref={containerRef} onClick={e => e.stopPropagation()} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: C.paper, borderRadius: '20px 20px 0 0', padding: `24px 24px calc(24px + env(safe-area-inset-bottom)) 24px`, animation: 'heed-slideUp 0.28s cubic-bezier(0.32,0.72,0,1)', boxShadow: '0 -8px 32px rgba(0,0,0,0.12)' }}>
         <div style={{ width: 40, height: 4, borderRadius: 2, background: C.border, margin: '0 auto 20px' }}/>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
@@ -9524,7 +9524,7 @@ function AddToRoutineSheet({ task, routines, onClose, onSelect }) {
   if (!task) return null
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 200 }} onClick={onClose}>
-      <div style={{ position: 'absolute', inset: 0, background: C.scrim, backdropFilter: 'blur(2px)' }}/>
+      <div style={{ position: 'absolute', inset: 0, background: C.scrim, backdropFilter: 'blur(4px)' }}/>
       <div ref={containerRef} onClick={e => e.stopPropagation()} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: C.paper, borderRadius: '20px 20px 0 0', padding: `24px 24px calc(24px + env(safe-area-inset-bottom)) 24px`, animation: 'heed-slideUp 0.28s cubic-bezier(0.32,0.72,0,1)', boxShadow: '0 -8px 32px rgba(0,0,0,0.12)', maxHeight: '70vh', overflowY: 'auto' }}>
         <div style={{ width: 40, height: 4, borderRadius: 2, background: C.border, margin: '0 auto 20px' }}/>
         <div style={{ fontFamily: 'Lora, serif', fontSize: 17, fontWeight: 600, color: C.ink, marginBottom: 3 }}>Add to a routine</div>
@@ -9572,7 +9572,7 @@ function QuickContextSheet({ type, onClose, onActivate }) {
   if (!type) return null
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 200 }} onClick={onClose}>
-      <div style={{ position: 'absolute', inset: 0, background: C.scrim, backdropFilter: 'blur(2px)' }}/>
+      <div style={{ position: 'absolute', inset: 0, background: C.scrim, backdropFilter: 'blur(4px)' }}/>
       <div ref={containerRef} onClick={e => e.stopPropagation()} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: C.paper, borderRadius: '20px 20px 0 0', padding: `24px 24px calc(24px + env(safe-area-inset-bottom)) 24px`, animation: 'heed-slideUp 0.28s cubic-bezier(0.32,0.72,0,1)', boxShadow: '0 -8px 32px rgba(0,0,0,0.12)' }}>
         <div style={{ width: 40, height: 4, borderRadius: 2, background: C.border, margin: '0 auto 20px' }}/>
         <div style={{ fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 600, color: C.ink, marginBottom: 4 }}>{cfg.icon} {cfg.question}</div>
@@ -9634,7 +9634,7 @@ function RecoverySummarySheet({ open, context, heldTasks, onClose, onResumeAll, 
   const gladEmoji = QUICK_CONTEXT_CONFIG[context.type]?.icon || '✨'
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 200 }} onClick={onClose}>
-      <div style={{ position: 'absolute', inset: 0, background: C.scrim, backdropFilter: 'blur(2px)' }}/>
+      <div style={{ position: 'absolute', inset: 0, background: C.scrim, backdropFilter: 'blur(4px)' }}/>
       <div ref={containerRef} onClick={e => e.stopPropagation()} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: C.paper, borderRadius: '20px 20px 0 0', padding: `24px 24px calc(24px + env(safe-area-inset-bottom)) 24px`, animation: 'heed-slideUp 0.28s cubic-bezier(0.32,0.72,0,1)', boxShadow: '0 -8px 32px rgba(0,0,0,0.12)' }}>
         <div style={{ width: 40, height: 4, borderRadius: 2, background: C.border, margin: '0 auto 20px' }}/>
         <div style={{ fontFamily: 'Lora, serif', fontSize: 17, fontWeight: 600, color: C.ink, marginBottom: 4 }}>Glad you're back {gladEmoji}</div>
@@ -9869,7 +9869,7 @@ function ContextDetailSheet({ open, ctx, heldTasks, onClose, onImBetter, onExten
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 200 }} onClick={onClose}>
-      <div style={{ position: 'absolute', inset: 0, background: C.scrim, backdropFilter: 'blur(2px)' }}/>
+      <div style={{ position: 'absolute', inset: 0, background: C.scrim, backdropFilter: 'blur(4px)' }}/>
       <div ref={containerRef} onClick={e => e.stopPropagation()} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: C.paper, borderRadius: '20px 20px 0 0', padding: `24px 24px calc(24px + env(safe-area-inset-bottom)) 24px`, animation: 'heed-slideUp 0.28s cubic-bezier(0.32,0.72,0,1)', boxShadow: '0 -8px 32px rgba(0,0,0,0.12)', maxHeight: '80vh', overflowY: 'auto' }}>
         <div style={{ width: 40, height: 4, borderRadius: 2, background: C.border, margin: '0 auto 20px' }}/>
 

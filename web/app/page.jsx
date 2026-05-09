@@ -1030,6 +1030,8 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
   const [evtOpen, setEvtOpen] = useState(false)
   const [avatarUploading, setAvatarUploading] = useState(false)
   const [avatarError, setAvatarError] = useState('')
+  // Which destructive confirmation sheet is open. null when none.
+  const [confirmSheet, setConfirmSheet] = useState(null) // 'demo' | 'reset' | null
   const fileInputRef = useRef(null)
 
   useEffect(() => {
@@ -1513,17 +1515,7 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
                 </div>
                 <button
                   type="button"
-                  onClick={() => {
-                    if (typeof window === 'undefined') return
-                    const ok = window.confirm(
-                      'Load demo data?\n\n' +
-                      'This wipes your current tasks, routines, plans, and chat history, ' +
-                      'then loads a curated demo set so Focus Today is populated. ' +
-                      'Use this if you want a fresh, judge-ready view.'
-                    )
-                    if (!ok) return
-                    onLoadDemoData()
-                  }}
+                  onClick={() => setConfirmSheet('demo')}
                   style={{
                     width: '100%',
                     background: 'transparent',
@@ -1613,17 +1605,7 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
               </div>
               <button
                 type="button"
-                onClick={() => {
-                  if (typeof window === 'undefined') return
-                  const ok = window.confirm(
-                    'Reset all data?\n\n' +
-                    'This permanently removes your tasks, routines, plans, contexts, completions, ' +
-                    'and chat history — both on this device and on the server. ' +
-                    'You will start with a fresh app. This cannot be undone.'
-                  )
-                  if (!ok) return
-                  onResetAllData?.()
-                }}
+                onClick={() => setConfirmSheet('reset')}
                 style={{
                   width: '100%',
                   background: 'transparent',
@@ -1669,6 +1651,26 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
           </div>
         </div>
       </div>
+      <ConfirmSheet
+        open={confirmSheet === 'demo'}
+        title="Load demo data?"
+        body="Heed will swap your current view for a curated demo set so Today is populated. Your real data on the server stays safe — you can switch back any time."
+        confirmLabel="Load demo"
+        cancelLabel="Keep mine"
+        tone="sage"
+        onConfirm={onLoadDemoData}
+        onClose={() => setConfirmSheet(null)}
+      />
+      <ConfirmSheet
+        open={confirmSheet === 'reset'}
+        title="Reset everything?"
+        body="This permanently removes your tasks, routines, plans, contexts, and chat history — on this device and on the server. There's no undo."
+        confirmLabel="Reset everything"
+        cancelLabel="Cancel"
+        tone="rust"
+        onConfirm={onResetAllData}
+        onClose={() => setConfirmSheet(null)}
+      />
     </>
   )
 }
@@ -4557,7 +4559,16 @@ function TracksTab({ tasks, routines, plans, checkTask, onMarkDone, onSkip, onMa
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
             <button onClick={onAddRoutine} style={getBtnPrimary()}>+ Build routine</button>
           </div>
-          {routines.map((r, i) => <RoutineCard key={r.id} routine={r} delay={i * 50} onMarkDone={onMarkRoutineDone} onLighten={onLightenRoutine} onEdit={onEditRoutine} onShare={onShareCard} onMarkDay={onMarkRoutineDay}/>)}
+          {routines.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px 24px', color: C.inkMute }}>
+              <div style={{ fontSize: 32, marginBottom: 10 }}>🌱</div>
+              <div style={{ fontSize: 14, color: C.inkSoft, lineHeight: 1.55, fontStyle: 'italic', maxWidth: 320, margin: '0 auto' }}>
+                No routines yet. Build one to cluster a few small habits and let Heed track them quietly.
+              </div>
+            </div>
+          ) : (
+            routines.map((r, i) => <RoutineCard key={r.id} routine={r} delay={i * 50} onMarkDone={onMarkRoutineDone} onLighten={onLightenRoutine} onEdit={onEditRoutine} onShare={onShareCard} onMarkDay={onMarkRoutineDay}/>)
+          )}
         </div>
       )}
       {subtab === 'tasks' && (
@@ -4758,6 +4769,16 @@ function TracksTab({ tasks, routines, plans, checkTask, onMarkDone, onSkip, onMa
           </div>
 
           <div>
+            {filteredTasks.length === 0 && (
+              <div style={{ textAlign: 'center', padding: '40px 24px', color: C.inkMute }}>
+                <div style={{ fontSize: 32, marginBottom: 10 }}>{tasks.length === 0 ? '🌿' : '✨'}</div>
+                <div style={{ fontSize: 14, color: C.inkSoft, lineHeight: 1.55, fontStyle: 'italic', maxWidth: 320, margin: '0 auto' }}>
+                  {tasks.length === 0
+                    ? 'No tasks yet. Tap Add task to start tracking something.'
+                    : 'Nothing in this category. Try another filter or add a task here.'}
+                </div>
+              </div>
+            )}
             {filteredTasks.map((t, i) => <TaskCard key={t.id} task={t} delay={i * 30} onMarkDone={onMarkDone} onSkip={onSkip} onEdit={onEditTask} onAddToRoutine={onAddToRoutine} onBuildRoutine={onBuildRoutine}/>)}
           </div>
           {plans && plans.filter(p => !p.archived && Array.isArray(p.tasks) && p.tasks.length > 0).length > 0 && (
@@ -6745,6 +6766,32 @@ function HeedSheet({ open, onClose, children }) {
         {children}
       </div>
     </div>
+  )
+}
+
+// Drop-in replacement for window.confirm() that fits the app's voice.
+// `tone` styles the primary button: 'rust' for destructive, 'sage' for
+// gentle confirmations, anything else falls back to warm primary.
+function ConfirmSheet({ open, title, body, confirmLabel = 'Confirm', cancelLabel = 'Cancel', tone = 'warm', onConfirm, onClose }) {
+  if (!open) return null
+  const accent = tone === 'rust' ? C.rust : tone === 'sage' ? C.sage : C.warmDark
+  return (
+    <HeedSheet open={open} onClose={onClose}>
+      <div style={{ padding: '20px 22px 4px' }}>
+        <div style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 18, fontWeight: 600, color: C.ink, marginBottom: 8, letterSpacing: -0.2 }}>{title}</div>
+        <div style={{ fontSize: 13.5, color: C.inkSoft, lineHeight: 1.55, marginBottom: 18 }}>{body}</div>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={onClose}
+            style={{ flex: 1, padding: 12, background: 'transparent', color: C.inkSoft, border: `1.5px solid ${C.border}`, borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+            {cancelLabel}
+          </button>
+          <button onClick={() => { onConfirm?.(); onClose?.() }}
+            style={{ flex: 1, padding: 12, background: accent, color: C.cream, border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </HeedSheet>
   )
 }
 

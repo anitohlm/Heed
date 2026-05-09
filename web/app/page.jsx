@@ -4581,10 +4581,9 @@ function TracksTab({ tasks, routines, plans, checkTask, onMarkDone, onSkip, onMa
   }, [tasks, filter, sortBy])
   return (
     <div>
-      <div style={{ marginBottom: 18 }}>
-        <SectionHeader>Tracks</SectionHeader>
-        <div style={{ fontSize: 12.5, color: C.inkMute, fontStyle: 'italic', marginTop: -8 }}>Everything Heed is following for you.</div>
-      </div>
+      {/* The 'Tracks' title + subtitle live in the global page header now
+          (HeedApp swaps the greeting for them when tab === 'tracks'), so
+          the section duplicate that used to sit here was removed. */}
       <div style={{ display: 'flex', background: C.paper, border: `1px solid ${C.border}`, borderRadius: 10, padding: 4, marginBottom: 18, gap: 4 }}>
         <SegmentButton active={subtab === 'routines'} onClick={() => setSubtab('routines')} label="Routines" count={routines.length} accent={C.sage}/>
         <SegmentButton active={subtab === 'tasks'} onClick={() => setSubtab('tasks')} label="Tasks" count={tasks.length} accent={C.warmDark}/>
@@ -11651,18 +11650,28 @@ export default function HeedApp() {
               else calm. Animates 'speaking' during streaming chat (handled by
               the Ask sheet's own MayaOwl). */}
           <MayaOwl size={40} mood={displayTasks.some(t => (t.overdue || 0) >= 7) ? 'worried' : 'calm'}/>
-          {tab === 'context' ? (
-            // Life tab gets a contextual page header instead of the global
-            // greeting. The 'Life' serif title + italic subtitle move up here
-            // so the screen has one clean header instead of two stacked ones.
-            // Note: the subtitle deliberately omits the .heed-header-subtitle
-            // className — that class hides on mobile to save room next to the
-            // greeting, but on the Life tab the subtitle IS the page header
-            // and must stay visible on every viewport.
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 22, fontWeight: 600, color: C.warmDark, letterSpacing: -0.5, lineHeight: 1.1 }}>Life</div>
-              <div style={{ fontSize: 12, color: C.inkSoft, fontStyle: 'italic', marginTop: 3, lineHeight: 1.4 }}>Your plans and life events, in one place.</div>
-            </div>
+          {(tab === 'context' || tab === 'tracks') ? (
+            // Life and Tracks tabs each get a contextual page header
+            // instead of the global greeting. The serif title + italic
+            // subtitle move up here so each screen has one clean header
+            // instead of two stacked ones. The subtitle deliberately
+            // omits the .heed-header-subtitle className — that class
+            // hides on mobile to save room next to the greeting, but
+            // here the subtitle IS the page header and must stay
+            // visible on every viewport.
+            (() => {
+              const headers = {
+                context: { title: 'Life',   sub: 'Your plans and life events, in one place.' },
+                tracks:  { title: 'Tracks', sub: 'Everything Heed is following for you.' },
+              }
+              const h = headers[tab]
+              return (
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 22, fontWeight: 600, color: C.warmDark, letterSpacing: -0.5, lineHeight: 1.1 }}>{h.title}</div>
+                  <div style={{ fontSize: 12, color: C.inkSoft, fontStyle: 'italic', marginTop: 3, lineHeight: 1.4 }}>{h.sub}</div>
+                </div>
+              )
+            })()
           ) : (
             <div style={{ minWidth: 0 }}>
               <div style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 22, fontWeight: 600, color: C.warmDark, letterSpacing: -0.5, lineHeight: 1.1 }}>{headerGreeting.headline}</div>

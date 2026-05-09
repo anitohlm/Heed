@@ -6483,12 +6483,14 @@ function EventsPanel({ allUpcoming, activeContext, onAddContext, onQuickContext,
   }
 
   function handleApplyConflict() {
+    if (newEventType === 'low') { setModal(null); setScreen(null); return }
     const items = buildSaveConfirmItems(conflictMode)
     setSummaryItems(items)
     setModal('conflict-summary')
   }
 
   function handleApplySaveConfirm() {
+    if (newEventType === 'low') { setModal(null); setScreen(null); return }
     const items = buildSaveConfirmItems(null)
     setSummaryItems(items)
     setModal('conflict-summary')

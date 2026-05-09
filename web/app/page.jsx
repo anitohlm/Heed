@@ -563,7 +563,7 @@ function useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded } = {}) {
     const trimmed = text.trim()
     if (!trimmed) return
     const snapshot = [...messages]
-    setMessages(m => [...m, { role: 'user', content: trimmed }])
+    setMessages(m => [...m, { role: 'user', content: trimmed, ts: Date.now() }])
     setInput('')
     setBusy(true)
     setThinking([])
@@ -657,7 +657,7 @@ function useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded } = {}) {
     }
 
     setThinking(null)
-    setMessages(m => [...m, { role: 'assistant', content: finalText, actions: pendingActions, chips: pendingChips }])
+    setMessages(m => [...m, { role: 'assistant', content: finalText, actions: pendingActions, chips: pendingChips, ts: Date.now() }])
     setStreaming('')
     setBusy(false)
   }, [busy, messages])
@@ -725,7 +725,21 @@ function useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded } = {}) {
     try { localStorage.removeItem('heed.chat-history.v1') } catch (_) {}
   }, [])
 
-  return { messages, input, setInput, thinking, streaming, busy, send, executeAction, clearChat }
+  const clearToday = useCallback(() => {
+    const midnight = new Date(); midnight.setHours(0, 0, 0, 0)
+    setMessages(prev => {
+      const kept = prev.filter(m => m.ts && m.ts < midnight.getTime())
+      try {
+        const toSave = kept.slice(-20).map(m => ({ role: m.role, content: m.content, ts: m.ts }))
+        localStorage.setItem('heed.chat-history.v1', JSON.stringify(toSave))
+      } catch (_) {}
+      return kept
+    })
+    setThinking(null)
+    setStreaming('')
+  }, [])
+
+  return { messages, input, setInput, thinking, streaming, busy, send, executeAction, clearChat, clearToday }
 }
 
 // ── useMic hook ────────────────────────────────────────────────
@@ -8108,7 +8122,8 @@ function HeedFAB({ onAddTask, onAskHeed, onAddRoutine }) {
 
 // ── AskInlineModal ─────────────────────────────────────────────
 function AskInlineModal({ open, onClose, onLightenRoutine, onTaskAdded, onRoutineAdded, onViewTask, prefill = '', autoSend = false, onAutoSendDone, contextPlanId = null }) {
-  const { messages, input, setInput, thinking, streaming, busy, send, executeAction, clearChat } = useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded })
+  const { messages, input, setInput, thinking, streaming, busy, send, executeAction, clearChat, clearToday } = useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded })
+  const [clearMenuOpen, setClearMenuOpen] = useState(false)
   const scrollRef = useRef(null)
   const inputRef = useRef(null)
   const { listening, toggle: toggleMic, supported: micSupported } = useMic(useCallback((text, isFinal) => { if (isFinal) send(text) }, [send]))
@@ -8157,17 +8172,39 @@ function AskInlineModal({ open, onClose, onLightenRoutine, onTaskAdded, onRoutin
               <div style={{ fontSize: 11.5, color: C.inkMute, fontStyle: 'italic' }}>Quick chat — your answer in a moment</div>
             </div>
             {messages.length > 0 && !busy && (
-              <button onClick={clearChat} aria-label="Clear chat" title="Clear chat" style={{ background: 'transparent', border: 'none', color: C.inkMute, cursor: 'pointer', padding: 4, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 6, transition: 'color 0.15s' }}
-                onMouseEnter={e => e.currentTarget.style.color = C.rust}
-                onMouseLeave={e => e.currentTarget.style.color = C.inkMute}
-              >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-                  <polyline points="3 6 5 6 21 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M19 6l-1 14H6L5 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M10 11v6M14 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M9 6V4h6v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </button>
+              <div style={{ position: 'relative' }}>
+                <button onClick={() => setClearMenuOpen(v => !v)} aria-label="Clear chat options" title="Clear chat" style={{ background: 'transparent', border: 'none', color: clearMenuOpen ? C.rust : C.inkMute, cursor: 'pointer', padding: 4, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 6, transition: 'color 0.15s' }}
+                  onMouseEnter={e => e.currentTarget.style.color = C.rust}
+                  onMouseLeave={e => { if (!clearMenuOpen) e.currentTarget.style.color = C.inkMute }}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                    <polyline points="3 6 5 6 21 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M19 6l-1 14H6L5 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M10 11v6M14 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M9 6V4h6v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+                {clearMenuOpen && (
+                  <>
+                    <div onClick={() => setClearMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 1 }}/>
+                    <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 6, background: C.paperHi, border: `1px solid ${C.border}`, borderRadius: 10, boxShadow: '0 4px 16px rgba(44,24,16,0.15)', zIndex: 2, minWidth: 160, overflow: 'hidden', animation: 'heed-dropdown 0.15s ease' }}>
+                      {[
+                        { label: 'Clear today', sub: "Today's messages", action: () => { clearToday(); setClearMenuOpen(false) } },
+                        { label: 'Clear all', sub: 'All chat history', action: () => { clearChat(); setClearMenuOpen(false) } },
+                      ].map(item => (
+                        <button key={item.label} onClick={item.action}
+                          style={{ display: 'block', width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', transition: 'background 0.1s' }}
+                          onMouseEnter={e => e.currentTarget.style.background = C.bellySoft}
+                          onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                        >
+                          <div style={{ fontSize: 13, fontWeight: 600, color: C.rust }}>{item.label}</div>
+                          <div style={{ fontSize: 11, color: C.inkMute, marginTop: 1 }}>{item.sub}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
             )}
             <button onClick={onClose} aria-label="Close" style={{ background: 'transparent', border: 'none', color: C.inkMute, cursor: 'pointer', fontSize: 20, padding: 4, lineHeight: 1, fontFamily: 'inherit' }}>×</button>
           </div>

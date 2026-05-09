@@ -6635,7 +6635,7 @@ function SummaryRow({ icon, iconColor, label, sub }) {
 }
 
 // ── EventsPanel ─────────────────────────────────────────────────
-function EventsPanel({ allUpcoming, activeContext, onAddContext, onQuickContext, onImBetter, onExtend, onDetailOpen }) {
+function EventsPanel({ allUpcoming, activeContext, onAddContext, onQuickContext, onImBetter, onExtend, onDetailOpen, onRemoveUpcoming }) {
   const [screen, setScreen] = useState(null) // null | 'detail' | 'past' | 'past-detail' | 'add'
   const [modal, setModal]   = useState(null) // null | 'save-confirm' | 'conflict' | 'im-back' | 'conflict-summary' | 'recovery-summary' | 'deferred' | 'extend'
   const [selEvt, setSelEvt]   = useState(null)
@@ -6832,7 +6832,11 @@ function EventsPanel({ allUpcoming, activeContext, onAddContext, onQuickContext,
               <button onClick={() => setModal('extend')} style={{ flex: 1, padding: 13, background: 'transparent', color: C.ink, border: `1.5px solid ${C.border}`, borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Edit</button>
             </div>
           )}
-          <button onClick={() => { setScreen(null) }} style={{ width: '100%', padding: 13, background: 'transparent', color: C.rust, border: `1.5px solid ${C.rust}40`, borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Remove event</button>
+          <button onClick={() => {
+            setScreen(null)
+            if (isActive) onImBetter?.()
+            else if (isUpcoming) onRemoveUpcoming?.(selEvt)
+          }} style={{ width: '100%', padding: 13, background: 'transparent', color: C.rust, border: `1.5px solid ${C.rust}40`, borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Remove event</button>
         </div>
       </div>
     )
@@ -7361,8 +7365,10 @@ function LifeTab({ upcoming, active, activeContext, plansHook, onAddContext, onQ
     if (!openPlanId) return
     setSubtab('plans')
   }, [openPlanId])
+  const [removedUpcomingIds, setRemovedUpcomingIds] = useState(new Set())
   const apiUpcoming = [...(active || []).map(mapApiContext), ...(upcoming || []).map(mapApiContext)]
-  const allUpcoming = apiUpcoming.length > 0 ? apiUpcoming : (isDemoMode() ? CONTEXTS_UPCOMING_DEMO : [])
+  const allUpcoming = (apiUpcoming.length > 0 ? apiUpcoming : (isDemoMode() ? CONTEXTS_UPCOMING_DEMO : []))
+    .filter(c => !removedUpcomingIds.has(c.id || c.desc))
   return (
     <div>
       <div style={{ marginBottom: 18 }}>
@@ -7383,6 +7389,7 @@ function LifeTab({ upcoming, active, activeContext, plansHook, onAddContext, onQ
           onImBetter={onImBetter}
           onExtend={onExtend}
           onDetailOpen={onDetailOpen}
+          onRemoveUpcoming={(ctx) => setRemovedUpcomingIds(s => new Set([...s, ctx.id || ctx.desc]))}
         />
       )}
     </div>

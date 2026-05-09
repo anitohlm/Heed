@@ -775,6 +775,15 @@ function useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded } = {}) {
     setStreaming('')
   }, [])
 
+  useEffect(() => {
+    window.addEventListener('heed:chat-clear-all', clearChat)
+    window.addEventListener('heed:chat-clear-today', clearToday)
+    return () => {
+      window.removeEventListener('heed:chat-clear-all', clearChat)
+      window.removeEventListener('heed:chat-clear-today', clearToday)
+    }
+  }, [clearChat, clearToday])
+
   return { messages, input, setInput, thinking, streaming, busy, send, executeAction, clearChat, clearToday }
 }
 
@@ -897,7 +906,7 @@ function SettingsRow({ children, last = false, onClick }) {
   )
 }
 
-function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, customCategories, onAddCategory, customEventTypes, onAddEventType, onResetAllData, onLoadDemoData, onSwitchToRealData, efMode, onSetEfMode, avatar, onAvatarChange }) {
+function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, customCategories, onAddCategory, customEventTypes, onAddEventType, onResetAllData, onLoadDemoData, onSwitchToRealData, efMode, onSetEfMode, avatar, onAvatarChange, onClearChatToday, onClearChatAll }) {
   const [nameVal, setNameVal] = useState(userName)
   const [nameSaved, setNameSaved] = useState(false)
   const [pendingTheme, setPendingTheme] = useState(theme)
@@ -1422,6 +1431,35 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
                 </button>
               </div>
             )}
+
+            {/* Heed AI */}
+            {secLabel('Heed AI')}
+            <div style={group}>
+              <SettingsRow onClick={() => { onClearChatToday?.(); onClose() }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1 }}>
+                  {iconTile(
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M5 6l1 14h12l1-14M10 11v6M14 11v6" stroke={C.ochre} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+                    C.ochre + '20'
+                  )}
+                  <div>
+                    <div style={{ fontSize: 15, color: C.ink, fontWeight: 500 }}>Clear today's chat</div>
+                    <div style={{ fontSize: 12, color: C.inkSoft, marginTop: 1 }}>Remove today's messages from Ask Heed</div>
+                  </div>
+                </div>
+              </SettingsRow>
+              <SettingsRow last onClick={() => { onClearChatAll?.(); onClose() }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1 }}>
+                  {iconTile(
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M5 6l1 14h12l1-14M10 11v6M14 11v6" stroke={C.inkSoft} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+                    C.inkSoft + '20'
+                  )}
+                  <div>
+                    <div style={{ fontSize: 15, color: C.ink, fontWeight: 500 }}>Clear all chat history</div>
+                    <div style={{ fontSize: 12, color: C.inkSoft, marginTop: 1 }}>Wipe the entire Ask Heed conversation</div>
+                  </div>
+                </div>
+              </SettingsRow>
+            </div>
 
             {/* Danger zone — pulled out of the standard list group so the
                 destructive action has visual weight, breathing room, and a
@@ -4167,8 +4205,8 @@ function MicButton({ listening, onToggle, disabled }) {
 }
 
 function AskTab({ prefill = '', autoSend = false, onAutoSendDone, onLightenRoutine, onTaskAdded, onRoutineAdded, onViewTask }) {
-  const { messages, input, setInput, thinking, streaming, busy, send, executeAction, clearChat, clearToday } = useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded })
-  const [clearMenuOpen, setClearMenuOpen] = useState(false)
+  const { messages, input, setInput, thinking, streaming, busy, send, executeAction } = useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded })
+  const [showScrollBtn, setShowScrollBtn] = useState(false)
   const scrollRef = useRef(null)
   const { listening, toggle: toggleMic, supported: micSupported } = useMic(useCallback((text, isFinal) => { if (isFinal) send(text) }, [send]))
   useEffect(() => {
@@ -4204,52 +4242,37 @@ function AskTab({ prefill = '', autoSend = false, onAutoSendDone, onLightenRouti
         </div>
       )}
       {messages.length > 0 && (
-        <div ref={scrollRef} className="heed-ask-scroll" style={{ flex: 1, overflowY: 'auto', padding: '12px 4px', marginBottom: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 18, position: 'relative' }}>
+        <div ref={scrollRef} className="heed-ask-scroll" style={{ flex: 1, overflowY: 'auto', padding: '12px 4px', marginBottom: 12, position: 'relative' }}
+          onScroll={e => {
+            const el = e.currentTarget
+            setShowScrollBtn(el.scrollHeight - el.scrollTop - el.clientHeight > 80)
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 18 }}>
             <MayaOwl size={72} mood={owlMood} speaking={busy}/>
-            {!busy && (
-              <div style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)' }}>
-                <button onClick={() => setClearMenuOpen(v => !v)} title="Clear chat"
-                  style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'none', border: `1px solid ${C.border}`, borderRadius: 8, padding: '5px 10px', cursor: 'pointer', fontSize: 12, color: C.inkMute, fontFamily: 'inherit', transition: 'all 0.15s' }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = C.rust; e.currentTarget.style.color = C.rust }}
-                  onMouseLeave={e => { if (!clearMenuOpen) { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.inkMute } }}
-                >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><polyline points="3 6 5 6 21 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M19 6l-1 14H6L5 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M10 11v6M14 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M9 6V4h6v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  Clear
-                </button>
-                {clearMenuOpen && (
-                  <>
-                    <div onClick={() => setClearMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 1 }}/>
-                    <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, background: C.paperHi, border: `1px solid ${C.border}`, borderRadius: 10, boxShadow: '0 4px 16px rgba(44,24,16,0.15)', zIndex: 2, minWidth: 160, overflow: 'hidden', animation: 'heed-dropdown 0.15s ease' }}>
-                      {[
-                        { label: 'Clear today', sub: "Today's messages", action: () => { clearToday(); setClearMenuOpen(false) } },
-                        { label: 'Clear all', sub: 'All chat history', action: () => { clearChat(); setClearMenuOpen(false) } },
-                      ].map(item => (
-                        <button key={item.label} onClick={item.action}
-                          style={{ display: 'block', width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', transition: 'background 0.1s' }}
-                          onMouseEnter={e => e.currentTarget.style.background = C.bellySoft}
-                          onMouseLeave={e => e.currentTarget.style.background = 'none'}
-                        >
-                          <div style={{ fontSize: 13, fontWeight: 600, color: C.rust }}>{item.label}</div>
-                          <div style={{ fontSize: 11, color: C.inkMute, marginTop: 1 }}>{item.sub}</div>
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
           </div>
-          {messages.map((m, i) => (
-            <Bubble key={i} role={m.role} content={m.content}
-              actions={m.actions} chips={m.chips}
-              onConfirm={(actionIndex) => executeAction(i, actionIndex)}
-              onChipClick={(text) => send(text)}
-              onViewTask={onViewTask}
-            />
-          ))}
-          {thinking !== null && <ThinkingBubble steps={thinking}/>}
-          {streaming && <Bubble role="assistant" content={streaming} streaming/>}
+          {showScrollBtn && (
+            <button
+              onClick={() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight }}
+              aria-label="Scroll to bottom"
+              style={{ position: 'sticky', bottom: 8, left: '50%', transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', gap: 5, background: C.warmDark, color: C.cream, border: 'none', borderRadius: 20, padding: '6px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', boxShadow: '0 2px 10px rgba(44,24,16,0.25)', fontFamily: 'inherit', zIndex: 2, animation: 'heed-fadeIn 0.15s ease' }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12l7 7 7-7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              Latest
+            </button>
+          )}
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {messages.map((m, i) => (
+              <Bubble key={i} role={m.role} content={m.content}
+                actions={m.actions} chips={m.chips}
+                onConfirm={(actionIndex) => executeAction(i, actionIndex)}
+                onChipClick={(text) => send(text)}
+                onViewTask={onViewTask}
+              />
+            ))}
+            {thinking !== null && <ThinkingBubble steps={thinking}/>}
+            {streaming && <Bubble role="assistant" content={streaming} streaming/>}
+          </div>
         </div>
       )}
       {/* Input bar — portaled to document.body so position:fixed pins
@@ -8193,8 +8216,8 @@ function HeedFAB({ onAddTask, onAskHeed, onAddRoutine }) {
 
 // ── AskInlineModal ─────────────────────────────────────────────
 function AskInlineModal({ open, onClose, onLightenRoutine, onTaskAdded, onRoutineAdded, onViewTask, prefill = '', autoSend = false, onAutoSendDone, contextPlanId = null }) {
-  const { messages, input, setInput, thinking, streaming, busy, send, executeAction, clearChat, clearToday } = useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded })
-  const [clearMenuOpen, setClearMenuOpen] = useState(false)
+  const { messages, input, setInput, thinking, streaming, busy, send, executeAction } = useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded })
+  const [showScrollBtn, setShowScrollBtn] = useState(false)
   const scrollRef = useRef(null)
   const inputRef = useRef(null)
   const { listening, toggle: toggleMic, supported: micSupported } = useMic(useCallback((text, isFinal) => { if (isFinal) send(text) }, [send]))
@@ -8238,46 +8261,24 @@ function AskInlineModal({ open, onClose, onLightenRoutine, onTaskAdded, onRoutin
               <div style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 17, fontWeight: 600, color: C.warmDark, letterSpacing: -0.2, lineHeight: 1.1, marginBottom: 2 }}>Ask Heed</div>
               <div style={{ fontSize: 11.5, color: C.inkMute, fontStyle: 'italic' }}>Quick chat — your answer in a moment</div>
             </div>
-            {messages.length > 0 && !busy && (
-              <div style={{ position: 'relative' }}>
-                <button onClick={() => setClearMenuOpen(v => !v)} aria-label="Clear chat options" title="Clear chat"
-                  style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: `1px solid ${clearMenuOpen ? C.rust : C.border}`, borderRadius: 8, padding: '4px 9px', cursor: 'pointer', fontSize: 11.5, fontWeight: 500, color: clearMenuOpen ? C.rust : C.inkMute, fontFamily: 'inherit', transition: 'all 0.15s' }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = C.rust; e.currentTarget.style.color = C.rust }}
-                  onMouseLeave={e => { if (!clearMenuOpen) { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.inkMute } }}
-                >
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
-                    <polyline points="3 6 5 6 21 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M19 6l-1 14H6L5 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M10 11v6M14 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M9 6V4h6v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                  Clear
-                </button>
-                {clearMenuOpen && (
-                  <>
-                    <div onClick={() => setClearMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 1 }}/>
-                    <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 6, background: C.paperHi, border: `1px solid ${C.border}`, borderRadius: 10, boxShadow: '0 4px 16px rgba(44,24,16,0.15)', zIndex: 2, minWidth: 160, overflow: 'hidden', animation: 'heed-dropdown 0.15s ease' }}>
-                      {[
-                        { label: 'Clear today', sub: "Today's messages", action: () => { clearToday(); setClearMenuOpen(false) } },
-                        { label: 'Clear all', sub: 'All chat history', action: () => { clearChat(); setClearMenuOpen(false) } },
-                      ].map(item => (
-                        <button key={item.label} onClick={item.action}
-                          style={{ display: 'block', width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', transition: 'background 0.1s' }}
-                          onMouseEnter={e => e.currentTarget.style.background = C.bellySoft}
-                          onMouseLeave={e => e.currentTarget.style.background = 'none'}
-                        >
-                          <div style={{ fontSize: 13, fontWeight: 600, color: C.rust }}>{item.label}</div>
-                          <div style={{ fontSize: 11, color: C.inkMute, marginTop: 1 }}>{item.sub}</div>
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
             <button onClick={onClose} aria-label="Close" style={{ background: 'transparent', border: 'none', color: C.inkMute, cursor: 'pointer', fontSize: 20, padding: 4, lineHeight: 1, fontFamily: 'inherit' }}>×</button>
           </div>
-          <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', paddingRight: 4, marginBottom: 12, minHeight: messages.length === 0 ? 'auto' : 200 }}>
+          <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', paddingRight: 4, marginBottom: 12, minHeight: messages.length === 0 ? 'auto' : 200, position: 'relative' }}
+            onScroll={e => {
+              const el = e.currentTarget
+              setShowScrollBtn(el.scrollHeight - el.scrollTop - el.clientHeight > 80)
+            }}
+          >
+            {showScrollBtn && (
+              <button
+                onClick={() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight }}
+                aria-label="Scroll to bottom"
+                style={{ position: 'sticky', bottom: 4, left: '50%', transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', gap: 5, background: C.warmDark, color: C.cream, border: 'none', borderRadius: 20, padding: '5px 12px', fontSize: 11.5, fontWeight: 600, cursor: 'pointer', boxShadow: '0 2px 10px rgba(44,24,16,0.25)', fontFamily: 'inherit', zIndex: 2, animation: 'heed-fadeIn 0.15s ease' }}
+              >
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12l7 7 7-7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                Latest
+              </button>
+            )}
             {messages.length === 0 && !busy && (
               <>
                 <div style={{ fontSize: 13, color: C.inkSoft, fontStyle: 'italic', marginBottom: 12, lineHeight: 1.5 }}>
@@ -10638,7 +10639,7 @@ export default function HeedApp() {
         onAskHeed={handleAskHeed}
       />
       <ShareCardSheet routine={shareCtx} onClose={handleShareClose}/>
-      <SettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} userName={username} onUserName={name => { setUsername(name); try { localStorage.setItem('heed.username', name) } catch (_) {} }} theme={theme} onTheme={handleSetTheme} customCategories={customCategories} onAddCategory={cat => setCustomCategories(cs => [...cs, cat])} customEventTypes={customEventTypes} onAddEventType={evt => setCustomEventTypes(es => [...es, evt])} onResetAllData={handleResetAllData} onLoadDemoData={handleLoadDemoData} onSwitchToRealData={handleSwitchToRealData} efMode={efMode} onSetEfMode={handleSetEfMode} avatar={avatar} onAvatarChange={handleAvatarChange}/>
+      <SettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} userName={username} onUserName={name => { setUsername(name); try { localStorage.setItem('heed.username', name) } catch (_) {} }} theme={theme} onTheme={handleSetTheme} customCategories={customCategories} onAddCategory={cat => setCustomCategories(cs => [...cs, cat])} customEventTypes={customEventTypes} onAddEventType={evt => setCustomEventTypes(es => [...es, evt])} onResetAllData={handleResetAllData} onLoadDemoData={handleLoadDemoData} onSwitchToRealData={handleSwitchToRealData} efMode={efMode} onSetEfMode={handleSetEfMode} avatar={avatar} onAvatarChange={handleAvatarChange} onClearChatToday={() => window.dispatchEvent(new Event('heed:chat-clear-today'))} onClearChatAll={() => window.dispatchEvent(new Event('heed:chat-clear-all'))}/>
       {toast && <Toast message={toast.message} onView={toast.onView || (toast.showView ? handleToastView : undefined)} onUndo={toast.onUndo} onDismiss={() => setToast(null)} reasons={toast.reasons} onReason={toast.onReason}/>}
       <HeedFAB onAddTask={() => setModalOpen(true)} onAskHeed={() => setAskOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)}/>
     </div>

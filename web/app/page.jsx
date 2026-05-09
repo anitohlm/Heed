@@ -6359,17 +6359,147 @@ function AddPlanSheet({ onClose, onAdd }) {
 
         {step === 'pick' && (
           <>
-            <div style={{ fontSize: 12.5, color: C.inkMute, marginBottom: 18 }}>Choose a type to get started</div>
-            {PLAN_TYPES.map(pt => (
-              <button key={pt.type} onClick={() => { setType(pt.type); setStep('form') }}
-                style={{ display: 'flex', alignItems: 'center', gap: 14, width: '100%', background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 12, padding: '12px 14px', marginBottom: 10, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
-                <div style={{ width: 38, height: 38, borderRadius: 9, background: PLAN_ICON_BG[pt.type], display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>{pt.icon}</div>
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: C.ink }}>{pt.label}</div>
-                  <div style={{ fontSize: 12, color: C.inkMute, marginTop: 2 }}>{pt.desc}</div>
+            {/* Inviting hero — owl + warm headline replacing the dry instruction line */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 22, padding: '4px 2px 0' }}>
+              <div style={{ flexShrink: 0, marginTop: 2 }}>
+                <MayaOwl size={48} idle={true}/>
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 22, fontWeight: 600, color: C.warmDark, lineHeight: 1.2, letterSpacing: -0.3, marginBottom: 5 }}>
+                  What are you planning?
+                </div>
+                <div style={{ fontSize: 13, color: C.inkMute, lineHeight: 1.5 }}>
+                  Pick the kind of plan that fits — you can change it later.
+                </div>
+              </div>
+            </div>
+
+            {/* Featured: Project — wider, with a mini-checklist visual */}
+            <button
+              type="button"
+              onClick={() => { setType('project'); setStep('form') }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 14,
+                width: '100%', textAlign: 'left',
+                background: `linear-gradient(135deg, ${C.bellySoft} 0%, ${C.paperHi} 100%)`,
+                border: `1.5px solid ${C.belly}`,
+                borderRadius: 16, padding: '18px 18px 18px 20px',
+                marginBottom: 12,
+                cursor: 'pointer', fontFamily: 'inherit',
+                boxShadow: C.shadowSoft,
+                transition: 'transform 0.18s ease-out, box-shadow 0.18s ease-out, border-color 0.18s ease-out',
+                touchAction: 'manipulation',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = C.shadowMed; e.currentTarget.style.borderColor = C.warmDark + '55' }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = C.shadowSoft; e.currentTarget.style.borderColor = C.belly }}
+            >
+              <div style={{
+                width: 56, height: 56, borderRadius: 14,
+                background: C.paper, border: `1px solid ${C.border}`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 26, flexShrink: 0,
+              }}>📦</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3, flexWrap: 'wrap' }}>
+                  <span style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 17, fontWeight: 600, color: C.ink, letterSpacing: -0.1 }}>Project</span>
+                  <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.6, textTransform: 'uppercase', color: C.warmDark, background: C.ochreSoft, border: `1px solid ${C.ochre}33`, padding: '2px 7px', borderRadius: 999 }}>Most common</span>
+                </div>
+                <div style={{ fontSize: 12.5, color: C.inkSoft, marginBottom: 9, lineHeight: 1.4 }}>A goal with a checklist of steps.</div>
+                {/* mini-checklist preview */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  {[{ done: true, w: 92 }, { done: true, w: 70 }, { done: false, w: 56 }].map((row, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 7, opacity: 1 - i * 0.18 }}>
+                      <div style={{
+                        width: 11, height: 11, borderRadius: '50%',
+                        background: row.done ? C.sage : 'transparent',
+                        border: `1.5px solid ${row.done ? C.sage : C.border}`,
+                        flexShrink: 0,
+                      }}/>
+                      <div style={{ height: 4, width: row.w, borderRadius: 2, background: row.done ? C.belly : C.hairline }}/>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div style={{ color: C.warmDark, fontSize: 22, fontWeight: 700, flexShrink: 0, marginLeft: 4 }} aria-hidden="true">›</div>
+            </button>
+
+            {/* Two-up grid: Goal + Event */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              {/* Goal — progress ring with target emoji at center */}
+              <button
+                type="button"
+                onClick={() => { setType('goal'); setStep('form') }}
+                style={{
+                  display: 'flex', flexDirection: 'column', gap: 14,
+                  width: '100%', textAlign: 'left',
+                  background: C.paperHi,
+                  border: `1.5px solid ${C.border}`,
+                  borderRadius: 14, padding: '16px 16px 18px',
+                  cursor: 'pointer', fontFamily: 'inherit',
+                  boxShadow: C.shadowSoft,
+                  transition: 'transform 0.18s ease-out, box-shadow 0.18s ease-out, border-color 0.18s ease-out',
+                  minHeight: 180,
+                  touchAction: 'manipulation',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = C.shadowMed; e.currentTarget.style.borderColor = C.warmDark + '55' }}
+                onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = C.shadowSoft; e.currentTarget.style.borderColor = C.border }}
+              >
+                <div style={{ position: 'relative', width: 56, height: 56 }}>
+                  <svg width={56} height={56} viewBox="0 0 56 56" style={{ position: 'absolute', inset: 0, transform: 'rotate(-90deg)' }} aria-hidden="true">
+                    <circle cx={28} cy={28} r={24} fill="none" stroke={C.hairline} strokeWidth={4}/>
+                    <circle cx={28} cy={28} r={24} fill="none" stroke={C.sage} strokeWidth={4} strokeLinecap="round" strokeDasharray={2 * Math.PI * 24} strokeDashoffset={2 * Math.PI * 24 * 0.4}/>
+                  </svg>
+                  <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>🎯</div>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 16, fontWeight: 600, color: C.ink, marginBottom: 3, letterSpacing: -0.1 }}>Goal</div>
+                  <div style={{ fontSize: 12, color: C.inkSoft, lineHeight: 1.45 }}>Work toward something measurable.</div>
                 </div>
               </button>
-            ))}
+
+              {/* Event — mini calendar tile */}
+              <button
+                type="button"
+                onClick={() => { setType('event'); setStep('form') }}
+                style={{
+                  display: 'flex', flexDirection: 'column', gap: 14,
+                  width: '100%', textAlign: 'left',
+                  background: C.paperHi,
+                  border: `1.5px solid ${C.border}`,
+                  borderRadius: 14, padding: '16px 16px 18px',
+                  cursor: 'pointer', fontFamily: 'inherit',
+                  boxShadow: C.shadowSoft,
+                  transition: 'transform 0.18s ease-out, box-shadow 0.18s ease-out, border-color 0.18s ease-out',
+                  minHeight: 180,
+                  touchAction: 'manipulation',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = C.shadowMed; e.currentTarget.style.borderColor = C.warmDark + '55' }}
+                onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = C.shadowSoft; e.currentTarget.style.borderColor = C.border }}
+              >
+                <div style={{
+                  width: 56, height: 56, borderRadius: 12,
+                  background: C.bellySoft, border: `1px solid ${C.border}`,
+                  display: 'flex', flexDirection: 'column', overflow: 'hidden',
+                }} aria-hidden="true">
+                  <div style={{ height: 14, background: C.warmDark, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
+                    <div style={{ width: 4, height: 4, borderRadius: '50%', background: C.cream }}/>
+                    <div style={{ width: 4, height: 4, borderRadius: '50%', background: C.cream }}/>
+                  </div>
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Lora, Georgia, serif', fontSize: 20, fontWeight: 700, color: C.warmDark, lineHeight: 1 }}>
+                    14
+                  </div>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 16, fontWeight: 600, color: C.ink, marginBottom: 3, letterSpacing: -0.1 }}>Event</div>
+                  <div style={{ fontSize: 12, color: C.inkSoft, lineHeight: 1.45 }}>A date you're preparing for.</div>
+                </div>
+              </button>
+            </div>
+
+            {/* Gentle footer hint to reduce choice paralysis */}
+            <div style={{ marginTop: 24, fontSize: 11.5, color: C.inkMute, fontStyle: 'italic', textAlign: 'center' }}>
+              Not sure? Project works for most things.
+            </div>
           </>
         )}
 

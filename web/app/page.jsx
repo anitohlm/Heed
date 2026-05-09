@@ -10303,7 +10303,7 @@ export default function HeedApp() {
   }, [FUNCTIONS_URL])
 
   function handleTaskAdded(task) {
-    if (task) setApiTasks(t => [...t, task])
+    if (task) setApiTasks(t => [...t, { status: 'active', next_due_at: new Date().toISOString(), ...task }])
     else fetch(`${FUNCTIONS_URL}/api/tasks`, { headers: authHeaders() }).then(r => r.json()).then(d => Array.isArray(d) && setApiTasks(d)).catch(() => {})
   }
 

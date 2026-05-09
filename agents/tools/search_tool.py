@@ -43,10 +43,14 @@ def _openai_client() -> AzureOpenAI:
 
 
 def _embed(text: str) -> list[float]:
-    """Generate an embedding for a query string using text-embedding-3-small."""
+    """Generate an embedding for a query string using text-embedding-3-small.
+
+    Deployment name is `heed-embed` per docs/MULTI_MODEL_COMPARISON.md and
+    data/.env.example. Override with OPENAI_DEPLOYMENT_EMBED if your
+    deployment uses a different name.
+    """
     client = _openai_client()
     deployment = os.environ.get("OPENAI_DEPLOYMENT_EMBED", "heed-embed")
-    # TODO: confirm model name matches your Azure deployment
     response = client.embeddings.create(model=deployment, input=text)
     return response.data[0].embedding
 

@@ -68,6 +68,16 @@ def get_user(user_id: str) -> Optional[User]:
         return None
 
 
+def list_user_ids() -> list[str]:
+    """All registered user IDs. Used by the Memory Keeper timer to fan out."""
+    container = _get_database().get_container_client("users")
+    items = container.query_items(
+        query="SELECT c.id FROM c",
+        enable_cross_partition_query=True,
+    )
+    return [i["id"] for i in items]
+
+
 def get_active_tasks(user_id: str) -> list[Task]:
     """All tasks with status=active for this user."""
     container = _get_database().get_container_client("tasks")
@@ -139,6 +149,32 @@ def get_active_contexts(user_id: str, on_date: Optional[datetime] = None) -> lis
     return [UserContext(**_fix_item(i)) for i in items]
 
 
+def get_past_contexts(user_id: str, days_back: int = 90) -> list[UserContext]:
+    """
+    Context windows that ended within the last N days. The Memory Keeper uses
+    these to explain why a task fell off cadence in the recent past — e.g. a
+    travel context covering missed completions.
+    """
+    now = datetime.now(timezone.utc)
+    today = now.date().isoformat()
+    cutoff = (now - timedelta(days=days_back)).date().isoformat()
+
+    container = _get_database().get_container_client("user_context")
+    query = """
+        SELECT * FROM c
+        WHERE c.user_id = @uid
+          AND c.end_date < @today
+          AND c.end_date >= @cutoff
+    """
+    params = [
+        {"name": "@uid", "value": user_id},
+        {"name": "@today", "value": today},
+        {"name": "@cutoff", "value": cutoff},
+    ]
+    items = container.query_items(query=query, parameters=params, partition_key=user_id)
+    return [UserContext(**_fix_item(i)) for i in items]
+
+
 def get_upcoming_contexts(user_id: str, days_ahead: int = 30) -> list[UserContext]:
     """Context windows starting in the next N days."""
     now = datetime.now(timezone.utc)
@@ -200,3 +236,26 @@ def get_recent_completions(user_id: str, days_back: int = 30) -> list[Completion
     ]
     items = container.query_items(query=query, parameters=params, partition_key=user_id)
     return [Completion(**i) for i in items]
+
+
+def get_completions_in_range(user_id: str, from_iso: str, to_iso: str) -> list[Completion]:
+    """All completions across all tasks within an inclusive ISO datetime range.
+
+    Used by the Calendar retrospective so past months reflect the actual
+    completion log rather than the live `last_done_at` snapshot.
+    """
+    container = _get_database().get_container_client("completions")
+    query = """
+        SELECT * FROM c
+        WHERE c.user_id = @uid
+          AND c.completed_at >= @from
+          AND c.completed_at <= @to
+        ORDER BY c.completed_at ASC
+    """
+    params = [
+        {"name": "@uid", "value": user_id},
+        {"name": "@from", "value": from_iso},
+        {"name": "@to", "value": to_iso},
+    ]
+    items = container.query_items(query=query, parameters=params, partition_key=user_id)
+    return [Completion(**_fix_item(i)) for i in items]

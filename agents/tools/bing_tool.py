@@ -11,6 +11,9 @@ Per SAFETY.md, Risk 2: Bing results are NEVER passed raw to the Advisor.
 
 import os
 import json
+import time
+import logging
+import random
 import requests
 from openai import AzureOpenAI
 
@@ -21,27 +24,60 @@ from openai import AzureOpenAI
 
 BING_ENDPOINT = "https://api.bing.microsoft.com/v7.0/search"
 
+# Free-tier safety: tight retry budget so a quota burst doesn't compound cost.
+_MAX_ATTEMPTS = 3
+_CONNECT_TIMEOUT = 3.05
+_READ_TIMEOUT = 8.0
+_BACKOFF_BASE = 0.5  # seconds; doubled each retry, +/- 20% jitter
+
 
 def _raw_bing_search(query: str, count: int = 5) -> list[dict]:
-    """Hit Bing Search v7 directly. Returns top results."""
+    """Hit Bing Search v7 directly with retry + backoff. Returns top results."""
     key = os.environ.get("BING_KEY")
     if not key:
         raise RuntimeError("BING_KEY not set")
 
     headers = {"Ocp-Apim-Subscription-Key": key}
     params = {"q": query, "count": count, "mkt": "en-PH", "responseFilter": "Webpages"}
-    # TODO: handle rate limits, retries with backoff, and timeouts.
-    # The Bing free tier has tight quotas — make sure cost guards are in place.
-    response = requests.get(BING_ENDPOINT, headers=headers, params=params, timeout=10)
-    response.raise_for_status()
-    data = response.json()
 
-    if "webPages" not in data:
-        return []
-    return [
-        {"title": r["name"], "snippet": r["snippet"], "url": r["url"]}
-        for r in data["webPages"]["value"]
-    ]
+    last_exc: Exception | None = None
+    for attempt in range(1, _MAX_ATTEMPTS + 1):
+        try:
+            response = requests.get(
+                BING_ENDPOINT,
+                headers=headers,
+                params=params,
+                timeout=(_CONNECT_TIMEOUT, _READ_TIMEOUT),
+            )
+        except (requests.ConnectionError, requests.Timeout) as e:
+            last_exc = e
+            logging.warning(f"Bing attempt {attempt} network error: {e}")
+        else:
+            status = response.status_code
+            if status == 200:
+                data = response.json()
+                if "webPages" not in data:
+                    return []
+                return [
+                    {"title": r["name"], "snippet": r["snippet"], "url": r["url"]}
+                    for r in data["webPages"]["value"]
+                ]
+            # 429 = quota; 5xx = transient. Anything else is a hard failure.
+            if status != 429 and status < 500:
+                logging.warning(f"Bing returned {status}, not retrying: {response.text[:200]}")
+                response.raise_for_status()
+            last_exc = requests.HTTPError(f"Bing returned {status}", response=response)
+            logging.warning(f"Bing attempt {attempt} got {status}, will retry")
+
+        if attempt < _MAX_ATTEMPTS:
+            sleep_for = _BACKOFF_BASE * (2 ** (attempt - 1))
+            sleep_for *= 1 + random.uniform(-0.2, 0.2)
+            time.sleep(sleep_for)
+
+    logging.error(f"Bing exhausted {_MAX_ATTEMPTS} attempts: {last_exc}")
+    if last_exc:
+        raise last_exc
+    return []
 
 
 # -----------------------------------------------------------------------------

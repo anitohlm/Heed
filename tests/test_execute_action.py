@@ -4,11 +4,12 @@ from unittest.mock import patch, MagicMock
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
-def _make_request(body: dict, method: str = "POST"):
+def _make_request(body: dict, method: str = "POST", user_id: str = None):
     """Minimal mock of an Azure Functions HttpRequest."""
     req = MagicMock()
     req.method = method
     req.get_json.return_value = body
+    req.headers.get.return_value = user_id  # None → _get_user_id falls back to "demo"
     return req
 
 
@@ -21,7 +22,7 @@ def test_execute_action_mark_done_success():
         body = json.loads(resp.get_body())
         assert body["ok"] is True
         assert "summary" in body
-        mock_tools.mark_task_done.assert_called_once_with("task_123", "usr_heed_demo_001", note=None)
+        mock_tools.mark_task_done.assert_called_once_with("task_123", "demo", note=None)
 
 
 def test_execute_action_missing_action_type():

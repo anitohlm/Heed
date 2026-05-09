@@ -14,15 +14,19 @@ See agents/prompts/memory_keeper_system.md for the full system prompt.
 
 import os
 import json
+import logging
 import statistics
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 from openai import AzureOpenAI
+
+_log = logging.getLogger("heed")
 from agents.models import Task, Completion, CadenceUpdate, UserContext
 from agents.tools.cosmos_tool import (
     get_active_tasks,
     get_completions,
     get_active_contexts,
+    get_past_contexts,
     _get_database,
 )
 
@@ -214,9 +218,12 @@ def _call_model_for_observations(
         "has_pattern_break": pattern_break,
     }, ensure_ascii=False)
 
-    # TODO: Microsoft Agent Framework integration goes here. For now this is
-    # a direct OpenAI chat completion. The framework wrapper will be a thin
-    # shell over this once the agent code lands.
+    # Microsoft Agent Framework / Semantic Kernel integration was deferred.
+    # The hand-rolled loop here is exercised by the test suite and the math
+    # layer (above) does the load-bearing work — the model is only asked to
+    # interpret pre-computed stats. Wrapping in SK adds a dependency surface
+    # without changing behaviour. Revisit when the framework offers
+    # something we can't do here (e.g. cross-agent message passing).
     response = client.chat.completions.create(
         model=deployment,
         messages=[
@@ -239,7 +246,9 @@ def _call_model_for_observations(
 def process_task(task: Task, user_id: str) -> CadenceUpdate:
     """Process a single task: math first, then model interpretation."""
     completions = get_completions(task.id, user_id)
-    contexts = get_active_contexts(user_id)  # TODO: also include past contexts
+    # Pattern-break detection needs to know whether a missed slot fell inside
+    # any context window — including ones that ended recently.
+    contexts = get_active_contexts(user_id) + get_past_contexts(user_id, days_back=90)
     stats = _compute_cadence_stats(completions)
 
     if stats.get("insufficient"):
@@ -268,9 +277,12 @@ def run_for_user(user_id: str) -> list[CadenceUpdate]:
             updates.append(update)
             _persist_update(task.id, user_id, update)
         except Exception as e:
-            # Don't let one task failure kill the run. Log and continue.
-            # TODO: hook to App Insights / structured logging
-            print(f"Failed to process task {task.id}: {e}")
+            # Don't let one task failure kill the run. Goes to App Insights via
+            # the heed logger (see agents/telemetry.py).
+            _log.exception(
+                "memory_keeper.process_task failed",
+                extra={"task_id": task.id, "user_id": user_id, "error": str(e)},
+            )
     return updates
 
 

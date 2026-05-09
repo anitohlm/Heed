@@ -4241,29 +4241,20 @@ function AskTab({ prefill = '', autoSend = false, onAutoSendDone, onLightenRouti
         </div>
       )}
       {messages.length > 0 && (
-        <div style={{ flex: 1, position: 'relative', display: 'flex', flexDirection: 'column', minHeight: 0, marginBottom: 12 }}>
-          <div ref={scrollRef} className="heed-ask-scroll" style={{ flex: 1, overflowY: 'auto', padding: '12px 4px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 18 }}>
-              <MayaOwl size={72} mood={owlMood} speaking={busy}/>
-            </div>
-            {messages.map((m, i) => (
-              <Bubble key={i} role={m.role} content={m.content}
-                actions={m.actions} chips={m.chips}
-                onConfirm={(actionIndex) => executeAction(i, actionIndex)}
-                onChipClick={(text) => send(text)}
-                onViewTask={onViewTask}
-              />
-            ))}
-            {thinking !== null && <ThinkingBubble steps={thinking}/>}
-            {streaming && <Bubble role="assistant" content={streaming} streaming/>}
+        <div ref={scrollRef} className="heed-ask-scroll" style={{ flex: 1, overflowY: 'auto', padding: '12px 4px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 18 }}>
+            <MayaOwl size={72} mood={owlMood} speaking={busy}/>
           </div>
-          <button
-            onClick={() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight }}
-            aria-label="Scroll to bottom"
-            style={{ position: 'absolute', bottom: 16, right: 8, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', background: C.warmDark, color: C.cream, border: 'none', borderRadius: '50%', cursor: 'pointer', boxShadow: '0 2px 8px rgba(44,24,16,0.3)', zIndex: 2 }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12l7 7 7-7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          </button>
+          {messages.map((m, i) => (
+            <Bubble key={i} role={m.role} content={m.content}
+              actions={m.actions} chips={m.chips}
+              onConfirm={(actionIndex) => executeAction(i, actionIndex)}
+              onChipClick={(text) => send(text)}
+              onViewTask={onViewTask}
+            />
+          ))}
+          {thinking !== null && <ThinkingBubble steps={thinking}/>}
+          {streaming && <Bubble role="assistant" content={streaming} streaming/>}
         </div>
       )}
       {/* Input bar — portaled to document.body so position:fixed pins
@@ -4288,6 +4279,18 @@ function AskTab({ prefill = '', autoSend = false, onAutoSendDone, onLightenRouti
           fontFamily: '"Nunito Sans", -apple-system, BlinkMacSystemFont, sans-serif',
           color: C.ink,
         }}>
+          {messages.length > 0 && (
+            <button
+              onClick={() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight }}
+              aria-label="Scroll to latest"
+              title="Scroll to latest"
+              style={{ width: 40, height: 40, borderRadius: '50%', flexShrink: 0, background: C.bellySoft, border: `1px solid ${C.border}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.warmDark, transition: 'background 0.15s' }}
+              onMouseEnter={e => { e.currentTarget.style.background = C.ochreSoft }}
+              onMouseLeave={e => { e.currentTarget.style.background = C.bellySoft }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12l7 7 7-7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </button>
+          )}
           <input
             value={input} onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && send(input)}
@@ -8284,17 +8287,18 @@ function AskInlineModal({ open, onClose, onLightenRoutine, onTaskAdded, onRoutin
               {thinking !== null && <ThinkingBubble steps={thinking}/>}
               {streaming && <Bubble role="assistant" content={streaming} streaming/>}
             </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, paddingTop: 10, borderTop: messages.length > 0 ? `1px solid ${C.hairline}` : 'none', flexShrink: 0, alignItems: 'center' }}>
             {messages.length > 0 && (
               <button
                 onClick={() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight }}
-                aria-label="Scroll to bottom"
-                style={{ position: 'absolute', bottom: 8, right: 0, width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', background: C.warmDark, color: C.cream, border: 'none', borderRadius: '50%', cursor: 'pointer', boxShadow: '0 2px 8px rgba(44,24,16,0.3)', zIndex: 2 }}
+                aria-label="Scroll to latest"
+                title="Scroll to latest"
+                style={{ width: 38, height: 38, borderRadius: '50%', flexShrink: 0, background: C.bellySoft, border: `1px solid ${C.border}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.warmDark }}
               >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12l7 7 7-7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12l7 7 7-7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
               </button>
             )}
-          </div>
-          <div style={{ display: 'flex', gap: 8, paddingTop: 10, borderTop: messages.length > 0 ? `1px solid ${C.hairline}` : 'none', flexShrink: 0, alignItems: 'center' }}>
             {micSupported && <MicButton listening={listening} onToggle={toggleMic} disabled={busy}/>}
             <input ref={inputRef} value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && send(input)} placeholder={listening ? 'Listening…' : 'Ask Heed anything…'} disabled={busy}
               style={{ flex: 1, background: C.paper, border: `1.5px solid ${listening ? '#e53e3e' : C.border}`, borderRadius: 10, padding: '10px 14px', fontSize: 14, color: C.ink, outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.15s' }}

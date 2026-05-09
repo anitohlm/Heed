@@ -717,7 +717,15 @@ function useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded } = {}) {
     }
   }, [messages, onLightenRoutine, onTaskAdded, onRoutineAdded])
 
-  return { messages, input, setInput, thinking, streaming, busy, send, executeAction }
+  const clearChat = useCallback(() => {
+    setMessages([])
+    setInput('')
+    setThinking(null)
+    setStreaming('')
+    try { localStorage.removeItem('heed.chat-history.v1') } catch (_) {}
+  }, [])
+
+  return { messages, input, setInput, thinking, streaming, busy, send, executeAction, clearChat }
 }
 
 // ── useMic hook ────────────────────────────────────────────────
@@ -8100,7 +8108,7 @@ function HeedFAB({ onAddTask, onAskHeed, onAddRoutine }) {
 
 // ── AskInlineModal ─────────────────────────────────────────────
 function AskInlineModal({ open, onClose, onLightenRoutine, onTaskAdded, onRoutineAdded, onViewTask, prefill = '', autoSend = false, onAutoSendDone, contextPlanId = null }) {
-  const { messages, input, setInput, thinking, streaming, busy, send, executeAction } = useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded })
+  const { messages, input, setInput, thinking, streaming, busy, send, executeAction, clearChat } = useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded })
   const scrollRef = useRef(null)
   const inputRef = useRef(null)
   const { listening, toggle: toggleMic, supported: micSupported } = useMic(useCallback((text, isFinal) => { if (isFinal) send(text) }, [send]))
@@ -8148,6 +8156,19 @@ function AskInlineModal({ open, onClose, onLightenRoutine, onTaskAdded, onRoutin
               <div style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 17, fontWeight: 600, color: C.warmDark, letterSpacing: -0.2, lineHeight: 1.1, marginBottom: 2 }}>Ask Heed</div>
               <div style={{ fontSize: 11.5, color: C.inkMute, fontStyle: 'italic' }}>Quick chat — your answer in a moment</div>
             </div>
+            {messages.length > 0 && !busy && (
+              <button onClick={clearChat} aria-label="Clear chat" title="Clear chat" style={{ background: 'transparent', border: 'none', color: C.inkMute, cursor: 'pointer', padding: 4, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 6, transition: 'color 0.15s' }}
+                onMouseEnter={e => e.currentTarget.style.color = C.rust}
+                onMouseLeave={e => e.currentTarget.style.color = C.inkMute}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                  <polyline points="3 6 5 6 21 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M19 6l-1 14H6L5 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M10 11v6M14 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M9 6V4h6v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            )}
             <button onClick={onClose} aria-label="Close" style={{ background: 'transparent', border: 'none', color: C.inkMute, cursor: 'pointer', fontSize: 20, padding: 4, lineHeight: 1, fontFamily: 'inherit' }}>×</button>
           </div>
           <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', paddingRight: 4, marginBottom: 12, minHeight: messages.length === 0 ? 'auto' : 200 }}>

@@ -8633,7 +8633,7 @@ function InlineTaskDetail({ task, onClose, onMarkDone, onSkip, onReschedule }) {
             setPulse(true)
             setTimeout(() => { onMarkDone(task); onClose() }, 120)
           }}
-          className={pulse ? 'heed-pulse' : ''}
+          className={pulse ? 'heed-mark-done-pulse' : ''}
           style={{ flex: 1, background: C.sage, color: C.cream, border: 'none', padding: 8, borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
           ✓ Mark done
         </button>

@@ -6719,13 +6719,21 @@ function EventsPanel({ allUpcoming, activeContext, onAddContext, onQuickContext,
   }
 
   function buildSaveConfirmItems(mode) {
+    const newLabel = evtCfg(newEventType).label
+    const newLower = newLabel.toLowerCase()
+    const checkInCopy = (newEventType === 'sick' || newEventType === 'illness')
+      ? '"Still resting?" — extend or close then'
+      : `"Still in ${newLower}?" — extend or close then`
+    const tasksOnHoldSub = (newEventType === 'sick' || newEventType === 'illness')
+      ? 'They\'ll surface when you\'re better'
+      : `They\'ll surface when ${newLower} ends`
     const base = [
       { icon: '✓', color: C.sage,    label: 'Routines paused',           sub: 'Morning routine · Evening wind-down' },
-      { icon: '✓', color: C.sage,    label: 'Non-urgent tasks on hold',   sub: 'They\'ll surface when you\'re better' },
-      { icon: '✓', color: C.sage,    label: 'Check-in set for 3 days',    sub: '"Still resting?" — extend or close then' },
+      { icon: '✓', color: C.sage,    label: 'Non-urgent tasks on hold',   sub: tasksOnHoldSub },
+      { icon: '✓', color: C.sage,    label: 'Check-in set for 3 days',    sub: checkInCopy },
     ]
     if (mode === 'rest') return [
-      { icon: '✓', color: C.sage,    label: `${activeEvt?.label || 'Active event'} ended early`, sub: 'Sick event takes over' },
+      { icon: '✓', color: C.sage,    label: `${activeEvt?.label || 'Active event'} ended early`, sub: `${newLabel} takes over` },
       ...base,
       { icon: '⚠', color: C.ochre,  label: '3 deadline tasks flagged',   sub: 'Still need your attention' },
     ]
@@ -7286,11 +7294,28 @@ function EventsPanel({ allUpcoming, activeContext, onAddContext, onQuickContext,
           ))}
         </div>
         <div style={{ padding: '0 18px 4px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {[
-            { mode: 'rest',  icon: '😴', bg: C.ochreSoft,  title: 'Full rest mode',              desc: `${evtCfg(newEventType).label} takes over. Active event ends early, all tasks held, routines paused.` },
-            { mode: 'push',  icon: '💪', bg: C.rustSoft,   title: 'Push through',                desc: 'Both coexist. Work tasks stay visible, personal routines paused.' },
-            { mode: 'close', icon: '✅', bg: C.sageSoft,   title: 'Close current event first',   desc: `End the active event now, then start the new ${evtCfg(newEventType).label.toLowerCase()} event fresh.` },
-          ].map(opt => (
+          {(() => {
+            // Mode labels adapt to the new event's type so they stop speaking
+            // sick-day language at users who picked Celebration / Travel / etc.
+            // 'rest' is the historical mode key; the user-facing copy reflects
+            // what kind of event is taking over.
+            const newCfg = evtCfg(newEventType)
+            const lower = newCfg.label.toLowerCase()
+            const COPY = {
+              sick:        { takeoverTitle: 'Full rest mode',        coexistTitle: 'Push through',     coexistDesc: 'Both coexist. Work tasks stay visible, personal routines paused.' },
+              illness:     { takeoverTitle: 'Full rest mode',        coexistTitle: 'Push through',     coexistDesc: 'Both coexist. Work tasks stay visible, personal routines paused.' },
+              busy:        { takeoverTitle: 'Full focus mode',       coexistTitle: 'Stack them',       coexistDesc: 'Both run together. Active event tasks stay visible, routines lightened.' },
+              celebration: { takeoverTitle: 'Full celebration mode', coexistTitle: 'Run alongside',    coexistDesc: 'Active event keeps going, celebration adds on top.' },
+              travel:      { takeoverTitle: 'Full travel mode',      coexistTitle: 'Travel alongside', coexistDesc: 'Active event tasks stay visible while you\'re away.' },
+              low:         { takeoverTitle: 'Full low-day mode',     coexistTitle: 'Quietly alongside', coexistDesc: 'Active event continues gently, routines lightened.' },
+            }
+            const c = COPY[newEventType] || { takeoverTitle: `Full ${lower} mode`, coexistTitle: 'Run alongside', coexistDesc: 'Both coexist. Active event keeps going.' }
+            return [
+              { mode: 'rest',  icon: newCfg.icon, bg: C.ochreSoft, title: c.takeoverTitle,           desc: `${newCfg.label} takes over. Active event ends early, tasks held, routines paused.` },
+              { mode: 'push',  icon: '💪',        bg: C.rustSoft,  title: c.coexistTitle,            desc: c.coexistDesc },
+              { mode: 'close', icon: '✅',        bg: C.sageSoft,  title: 'Close current event first', desc: `End the active event now, then start the new ${lower} event fresh.` },
+            ]
+          })().map(opt => (
             <button key={opt.mode} onClick={() => setConflictMode(opt.mode)} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 13px', border: `1.5px solid ${conflictMode === opt.mode ? C.warmDark : C.border}`, borderRadius: 12, background: conflictMode === opt.mode ? C.bellySoft : C.paper, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', transition: 'all 0.15s' }}>
               <div style={{ width: 34, height: 34, borderRadius: 9, background: opt.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0, marginTop: 1 }}>{opt.icon}</div>
               <div>

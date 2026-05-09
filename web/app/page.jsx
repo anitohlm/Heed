@@ -504,7 +504,7 @@ function mapApiContext(ctx) {
 // ── parsePlanAdviceActions ──────────────────────────────────────
 // Extract bullet / numbered list items from a markdown plan-advice reply
 // and convert them into add_task action objects (up to 4).
-function parsePlanAdviceActions(text) {
+function parsePlanAdviceActions(text, planId = null) {
   const lines = text.split('\n')
   const seen = new Set()
   const actions = []
@@ -525,6 +525,7 @@ function parsePlanAdviceActions(text) {
       emoji: '✚',
       label: name,
       payload: { name, category: 'admin', importance: 'medium' },
+      planId,
     })
     if (actions.length >= 4) break
   }
@@ -557,7 +558,7 @@ function useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded } = {}) {
     } catch (_) {}
   }, [messages])
 
-  const send = useCallback(async (text) => {
+  const send = useCallback(async (text, contextPlanId = null) => {
     if (busy) return
     const trimmed = text.trim()
     if (!trimmed) return
@@ -652,7 +653,7 @@ function useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded } = {}) {
     // For plan-advice queries with no backend actions, parse the response text
     // and surface suggestions as add_task action buttons.
     if (trimmed.startsWith('Give me advice on this plan:') && pendingActions.length === 0 && finalText) {
-      parsePlanAdviceActions(finalText).forEach(a => pendingActions.push(a))
+      parsePlanAdviceActions(finalText, contextPlanId).forEach(a => pendingActions.push(a))
     }
 
     setThinking(null)
@@ -2309,7 +2310,7 @@ function Bubble({ role, content, streaming: isStreaming, actions, chips, onConfi
                       <div style={{ fontSize: 10, fontWeight: 700, color: '#4a7a4a', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 3 }}>✓ Task added</div>
                       <div style={{ fontSize: 13, fontWeight: 600, color: '#2d4a2d' }}>{action.payload?.name || action.result?.name}</div>
                       {onViewTask && (
-                        <button onClick={() => onViewTask(action.result)} style={{ fontSize: 11, color: '#7c5333', fontWeight: 600, background: 'none', border: 'none', padding: '4px 0 0', cursor: 'pointer', fontFamily: 'inherit' }}>View →</button>
+                        <button onClick={() => onViewTask(action.result, action.planId)} style={{ fontSize: 11, color: '#7c5333', fontWeight: 600, background: 'none', border: 'none', padding: '4px 0 0', cursor: 'pointer', fontFamily: 'inherit' }}>View →</button>
                       )}
                     </div>
                   )
@@ -5098,7 +5099,7 @@ function PlanBubbleDetailScreen({ plan, onBack, onEdit, onCheck, onTaskSelect, o
               plan.type === 'goal' && plan.target != null ? `Goal: ${plan.current ?? 0} / ${plan.target} ${plan.unit ?? ''}`.trim() : '',
               total > 0 ? `Tasks (${done}/${total} done):\n${plan.tasks.map(t => `${t.done ? '✓' : '○'} ${t.label}`).join('\n')}` : '',
             ].filter(Boolean).join('\n')
-            onAskHeed?.(`Give me advice on this plan:\n\n${lines}`)
+            onAskHeed?.(`Give me advice on this plan:\n\n${lines}`, plan.id)
           }}
           style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', background: C.bellySoft, border: `1.5px solid ${C.border}`, borderRadius: 14, cursor: 'pointer', fontFamily: 'inherit', marginTop: 8, textAlign: 'left', transition: 'border-color 0.15s, background 0.15s' }}
           onMouseEnter={e => { e.currentTarget.style.borderColor = C.warmDark; e.currentTarget.style.background = C.belly }}
@@ -6277,9 +6278,14 @@ function GoalUpdateSheet({ plan, onClose, onSave }) {
 }
 
 // ── PlansPanel ───────────────────────────────────────────────────
-function PlansPanel({ plans, checkTask, renameTask, addTask, deleteTask, reorderTasks, addPlan, updatePlan, archivePlan, restorePlan, onAskHeed }) {
+function PlansPanel({ plans, checkTask, renameTask, addTask, deleteTask, reorderTasks, addPlan, updatePlan, archivePlan, restorePlan, onAskHeed, openPlanId, onOpenPlanIdConsumed }) {
   const [addOpen, setAddOpen] = useState(false)
   const [selectedPlanId, setSelectedPlanId] = useState(null)
+  useEffect(() => {
+    if (!openPlanId) return
+    setSelectedPlanId(openPlanId)
+    onOpenPlanIdConsumed?.()
+  }, [openPlanId])
   const [editPlanId, setEditPlanId] = useState(null)
   const [taskDetail, setTaskDetail] = useState(null)  // { planId, taskIndex }
   const [pastPlansOpen, setPastPlansOpen] = useState(false)
@@ -7204,8 +7210,12 @@ function EventsPanel({ allUpcoming, activeContext, onAddContext, onQuickContext,
 }
 
 // ── LifeTab ──────────────────────────────────────────────────────
-function LifeTab({ upcoming, active, activeContext, plansHook, onAddContext, onQuickContext, onImBetter, onExtend, onDetailOpen, onAskHeed }) {
+function LifeTab({ upcoming, active, activeContext, plansHook, onAddContext, onQuickContext, onImBetter, onExtend, onDetailOpen, onAskHeed, openPlanId, onOpenPlanIdConsumed }) {
   const [subtab, setSubtab] = useState('plans')
+  useEffect(() => {
+    if (!openPlanId) return
+    setSubtab('plans')
+  }, [openPlanId])
   const apiUpcoming = [...(active || []).map(mapApiContext), ...(upcoming || []).map(mapApiContext)]
   const allUpcoming = apiUpcoming.length > 0 ? apiUpcoming : (isDemoMode() ? CONTEXTS_UPCOMING_DEMO : [])
   return (
@@ -7218,7 +7228,7 @@ function LifeTab({ upcoming, active, activeContext, plansHook, onAddContext, onQ
         <SegmentButton active={subtab === 'plans'} onClick={() => setSubtab('plans')} label="Plans" count={plansHook.plans.length} accent={C.warmDark}/>
         <SegmentButton active={subtab === 'events'} onClick={() => setSubtab('events')} label="Events" count={(activeContext ? 1 : 0) + allUpcoming.length} accent={C.sage}/>
       </div>
-      {subtab === 'plans'  && <PlansPanel {...plansHook} onAskHeed={onAskHeed}/>}
+      {subtab === 'plans'  && <PlansPanel {...plansHook} onAskHeed={onAskHeed} openPlanId={openPlanId} onOpenPlanIdConsumed={onOpenPlanIdConsumed}/>}
       {subtab === 'events' && (
         <EventsPanel
           allUpcoming={allUpcoming}
@@ -8025,7 +8035,7 @@ function HeedFAB({ onAddTask, onAskHeed, onAddRoutine }) {
 }
 
 // ── AskInlineModal ─────────────────────────────────────────────
-function AskInlineModal({ open, onClose, onLightenRoutine, onTaskAdded, onRoutineAdded, onViewTask, prefill = '', autoSend = false, onAutoSendDone }) {
+function AskInlineModal({ open, onClose, onLightenRoutine, onTaskAdded, onRoutineAdded, onViewTask, prefill = '', autoSend = false, onAutoSendDone, contextPlanId = null }) {
   const { messages, input, setInput, thinking, streaming, busy, send, executeAction } = useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded })
   const scrollRef = useRef(null)
   const inputRef = useRef(null)
@@ -8034,7 +8044,7 @@ function AskInlineModal({ open, onClose, onLightenRoutine, onTaskAdded, onRoutin
   useEffect(() => {
     if (!open || !prefill) return
     if (autoSend) {
-      send(prefill)
+      send(prefill, contextPlanId)
       onAutoSendDone?.()
     } else {
       setInput(prefill)
@@ -8043,6 +8053,11 @@ function AskInlineModal({ open, onClose, onLightenRoutine, onTaskAdded, onRoutin
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
   useEffect(() => { if (open && !prefill && inputRef.current) setTimeout(() => inputRef.current?.focus(), 100) }, [open])
+  // Scroll to bottom after messages render (timeout lets the DOM settle)
+  useEffect(() => {
+    if (!open) return
+    setTimeout(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight }, 80)
+  }, [open, messages.length])
   useEffect(() => {
     if (!open) return
     const fn = (e) => { if (e.key === 'Escape') onClose() }
@@ -9771,6 +9786,8 @@ export default function HeedApp() {
   const [toast, setToast] = useState(null)
   const [askPrefill, setAskPrefill] = useState('')
   const [askAutoSend, setAskAutoSend] = useState(false)
+  const [askContextPlanId, setAskContextPlanId] = useState(null)
+  const [navigateToPlanId, setNavigateToPlanId] = useState(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [editingTask, setEditingTask] = useState(null)
   const [askOpen, setAskOpen] = useState(false)
@@ -10005,10 +10022,11 @@ export default function HeedApp() {
       .catch(() => {})
   }, [FUNCTIONS_URL])
 
-  const handleAskHeed = useCallback((query) => {
+  const handleAskHeed = useCallback((query, planId = null) => {
     const q = (query || '').trim()
     setAskPrefill(q)
     setAskAutoSend(q.length > 0)
+    setAskContextPlanId(planId)
     setAskOpen(true)
   }, [])
 
@@ -10401,7 +10419,7 @@ export default function HeedApp() {
           {tab === 'calendar' && <CalendarTab tasks={apiTasks} contexts={[...(apiContexts.active||[]), ...(apiContexts.upcoming||[])]} routines={routines} recentSkips={recentSkips} onReschedule={handleReschedule} onMarkDone={handleMarkDone} onSkip={handleSkip} onAddTask={() => setModalOpen(true)} onAddContext={() => setContextModalOpen(true)} onEditRoutine={handleEditRoutine} onApplyRetroSuggestion={handleApplyRetroSuggestion}/>}
           {tab === 'ask' && <AskTab prefill={askPrefill} autoSend={askAutoSend} onAutoSendDone={() => { setAskAutoSend(false); setAskPrefill('') }} onLightenRoutine={handleLightenRoutine} onTaskAdded={handleTaskAdded} onRoutineAdded={handleAddRoutine} onViewTask={() => setTab('context')}/>}
           {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} plans={plansHook.plans} checkTask={plansHook.checkTask} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onMarkRoutineDay={handleMarkRoutineDay} onEditTask={handleEditTask} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }}/>}
-          {tab === 'context' && <LifeTab upcoming={apiContexts.upcoming} active={apiContexts.active} activeContext={activeContext} plansHook={plansHook} onAddContext={(data) => data?.type ? handleAddContext({ type: data.type, description: data.desc || data.description }) : setContextModalOpen(true)} onQuickContext={type => setQuickContextType(type)} onImBetter={() => setRecoveryOpen(true)} onExtend={handleExtendContext} onDetailOpen={handleDetailOpen} onAskHeed={handleAskHeed}/>}
+          {tab === 'context' && <LifeTab upcoming={apiContexts.upcoming} active={apiContexts.active} activeContext={activeContext} plansHook={plansHook} onAddContext={(data) => data?.type ? handleAddContext({ type: data.type, description: data.desc || data.description }) : setContextModalOpen(true)} onQuickContext={type => setQuickContextType(type)} onImBetter={() => setRecoveryOpen(true)} onExtend={handleExtendContext} onDetailOpen={handleDetailOpen} onAskHeed={handleAskHeed} openPlanId={navigateToPlanId} onOpenPlanIdConsumed={() => setNavigateToPlanId(null)}/>}
         </div>
       </main>
 
@@ -10412,7 +10430,7 @@ export default function HeedApp() {
       <AddTaskModal open={modalOpen} onClose={() => { setModalOpen(false); setEditingTask(null) }} onSubmit={handleAddTask} onDelete={handleDeleteTask} initialData={editingTask} customCategories={customCategories}/>
       <BuildRoutineScreen open={routineModalOpen} onClose={() => { setRoutineModalOpen(false); setEditingRoutine(null); setBuildRoutineTask(null) }} onSubmit={data => handleAddRoutine(data, { navigate: true })} initialData={editingRoutine} seedTask={buildRoutineTask} tasks={displayTasks}/>
       <AddContextModal open={contextModalOpen} onClose={() => setContextModalOpen(false)} onSubmit={handleAddContext}/>
-      <AskInlineModal open={askOpen} onClose={() => setAskOpen(false)} onLightenRoutine={handleLightenRoutine} onTaskAdded={handleTaskAdded} onRoutineAdded={handleAddRoutine} onViewTask={() => setTab('context')} prefill={askPrefill} autoSend={askAutoSend} onAutoSendDone={() => { setAskAutoSend(false); setAskPrefill('') }}/>
+      <AskInlineModal open={askOpen} onClose={() => setAskOpen(false)} onLightenRoutine={handleLightenRoutine} onTaskAdded={handleTaskAdded} onRoutineAdded={handleAddRoutine} onViewTask={(task, planId) => { setAskOpen(false); if (planId) { setNavigateToPlanId(planId); setTab('context') } else { setTab('context') } }} prefill={askPrefill} autoSend={askAutoSend} onAutoSendDone={() => { setAskAutoSend(false); setAskPrefill('') }} contextPlanId={askContextPlanId}/>
       <TaskOptionsSheet task={taskOptionsTask} onClose={() => setTaskOptionsTask(null)} onMarkDone={handleMarkDone} onSkip={handleSkip} onEdit={handleEditTask} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }}/>
       <AddToRoutineSheet task={addToRoutineTask} routines={routines} onClose={() => setAddToRoutineTask(null)} onSelect={handleAddTaskToRoutine}/>
       <QuickContextSheet type={quickContextType} onClose={() => setQuickContextType(null)} onActivate={handleQuickContext}/>

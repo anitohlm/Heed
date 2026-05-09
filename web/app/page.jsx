@@ -5040,7 +5040,19 @@ function PlanBubbleDetailScreen({ plan, onBack, onEdit, onCheck, onTaskSelect, o
           </>
         )}
         <button
-          onClick={() => onAskHeed?.(`Give me advice on my plan: ${plan.title}`)}
+          onClick={() => {
+            const done  = plan.tasks?.filter(t => t.done).length ?? 0
+            const total = plan.tasks?.length ?? 0
+            const due   = plan.dueDate || plan.targetDate || (plan.eventDate ? new Date(plan.eventDate).toLocaleDateString() : '')
+            const lines = [
+              `Plan: ${plan.title}`,
+              due ? `Due: ${due}` : '',
+              plan.description ? `Description: ${plan.description}` : '',
+              plan.type === 'goal' && plan.target != null ? `Goal: ${plan.current ?? 0} / ${plan.target} ${plan.unit ?? ''}`.trim() : '',
+              total > 0 ? `Tasks (${done}/${total} done):\n${plan.tasks.map(t => `${t.done ? '✓' : '○'} ${t.label}`).join('\n')}` : '',
+            ].filter(Boolean).join('\n')
+            onAskHeed?.(`Give me advice on this plan:\n\n${lines}`)
+          }}
           style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', background: C.bellySoft, border: `1.5px solid ${C.border}`, borderRadius: 14, cursor: 'pointer', fontFamily: 'inherit', marginTop: 8, textAlign: 'left', transition: 'border-color 0.15s, background 0.15s' }}
           onMouseEnter={e => { e.currentTarget.style.borderColor = C.warmDark; e.currentTarget.style.background = C.belly }}
           onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.background = C.bellySoft }}

@@ -8547,7 +8547,7 @@ function MonthStrip({ tasks, monthOffset, selectedWeekStart, onWeekSelect, onMon
   )
 }
 
-function WeekDetail({ tasks, weekStart, onTaskTap, onWeekOffsetChange, onAddTask, contexts = [], onAddContext, routines = [], onEditRoutine }) {
+function WeekDetail({ tasks, weekStart, onTaskTap, onWeekOffsetChange, onAddTask, contexts = [], routines = [], onEditRoutine }) {
   const today = new Date()
   const impColor = { high: C.rust, medium: C.ochre, low: C.sage }
   const impIcon  = { high: '●', medium: '◆', low: '○' }
@@ -8676,12 +8676,6 @@ function WeekDetail({ tasks, weekStart, onTaskTap, onWeekOffsetChange, onAddTask
                   <button onClick={() => onAddTask(date)}
                     style={{ background: 'none', border: `1px dashed ${C.border}`, color: C.inkMute, padding: '3px 10px', borderRadius: 5, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit', opacity: 0.6 }}>
                     + Add task
-                  </button>
-                )}
-                {dayCtxs.length === 0 && (
-                  <button onClick={() => onAddContext && onAddContext(date)}
-                    style={{ background: 'none', border: `1px dashed ${C.border}`, color: C.inkMute, padding: '3px 10px', borderRadius: 5, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit', opacity: 0.45 }}>
-                    + Add context
                   </button>
                 )}
               </div>
@@ -8898,7 +8892,6 @@ function CalendarTab({ tasks, contexts, routines, recentSkips = [], onReschedule
           onTaskTap={setDetailTask}
           onWeekOffsetChange={handleWeekOffsetChange}
           onAddTask={onAddTask}
-          onAddContext={onAddContext}
           onEditRoutine={onEditRoutine}
         />
       </div>

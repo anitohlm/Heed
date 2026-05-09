@@ -4964,7 +4964,7 @@ function EditPlanScreen({ plan, onBack, onSave, onAddTask, onDeleteTask, onRenam
 }
 
 // ── PlanBubbleDetailScreen ──────────────────────────────────────
-function PlanBubbleDetailScreen({ plan, onBack, onEdit, onCheck, onTaskSelect, onArchive }) {
+function PlanBubbleDetailScreen({ plan, onBack, onEdit, onCheck, onTaskSelect, onArchive, onAskHeed }) {
   const doneCount  = plan.tasks ? plan.tasks.filter(t => t.done).length : 0
   const totalCount = plan.tasks ? plan.tasks.length : 0
   const pct = plan.type === 'goal'
@@ -5040,10 +5040,7 @@ function PlanBubbleDetailScreen({ plan, onBack, onEdit, onCheck, onTaskSelect, o
           </>
         )}
         <button
-          onClick={() => {
-            const input = document.querySelector('[aria-label="Ask Heed"]') || document.querySelector('textarea[placeholder*="Ask"]')
-            if (input) { input.focus(); input.value = `Give me advice on my plan: ${plan.title}` }
-          }}
+          onClick={() => onAskHeed?.(`Give me advice on my plan: ${plan.title}`)}
           style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', background: C.bellySoft, border: `1.5px solid ${C.border}`, borderRadius: 14, cursor: 'pointer', fontFamily: 'inherit', marginTop: 8, textAlign: 'left', transition: 'border-color 0.15s, background 0.15s' }}
           onMouseEnter={e => { e.currentTarget.style.borderColor = C.warmDark; e.currentTarget.style.background = C.belly }}
           onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.background = C.bellySoft }}
@@ -6221,7 +6218,7 @@ function GoalUpdateSheet({ plan, onClose, onSave }) {
 }
 
 // ── PlansPanel ───────────────────────────────────────────────────
-function PlansPanel({ plans, checkTask, renameTask, addTask, deleteTask, reorderTasks, addPlan, updatePlan, archivePlan, restorePlan }) {
+function PlansPanel({ plans, checkTask, renameTask, addTask, deleteTask, reorderTasks, addPlan, updatePlan, archivePlan, restorePlan, onAskHeed }) {
   const [addOpen, setAddOpen] = useState(false)
   const [selectedPlanId, setSelectedPlanId] = useState(null)
   const [editPlanId, setEditPlanId] = useState(null)
@@ -6259,6 +6256,7 @@ function PlansPanel({ plans, checkTask, renameTask, addTask, deleteTask, reorder
             onCheck={checkTask}
             onTaskSelect={i => setTaskDetail({ planId: selectedPlan.id, taskIndex: i })}
             onArchive={() => { archivePlan?.(selectedPlan.id); setSelectedPlanId(null) }}
+            onAskHeed={onAskHeed}
           />
         )}
         {editPlan && (
@@ -7147,7 +7145,7 @@ function EventsPanel({ allUpcoming, activeContext, onAddContext, onQuickContext,
 }
 
 // ── LifeTab ──────────────────────────────────────────────────────
-function LifeTab({ upcoming, active, activeContext, plansHook, onAddContext, onQuickContext, onImBetter, onExtend, onDetailOpen }) {
+function LifeTab({ upcoming, active, activeContext, plansHook, onAddContext, onQuickContext, onImBetter, onExtend, onDetailOpen, onAskHeed }) {
   const [subtab, setSubtab] = useState('plans')
   const apiUpcoming = [...(active || []).map(mapApiContext), ...(upcoming || []).map(mapApiContext)]
   const allUpcoming = apiUpcoming.length > 0 ? apiUpcoming : (isDemoMode() ? CONTEXTS_UPCOMING_DEMO : [])
@@ -7161,7 +7159,7 @@ function LifeTab({ upcoming, active, activeContext, plansHook, onAddContext, onQ
         <SegmentButton active={subtab === 'plans'} onClick={() => setSubtab('plans')} label="Plans" count={plansHook.plans.length} accent={C.warmDark}/>
         <SegmentButton active={subtab === 'events'} onClick={() => setSubtab('events')} label="Events" count={(activeContext ? 1 : 0) + allUpcoming.length} accent={C.sage}/>
       </div>
-      {subtab === 'plans'  && <PlansPanel {...plansHook}/>}
+      {subtab === 'plans'  && <PlansPanel {...plansHook} onAskHeed={onAskHeed}/>}
       {subtab === 'events' && (
         <EventsPanel
           allUpcoming={allUpcoming}
@@ -10334,7 +10332,7 @@ export default function HeedApp() {
           {tab === 'calendar' && <CalendarTab tasks={apiTasks} contexts={[...(apiContexts.active||[]), ...(apiContexts.upcoming||[])]} routines={routines} recentSkips={recentSkips} onReschedule={handleReschedule} onMarkDone={handleMarkDone} onSkip={handleSkip} onAddTask={() => setModalOpen(true)} onAddContext={() => setContextModalOpen(true)} onEditRoutine={handleEditRoutine} onApplyRetroSuggestion={handleApplyRetroSuggestion}/>}
           {tab === 'ask' && <AskTab prefill={askPrefill} autoSend={askAutoSend} onAutoSendDone={() => { setAskAutoSend(false); setAskPrefill('') }} onLightenRoutine={handleLightenRoutine} onTaskAdded={handleTaskAdded} onRoutineAdded={handleAddRoutine} onViewTask={task => { setEditingTask(task); setModalOpen(true) }}/>}
           {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} plans={plansHook.plans} checkTask={plansHook.checkTask} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onMarkRoutineDay={handleMarkRoutineDay} onEditTask={handleEditTask} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }}/>}
-          {tab === 'context' && <LifeTab upcoming={apiContexts.upcoming} active={apiContexts.active} activeContext={activeContext} plansHook={plansHook} onAddContext={(data) => data?.type ? handleAddContext({ type: data.type, description: data.desc || data.description }) : setContextModalOpen(true)} onQuickContext={type => setQuickContextType(type)} onImBetter={() => setRecoveryOpen(true)} onExtend={handleExtendContext} onDetailOpen={handleDetailOpen}/>}
+          {tab === 'context' && <LifeTab upcoming={apiContexts.upcoming} active={apiContexts.active} activeContext={activeContext} plansHook={plansHook} onAddContext={(data) => data?.type ? handleAddContext({ type: data.type, description: data.desc || data.description }) : setContextModalOpen(true)} onQuickContext={type => setQuickContextType(type)} onImBetter={() => setRecoveryOpen(true)} onExtend={handleExtendContext} onDetailOpen={handleDetailOpen} onAskHeed={handleAskHeed}/>}
         </div>
       </main>
 

@@ -575,11 +575,14 @@ function useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded } = {}) {
     let pendingChips = []
     let gotAnything = false
 
+    const abortCtrl = new AbortController()
+    const abortTimer = setTimeout(() => abortCtrl.abort(), 20000)
     try {
       const resp = await fetch(`${FUNCTIONS_URL}/api/advisor_stream`, {
         method: 'POST',
         headers: authHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ message: trimmed, history: snapshot }),
+        signal: abortCtrl.signal,
       })
       if (!resp.ok) throw new Error(`${resp.status}`)
       if (!resp.body) throw new Error('no body')
@@ -638,21 +641,32 @@ function useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded } = {}) {
         try { handleEvent(JSON.parse(buf.trim())) } catch {}
       }
       if (!gotAnything) throw new Error('empty')
+      clearTimeout(abortTimer)
     } catch {
-      // Fall back to scripted response so a network blip still shows
-      // something useful in the demo.
-      const scripted = SCRIPTED_RESPONSES[trimmed] || FALLBACK_RESPONSE
+      clearTimeout(abortTimer)
+      // For plan-advice queries use a helpful scripted fallback so the demo
+      // still shows actionable suggestions even when the backend is offline.
+      let scripted = SCRIPTED_RESPONSES[trimmed] || FALLBACK_RESPONSE
+      if (trimmed.startsWith('Give me advice on this plan:')) {
+        const planTitle = trimmed.split('\n').find(l => l.startsWith('Plan: '))?.replace('Plan: ', '') || 'your plan'
+        scripted = {
+          answer: `Here's my advice for **${planTitle}**:\n\n- Break larger tasks into smaller, manageable steps\n- Schedule focused work sessions for your most challenging items\n- Review your progress weekly and adjust timelines as needed\n- Identify any blockers early and address them before they stall progress\n- Celebrate small wins to keep your momentum going`,
+          actions: [],
+          chips: ['Help me prioritize', "What's overdue?", 'How do I stay consistent?'],
+        }
+      }
       finalText = scripted.answer
       pendingActions.length = 0
       ;(scripted.actions || []).forEach(a => pendingActions.push(a))
       pendingChips = scripted.chips || []
       setThinking(null)
       setStreaming(finalText)
+      gotAnything = true  // treat scripted as a real response
     }
 
-    // For plan-advice queries with no backend actions, parse the response text
-    // and surface suggestions as add_task action buttons.
-    if (trimmed.startsWith('Give me advice on this plan:') && pendingActions.length === 0 && finalText) {
+    // For plan-advice queries, parse the response text for add_task suggestions.
+    // Only runs when we got a real or scripted response (gotAnything guard).
+    if (trimmed.startsWith('Give me advice on this plan:') && pendingActions.length === 0 && finalText && gotAnything) {
       parsePlanAdviceActions(finalText, contextPlanId).forEach(a => pendingActions.push(a))
     }
 
@@ -667,6 +681,35 @@ function useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded } = {}) {
     if (!msg?.actions?.[actionIndex]) return
     const action = msg.actions[actionIndex]
     if (action.confirmed) return
+
+    // Demo mode: simulate locally — no backend write, keeps demo self-contained
+    if (isDemoMode()) {
+      if (action.action_type === 'add_task') {
+        const mockTask = {
+          id: 'demo_ai_' + Date.now(),
+          status: 'active',
+          name: action.payload?.name || action.label || 'New task',
+          category: action.payload?.category || 'admin',
+          importance: action.payload?.importance || 'medium',
+          next_due_at: new Date().toISOString(),
+        }
+        onTaskAdded?.(mockTask)
+        setMessages(msgs => msgs.map((m, i) => i !== messageIndex ? m : {
+          ...m,
+          actions: m.actions.map((a, j) => j !== actionIndex ? a : { ...a, confirmed: true, summary: 'Added: ' + mockTask.name, result: mockTask }),
+        }))
+        return
+      }
+      if (action.action_type === 'add_routine') {
+        const mockRoutine = { id: 'demo_routine_' + Date.now(), name: action.payload?.name || action.label || 'New routine', cadence_days: action.payload?.cadence_days || 1, category: action.payload?.category || 'admin' }
+        onRoutineAdded?.(mockRoutine)
+        setMessages(msgs => msgs.map((m, i) => i !== messageIndex ? m : {
+          ...m,
+          actions: m.actions.map((a, j) => j !== actionIndex ? a : { ...a, confirmed: true, summary: 'Added: ' + mockRoutine.name, result: mockRoutine }),
+        }))
+        return
+      }
+    }
 
     try {
       const resp = await fetch(`${FUNCTIONS_URL}/api/execute_action`, {
@@ -4131,7 +4174,8 @@ function MicButton({ listening, onToggle, disabled }) {
 }
 
 function AskTab({ prefill = '', autoSend = false, onAutoSendDone, onLightenRoutine, onTaskAdded, onRoutineAdded, onViewTask }) {
-  const { messages, input, setInput, thinking, streaming, busy, send, executeAction } = useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded })
+  const { messages, input, setInput, thinking, streaming, busy, send, executeAction, clearChat, clearToday } = useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded })
+  const [clearMenuOpen, setClearMenuOpen] = useState(false)
   const scrollRef = useRef(null)
   const { listening, toggle: toggleMic, supported: micSupported } = useMic(useCallback((text, isFinal) => { if (isFinal) send(text) }, [send]))
   useEffect(() => {
@@ -4168,7 +4212,41 @@ function AskTab({ prefill = '', autoSend = false, onAutoSendDone, onLightenRouti
       )}
       {messages.length > 0 && (
         <div ref={scrollRef} className="heed-ask-scroll" style={{ flex: 1, overflowY: 'auto', padding: '12px 4px', marginBottom: 12 }}>
-          <div style={{ textAlign: 'center', marginBottom: 18 }}><MayaOwl size={72} mood={owlMood} speaking={busy}/></div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 18, position: 'relative' }}>
+            <MayaOwl size={72} mood={owlMood} speaking={busy}/>
+            {!busy && (
+              <div style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)' }}>
+                <button onClick={() => setClearMenuOpen(v => !v)} title="Clear chat"
+                  style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'none', border: `1px solid ${C.border}`, borderRadius: 8, padding: '5px 10px', cursor: 'pointer', fontSize: 12, color: C.inkMute, fontFamily: 'inherit', transition: 'all 0.15s' }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = C.rust; e.currentTarget.style.color = C.rust }}
+                  onMouseLeave={e => { if (!clearMenuOpen) { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.inkMute } }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><polyline points="3 6 5 6 21 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M19 6l-1 14H6L5 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M10 11v6M14 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M9 6V4h6v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  Clear
+                </button>
+                {clearMenuOpen && (
+                  <>
+                    <div onClick={() => setClearMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 1 }}/>
+                    <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, background: C.paperHi, border: `1px solid ${C.border}`, borderRadius: 10, boxShadow: '0 4px 16px rgba(44,24,16,0.15)', zIndex: 2, minWidth: 160, overflow: 'hidden', animation: 'heed-dropdown 0.15s ease' }}>
+                      {[
+                        { label: 'Clear today', sub: "Today's messages", action: () => { clearToday(); setClearMenuOpen(false) } },
+                        { label: 'Clear all', sub: 'All chat history', action: () => { clearChat(); setClearMenuOpen(false) } },
+                      ].map(item => (
+                        <button key={item.label} onClick={item.action}
+                          style={{ display: 'block', width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', transition: 'background 0.1s' }}
+                          onMouseEnter={e => e.currentTarget.style.background = C.bellySoft}
+                          onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                        >
+                          <div style={{ fontSize: 13, fontWeight: 600, color: C.rust }}>{item.label}</div>
+                          <div style={{ fontSize: 11, color: C.inkMute, marginTop: 1 }}>{item.sub}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
           {messages.map((m, i) => (
             <Bubble key={i} role={m.role} content={m.content}
               actions={m.actions} chips={m.chips}
@@ -8173,16 +8251,18 @@ function AskInlineModal({ open, onClose, onLightenRoutine, onTaskAdded, onRoutin
             </div>
             {messages.length > 0 && !busy && (
               <div style={{ position: 'relative' }}>
-                <button onClick={() => setClearMenuOpen(v => !v)} aria-label="Clear chat options" title="Clear chat" style={{ background: 'transparent', border: 'none', color: clearMenuOpen ? C.rust : C.inkMute, cursor: 'pointer', padding: 4, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 6, transition: 'color 0.15s' }}
-                  onMouseEnter={e => e.currentTarget.style.color = C.rust}
-                  onMouseLeave={e => { if (!clearMenuOpen) e.currentTarget.style.color = C.inkMute }}
+                <button onClick={() => setClearMenuOpen(v => !v)} aria-label="Clear chat options" title="Clear chat"
+                  style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: `1px solid ${clearMenuOpen ? C.rust : C.border}`, borderRadius: 8, padding: '4px 9px', cursor: 'pointer', fontSize: 11.5, fontWeight: 500, color: clearMenuOpen ? C.rust : C.inkMute, fontFamily: 'inherit', transition: 'all 0.15s' }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = C.rust; e.currentTarget.style.color = C.rust }}
+                  onMouseLeave={e => { if (!clearMenuOpen) { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.inkMute } }}
                 >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
                     <polyline points="3 6 5 6 21 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                     <path d="M19 6l-1 14H6L5 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                     <path d="M10 11v6M14 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                     <path d="M9 6V4h6v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
+                  Clear
                 </button>
                 {clearMenuOpen && (
                   <>

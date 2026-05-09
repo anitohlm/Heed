@@ -4242,26 +4242,16 @@ function AskTab({ prefill = '', autoSend = false, onAutoSendDone, onLightenRouti
         </div>
       )}
       {messages.length > 0 && (
-        <div ref={scrollRef} className="heed-ask-scroll" style={{ flex: 1, overflowY: 'auto', padding: '12px 4px', marginBottom: 12, position: 'relative' }}
-          onScroll={e => {
-            const el = e.currentTarget
-            setShowScrollBtn(el.scrollHeight - el.scrollTop - el.clientHeight > 80)
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 18 }}>
-            <MayaOwl size={72} mood={owlMood} speaking={busy}/>
-          </div>
-          {showScrollBtn && (
-            <button
-              onClick={() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight }}
-              aria-label="Scroll to bottom"
-              style={{ position: 'sticky', bottom: 8, left: '50%', transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', gap: 5, background: C.warmDark, color: C.cream, border: 'none', borderRadius: 20, padding: '6px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', boxShadow: '0 2px 10px rgba(44,24,16,0.25)', fontFamily: 'inherit', zIndex: 2, animation: 'heed-fadeIn 0.15s ease' }}
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12l7 7 7-7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              Latest
-            </button>
-          )}
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flex: 1, position: 'relative', display: 'flex', flexDirection: 'column', minHeight: 0, marginBottom: 12 }}>
+          <div ref={scrollRef} className="heed-ask-scroll" style={{ flex: 1, overflowY: 'auto', padding: '12px 4px' }}
+            onScroll={e => {
+              const el = e.currentTarget
+              setShowScrollBtn(el.scrollHeight - el.scrollTop - el.clientHeight > 80)
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 18 }}>
+              <MayaOwl size={72} mood={owlMood} speaking={busy}/>
+            </div>
             {messages.map((m, i) => (
               <Bubble key={i} role={m.role} content={m.content}
                 actions={m.actions} chips={m.chips}
@@ -4273,6 +4263,16 @@ function AskTab({ prefill = '', autoSend = false, onAutoSendDone, onLightenRouti
             {thinking !== null && <ThinkingBubble steps={thinking}/>}
             {streaming && <Bubble role="assistant" content={streaming} streaming/>}
           </div>
+          {showScrollBtn && (
+            <button
+              onClick={() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight }}
+              aria-label="Scroll to bottom"
+              style={{ position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', gap: 5, background: C.warmDark, color: C.cream, border: 'none', borderRadius: 20, padding: '6px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', boxShadow: '0 2px 10px rgba(44,24,16,0.25)', fontFamily: 'inherit', zIndex: 2, animation: 'heed-fadeIn 0.15s ease', whiteSpace: 'nowrap' }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12l7 7 7-7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              Latest
+            </button>
+          )}
         </div>
       )}
       {/* Input bar — portaled to document.body so position:fixed pins
@@ -8263,50 +8263,52 @@ function AskInlineModal({ open, onClose, onLightenRoutine, onTaskAdded, onRoutin
             </div>
             <button onClick={onClose} aria-label="Close" style={{ background: 'transparent', border: 'none', color: C.inkMute, cursor: 'pointer', fontSize: 20, padding: 4, lineHeight: 1, fontFamily: 'inherit' }}>×</button>
           </div>
-          <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', paddingRight: 4, marginBottom: 12, minHeight: messages.length === 0 ? 'auto' : 200, position: 'relative' }}
-            onScroll={e => {
-              const el = e.currentTarget
-              setShowScrollBtn(el.scrollHeight - el.scrollTop - el.clientHeight > 80)
-            }}
-          >
+          <div style={{ flex: 1, position: 'relative', display: 'flex', flexDirection: 'column', minHeight: messages.length === 0 ? 'auto' : 200, marginBottom: 12 }}>
+            <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', paddingRight: 4 }}
+              onScroll={e => {
+                const el = e.currentTarget
+                setShowScrollBtn(el.scrollHeight - el.scrollTop - el.clientHeight > 80)
+              }}
+            >
+              {messages.length === 0 && !busy && (
+                <>
+                  <div style={{ fontSize: 13, color: C.inkSoft, fontStyle: 'italic', marginBottom: 12, lineHeight: 1.5 }}>
+                    Pick one to start, or just type.
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
+                    {(isDemoMode() ? SUGGESTIONS : SUGGESTIONS.filter(s => s.text !== 'Plan around my Singapore trip')).map((s, i) => (
+                      <button key={s.text} onClick={() => send(s.text)} disabled={busy}
+                        style={{ background: C.paper, border: `1px solid ${C.border}`, color: C.warmDark, padding: '7px 12px', borderRadius: 999, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6, animation: 'heed-fadeUp 0.3s ease both', animationDelay: `${i * 60}ms`, transition: 'all 0.15s' }}
+                        onMouseEnter={e => { e.currentTarget.style.background = C.bellySoft }}
+                        onMouseLeave={e => { e.currentTarget.style.background = C.paper }}
+                      >
+                        <span style={{ fontSize: 13 }}>{s.emoji}</span>{s.text}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+              {messages.map((m, i) => (
+                <Bubble key={i} role={m.role} content={m.content}
+                  actions={m.actions} chips={m.chips}
+                  onConfirm={(actionIndex) => executeAction(i, actionIndex)}
+                  onChipClick={(text) => send(text)}
+                  onViewTask={onViewTask}
+                />
+              ))}
+              {thinking !== null && <ThinkingBubble steps={thinking}/>}
+              {streaming && <Bubble role="assistant" content={streaming} streaming/>}
+            </div>
             {showScrollBtn && (
               <button
                 onClick={() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight }}
                 aria-label="Scroll to bottom"
-                style={{ position: 'sticky', bottom: 4, left: '50%', transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', gap: 5, background: C.warmDark, color: C.cream, border: 'none', borderRadius: 20, padding: '5px 12px', fontSize: 11.5, fontWeight: 600, cursor: 'pointer', boxShadow: '0 2px 10px rgba(44,24,16,0.25)', fontFamily: 'inherit', zIndex: 2, animation: 'heed-fadeIn 0.15s ease' }}
+                style={{ position: 'absolute', bottom: 8, left: '50%', transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', gap: 5, background: C.warmDark, color: C.cream, border: 'none', borderRadius: 20, padding: '5px 12px', fontSize: 11.5, fontWeight: 600, cursor: 'pointer', boxShadow: '0 2px 10px rgba(44,24,16,0.25)', fontFamily: 'inherit', zIndex: 2, animation: 'heed-fadeIn 0.15s ease', whiteSpace: 'nowrap' }}
               >
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12l7 7 7-7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 Latest
               </button>
             )}
-            {messages.length === 0 && !busy && (
-              <>
-                <div style={{ fontSize: 13, color: C.inkSoft, fontStyle: 'italic', marginBottom: 12, lineHeight: 1.5 }}>
-                  Pick one to start, or just type.
-                </div>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
-                  {(isDemoMode() ? SUGGESTIONS : SUGGESTIONS.filter(s => s.text !== 'Plan around my Singapore trip')).map((s, i) => (
-                    <button key={s.text} onClick={() => send(s.text)} disabled={busy}
-                      style={{ background: C.paper, border: `1px solid ${C.border}`, color: C.warmDark, padding: '7px 12px', borderRadius: 999, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6, animation: 'heed-fadeUp 0.3s ease both', animationDelay: `${i * 60}ms`, transition: 'all 0.15s' }}
-                      onMouseEnter={e => { e.currentTarget.style.background = C.bellySoft }}
-                      onMouseLeave={e => { e.currentTarget.style.background = C.paper }}
-                    >
-                      <span style={{ fontSize: 13 }}>{s.emoji}</span>{s.text}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-            {messages.map((m, i) => (
-              <Bubble key={i} role={m.role} content={m.content}
-                actions={m.actions} chips={m.chips}
-                onConfirm={(actionIndex) => executeAction(i, actionIndex)}
-                onChipClick={(text) => send(text)}
-                onViewTask={onViewTask}
-              />
-            ))}
-            {thinking !== null && <ThinkingBubble steps={thinking}/>}
-            {streaming && <Bubble role="assistant" content={streaming} streaming/>}
           </div>
           <div style={{ display: 'flex', gap: 8, paddingTop: 10, borderTop: messages.length > 0 ? `1px solid ${C.hairline}` : 'none', flexShrink: 0, alignItems: 'center' }}>
             {micSupported && <MicButton listening={listening} onToggle={toggleMic} disabled={busy}/>}

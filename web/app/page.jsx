@@ -10353,6 +10353,22 @@ export default function HeedApp() {
 
   const handleAddContext = useCallback(async (data) => {
     const body = { context_type: data.type, start_date: data.startDate, end_date: data.endDate, description: data.description }
+    // Optimistic local update so the UI responds immediately
+    const ecfg = EVENT_TYPE_CONFIG[data.type]
+    const qcfg = QUICK_CONTEXT_CONFIG[data.type]
+    const startDate = new Date()
+    const endDate = new Date()
+    endDate.setDate(endDate.getDate() + (qcfg?.defaultDays ?? 1) - 1)
+    const heldTaskIds = apiTasks.filter(t => t.status === 'active' && !dismissedIds.has(t.id)).map(t => t.id)
+    setActiveContext({
+      id: `ctx-${Date.now()}`,
+      type: data.type,
+      label: data.description || qcfg?.label || ecfg?.label || data.type,
+      icon: data.icon || ecfg?.icon || qcfg?.icon || '📍',
+      startDate,
+      endDate,
+      heldTaskIds,
+    })
     try {
       const resp = await fetch(`${FUNCTIONS_URL}/api/context`, {
         method: 'POST',
@@ -10367,7 +10383,7 @@ export default function HeedApp() {
         setToast({ message: "Noted. I'll plan around it." })
       }
     } catch {}
-  }, [FUNCTIONS_URL])
+  }, [FUNCTIONS_URL, apiTasks, dismissedIds])
 
   function handleTaskAdded(task) {
     if (task) setApiTasks(t => [...t, { status: 'active', next_due_at: new Date().toISOString(), ...task }])
@@ -10557,8 +10573,8 @@ export default function HeedApp() {
       `}</style>
 
       {activeContext && (() => {
-        const stripeColor = { travel: C.ochre, illness: C.sage, busy: C.warmDark, celebration: C.rust }[activeContext.type] || C.warmDark
-        const emoji = { travel: '🗺️', illness: '🌿', busy: '🌾', celebration: '🌸' }[activeContext.type] || '📍'
+        const stripeColor = { travel: C.ochre, illness: C.sage, busy: C.warmDark, celebration: C.rust, low: C.low }[activeContext.type] || C.warmDark
+        const emoji = { travel: '🗺️', illness: '🌿', busy: '🌾', celebration: '🌸', low: '🌙' }[activeContext.type] || '📍'
         return (
           <div style={{ position: 'sticky', top: 0, zIndex: 11, background: stripeColor, color: C.cream, fontSize: 12, fontWeight: 600, padding: '5px 16px', textAlign: 'center', letterSpacing: 0.2 }}>
             {emoji} {activeContext.label || activeContext.desc || activeContext.type} — Heed is going gentle
@@ -10610,7 +10626,7 @@ export default function HeedApp() {
           {tab === 'calendar' && <CalendarTab tasks={apiTasks} contexts={[...(apiContexts.active||[]), ...(apiContexts.upcoming||[])]} routines={routines} recentSkips={recentSkips} onReschedule={handleReschedule} onMarkDone={handleMarkDone} onSkip={handleSkip} onAddTask={() => setModalOpen(true)} onAddContext={() => setContextModalOpen(true)} onEditRoutine={handleEditRoutine} onApplyRetroSuggestion={handleApplyRetroSuggestion}/>}
           {tab === 'ask' && <AskTab prefill={askPrefill} autoSend={askAutoSend} onAutoSendDone={() => { setAskAutoSend(false); setAskPrefill('') }} onLightenRoutine={handleLightenRoutine} onTaskAdded={handleTaskAdded} onRoutineAdded={handleAddRoutine} onViewTask={() => setTab('context')}/>}
           {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} plans={plansHook.plans} checkTask={plansHook.checkTask} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onMarkRoutineDay={handleMarkRoutineDay} onEditTask={handleEditTask} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }}/>}
-          {tab === 'context' && <LifeTab upcoming={apiContexts.upcoming} active={apiContexts.active} activeContext={activeContext} plansHook={plansHook} onAddContext={(data) => data?.type ? handleAddContext({ type: data.type, description: data.desc || data.description }) : setContextModalOpen(true)} onQuickContext={type => setQuickContextType(type)} onImBetter={() => setRecoveryOpen(true)} onExtend={handleExtendContext} onDetailOpen={handleDetailOpen} onAskHeed={handleAskHeed} openPlanId={navigateToPlanId} onOpenPlanIdConsumed={() => setNavigateToPlanId(null)} addedTaskLabel={navigateToTaskLabel} onAddedTaskLabelConsumed={() => setNavigateToTaskLabel(null)}/>}
+          {tab === 'context' && <LifeTab upcoming={apiContexts.upcoming} active={apiContexts.active} activeContext={activeContext} plansHook={plansHook} onAddContext={(data) => data?.type ? handleAddContext({ type: data.type, description: data.desc || data.description, icon: data.icon }) : setContextModalOpen(true)} onQuickContext={type => setQuickContextType(type)} onImBetter={() => setRecoveryOpen(true)} onExtend={handleExtendContext} onDetailOpen={handleDetailOpen} onAskHeed={handleAskHeed} openPlanId={navigateToPlanId} onOpenPlanIdConsumed={() => setNavigateToPlanId(null)} addedTaskLabel={navigateToTaskLabel} onAddedTaskLabelConsumed={() => setNavigateToTaskLabel(null)}/>}
         </div>
       </main>
 

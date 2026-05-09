@@ -8649,7 +8649,7 @@ function AddTaskModal({ open, onClose, onSubmit, onDelete, initialData = null, c
 }
 
 // ── AddContextModal ────────────────────────────────────────────
-function AddContextModal({ open, onClose, onSubmit }) {
+function AddContextModal({ open, onClose, onSubmit, customEventTypes = [] }) {
   const [type, setType] = useState('travel')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
@@ -8677,6 +8677,17 @@ function AddContextModal({ open, onClose, onSubmit }) {
     { v: 'illness', label: 'Illness', icon: '🌿', tone: C.rust },
     { v: 'busy', label: 'Busy week', icon: '🌾', tone: C.warmDark },
     { v: 'celebration', label: 'Celebration', icon: '🌸', tone: C.rose },
+    // User-defined event types from Settings → Life Event Types. Persisted
+    // to localStorage so they survive reload. Backend stores them under the
+    // generic 'other' context_type since the API only accepts the canonical
+    // four; the user-visible label and icon are preserved through the
+    // description and the local customEventTypes list.
+    ...customEventTypes.map(evt => ({
+      v: evt.id,
+      label: evt.label,
+      icon: evt.icon || '📌',
+      tone: C.warmDark,
+    })),
   ]
   const inputStyle = { width: '100%', boxSizing: 'border-box', background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '10px 14px', fontSize: 14, color: C.ink, outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.15s' }
   return (
@@ -10083,7 +10094,16 @@ export default function HeedApp() {
       return raw ? JSON.parse(raw) : []
     } catch { return [] }
   })
-  const [customEventTypes, setCustomEventTypes] = useState([])
+  const [customEventTypes, setCustomEventTypes] = useState(() => {
+    if (typeof window === 'undefined') return []
+    try {
+      const raw = localStorage.getItem('heed.event-types.v1')
+      return raw ? JSON.parse(raw) : []
+    } catch { return [] }
+  })
+  useEffect(() => {
+    try { localStorage.setItem('heed.event-types.v1', JSON.stringify(customEventTypes)) } catch (_) {}
+  }, [customEventTypes])
   useEffect(() => {
     if (!username || isDemoMode()) return
     fetch(`${FUNCTIONS_URL}/api/user_avatar`, {
@@ -10477,9 +10497,14 @@ export default function HeedApp() {
   const handleAddContext = useCallback(async (data) => {
     if (!data || !data.type) return
     // Backend accepts: travel | illness | busy | celebration | other.
-    // Map UI-only aliases (sick, low) to the closest persisted type.
+    // Map UI-only aliases (sick, low) and any user-defined custom event type
+    // (id starts with 'evt_') to the closest persisted type. The user-visible
+    // label / icon survive via the description field and the customEventTypes
+    // list in localStorage.
     const TYPE_ALIAS = { sick: 'illness', low: 'other' }
-    const apiType = TYPE_ALIAS[data.type] || data.type
+    const BACKEND_TYPES = new Set(['travel', 'illness', 'busy', 'celebration', 'other'])
+    const aliased = TYPE_ALIAS[data.type] || data.type
+    const apiType = BACKEND_TYPES.has(aliased) ? aliased : 'other'
     const ecfg = EVENT_TYPE_CONFIG[data.type]
     const qcfg = QUICK_CONTEXT_CONFIG[data.type]
     const desc = data.description || data.desc || qcfg?.label || ecfg?.label || data.type
@@ -10863,7 +10888,7 @@ export default function HeedApp() {
 
       <AddTaskModal open={modalOpen} onClose={() => { setModalOpen(false); setEditingTask(null) }} onSubmit={handleAddTask} onDelete={handleDeleteTask} initialData={editingTask} customCategories={customCategories}/>
       <BuildRoutineScreen open={routineModalOpen} onClose={() => { setRoutineModalOpen(false); setEditingRoutine(null); setBuildRoutineTask(null) }} onSubmit={data => handleAddRoutine(data, { navigate: true })} initialData={editingRoutine} seedTask={buildRoutineTask} tasks={displayTasks}/>
-      <AddContextModal open={contextModalOpen} onClose={() => setContextModalOpen(false)} onSubmit={handleAddContext}/>
+      <AddContextModal open={contextModalOpen} onClose={() => setContextModalOpen(false)} onSubmit={handleAddContext} customEventTypes={customEventTypes}/>
       <AskInlineModal open={askOpen} onClose={() => setAskOpen(false)} onLightenRoutine={handleLightenRoutine} onTaskAdded={handleTaskAdded} onRoutineAdded={handleAddRoutine} onTaskDeferred={handleTaskDeferred} onViewTask={(task, planId) => { setAskOpen(false); setNavigateToTaskLabel(task?.name || null); if (planId) { setNavigateToPlanId(planId); setTab('context') } else { setTab('context') } }} prefill={askPrefill} autoSend={askAutoSend} onAutoSendDone={() => { setAskAutoSend(false); setAskPrefill('') }} contextPlanId={askContextPlanId} onToast={setToast}/>
       <TaskOptionsSheet task={taskOptionsTask} onClose={() => setTaskOptionsTask(null)} onMarkDone={handleMarkDone} onSkip={handleSkip} onEdit={handleEditTask} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }}/>
       <AddToRoutineSheet task={addToRoutineTask} routines={routines} onClose={() => setAddToRoutineTask(null)} onSelect={handleAddTaskToRoutine}/>

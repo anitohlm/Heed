@@ -10,6 +10,17 @@ const FUNCTIONS_URL = process.env.NEXT_PUBLIC_FUNCTIONS_URL || 'http://localhost
 function getUsername() {
   try { return localStorage.getItem('heed.username') || '' } catch { return '' }
 }
+function getAuthToken() {
+  try { return localStorage.getItem('heed.auth-token') || '' } catch { return '' }
+}
+// Build the auth headers a fetch needs. Always returns X-User-ID; X-Auth-Token
+// is omitted when no token is stored (lets backend fall through to legacy mode).
+function authHeaders(extra) {
+  const h = Object.assign({ 'X-User-ID': getUsername() || 'demo' }, extra || {})
+  const tok = getAuthToken()
+  if (tok) h['X-Auth-Token'] = tok
+  return h
+}
 
 function getAvatar() {
   try { return localStorage.getItem('heed.avatar') || null } catch { return null }
@@ -566,7 +577,7 @@ function useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded } = {}) {
     try {
       const resp = await fetch(`${FUNCTIONS_URL}/api/advisor_stream`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-User-ID': getUsername() || 'demo' },
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ message: trimmed, history: snapshot }),
       })
       if (!resp.ok) throw new Error(`${resp.status}`)
@@ -659,7 +670,7 @@ function useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded } = {}) {
     try {
       const resp = await fetch(`${FUNCTIONS_URL}/api/execute_action`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-User-ID': getUsername() || 'demo' },
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           action_type: action.action_type,
           payload: { ...action.payload, task_id: action.task_id, routine_id: action.routine_id },
@@ -916,7 +927,7 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
 
       const res = await fetch(`${FUNCTIONS_URL}/api/user_avatar`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'X-User-ID': getUsername() || 'demo' },
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ avatar_b64: b64 }),
       })
       if (!res.ok) throw new Error('Upload failed')
@@ -3638,7 +3649,7 @@ function CaptureBar({ onCreateTask, onCreateRoutine, onViewTask, onToast }) {
     try {
       const res = await fetch(`${FUNCTIONS_URL}/api/parse_capture`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-User-ID': getUsername() || 'demo' },
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ text: t }),
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -4591,7 +4602,7 @@ function usePlans(initialPlans) {
     if (typeof window === 'undefined' || _hydrated.current) return
     _hydrated.current = true
     if (isDemoMode()) return  // demo mode — keep DEMO_PLANS default, skip API
-    fetch(`${FUNCTIONS_URL}/api/user_state/plans`, { headers: { 'X-User-ID': getUsername() || 'demo' } })
+    fetch(`${FUNCTIONS_URL}/api/user_state/plans`, { headers: authHeaders() })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         const items = data && Array.isArray(data.items) ? data.items : null
@@ -4602,7 +4613,7 @@ function usePlans(initialPlans) {
           if (real.length < items.length) {
             fetch(`${FUNCTIONS_URL}/api/user_state/plans`, {
               method: 'PUT',
-              headers: { 'Content-Type': 'application/json', 'X-User-ID': getUsername() || 'demo' },
+              headers: authHeaders({ 'Content-Type': 'application/json' }),
               body: JSON.stringify({ items: real }),
             }).catch(() => {})
           }
@@ -4614,7 +4625,7 @@ function usePlans(initialPlans) {
           if (realCur.length > 0) {
             fetch(`${FUNCTIONS_URL}/api/user_state/plans`, {
               method: 'PUT',
-              headers: { 'Content-Type': 'application/json', 'X-User-ID': getUsername() || 'demo' },
+              headers: authHeaders({ 'Content-Type': 'application/json' }),
               body: JSON.stringify({ items: realCur }),
             }).catch(() => {})
           }
@@ -4629,7 +4640,7 @@ function usePlans(initialPlans) {
     if (isDemoMode()) return  // demo mode — local-only, don't write to API
     fetch(`${FUNCTIONS_URL}/api/user_state/plans`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json', 'X-User-ID': getUsername() || 'demo' },
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ items: plans }),
     }).catch(() => {})
   }, [plans])
@@ -5892,7 +5903,7 @@ function AddPlanSheet({ onClose, onAdd }) {
     try {
       const resp = await fetch(`${FUNCTIONS_URL}/api/suggest_tasks`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-User-ID': getUsername() || 'demo' },
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ title: title.trim(), type }),
       })
       if (!resp.ok) throw new Error('Request failed')
@@ -8014,12 +8025,24 @@ function HeedFAB({ onAddTask, onAskHeed, onAddRoutine }) {
 }
 
 // ── AskInlineModal ─────────────────────────────────────────────
-function AskInlineModal({ open, onClose, onLightenRoutine, onTaskAdded, onRoutineAdded, onViewTask }) {
+function AskInlineModal({ open, onClose, onLightenRoutine, onTaskAdded, onRoutineAdded, onViewTask, prefill = '', autoSend = false, onAutoSendDone }) {
   const { messages, input, setInput, thinking, streaming, busy, send, executeAction } = useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded })
   const scrollRef = useRef(null)
   const inputRef = useRef(null)
   const { listening, toggle: toggleMic, supported: micSupported } = useMic(useCallback((text, isFinal) => { if (isFinal) send(text) }, [send]))
-  useEffect(() => { if (open && inputRef.current) setTimeout(() => inputRef.current?.focus(), 100) }, [open])
+  // Auto-fill or auto-send when the modal opens with a prefill
+  useEffect(() => {
+    if (!open || !prefill) return
+    if (autoSend) {
+      send(prefill)
+      onAutoSendDone?.()
+    } else {
+      setInput(prefill)
+      setTimeout(() => inputRef.current?.focus(), 100)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
+  useEffect(() => { if (open && !prefill && inputRef.current) setTimeout(() => inputRef.current?.focus(), 100) }, [open])
   useEffect(() => {
     if (!open) return
     const fn = (e) => { if (e.key === 'Escape') onClose() }
@@ -9573,6 +9596,7 @@ function UsernameGate({ onComplete }) {
         const data = await res.json()
         if (!data.ok) { setStatus('error'); setErrorMsg(data.error === 'taken' ? 'That username is taken' : 'Could not register — try again'); return }
         localStorage.setItem('heed.username', value)
+        if (data.token) try { localStorage.setItem('heed.auth-token', data.token) } catch {}
         onComplete(value)
       }
     } catch {
@@ -9699,7 +9723,7 @@ export default function HeedApp() {
       }
     } catch (_) {}
     if (isDemoMode()) return  // demo mode — keep ROUTINES default, skip API
-    fetch(`${FUNCTIONS_URL}/api/user_state/routines`, { headers: { 'X-User-ID': getUsername() || 'demo' } })
+    fetch(`${FUNCTIONS_URL}/api/user_state/routines`, { headers: authHeaders() })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         const items = data && Array.isArray(data.items) ? data.items : null
@@ -9709,7 +9733,7 @@ export default function HeedApp() {
           // future reinstall on the same user finds it.
           fetch(`${FUNCTIONS_URL}/api/user_state/routines`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json', 'X-User-ID': getUsername() || 'demo' },
+            headers: authHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({ items: local }),
           }).catch(() => {})
         }
@@ -9725,7 +9749,7 @@ export default function HeedApp() {
     if (isDemoMode()) return  // demo mode — local-only, don't write to API
     fetch(`${FUNCTIONS_URL}/api/user_state/routines`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json', 'X-User-ID': getUsername() || 'demo' },
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ items: routines }),
     }).catch(() => {})
   }, [routines, FUNCTIONS_URL])
@@ -9789,7 +9813,7 @@ export default function HeedApp() {
   useEffect(() => {
     if (!username || isDemoMode()) return
     fetch(`${FUNCTIONS_URL}/api/user_avatar`, {
-      headers: { 'X-User-ID': username },
+      headers: authHeaders(),
     })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
@@ -9813,11 +9837,11 @@ export default function HeedApp() {
     // Skip API in demo mode — apiTasks is already seeded with TASKS_DEMO and
     // a real fetch would clobber it with stale Cosmos data.
     if (isDemoMode()) return
-    fetch(`${FUNCTIONS_URL}/api/tasks`, { headers: { 'X-User-ID': getUsername() || 'demo' } })
+    fetch(`${FUNCTIONS_URL}/api/tasks`, { headers: authHeaders() })
       .then(r => r.json())
       .then(data => Array.isArray(data) && setApiTasks(data))
       .catch(() => {})
-    fetch(`${FUNCTIONS_URL}/api/context`, { headers: { 'X-User-ID': getUsername() || 'demo' } })
+    fetch(`${FUNCTIONS_URL}/api/context`, { headers: authHeaders() })
       .then(r => r.json())
       .then(data => data && setApiContexts(data))
       .catch(() => {})
@@ -9902,7 +9926,7 @@ export default function HeedApp() {
     })
     fetch(`${FUNCTIONS_URL}/api/completions`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-User-ID': getUsername() || 'demo' },
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ task_id: taskId, event_type: 'done' }),
     }).catch(() => {})
     // For one-time tasks, also patch the backend status so the next /api/tasks
@@ -9910,7 +9934,7 @@ export default function HeedApp() {
     if (isOneTime) {
       fetch(`${FUNCTIONS_URL}/api/tasks/${taskId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'X-User-ID': getUsername() || 'demo' },
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ status: 'archived' }),
       }).catch(() => {})
     }
@@ -9929,7 +9953,7 @@ export default function HeedApp() {
     const recordSkip = (reason) => {
       fetch(`${FUNCTIONS_URL}/api/completions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-User-ID': getUsername() || 'demo' },
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ task_id: taskId, event_type: 'skipped', skip_reason: reason }),
       }).catch(() => {})
       setRecentSkips(s => {
@@ -9970,25 +9994,22 @@ export default function HeedApp() {
     try {
       const res = await fetch(`${FUNCTIONS_URL}/api/tasks/${taskId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'X-User-ID': getUsername() || 'demo' },
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ next_due_at: d.toISOString() }),
       })
       if (!res.ok) return
     } catch { return }
-    fetch(`${FUNCTIONS_URL}/api/tasks`, { headers: { 'X-User-ID': getUsername() || 'demo' } })
+    fetch(`${FUNCTIONS_URL}/api/tasks`, { headers: authHeaders() })
       .then(r => r.json())
       .then(data => Array.isArray(data) && setApiTasks(data))
       .catch(() => {})
   }, [FUNCTIONS_URL])
 
   const handleAskHeed = useCallback((query) => {
-    // Auto-send whenever a non-empty query is passed (e.g. "Plan around my
-    // Singapore trip" from the context banner). Empty/undefined query just
-    // opens the tab blank — preserves the speed-dial "Ask Heed" entry point.
     const q = (query || '').trim()
     setAskPrefill(q)
     setAskAutoSend(q.length > 0)
-    setTab('ask')
+    setAskOpen(true)
   }, [])
 
   const handleMicAsk = useCallback((transcript) => {
@@ -10010,7 +10031,7 @@ export default function HeedApp() {
         isEdit ? `${FUNCTIONS_URL}/api/tasks/${data.id}` : `${FUNCTIONS_URL}/api/tasks`,
         {
           method: isEdit ? 'PATCH' : 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-User-ID': getUsername() || 'demo' },
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify(body),
         }
       )
@@ -10037,7 +10058,7 @@ export default function HeedApp() {
   const handleDeleteTask = useCallback(async (task) => {
     if (!task?.id) return
     try {
-      const resp = await fetch(`${FUNCTIONS_URL}/api/tasks/${task.id}`, { method: 'DELETE', headers: { 'X-User-ID': getUsername() || 'demo' } })
+      const resp = await fetch(`${FUNCTIONS_URL}/api/tasks/${task.id}`, { method: 'DELETE', headers: authHeaders() })
       if (!resp.ok && resp.status !== 404) return
     } catch { return }
     setApiTasks(t => t.filter(x => x.id !== task.id))
@@ -10051,7 +10072,7 @@ export default function HeedApp() {
   // after to make sure no in-memory state survives.
   const handleResetAllData = useCallback(async () => {
     try {
-      await fetch(`${FUNCTIONS_URL}/api/reset`, { method: 'POST', headers: { 'X-User-ID': getUsername() || 'demo' } })
+      await fetch(`${FUNCTIONS_URL}/api/reset`, { method: 'POST', headers: authHeaders() })
     } catch (_) {}
     if (typeof window !== 'undefined') {
       try {
@@ -10107,7 +10128,7 @@ export default function HeedApp() {
         if (!newDays || !suggestion.target_id) return false
         const resp = await fetch(`${FUNCTIONS_URL}/api/tasks/${suggestion.target_id}`, {
           method: 'PATCH',
-          headers: { 'Content-Type': 'application/json', 'X-User-ID': getUsername() || 'demo' },
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({ explicit_cadence_days: newDays }),
         })
         if (!resp.ok) return false
@@ -10127,11 +10148,11 @@ export default function HeedApp() {
     try {
       const resp = await fetch(`${FUNCTIONS_URL}/api/context`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-User-ID': getUsername() || 'demo' },
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify(body),
       })
       if (resp.ok) {
-        fetch(`${FUNCTIONS_URL}/api/context`, { headers: { 'X-User-ID': getUsername() || 'demo' } })
+        fetch(`${FUNCTIONS_URL}/api/context`, { headers: authHeaders() })
           .then(r => r.json())
           .then(d => d && setApiContexts(d))
           .catch(() => {})
@@ -10142,13 +10163,13 @@ export default function HeedApp() {
 
   function handleTaskAdded(task) {
     if (task) setApiTasks(t => [...t, task])
-    else fetch(`${FUNCTIONS_URL}/api/tasks`, { headers: { 'X-User-ID': getUsername() || 'demo' } }).then(r => r.json()).then(d => Array.isArray(d) && setApiTasks(d)).catch(() => {})
+    else fetch(`${FUNCTIONS_URL}/api/tasks`, { headers: authHeaders() }).then(r => r.json()).then(d => Array.isArray(d) && setApiTasks(d)).catch(() => {})
   }
 
   const handleCaptureTask = useCallback(async (payload) => {
     const res = await fetch(`${FUNCTIONS_URL}/api/tasks`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-User-ID': getUsername() || 'demo' },
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(payload),
     })
     const task = await res.json()
@@ -10378,7 +10399,7 @@ export default function HeedApp() {
         <div key={tab} style={{ animation: 'heed-tab-in 0.28s cubic-bezier(0.32,0.72,0,1) both', display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
           {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} plans={plansHook.plans} upcomingContexts={upcomingContexts} skippedTasks={skippedTasks} userName={username} efMode={efMode} onSetEfMode={handleSetEfMode} onMarkDone={handleMarkDone} onSkip={handleSkip} onUnskip={handleUnskip} onMarkRoutineDone={handleMarkRoutineDone} onSkipRoutineToday={handleSkipRoutineToday} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAskHeed={handleAskHeed} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onAddTask={() => setModalOpen(true)} onEditTask={handleEditTask} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }} onNavigateToPlans={() => setTab('context')} onCapture={handleCaptureTask} onCaptureRoutine={handleAddRoutine} onViewTask={task => { setEditingTask(task); setModalOpen(true) }} onToast={setToast}/>}
           {tab === 'calendar' && <CalendarTab tasks={apiTasks} contexts={[...(apiContexts.active||[]), ...(apiContexts.upcoming||[])]} routines={routines} recentSkips={recentSkips} onReschedule={handleReschedule} onMarkDone={handleMarkDone} onSkip={handleSkip} onAddTask={() => setModalOpen(true)} onAddContext={() => setContextModalOpen(true)} onEditRoutine={handleEditRoutine} onApplyRetroSuggestion={handleApplyRetroSuggestion}/>}
-          {tab === 'ask' && <AskTab prefill={askPrefill} autoSend={askAutoSend} onAutoSendDone={() => { setAskAutoSend(false); setAskPrefill('') }} onLightenRoutine={handleLightenRoutine} onTaskAdded={handleTaskAdded} onRoutineAdded={handleAddRoutine} onViewTask={task => { setEditingTask(task); setModalOpen(true) }}/>}
+          {tab === 'ask' && <AskTab prefill={askPrefill} autoSend={askAutoSend} onAutoSendDone={() => { setAskAutoSend(false); setAskPrefill('') }} onLightenRoutine={handleLightenRoutine} onTaskAdded={handleTaskAdded} onRoutineAdded={handleAddRoutine} onViewTask={() => setTab('context')}/>}
           {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} plans={plansHook.plans} checkTask={plansHook.checkTask} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onMarkRoutineDay={handleMarkRoutineDay} onEditTask={handleEditTask} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }}/>}
           {tab === 'context' && <LifeTab upcoming={apiContexts.upcoming} active={apiContexts.active} activeContext={activeContext} plansHook={plansHook} onAddContext={(data) => data?.type ? handleAddContext({ type: data.type, description: data.desc || data.description }) : setContextModalOpen(true)} onQuickContext={type => setQuickContextType(type)} onImBetter={() => setRecoveryOpen(true)} onExtend={handleExtendContext} onDetailOpen={handleDetailOpen} onAskHeed={handleAskHeed}/>}
         </div>
@@ -10391,7 +10412,7 @@ export default function HeedApp() {
       <AddTaskModal open={modalOpen} onClose={() => { setModalOpen(false); setEditingTask(null) }} onSubmit={handleAddTask} onDelete={handleDeleteTask} initialData={editingTask} customCategories={customCategories}/>
       <BuildRoutineScreen open={routineModalOpen} onClose={() => { setRoutineModalOpen(false); setEditingRoutine(null); setBuildRoutineTask(null) }} onSubmit={data => handleAddRoutine(data, { navigate: true })} initialData={editingRoutine} seedTask={buildRoutineTask} tasks={displayTasks}/>
       <AddContextModal open={contextModalOpen} onClose={() => setContextModalOpen(false)} onSubmit={handleAddContext}/>
-      <AskInlineModal open={askOpen} onClose={() => setAskOpen(false)} onLightenRoutine={handleLightenRoutine} onTaskAdded={handleTaskAdded} onRoutineAdded={handleAddRoutine} onViewTask={task => { setEditingTask(task); setModalOpen(true) }}/>
+      <AskInlineModal open={askOpen} onClose={() => setAskOpen(false)} onLightenRoutine={handleLightenRoutine} onTaskAdded={handleTaskAdded} onRoutineAdded={handleAddRoutine} onViewTask={() => setTab('context')} prefill={askPrefill} autoSend={askAutoSend} onAutoSendDone={() => { setAskAutoSend(false); setAskPrefill('') }}/>
       <TaskOptionsSheet task={taskOptionsTask} onClose={() => setTaskOptionsTask(null)} onMarkDone={handleMarkDone} onSkip={handleSkip} onEdit={handleEditTask} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }}/>
       <AddToRoutineSheet task={addToRoutineTask} routines={routines} onClose={() => setAddToRoutineTask(null)} onSelect={handleAddTaskToRoutine}/>
       <QuickContextSheet type={quickContextType} onClose={() => setQuickContextType(null)} onActivate={handleQuickContext}/>

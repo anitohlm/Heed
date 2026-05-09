@@ -5622,6 +5622,16 @@ function PlanBubbleDetailScreen({ plan, onBack, onEdit, onCheck, onTaskSelect, o
                 : <span style={{ fontSize: 52, lineHeight: 1 }}>{plan.icon}</span>
               }
               <span style={{ fontSize: 15, fontWeight: 700, color: ringColor, lineHeight: 1 }}>{pct}%</span>
+              {/* Clarifier: for numeric goals the ring measures money saved
+                  toward target, not task completion. Without this it looks
+                  like '35% with 0/5 tasks done' is contradictory; the label
+                  makes it explicit which dimension the percent belongs to. */}
+              {plan.type === 'goal' && plan.goalKind !== 'milestone' && (
+                <span style={{ fontSize: 9, fontWeight: 600, color: C.inkMute, lineHeight: 1, letterSpacing: 0.5, textTransform: 'uppercase', marginTop: 1 }}>saved</span>
+              )}
+              {plan.type === 'project' && (plan.tasks?.length ?? 0) > 0 && (
+                <span style={{ fontSize: 9, fontWeight: 600, color: C.inkMute, lineHeight: 1, letterSpacing: 0.5, textTransform: 'uppercase', marginTop: 1 }}>{doneCount}/{totalCount} done</span>
+              )}
             </div>
           </div>
           <div style={{ fontSize: 20, fontWeight: 700, color: C.ink, marginTop: 14 }}>{plan.title}</div>

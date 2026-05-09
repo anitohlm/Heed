@@ -5112,7 +5112,12 @@ function CalendarPicker({ value, onChange, label = 'Due date' }) {
   const [open, setOpen] = useState(false)
   const today = new Date()
   const valStr = value instanceof Date ? (isNaN(value) ? null : value.toISOString().slice(0, 10)) : (value ? String(value) : null)
-  const parsedValue = valStr ? new Date(valStr + (valStr.includes('T') ? '' : 'T00:00:00')) : null
+  // Demo data sometimes stores legacy strings like 'Dec 2026' or 'No target
+  // date'. new Date('Dec 2026T00:00:00') returns Invalid Date, which then
+  // poisons getMonth() (→ NaN) and toLocaleDateString() (→ 'Invalid Date').
+  // Guard with isNaN so an unparseable value behaves the same as no value.
+  const parsedRaw = valStr ? new Date(valStr + (valStr.includes('T') ? '' : 'T00:00:00')) : null
+  const parsedValue = parsedRaw && !isNaN(parsedRaw) ? parsedRaw : null
   const [viewYear, setViewYear]   = useState(parsedValue ? parsedValue.getFullYear() : today.getFullYear())
   const [viewMonth, setViewMonth] = useState(parsedValue ? parsedValue.getMonth()    : today.getMonth())
   const displayLabel = parsedValue ? parsedValue.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'No date set'
@@ -5282,7 +5287,17 @@ function EditPlanScreen({ plan, onBack, onSave, onAddTask, onDeleteTask, onRenam
   const [title, setTitle]         = useState(plan.title ?? '')
   const [desc, setDesc]           = useState(plan.description ?? '')
   const rawDate = plan.type === 'event' ? plan.eventDate : plan.type === 'goal' ? plan.targetDate : plan.dueDate
-  const rawDateStr = rawDate instanceof Date ? (isNaN(rawDate) ? null : rawDate.toISOString().slice(0, 10)) : (rawDate ? String(rawDate) : null)
+  // Only seed the picker with a string the picker can actually parse
+  // (YYYY-MM-DD or a Date). Legacy free-form strings ('Dec 2026',
+  // 'No target date') become null so the picker shows 'No date set'
+  // and the user can pick a real date.
+  const rawDateStr = (() => {
+    if (rawDate instanceof Date) return isNaN(rawDate) ? null : rawDate.toISOString().slice(0, 10)
+    if (!rawDate) return null
+    const s = String(rawDate)
+    const d = new Date(s.includes('T') ? s : s + 'T00:00:00')
+    return isNaN(d) ? null : d.toISOString().slice(0, 10)
+  })()
   const [dueDate, setDueDate]     = useState(rawDateStr ?? null)
   const [taskInputs, setTaskInputs] = useState(plan.tasks ? plan.tasks.map(t => t.label) : [])
   const [newTaskLabel, setNewTaskLabel] = useState('')
@@ -5520,7 +5535,11 @@ function PlanBubbleDetailScreen({ plan, onBack, onEdit, onCheck, onTaskSelect, o
   // Plan completion celebration. Fires once per plan id when pct crosses
   // to 100. localStorage flag survives reload so reopening doesn't replay.
   const [showCelebration, setShowCelebration] = useState(false)
-  const prevPctRef = useRef(null)
+  // Track planId alongside pct in the ref so navigating from a completed
+  // plan to a fresh one (without unmounting in between, which can happen
+  // when React reconciles the same component position) doesn't leak the
+  // previous plan's pct into the new plan's transition check.
+  const prevRef = useRef({ planId: null, pct: null })
   useEffect(() => {
     if (!addedTaskLabel) return
     setBannerLabel(addedTaskLabel)
@@ -5549,21 +5568,26 @@ function PlanBubbleDetailScreen({ plan, onBack, onEdit, onCheck, onTaskSelect, o
     ? [{ v: `${plan.unit ?? ''}${(plan.current ?? 0).toLocaleString()}`, l: 'saved' }, { v: `${plan.unit ?? ''}${Math.max(0, (plan.target ?? 0) - (plan.current ?? 0)).toLocaleString()}`, l: 'to go' }, { v: `${pct}%`, l: 'progress' }]
     : [{ v: String(doneCount), l: 'done' }, { v: String(remaining), l: 'remaining' }, { v: String(totalCount), l: 'total' }]
 
-  // Watch for the plan crossing to 100%. Skip on first render (re-opening
-  // a finished plan shouldn't replay) and skip if the localStorage flag
-  // is already set. If pct drops back below 100, clear the flag so
-  // finishing again re-fires the show.
+  // Watch for the plan crossing to 100%. Skip when the plan id changes
+  // (re-opening a finished plan, or switching plans, shouldn't replay)
+  // and skip if the localStorage flag is already set. If pct drops back
+  // below 100, clear the flag so finishing again re-fires the show.
   useEffect(() => {
     const celebratedKey = `heed.plan-celebrated.${plan.id}`
     let alreadyCelebrated = false
     try { alreadyCelebrated = localStorage.getItem(celebratedKey) === '1' } catch (_) {}
-    const prev = prevPctRef.current
-    if (prev === null) { prevPctRef.current = pct; return }
-    if (pct === 100 && prev < 100 && !alreadyCelebrated) {
+    const prev = prevRef.current
+    // Plan changed (or first run on this instance) — record without
+    // firing so the transition check has a clean baseline.
+    if (prev.planId !== plan.id) {
+      prevRef.current = { planId: plan.id, pct }
+      return
+    }
+    if (pct === 100 && prev.pct < 100 && !alreadyCelebrated) {
       setShowCelebration(true)
       try { localStorage.setItem(celebratedKey, '1') } catch (_) {}
     }
-    prevPctRef.current = pct
+    prevRef.current = { planId: plan.id, pct }
     if (pct < 100 && alreadyCelebrated) {
       try { localStorage.removeItem(celebratedKey) } catch (_) {}
     }
@@ -5601,6 +5625,16 @@ function PlanBubbleDetailScreen({ plan, onBack, onEdit, onCheck, onTaskSelect, o
                 : <span style={{ fontSize: 52, lineHeight: 1 }}>{plan.icon}</span>
               }
               <span style={{ fontSize: 15, fontWeight: 700, color: ringColor, lineHeight: 1 }}>{pct}%</span>
+              {/* Clarifier: for numeric goals the ring measures money saved
+                  toward target, not task completion. Without this it looks
+                  like '35% with 0/5 tasks done' is contradictory; the label
+                  makes it explicit which dimension the percent belongs to. */}
+              {plan.type === 'goal' && plan.goalKind !== 'milestone' && (
+                <span style={{ fontSize: 9, fontWeight: 600, color: C.inkMute, lineHeight: 1, letterSpacing: 0.5, textTransform: 'uppercase', marginTop: 1 }}>saved</span>
+              )}
+              {plan.type === 'project' && (plan.tasks?.length ?? 0) > 0 && (
+                <span style={{ fontSize: 9, fontWeight: 600, color: C.inkMute, lineHeight: 1, letterSpacing: 0.5, textTransform: 'uppercase', marginTop: 1 }}>{doneCount}/{totalCount} done</span>
+              )}
             </div>
           </div>
           <div style={{ fontSize: 20, fontWeight: 700, color: C.ink, marginTop: 14 }}>{plan.title}</div>
@@ -5683,13 +5717,8 @@ function PlanBubbleDetailScreen({ plan, onBack, onEdit, onCheck, onTaskSelect, o
           onMouseEnter={e => { e.currentTarget.style.borderColor = C.warmDark; e.currentTarget.style.background = C.belly }}
           onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.background = C.bellySoft }}
         >
-          <div style={{ width: 38, height: 38, borderRadius: 10, background: C.warmDark + '18', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
-              <path d="M12 3C7.03 3 3 6.36 3 10.5c0 2.38 1.19 4.5 3.07 5.97L5 21l4.5-2.25c.81.18 1.64.25 2.5.25 4.97 0 9-3.36 9-7.5S16.97 3 12 3z" stroke={C.warmDark} strokeWidth="1.7" strokeLinejoin="round"/>
-              <circle cx="9" cy="10.5" r="1" fill={C.warmDark}/>
-              <circle cx="12" cy="10.5" r="1" fill={C.warmDark}/>
-              <circle cx="15" cy="10.5" r="1" fill={C.warmDark}/>
-            </svg>
+          <div style={{ width: 38, height: 38, borderRadius: 10, background: C.bellySoft, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <MayaOwl size={28} idle={true}/>
           </div>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, marginBottom: 2 }}>Ask Heed for advice</div>

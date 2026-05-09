@@ -6898,25 +6898,87 @@ function AddPlanSheet({ onClose, onAdd }) {
             {type === 'goal' && (
               <>
                 <label style={labelStyle}>Goal type</label>
-                <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
-                  {[{ k: 'milestone', label: 'Milestone', sub: 'Text-based' }, { k: 'numeric', label: 'Numeric', sub: 'Track amount' }].map(({ k, label, sub }) => (
-                    <button key={k} onClick={() => setGoalKind(k)} style={{ flex: 1, background: goalKind === k ? C.bellySoft : C.paper, border: `1.5px solid ${goalKind === k ? C.warmDark + '66' : C.border}`, borderRadius: 10, padding: '8px 10px', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: goalKind === k ? C.warmDark : C.ink }}>{label}</div>
-                      <div style={{ fontSize: 11, color: C.inkMute, marginTop: 1 }}>{sub}</div>
-                    </button>
-                  ))}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 6 }}>
+                  {[
+                    { k: 'milestone', icon: '✓', label: 'Milestone', sub: 'An achievement — like "Run 5K" or "Visit Japan."' },
+                    { k: 'numeric',   icon: '🎯', label: 'Numeric',  sub: 'Track a number — savings, books read, distance.' },
+                  ].map(({ k, icon, label, sub }) => {
+                    const sel = goalKind === k
+                    return (
+                      <button key={k} type="button" onClick={() => setGoalKind(k)}
+                        style={{
+                          display: 'flex', flexDirection: 'column', gap: 8,
+                          background: sel ? C.bellySoft : C.paperHi,
+                          border: `1.5px solid ${sel ? C.warmDark : C.border}`,
+                          borderRadius: 14, padding: '14px 14px 16px',
+                          cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+                          boxShadow: sel ? C.shadowMed : C.shadowSoft,
+                          transition: 'transform 0.18s ease-out, box-shadow 0.18s ease-out, border-color 0.18s, background 0.18s',
+                          minHeight: 130, position: 'relative',
+                          touchAction: 'manipulation',
+                        }}
+                        onMouseEnter={e => { if (!sel) { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = C.shadowMed; e.currentTarget.style.borderColor = C.warmDark + '88' } }}
+                        onMouseLeave={e => { if (!sel) { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = C.shadowSoft; e.currentTarget.style.borderColor = C.border } }}
+                      >
+                        <div style={{
+                          width: 42, height: 42, borderRadius: 11,
+                          background: sel ? C.ochreSoft : C.bellySoft,
+                          border: `1px solid ${sel ? C.ochre + '55' : C.hairline}`,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: k === 'milestone' ? 18 : 20, fontWeight: 700,
+                          color: sel ? C.warmDark : C.ink,
+                        }}>{icon}</div>
+                        <div>
+                          <div style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 15, fontWeight: 600, color: C.ink, letterSpacing: -0.1, marginBottom: 3 }}>{label}</div>
+                          <div style={{ fontSize: 11.5, color: C.inkSoft, lineHeight: 1.4 }}>{sub}</div>
+                        </div>
+                        {sel && (
+                          <div style={{ position: 'absolute', top: 10, right: 10, width: 20, height: 20, borderRadius: '50%', background: C.warmDark, display: 'flex', alignItems: 'center', justifyContent: 'center' }} aria-hidden="true">
+                            <svg width="11" height="11" viewBox="0 0 14 14" fill="none"><path d="M2 7l3.5 3.5L12 4" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                          </div>
+                        )}
+                      </button>
+                    )
+                  })}
                 </div>
                 {goalKind === 'numeric' && (
                   <>
                     <label style={labelStyle}>Target amount *</label>
-                    <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                      <input style={{ ...inputStyle, width: 64, marginTop: 0 }} placeholder="₱" value={unit} onChange={e => setUnit(e.target.value)}/>
-                      <input type="number" min="1" style={{ ...inputStyle, flex: 1, marginTop: 0 }} placeholder="50000" value={targetAmt} onChange={e => setTargetAmt(e.target.value)}/>
+                    {/* Promoted: large serif amount + currency tile to make it
+                        clear this number IS the goal, not just another field. */}
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'stretch', marginTop: 6 }}>
+                      <input
+                        aria-label="Currency symbol"
+                        style={{
+                          width: 64, padding: '14px 10px', textAlign: 'center',
+                          background: C.bellySoft, border: `1.5px solid ${C.border}`, borderRadius: 12,
+                          fontFamily: 'Lora, Georgia, serif', fontSize: 22, fontWeight: 600, color: C.warmDark,
+                          outline: 'none',
+                        }}
+                        value={unit} onChange={e => setUnit(e.target.value)}
+                        onFocus={e => e.target.style.borderColor = C.warmDark}
+                        onBlur={e => e.target.style.borderColor = C.border}
+                      />
+                      <input
+                        type="number" inputMode="decimal" min="1"
+                        style={{
+                          flex: 1, padding: '14px 16px',
+                          background: C.paperHi, border: `1.5px solid ${C.border}`, borderRadius: 12,
+                          fontFamily: 'Lora, Georgia, serif', fontSize: 22, fontWeight: 600, color: C.ink,
+                          outline: 'none', letterSpacing: -0.3,
+                        }}
+                        placeholder="50000" value={targetAmt}
+                        onChange={e => setTargetAmt(e.target.value)}
+                        onFocus={e => e.target.style.borderColor = C.warmDark}
+                        onBlur={e => e.target.style.borderColor = C.border}
+                      />
                     </div>
                   </>
                 )}
-                <label style={labelStyle}>Target date (optional)</label>
-                <input style={inputStyle} placeholder="e.g. Aug 2026" value={targetDate} onChange={e => setTargetDate(e.target.value)}/>
+                <label style={labelStyle}>Target date <span style={{ fontWeight: 400, color: C.inkMute }}>(optional)</span></label>
+                <div style={{ marginTop: 6 }}>
+                  <CalendarPicker value={targetDate} onChange={setTargetDate} label={null}/>
+                </div>
               </>
             )}
 

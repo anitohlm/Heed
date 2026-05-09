@@ -42,14 +42,35 @@ import azure.functions as func
 from azure.cosmos.exceptions import CosmosResourceNotFoundError, CosmosResourceExistsError
 
 from agents.advisor import stream_response
+from agents.tools import safety_tool
 from agents.memory_keeper import run_for_user
 from agents.tools import cosmos_tool, action_tools
 from agents.models import AgentAction
+from agents import auth, telemetry
+
+telemetry.init()  # no-op unless APPLICATIONINSIGHTS_CONNECTION_STRING is set
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
 
-def _get_user_id(req: func.HttpRequest) -> str:
-    return req.headers.get("X-User-ID") or "demo"
+
+def _get_user_id(req: func.HttpRequest):
+    """
+    Resolve the calling user's ID.
+
+    If HEED_AUTH_REQUIRED=1 and user is not demo, the X-Auth-Token header
+    must verify against the username via HMAC. Returns a 401 HttpResponse
+    on failure so callers can early-return; otherwise returns the user_id
+    string. Demo and feature-flag-off paths fall through to the legacy
+    unauthenticated behaviour.
+    """
+    user_id = req.headers.get("X-User-ID") or "demo"
+    if user_id == "demo":
+        return user_id
+    if auth.is_required():
+        token = req.headers.get("X-Auth-Token")
+        if not auth.verify(user_id, token):
+            return _error("Unauthorized", 401)
+    return user_id
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -92,11 +113,10 @@ async def advisor_stream(req: func.HttpRequest) -> func.HttpResponse:
     Returns the agent run as newline-delimited JSON. Each line is a complete
     event ({"type": "thinking|delta|action|chips|done|error", ...}).
 
-    Currently buffered: collects all events and returns one body. The frontend
-    reader still parses NDJSON line by line so the streaming code path on the
-    client side works either way. To upgrade to true chunk-by-chunk streaming
-    on Flex Consumption requires a different SDK pattern (the simple generator
-    body isn't accepted by func.HttpResponse). Left as a follow-up.
+    Buffered: collects all events and returns one body. True chunked streaming
+    via async generator was tried — `func.HttpResponse` rejects iterable bodies
+    on the Python 3.11 worker. The frontend NDJSON reader parses line by line
+    so the streaming code path on the client side works either way.
     """
     if req.method == "OPTIONS":
         return func.HttpResponse(
@@ -109,6 +129,7 @@ async def advisor_stream(req: func.HttpRequest) -> func.HttpResponse:
         )
 
     user_id = _get_user_id(req)
+    if isinstance(user_id, func.HttpResponse): return user_id
 
     try:
         body = req.get_json()
@@ -124,6 +145,27 @@ async def advisor_stream(req: func.HttpRequest) -> func.HttpResponse:
     if len(message) > 4000:
         return _error("Message too long (max 4000 chars)", 413)
 
+    shield = safety_tool.shield_user_input(message)
+    if not shield.get("allow", True):
+        refusal = {
+            "type": "delta",
+            "text": "I can't help with that. Try rephrasing what you'd like to do.",
+        }
+        return func.HttpResponse(
+            body=json.dumps(refusal) + "\n" + json.dumps({"type": "done"}),
+            status_code=200,
+            mimetype="application/x-ndjson",
+            headers={
+                "Access-Control-Allow-Origin": "*",
+                "Cache-Control": "no-cache, no-transform",
+            },
+        )
+
+    headers = {
+        "Access-Control-Allow-Origin": "*",
+        "Cache-Control": "no-cache, no-transform",
+    }
+
     chunks: list[str] = []
     try:
         async for event in stream_response(user_id, message, history):
@@ -136,10 +178,7 @@ async def advisor_stream(req: func.HttpRequest) -> func.HttpResponse:
         body="\n".join(chunks),
         status_code=200,
         mimetype="application/x-ndjson",
-        headers={
-            "Access-Control-Allow-Origin": "*",
-            "Cache-Control": "no-cache, no-transform",
-        },
+        headers=headers,
     )
 
 
@@ -155,6 +194,7 @@ def tasks(req: func.HttpRequest) -> func.HttpResponse:
         })
 
     user_id = _get_user_id(req)
+    if isinstance(user_id, func.HttpResponse): return user_id
 
     if req.method == "GET":
         try:
@@ -211,6 +251,7 @@ def task_by_id(req: func.HttpRequest) -> func.HttpResponse:
         })
 
     user_id = _get_user_id(req)
+    if isinstance(user_id, func.HttpResponse): return user_id
 
     if req.method == "DELETE":
         task = cosmos_tool.get_task(task_id, user_id)
@@ -274,6 +315,7 @@ def suggest_tasks(req: func.HttpRequest) -> func.HttpResponse:
         })
 
     user_id = _get_user_id(req)
+    if isinstance(user_id, func.HttpResponse): return user_id
 
     try:
         body = req.get_json()
@@ -374,6 +416,7 @@ def parse_capture(req: func.HttpRequest) -> func.HttpResponse:
         })
 
     user_id = _get_user_id(req)
+    if isinstance(user_id, func.HttpResponse): return user_id
 
     try:
         body = req.get_json()
@@ -446,21 +489,43 @@ def parse_capture(req: func.HttpRequest) -> func.HttpResponse:
 
 # ── completions ────────────────────────────────────────────────────────────────
 
-@app.route(route="completions", methods=["POST", "OPTIONS"])
+@app.route(route="completions", methods=["GET", "POST", "OPTIONS"])
 def completions(req: func.HttpRequest) -> func.HttpResponse:
     """
     POST /api/completions
     Body: {"task_id": "...", "event_type": "done|skipped|deferred",
            "note": "...", "skip_reason": "...", "defer_until": "..."}
+
+    GET /api/completions?from=YYYY-MM-DD&to=YYYY-MM-DD
+    Returns: {"items": [...]} — the user's completion log inside the range.
+    Used by the Calendar retrospective for past months.
     """
     if req.method == "OPTIONS":
         return func.HttpResponse(status_code=204, headers={
             "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "POST, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type, X-User-ID",
+            "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, X-User-ID, X-Auth-Token",
         })
 
     user_id = _get_user_id(req)
+    if isinstance(user_id, func.HttpResponse): return user_id
+
+    if req.method == "GET":
+        from_d = (req.params.get("from") or "").strip()
+        to_d = (req.params.get("to") or "").strip()
+        if not from_d or not to_d:
+            return _error("from and to query params required (YYYY-MM-DD)")
+        # Inclusive day boundaries.
+        from_iso = f"{from_d}T00:00:00+00:00"
+        to_iso = f"{to_d}T23:59:59+00:00"
+        try:
+            items = cosmos_tool.get_completions_in_range(user_id, from_iso, to_iso)
+            return _json_response({
+                "items": [c.model_dump(mode="json") for c in items],
+            })
+        except Exception as e:
+            logging.exception("completions GET failed")
+            return _error(str(e), 500)
 
     try:
         body = req.get_json()
@@ -508,6 +573,7 @@ def context(req: func.HttpRequest) -> func.HttpResponse:
         })
 
     user_id = _get_user_id(req)
+    if isinstance(user_id, func.HttpResponse): return user_id
 
     if req.method == "GET":
         try:
@@ -538,6 +604,41 @@ def context(req: func.HttpRequest) -> func.HttpResponse:
         return _json_response(result, status)
 
 
+@app.route(route="context/{context_id}", methods=["PATCH", "DELETE", "OPTIONS"])
+def context_item(req: func.HttpRequest) -> func.HttpResponse:
+    """PATCH /api/context/{id} (extend end_date / update description); DELETE /api/context/{id}."""
+    if req.method == "OPTIONS":
+        return func.HttpResponse(status_code=204, headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "PATCH, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, X-User-ID",
+        })
+
+    user_id = _get_user_id(req)
+    if isinstance(user_id, func.HttpResponse): return user_id
+
+    context_id = req.route_params.get("context_id")
+    if not context_id:
+        return _error("context_id is required")
+
+    if req.method == "PATCH":
+        try:
+            body = req.get_json()
+        except ValueError:
+            return _error("Invalid JSON body")
+        result = action_tools.update_user_context(
+            user_id=user_id,
+            context_id=context_id,
+            end_date=body.get("end_date"),
+            description=body.get("description"),
+        )
+        return _json_response(result, 200 if result.get("success") else 400)
+
+    if req.method == "DELETE":
+        result = action_tools.delete_user_context(user_id=user_id, context_id=context_id)
+        return _json_response(result, 200 if result.get("success") else 404)
+
+
 # ── today_view ─────────────────────────────────────────────────────────────────
 
 @app.route(route="today", methods=["GET", "OPTIONS"])
@@ -551,6 +652,7 @@ def today_view(req: func.HttpRequest) -> func.HttpResponse:
         })
 
     user_id = _get_user_id(req)
+    if isinstance(user_id, func.HttpResponse): return user_id
 
     try:
         from agents.advisor import _today_view_json
@@ -582,6 +684,7 @@ def execute_action(req: func.HttpRequest) -> func.HttpResponse:
         })
 
     user_id = _get_user_id(req)
+    if isinstance(user_id, func.HttpResponse): return user_id
 
     try:
         body = req.get_json()
@@ -858,7 +961,11 @@ def register_username(req: func.HttpRequest) -> func.HttpResponse:
             "id": username,
             "created_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         })
-        return _json_response({"ok": True, "username": username})
+        return _json_response({
+            "ok": True,
+            "username": username,
+            "token": auth.issue_token(username),  # null if HEED_AUTH_SECRET unset
+        })
     except CosmosResourceExistsError:
         return _json_response({"error": "taken"}, 409)
     except Exception:
@@ -876,6 +983,7 @@ def user_avatar(req: func.HttpRequest) -> func.HttpResponse:
         })
 
     user_id = _get_user_id(req)
+    if isinstance(user_id, func.HttpResponse): return user_id
 
     if req.method == "GET":
         container = _ensure_users_container()
@@ -973,6 +1081,7 @@ def user_state(req: func.HttpRequest) -> func.HttpResponse:
         })
 
     user_id = _get_user_id(req)
+    if isinstance(user_id, func.HttpResponse): return user_id
     kind = (req.route_params.get("kind") or "").lower()
     if kind not in ("routines", "plans"):
         return _error("kind must be 'routines' or 'plans'")
@@ -1038,6 +1147,7 @@ def reset_user_data(req: func.HttpRequest) -> func.HttpResponse:
         })
 
     user_id = _get_user_id(req)
+    if isinstance(user_id, func.HttpResponse): return user_id
     db = cosmos_tool._get_database()
     wiped = {}
     for cname in ("tasks", "completions", "user_context", _USER_STATE_CONTAINER_NAME):
@@ -1079,6 +1189,7 @@ def seed_demo_data(req: func.HttpRequest) -> func.HttpResponse:
         })
 
     user_id = _get_user_id(req)
+    if isinstance(user_id, func.HttpResponse): return user_id
     from datetime import datetime, timezone, timedelta
     import uuid
 
@@ -1241,13 +1352,29 @@ def seed_demo_data(req: func.HttpRequest) -> func.HttpResponse:
     run_on_startup=False,
 )
 def memory_keeper_timer(timer: func.TimerRequest) -> None:
-    """Runs every 6 hours. Computes cadence updates for all active tasks."""
+    """Runs every 6 hours. Fans out across every registered user."""
     logging.info("Memory Keeper timer triggered")
     try:
-        updates = run_for_user("demo")  # timer has no request context; runs for the default user
-        logging.info(f"Memory Keeper completed: {len(updates)} tasks processed")
+        user_ids = cosmos_tool.list_user_ids() or ["demo"]
     except Exception as e:
-        logging.exception(f"Memory Keeper failed: {e}")
+        logging.exception(f"Memory Keeper could not enumerate users: {e}")
+        return
+
+    total_users = len(user_ids)
+    total_updates = 0
+    failed_users = 0
+    for uid in user_ids:
+        try:
+            updates = run_for_user(uid)
+            total_updates += len(updates)
+        except Exception as e:
+            failed_users += 1
+            logging.exception(f"Memory Keeper failed for user {uid}: {e}")
+
+    logging.info(
+        f"Memory Keeper completed: {total_users} users, {total_updates} tasks processed, "
+        f"{failed_users} user failures"
+    )
 
 
 @app.route(route="memory_keeper_run", methods=["POST", "OPTIONS"])
@@ -1261,6 +1388,7 @@ def memory_keeper_run(req: func.HttpRequest) -> func.HttpResponse:
         })
 
     user_id = _get_user_id(req)
+    if isinstance(user_id, func.HttpResponse): return user_id
 
     try:
         updates = run_for_user(user_id)

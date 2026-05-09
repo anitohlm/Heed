@@ -12,6 +12,7 @@ confirmation. The validation layer here enforces that.
 import os
 import uuid
 from datetime import datetime, timezone, timedelta
+from typing import Optional
 from azure.cosmos import CosmosClient
 from agents.models import Completion, AgentAction
 from agents.tools.cosmos_tool import _get_database, get_task
@@ -175,6 +176,49 @@ def add_user_context(
     container = _get_database().get_container_client("user_context")
     container.create_item(body=context)
     return {"success": True, "context_id": context["id"]}
+
+
+def update_user_context(
+    user_id: str,
+    context_id: str,
+    end_date: Optional[str] = None,
+    description: Optional[str] = None,
+) -> dict:
+    """Patch a context window. Currently used to extend end_date on 'I'm not better yet'."""
+    container = _get_database().get_container_client("user_context")
+    try:
+        existing = container.read_item(item=context_id, partition_key=user_id)
+    except Exception:
+        return {"success": False, "error": "context not found"}
+
+    if end_date is not None:
+        try:
+            new_end = datetime.fromisoformat(end_date).date()
+        except ValueError as e:
+            return {"success": False, "error": f"Invalid end_date: {e}"}
+        try:
+            cur_start = datetime.fromisoformat(existing["start_date"]).date()
+        except (ValueError, KeyError):
+            return {"success": False, "error": "stored context has invalid start_date"}
+        if new_end < cur_start:
+            return {"success": False, "error": "end_date must be on or after start_date"}
+        existing["end_date"] = end_date
+
+    if description is not None:
+        existing["description"] = description
+
+    container.replace_item(item=context_id, body=existing)
+    return {"success": True, "context": existing}
+
+
+def delete_user_context(user_id: str, context_id: str) -> dict:
+    """Delete a context window. Used for 'remove upcoming' and 'I'm better' (resume)."""
+    container = _get_database().get_container_client("user_context")
+    try:
+        container.delete_item(item=context_id, partition_key=user_id)
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+    return {"success": True, "context_id": context_id}
 
 
 # -----------------------------------------------------------------------------

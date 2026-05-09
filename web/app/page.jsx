@@ -934,6 +934,7 @@ const THEME_META = {
   'midnight-fern':   { dot: '#6A9E6A', label: 'Midnight Fern' },
   'inkwash':         { dot: '#A0682A', label: 'Inkwash' },
   'flamingo':        { dot: '#E8755A', label: 'Flamingo' },
+  'candy':           { dot: '#FD65B2', label: 'Candy' },
 }
 function ThemeSwitcher({ theme, onTheme }) {
   return (

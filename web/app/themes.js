@@ -108,6 +108,37 @@ export const THEMES = {
     shadowSoft: '0 2px 12px rgba(216,89,64,0.12)',
     shadowMed:  '0 6px 22px rgba(216,89,64,0.18)',
   },
+  // Pastel candy palette inspired by the dopelycolors swatch:
+  //   FD65B2 hot pink · FFD2D7 cosmos · FFE9C5 sandy beach · 90E4CD/84DCE0 riptide.
+  // Hot pink is the brand accent; cosmos is the surface tone; sandy beach
+  // becomes the ochreSoft highlight; mint/cyan carry the sage and low slots
+  // so completion and Low Day stay distinguishable in the same theme.
+  'candy': {
+    cream:      '#FFF7F8',
+    paper:      '#FFE9EE',
+    paperHi:    '#FFF5F8',
+    border:     '#FFB8C2',
+    hairline:   '#FFD2D7',
+    ink:        '#2D1A2A',
+    inkSoft:    '#6B4B5C',
+    inkMute:    '#A0808E',
+    warm:       '#FD65B2',
+    warmDark:   '#E04E9C',
+    warmDeep:   '#FFF7F8',
+    belly:      '#FFE9EE',
+    bellySoft:  '#FFF0F4',
+    rust:       '#E84573',
+    rustSoft:   '#FFE0E8',
+    sage:       '#5FBFA5',
+    sageSoft:   '#D8F2EA',
+    ochre:      '#E8A04E',
+    ochreSoft:  '#FFE9C5',
+    rose:       '#FD65B2',
+    low:        '#84B8E0',
+    lowSoft:    '#E2F2F8',
+    shadowSoft: '0 2px 12px rgba(253,101,178,0.10)',
+    shadowMed:  '0 6px 22px rgba(253,101,178,0.18)',
+  },
   // Auto-applied while a Low Day context is active. Not selectable from the
   // Settings theme picker — the app swaps to it the moment activeContext.type
   // is 'low' and reverts to the user's chosen theme when the context ends.
@@ -175,6 +206,14 @@ export const OWL_THEMES = {
     tuft:    '#9C5566',
     beak:    '#C4742E',
     cheek:   '#E8716E',
+  },
+  'candy': {
+    body:    '#FD65B2',
+    eyeRing: '#FFF7F8',
+    pupil:   '#2D1A2A',
+    tuft:    '#5FBFA5',
+    beak:    '#E8A04E',
+    cheek:   '#FFD2D7',
   },
   'periwinkle': {
     body:    '#6E63A8',

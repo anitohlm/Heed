@@ -8750,7 +8750,7 @@ function InlineTaskDetail({ task, onClose, onMarkDone, onSkip, onReschedule }) {
   )
 }
 
-function WeekDetail({ tasks, weekStart, onTaskTap, onWeekOffsetChange, onAddTask, contexts = [], routines = [], onEditRoutine, onMarkDone, onSkip, onReschedule }) {
+function WeekDetail({ tasks, weekStart, onWeekOffsetChange, onAddTask, contexts = [], routines = [], onEditRoutine, onMarkDone, onSkip, onReschedule }) {
   const today = new Date()
   const impColor = { high: C.rust, medium: C.ochre, low: C.sage }
   const impIcon  = { high: '●', medium: '◆', low: '○' }
@@ -8935,129 +8935,9 @@ function WeekDetail({ tasks, weekStart, onTaskTap, onWeekOffsetChange, onAddTask
   )
 }
 
-function TaskDetailSheet({ task, onClose, onMarkDone, onSkip, onReschedule }) {
-  const [translateY, setTranslateY] = useState(100)
-  const touchRef    = useRef(null)
-  const dateInputRef = useRef(null)
-
-  useEffect(() => {
-    const id = requestAnimationFrame(() =>
-      requestAnimationFrame(() => setTranslateY(0))
-    )
-    return () => cancelAnimationFrame(id)
-  }, [])
-
-  function handleTouchStart(e) { touchRef.current = e.touches[0].clientY }
-  function handleTouchMove(e) {
-    if (touchRef.current == null) return
-    const dy = e.touches[0].clientY - touchRef.current
-    if (dy > 0) setTranslateY(dy)
-  }
-  function handleTouchEnd(e) {
-    if (touchRef.current == null) return
-    const dy = e.changedTouches[0].clientY - touchRef.current
-    touchRef.current = null
-    if (dy > 80) { onClose(); return }
-    setTranslateY(0)
-  }
-
-  const cadenceLabel = task.learned_cadence_days
-    ? `every ~${task.learned_cadence_days} days`
-    : task.explicit_cadence_days
-    ? `every ~${task.explicit_cadence_days} days`
-    : 'unset'
-
-  const lastDoneLabel = task.last_done_at
-    ? new Date(task.last_done_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-    : 'Never'
-
-  const dueLabel = task.next_due_at
-    ? parseDue(task.next_due_at)?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) ?? '—'
-    : '—'
-
-  function reschedule(newDate) {
-    onReschedule(task.id, newDate)
-    onClose()
-  }
-
-  const quickDates = [
-    { label: 'Today',   date: () => new Date() },
-    { label: '+1 day',  date: () => addDays(new Date(), 1) },
-    { label: '+3 days', date: () => addDays(new Date(), 3) },
-    { label: '+1 week', date: () => addDays(new Date(), 7) },
-  ]
-
-  return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 200 }}>
-      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: `${C.ink}66` }}/>
-      <div
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: C.paper, borderRadius: '16px 16px 0 0', padding: '12px 20px 32px', boxShadow: `0 -4px 24px ${C.ink}22`, transform: `translateY(${translateY}px)`, transition: translateY === 0 ? 'transform 0.3s ease-out' : 'none', maxHeight: '80vh', overflowY: 'auto' }}
-      >
-        <div style={{ width: 36, height: 4, background: C.border, borderRadius: 2, margin: '0 auto 16px' }}/>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 14 }}>
-          <div>
-            <div style={{ fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 600, color: C.warmDark, marginBottom: 8 }}>{task.name}</div>
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-              {task.category && (
-                <span style={{ background: C.sage, color: C.cream, padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600 }}>{task.category}</span>
-              )}
-              <ImportanceBadge importance={task.importance}/>
-            </div>
-          </div>
-          <div style={{ textAlign: 'right', flexShrink: 0 }}>
-            <div style={{ fontSize: 11, color: C.inkMute, marginBottom: 2 }}>Due</div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: C.rust }}>{dueLabel}</div>
-          </div>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
-          {[{ label: 'Cadence', value: cadenceLabel }, { label: 'Last done', value: lastDoneLabel }].map(({ label, value }) => (
-            <div key={label} style={{ background: C.bellySoft, borderRadius: 8, padding: '10px 12px' }}>
-              <div style={{ fontSize: 10, color: C.inkMute, fontWeight: 600, letterSpacing: 0.4, textTransform: 'uppercase', marginBottom: 4 }}>{label}</div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>{value}</div>
-            </div>
-          ))}
-        </div>
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 10, color: C.inkMute, fontWeight: 600, letterSpacing: 0.4, textTransform: 'uppercase', marginBottom: 8 }}>Reschedule to</div>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {quickDates.map(({ label, date }) => (
-              <button key={label} onClick={() => reschedule(date())}
-                style={{ background: C.paper, border: `1.5px solid ${C.border}`, color: C.ink, padding: '6px 12px', borderRadius: 8, fontSize: 12, cursor: 'pointer', fontWeight: 500, fontFamily: 'inherit' }}>
-                {label}
-              </button>
-            ))}
-            <button
-              onClick={() => dateInputRef.current?.showPicker?.() || dateInputRef.current?.click()}
-              style={{ background: C.paper, border: `1.5px solid ${C.border}`, color: C.ink, padding: '6px 12px', borderRadius: 8, fontSize: 12, cursor: 'pointer', fontWeight: 500, fontFamily: 'inherit' }}>
-              Pick date…
-            </button>
-            <input ref={dateInputRef} type="date"
-              style={{ position: 'fixed', opacity: 0, pointerEvents: 'none', width: 0, height: 0 }}
-              onChange={e => { if (e.target.value) reschedule(new Date(e.target.value + 'T12:00:00')) }}/>
-          </div>
-        </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={() => { onMarkDone(task); onClose() }}
-            style={{ flex: 1, background: C.sage, color: C.cream, border: 'none', padding: 12, borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
-            ✓ Mark Done
-          </button>
-          <button onClick={() => { onSkip(task); onClose() }}
-            style={{ flex: 1, background: C.paper, color: C.inkSoft, border: `1.5px solid ${C.border}`, padding: 12, borderRadius: 10, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}>
-            ↷ Skip
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 function CalendarTab({ tasks, contexts, routines, recentSkips = [], onReschedule, onMarkDone, onSkip, onAddTask, onAddContext, onEditRoutine, onApplyRetroSuggestion }) {
   const [monthOffset, setMonthOffset] = useState(0)
   const [weekStart, setWeekStart]     = useState(startOfWeek(TODAY_DATE))
-  const [detailTask, setDetailTask]   = useState(null)
   const [retroOpen, setRetroOpen]     = useState(false)
   const [periodCompletions, setPeriodCompletions] = useState(null)
 
@@ -9137,29 +9017,14 @@ function CalendarTab({ tasks, contexts, routines, recentSkips = [], onReschedule
           weekStart={weekStart}
           contexts={contexts}
           routines={routines}
-          onTaskTap={setDetailTask}
           onWeekOffsetChange={handleWeekOffsetChange}
           onAddTask={onAddTask}
           onEditRoutine={onEditRoutine}
-        />
-      </div>
-      <div style={{ padding: '12px 16px', background: C.paper, border: `1px solid ${C.border}`, borderRadius: 10, boxShadow: C.shadowSoft }}>
-        <div style={{ fontSize: 10.5, fontWeight: 700, color: C.inkMute, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 10 }}>Legend</div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <ImportanceBadge importance="low"/>
-          <ImportanceBadge importance="medium"/>
-          <ImportanceBadge importance="high"/>
-        </div>
-      </div>
-      {detailTask && (
-        <TaskDetailSheet
-          task={detailTask}
-          onClose={() => setDetailTask(null)}
           onMarkDone={onMarkDone}
           onSkip={onSkip}
           onReschedule={onReschedule}
         />
-      )}
+      </div>
       {retroOpen && (
         <RetrospectiveSheet retrospective={retrospective} onClose={() => setRetroOpen(false)} onApplySuggestion={onApplyRetroSuggestion}/>
       )}

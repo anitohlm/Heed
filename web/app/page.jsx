@@ -7400,24 +7400,116 @@ function EventsPanel({ allUpcoming, activeContext, routines = [], onAddContext, 
           <span style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 17, fontWeight: 700, color: accent, letterSpacing: -0.2, flex: 1, transition: 'color 0.25s' }}>New Event</span>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '20px 20px 32px' }}>
-          <p style={{ fontSize: 12.5, color: isLow ? `${C.low}CC` : C.inkMute, marginBottom: 18, lineHeight: 1.5, transition: 'color 0.25s' }}>
-            {isLow ? 'No pressure. Tell Heed how you\'re feeling and it will quietly make space for you.' : 'What\'s coming up? Heed will adjust your tasks and routines around it.'}
-          </p>
-          <div style={{ fontSize: 11, fontWeight: 700, color: lblCol, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 6, transition: 'color 0.25s' }}>Type</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 18 }}>
-            {ADD_TYPES.map(t => {
-              const sel       = newEventType === t.type
-              const isLowType = t.type === 'low'
-              const borderCol = sel ? (isLowType ? C.low : C.warmDark) : (isLow ? `${C.low}40` : C.border)
-              const bgCol     = sel ? (isLowType ? `${C.low}30` : C.bellySoft) : (isLow ? `${C.low}08` : C.paper)
-              const iconBg    = isLowType ? `${C.low}22` : (isLow ? `${C.low}10` : C.bellySoft)
-              return (
-                <button key={t.type} onClick={() => setNewEventType(t.type)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 13px', border: `1.5px solid ${borderCol}`, borderRadius: 12, background: bgCol, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', transition: 'all 0.15s' }}>
-                  <div style={{ width: 36, height: 36, borderRadius: 9, background: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, flexShrink: 0 }}>{t.icon}</div>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>{t.name}</div>
-                    <div style={{ fontSize: 11, color: C.inkMute, marginTop: 1 }}>{t.sub}</div>
+          {/* Inviting hero — owl + warm headline. Tone shifts to periwinkle
+              when the user has Low day selected (matches the screen's skin). */}
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 22, padding: '4px 2px 0' }}>
+            <div style={{ flexShrink: 0, marginTop: 2 }}>
+              <MayaOwl size={48} idle={true}/>
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 22, fontWeight: 600, color: accent, lineHeight: 1.2, letterSpacing: -0.3, marginBottom: 5, transition: 'color 0.25s' }}>
+                {isLow ? "Today feels heavy." : "What's happening?"}
+              </div>
+              <div style={{ fontSize: 13, color: isLow ? `${C.low}CC` : C.inkMute, lineHeight: 1.5, transition: 'color 0.25s' }}>
+                {isLow ? 'Heed will quietly make space — no pressure.' : 'Tell Heed what\'s coming up and it\'ll adjust your tasks and routines around it.'}
+              </div>
+            </div>
+          </div>
+
+          {/* "Today" — featured Low day. Distinct treatment because it's
+              reactive (right now) rather than scheduled, and carries the most
+              emotional weight. Selecting it shifts the whole screen to
+              periwinkle. */}
+          <div style={{ fontSize: 10.5, fontWeight: 700, color: lblCol, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 8, paddingLeft: 2, transition: 'color 0.25s' }}>Today</div>
+          {(() => {
+            const sel = newEventType === 'low'
+            return (
+              <button
+                type="button"
+                onClick={() => setNewEventType('low')}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 14,
+                  width: '100%', textAlign: 'left',
+                  background: sel
+                    ? `linear-gradient(135deg, ${C.low}24 0%, ${C.lowSoft} 100%)`
+                    : `linear-gradient(135deg, ${C.lowSoft} 0%, ${C.paperHi} 100%)`,
+                  border: `1.5px solid ${sel ? C.low : `${C.low}40`}`,
+                  borderRadius: 16, padding: '16px 18px',
+                  marginBottom: 22,
+                  cursor: 'pointer', fontFamily: 'inherit',
+                  boxShadow: sel ? C.shadowMed : C.shadowSoft,
+                  transition: 'transform 0.18s ease-out, box-shadow 0.18s ease-out, border-color 0.25s, background 0.25s',
+                  touchAction: 'manipulation',
+                }}
+                onMouseEnter={e => { if (!sel) { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = C.shadowMed } }}
+                onMouseLeave={e => { if (!sel) { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = C.shadowSoft } }}
+              >
+                <div style={{
+                  width: 56, height: 56, borderRadius: 14,
+                  background: `${C.low}22`, border: `1px solid ${C.low}44`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 26, flexShrink: 0,
+                }}>🌙</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 17, fontWeight: 600, color: C.ink, marginBottom: 3, letterSpacing: -0.1 }}>Low day</div>
+                  <div style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.45 }}>For when today is heavy. Heed pauses what can wait.</div>
+                </div>
+                {sel && (
+                  <div style={{ width: 26, height: 26, borderRadius: '50%', background: C.low, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }} aria-hidden="true">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7l3.5 3.5L12 4" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                   </div>
+                )}
+              </button>
+            )
+          })()}
+
+          {/* "Coming up" — 2x2 grid of scheduled events. Each tile uses the
+              event type's own ringKey color for its icon tile so Travel reads
+              sage, Busy reads rust, Sick reads ochre, Celebration reads rose
+              — the visual cue people already know from the Past Events list. */}
+          <div style={{ fontSize: 10.5, fontWeight: 700, color: lblCol, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 8, paddingLeft: 2, transition: 'color 0.25s' }}>Coming up</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 22 }}>
+            {ADD_TYPES.filter(t => t.type !== 'low').map(t => {
+              const sel = newEventType === t.type
+              const cfg = evtCfg(t.type)
+              const accentTone = C[cfg.ringKey] || C.warmDark
+              const tileBg = C[cfg.softKey] || C.bellySoft
+              return (
+                <button
+                  key={t.type}
+                  type="button"
+                  onClick={() => setNewEventType(t.type)}
+                  style={{
+                    display: 'flex', flexDirection: 'column', gap: 12,
+                    width: '100%', textAlign: 'left',
+                    background: sel ? C.bellySoft : C.paperHi,
+                    border: `1.5px solid ${sel ? accentTone : (isLow ? `${C.low}30` : C.border)}`,
+                    borderRadius: 14, padding: '16px 16px 18px',
+                    cursor: 'pointer', fontFamily: 'inherit',
+                    boxShadow: sel ? C.shadowMed : C.shadowSoft,
+                    transition: 'transform 0.18s ease-out, box-shadow 0.18s ease-out, border-color 0.18s ease-out, background 0.18s ease-out',
+                    minHeight: 132,
+                    position: 'relative',
+                    touchAction: 'manipulation',
+                  }}
+                  onMouseEnter={e => { if (!sel) { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = C.shadowMed; e.currentTarget.style.borderColor = accentTone + '88' } }}
+                  onMouseLeave={e => { if (!sel) { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = C.shadowSoft; e.currentTarget.style.borderColor = isLow ? `${C.low}30` : C.border } }}
+                >
+                  <div style={{
+                    width: 48, height: 48, borderRadius: 12,
+                    background: tileBg, border: `1px solid ${accentTone}33`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 22, flexShrink: 0,
+                  }}>{t.icon}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 15, fontWeight: 600, color: C.ink, marginBottom: 2, letterSpacing: -0.1 }}>{t.name}</div>
+                    <div style={{ fontSize: 11.5, color: C.inkSoft, lineHeight: 1.4 }}>{t.sub}</div>
+                  </div>
+                  {sel && (
+                    <div style={{ position: 'absolute', top: 10, right: 10, width: 22, height: 22, borderRadius: '50%', background: accentTone, display: 'flex', alignItems: 'center', justifyContent: 'center' }} aria-hidden="true">
+                      <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M2 7l3.5 3.5L12 4" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    </div>
+                  )}
                 </button>
               )
             })}

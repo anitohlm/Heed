@@ -490,6 +490,36 @@ function mapApiContext(ctx) {
   }
 }
 
+// ── parsePlanAdviceActions ──────────────────────────────────────
+// Extract bullet / numbered list items from a markdown plan-advice reply
+// and convert them into add_task action objects (up to 4).
+function parsePlanAdviceActions(text) {
+  const lines = text.split('\n')
+  const seen = new Set()
+  const actions = []
+  for (const line of lines) {
+    const trimmed = line.trim()
+    const listMatch = trimmed.match(/^(?:[-*•]|\d+\.)\s+(.+)/)
+    if (!listMatch) continue
+    let raw = listMatch[1]
+    const boldMatch = raw.match(/\*\*([^*]{4,60})\*\*/)
+    let name = boldMatch ? boldMatch[1] : raw.replace(/\*\*/g, '').split(/[:—–]/)[0].trim()
+    name = name.replace(/\*\*/g, '').trim()
+    if (!name || name.length < 4 || name.length > 70) continue
+    if (/^(the|your|this|it|you|overall|note|good|great|well|since|as|because)/i.test(name)) continue
+    if (seen.has(name.toLowerCase())) continue
+    seen.add(name.toLowerCase())
+    actions.push({
+      action_type: 'add_task',
+      emoji: '✚',
+      label: name,
+      payload: { name, category: 'admin', importance: 'medium' },
+    })
+    if (actions.length >= 4) break
+  }
+  return actions
+}
+
 // ── useChat hook ───────────────────────────────────────────────
 function useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded } = {}) {
   const [messages, setMessages] = useState(() => {
@@ -606,6 +636,12 @@ function useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded } = {}) {
       pendingChips = scripted.chips || []
       setThinking(null)
       setStreaming(finalText)
+    }
+
+    // For plan-advice queries with no backend actions, parse the response text
+    // and surface suggestions as add_task action buttons.
+    if (trimmed.startsWith('Give me advice on this plan:') && pendingActions.length === 0 && finalText) {
+      parsePlanAdviceActions(finalText).forEach(a => pendingActions.push(a))
     }
 
     setThinking(null)

@@ -5044,10 +5044,24 @@ function PlanBubbleDetailScreen({ plan, onBack, onEdit, onCheck, onTaskSelect, o
             const input = document.querySelector('[aria-label="Ask Heed"]') || document.querySelector('textarea[placeholder*="Ask"]')
             if (input) { input.focus(); input.value = `Give me advice on my plan: ${plan.title}` }
           }}
-          style={{ width: '100%', padding: 13, background: 'none', border: `1.5px dashed ${C.border}`, borderRadius: 12, color: C.inkMute, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', marginTop: 4, transition: 'border-color 0.15s, color 0.15s' }}
-          onMouseEnter={e => { e.currentTarget.style.borderColor = C.warmDark; e.currentTarget.style.color = C.ink }}
-          onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.inkMute }}
-        >Ask Heed for advice on this plan</button>
+          style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', background: C.bellySoft, border: `1.5px solid ${C.border}`, borderRadius: 14, cursor: 'pointer', fontFamily: 'inherit', marginTop: 8, textAlign: 'left', transition: 'border-color 0.15s, background 0.15s' }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = C.warmDark; e.currentTarget.style.background = C.belly }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.background = C.bellySoft }}
+        >
+          <div style={{ width: 38, height: 38, borderRadius: 10, background: C.warmDark + '18', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+              <path d="M12 3C7.03 3 3 6.36 3 10.5c0 2.38 1.19 4.5 3.07 5.97L5 21l4.5-2.25c.81.18 1.64.25 2.5.25 4.97 0 9-3.36 9-7.5S16.97 3 12 3z" stroke={C.warmDark} strokeWidth="1.7" strokeLinejoin="round"/>
+              <circle cx="9" cy="10.5" r="1" fill={C.warmDark}/>
+              <circle cx="12" cy="10.5" r="1" fill={C.warmDark}/>
+              <circle cx="15" cy="10.5" r="1" fill={C.warmDark}/>
+            </svg>
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, marginBottom: 2 }}>Ask Heed for advice</div>
+            <div style={{ fontSize: 11.5, color: C.inkMute, lineHeight: 1.4 }}>Pace, gaps, suggestions — Heed will review this plan</div>
+          </div>
+          <span style={{ color: C.inkMute, fontSize: 18, flexShrink: 0 }}>›</span>
+        </button>
         <button onClick={onArchive} style={{ width: '100%', padding: 12, background: 'none', border: `1px solid ${C.border}`, borderRadius: 10, color: C.inkMute, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', marginTop: 8 }}>Archive this plan</button>
       </div>
     </div>
@@ -6440,11 +6454,7 @@ function EventsPanel({ allUpcoming, activeContext, onAddContext, onQuickContext,
     if (newEventType === 'low') {
       setScreen(null)
       onAddContext?.({ type: 'low', desc: name, icon: '🌙', lowDuration: newLowDuration })
-      if (activeEvt) {
-        setModal('conflict')
-      } else {
-        setModal('save-confirm')
-      }
+      setModal('save-confirm')
     } else if (newEventType === 'sick' || newEventType === 'illness' || newEventType === 'busy' || newEventType === 'travel' || newEventType === 'celebration') {
       setScreen(null)
       if (activeEvt) {

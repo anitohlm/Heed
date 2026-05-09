@@ -11655,9 +11655,13 @@ export default function HeedApp() {
             // Life tab gets a contextual page header instead of the global
             // greeting. The 'Life' serif title + italic subtitle move up here
             // so the screen has one clean header instead of two stacked ones.
+            // Note: the subtitle deliberately omits the .heed-header-subtitle
+            // className — that class hides on mobile to save room next to the
+            // greeting, but on the Life tab the subtitle IS the page header
+            // and must stay visible on every viewport.
             <div style={{ minWidth: 0 }}>
               <div style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 22, fontWeight: 600, color: C.warmDark, letterSpacing: -0.5, lineHeight: 1.1 }}>Life</div>
-              <div className="heed-header-subtitle" style={{ fontSize: 12, color: C.inkSoft, fontStyle: 'italic', marginTop: 3, lineHeight: 1.4 }}>Your plans and life events, in one place.</div>
+              <div style={{ fontSize: 12, color: C.inkSoft, fontStyle: 'italic', marginTop: 3, lineHeight: 1.4 }}>Your plans and life events, in one place.</div>
             </div>
           ) : (
             <div style={{ minWidth: 0 }}>

@@ -553,7 +553,7 @@ function useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded } = {}) {
 
   useEffect(() => {
     try {
-      const toSave = messages.slice(-20).map(m => ({ role: m.role, content: m.content }))
+      const toSave = messages.slice(-20).map(m => ({ role: m.role, content: m.content, ts: m.ts }))
       localStorage.setItem('heed.chat-history.v1', JSON.stringify(toSave))
     } catch (_) {}
   }, [messages])
@@ -770,14 +770,7 @@ function useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded } = {}) {
 
   const clearToday = useCallback(() => {
     const midnight = new Date(); midnight.setHours(0, 0, 0, 0)
-    setMessages(prev => {
-      const kept = prev.filter(m => m.ts && m.ts < midnight.getTime())
-      try {
-        const toSave = kept.slice(-20).map(m => ({ role: m.role, content: m.content, ts: m.ts }))
-        localStorage.setItem('heed.chat-history.v1', JSON.stringify(toSave))
-      } catch (_) {}
-      return kept
-    })
+    setMessages(prev => prev.filter(m => !m.ts || m.ts < midnight.getTime()))
     setThinking(null)
     setStreaming('')
   }, [])
@@ -8218,22 +8211,18 @@ function AskInlineModal({ open, onClose, onLightenRoutine, onTaskAdded, onRoutin
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
   useEffect(() => { if (open && !prefill && inputRef.current) setTimeout(() => inputRef.current?.focus(), 100) }, [open])
-  // Scroll to bottom after messages render (timeout lets the DOM settle)
-  useEffect(() => {
-    if (!open) return
-    setTimeout(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight }, 80)
-  }, [open, messages.length])
   useEffect(() => {
     if (!open) return
     const fn = (e) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', fn)
     return () => window.removeEventListener('keydown', fn)
   }, [open, onClose])
-  useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight }, [messages, thinking, streaming])
-  // Scroll to latest message whenever the panel opens
   useEffect(() => {
-    if (open && scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight
-  }, [open])
+    if (!open || !scrollRef.current) return
+    requestAnimationFrame(() => {
+      if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+    })
+  }, [open, messages, thinking, streaming])
   if (!open) return null
   return (
     <>

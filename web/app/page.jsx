@@ -7885,10 +7885,9 @@ function LifeTab({ upcoming, active, activeContext, routines, plansHook, onAddCo
     .filter(c => !hiddenLocalIds.has(c.id || c.desc))
   return (
     <div>
-      <div style={{ marginBottom: 18 }}>
-        <SectionHeader>Life</SectionHeader>
-        <div style={{ fontSize: 12.5, color: C.inkMute, fontStyle: 'italic', marginTop: -8 }}>Your plans and life events, in one place.</div>
-      </div>
+      {/* The 'Life' title + subtitle now live in the global page header
+          (HeedApp swaps the greeting for them when tab === 'context'), so
+          the section duplicate that used to sit here was removed. */}
       <div style={{ display: 'flex', background: C.paper, border: `1px solid ${C.border}`, borderRadius: 10, padding: 4, marginBottom: 18, gap: 4 }}>
         <SegmentButton active={subtab === 'plans'} onClick={() => setSubtab('plans')} label="Plans" count={plansHook.plans.length} accent={C.warmDark}/>
         <SegmentButton active={subtab === 'events'} onClick={() => setSubtab('events')} label="Events" count={(activeContext ? 1 : 0) + allUpcoming.length} accent={C.sage}/>
@@ -11652,10 +11651,20 @@ export default function HeedApp() {
               else calm. Animates 'speaking' during streaming chat (handled by
               the Ask sheet's own MayaOwl). */}
           <MayaOwl size={40} mood={displayTasks.some(t => (t.overdue || 0) >= 7) ? 'worried' : 'calm'}/>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 22, fontWeight: 600, color: C.warmDark, letterSpacing: -0.5, lineHeight: 1.1 }}>{headerGreeting.headline}</div>
-            <div className="heed-header-subtitle" style={{ fontSize: 12, color: C.inkSoft, fontStyle: 'italic', marginTop: 3, lineHeight: 1.4 }}>{headerGreeting.sub}</div>
-          </div>
+          {tab === 'context' ? (
+            // Life tab gets a contextual page header instead of the global
+            // greeting. The 'Life' serif title + italic subtitle move up here
+            // so the screen has one clean header instead of two stacked ones.
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 22, fontWeight: 600, color: C.warmDark, letterSpacing: -0.5, lineHeight: 1.1 }}>Life</div>
+              <div className="heed-header-subtitle" style={{ fontSize: 12, color: C.inkSoft, fontStyle: 'italic', marginTop: 3, lineHeight: 1.4 }}>Your plans and life events, in one place.</div>
+            </div>
+          ) : (
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 22, fontWeight: 600, color: C.warmDark, letterSpacing: -0.5, lineHeight: 1.1 }}>{headerGreeting.headline}</div>
+              <div className="heed-header-subtitle" style={{ fontSize: 12, color: C.inkSoft, fontStyle: 'italic', marginTop: 3, lineHeight: 1.4 }}>{headerGreeting.sub}</div>
+            </div>
+          )}
         </div>
         <div className="heed-tab-name" style={{ fontSize: 14, fontWeight: 600, color: C.ink }}>
           {tabs.find(t => t.id === tab)?.label}

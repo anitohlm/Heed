@@ -6440,6 +6440,11 @@ function EventsPanel({ allUpcoming, activeContext, onAddContext, onQuickContext,
     if (newEventType === 'low') {
       setScreen(null)
       onAddContext?.({ type: 'low', desc: name, icon: '🌙', lowDuration: newLowDuration })
+      if (activeEvt) {
+        setModal('conflict')
+      } else {
+        setModal('save-confirm')
+      }
     } else if (newEventType === 'sick' || newEventType === 'illness' || newEventType === 'busy' || newEventType === 'travel' || newEventType === 'celebration') {
       setScreen(null)
       if (activeEvt) {

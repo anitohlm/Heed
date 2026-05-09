@@ -8902,10 +8902,28 @@ function AddTaskModal({ open, onClose, onSubmit, onDelete, initialData = null, c
           )}
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '18px 16px' }}>
-          <div style={{ marginBottom: 14 }}>
+          {/* Inviting hero — same pattern as the New plan / New event / Build
+              a routine pickers, so the four creation flows feel consistent. */}
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 20, padding: '2px 2px 0' }}>
+            <div style={{ flexShrink: 0, marginTop: 1 }}>
+              <MayaOwl size={42} idle={true}/>
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 20, fontWeight: 600, color: C.warmDark, lineHeight: 1.2, letterSpacing: -0.25, marginBottom: 4 }}>
+                {isEdit ? 'Tweak this task.' : "What needs tracking?"}
+              </div>
+              <div style={{ fontSize: 12.5, color: C.inkMute, lineHeight: 1.5 }}>
+                {isEdit ? 'Update what changed — Heed will keep its history intact.' : 'Just the gist. Heed will learn the cadence as you go.'}
+              </div>
+            </div>
+          </div>
+
+          {/* Task name — slightly promoted (15px / weight 500) so it reads as
+              the title of what the user is creating. */}
+          <div style={{ marginBottom: 18 }}>
             <label style={getFieldLabel()}>Task name</label>
             <input ref={inputRef} value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === 'Enter' && submit()} placeholder="e.g. Clean the aircon filter"
-              style={{ width: '100%', boxSizing: 'border-box', background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '10px 14px', fontSize: 14, color: C.ink, outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.15s' }}
+              style={{ width: '100%', boxSizing: 'border-box', background: C.paperHi, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '11px 14px', fontSize: 15, fontWeight: 500, color: C.ink, outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.15s' }}
               onFocus={e => { e.target.style.borderColor = C.warmDark }} onBlur={e => { e.target.style.borderColor = C.border }}
             />
           </div>
@@ -9033,27 +9051,32 @@ function AddTaskModal({ open, onClose, onSubmit, onDelete, initialData = null, c
               </div>
             )}
           </div>
-          <div style={{ marginBottom: 18 }}>
-            <label style={getFieldLabel()}>Due date & time <span style={{ fontWeight: 400, color: C.inkMute, fontStyle: 'italic' }}>(optional)</span></label>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <DateField value={dueDate} onChange={setDueDate} placeholder="Pick a date"/>
-              <input type="time" value={dueTime} onChange={e => setDueTime(e.target.value)} disabled={!dueDate}
-                style={{ flex: '0 0 110px', background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '9px 12px', fontSize: 13, color: dueTime ? C.ink : C.inkMute, outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.15s', opacity: dueDate ? 1 : 0.4 }}
+          {/* Optional details — visually demoted with a hairline divider so
+              the user understands these aren't required to ship the task. */}
+          <div style={{ paddingTop: 14, borderTop: `1px solid ${C.hairline}`, marginTop: 4 }}>
+            <div style={{ fontSize: 10.5, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 12 }}>Optional details</div>
+            <div style={{ marginBottom: 14 }}>
+              <label style={getFieldLabel()}>Due date & time</label>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <DateField value={dueDate} onChange={setDueDate} placeholder="Pick a date"/>
+                <input type="time" value={dueTime} onChange={e => setDueTime(e.target.value)} disabled={!dueDate}
+                  style={{ flex: '0 0 110px', background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '9px 12px', fontSize: 13, color: dueTime ? C.ink : C.inkMute, outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.15s', opacity: dueDate ? 1 : 0.4 }}
+                  onFocus={e => { e.target.style.borderColor = C.warmDark }} onBlur={e => { e.target.style.borderColor = C.border }}
+                />
+              </div>
+              {(dueDate || dueTime) && (
+                <button onClick={() => { setDueDate(''); setDueTime('') }} style={{ background: 'none', border: 'none', color: C.inkMute, fontSize: 11.5, cursor: 'pointer', padding: '4px 0', fontFamily: 'inherit' }}>Clear</button>
+              )}
+            </div>
+            <div style={{ marginBottom: 6 }}>
+              <label style={getFieldLabel()}>Notes</label>
+              <textarea value={description} onChange={e => setDescription(e.target.value)}
+                placeholder="Anything to remember about this — supplier, account number, why it matters…"
+                rows={2}
+                style={{ width: '100%', boxSizing: 'border-box', background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '9px 12px', fontSize: 13, color: C.ink, outline: 'none', fontFamily: 'inherit', resize: 'vertical', minHeight: 56, transition: 'border-color 0.15s' }}
                 onFocus={e => { e.target.style.borderColor = C.warmDark }} onBlur={e => { e.target.style.borderColor = C.border }}
               />
             </div>
-            {(dueDate || dueTime) && (
-              <button onClick={() => { setDueDate(''); setDueTime('') }} style={{ background: 'none', border: 'none', color: C.inkMute, fontSize: 11.5, cursor: 'pointer', padding: '4px 0', fontFamily: 'inherit' }}>Clear</button>
-            )}
-          </div>
-          <div style={{ marginBottom: 18 }}>
-            <label style={getFieldLabel()}>Notes <span style={{ fontWeight: 400, color: C.inkMute, fontStyle: 'italic' }}>(optional)</span></label>
-            <textarea value={description} onChange={e => setDescription(e.target.value)}
-              placeholder="Anything to remember about this — supplier, account number, why it matters…"
-              rows={2}
-              style={{ width: '100%', boxSizing: 'border-box', background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '9px 12px', fontSize: 13, color: C.ink, outline: 'none', fontFamily: 'inherit', resize: 'vertical', minHeight: 56, transition: 'border-color 0.15s' }}
-              onFocus={e => { e.target.style.borderColor = C.warmDark }} onBlur={e => { e.target.style.borderColor = C.border }}
-            />
           </div>
         </div>
         <div style={{ flexShrink: 0, padding: '12px 16px', background: C.paperHi, borderTop: `1px solid ${C.border}` }}>
@@ -9284,46 +9307,41 @@ function BuildRoutineScreen({ open, onClose, onSubmit, initialData = null, seedT
         <span style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 17, fontWeight: 700, color: C.warmDark, letterSpacing: -0.2, flex: 1 }}>{initialData ? 'Edit routine' : 'Build a routine'}</span>
       </div>
       <div style={{ flex: 1, overflowY: 'auto', padding: '18px 16px' }}>
-        <div style={{ marginBottom: 14 }}>
+        {/* Inviting hero — same warm intro pattern as the New plan and New
+            event pickers. Adapts the headline + subtext between create and
+            edit modes so it doesn't feel generic. */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 20, padding: '2px 2px 0' }}>
+          <div style={{ flexShrink: 0, marginTop: 1 }}>
+            <MayaOwl size={42} idle={true}/>
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 20, fontWeight: 600, color: C.warmDark, lineHeight: 1.2, letterSpacing: -0.25, marginBottom: 4 }}>
+              {initialData ? 'Tweak this routine.' : 'Stack a few small things.'}
+            </div>
+            <div style={{ fontSize: 12.5, color: C.inkMute, lineHeight: 1.5 }}>
+              {initialData ? "Update what's in this rhythm or how often it runs." : 'Group habits into one rhythm — Heed tracks them together so a partial day still counts.'}
+            </div>
+          </div>
+        </div>
+
+        {/* Routine name — promoted slightly with serif label color so it
+            reads as the title of what the user is building. */}
+        <div style={{ marginBottom: 18 }}>
           <label style={fieldLabel}>Routine name</label>
           <input ref={nameRef} value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Morning routine, Sunday reset"
-            style={{ width: '100%', boxSizing: 'border-box', background: C.paperHi, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '10px 14px', fontSize: 14, color: C.ink, outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.15s' }}
+            style={{ width: '100%', boxSizing: 'border-box', background: C.paperHi, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '11px 14px', fontSize: 15, fontWeight: 500, color: C.ink, outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.15s' }}
             onFocus={e=>{e.target.style.borderColor=C.warmDark}} onBlur={e=>{e.target.style.borderColor=C.border}}
           />
         </div>
-        <div style={{ marginBottom: 14 }}>
-          <label style={fieldLabel}>Frequency</label>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {freqOptions.map(({ v, label }) => (
-              <button key={v} onClick={() => setFrequency(v)} style={{ ...pillBase, background: frequency === v ? C.warmDark : C.paper, borderColor: frequency === v ? C.warmDark : C.border, color: frequency === v ? C.cream : C.inkSoft }}>{label}</button>
-            ))}
+
+        {/* Items — promoted to come right after the name because they ARE
+            the routine. The bellySoft surround gives the section a sense of
+            "container" so the user reads it as a unit, not a generic list. */}
+        <div style={{ marginBottom: 18, padding: '14px 14px 12px', background: C.bellySoft + '66', border: `1px solid ${C.hairline}`, borderRadius: 14 }}>
+          <label style={{ ...fieldLabel, marginBottom: 4 }}>What's in it</label>
+          <div style={{ fontSize: 11.5, color: C.inkMute, fontStyle: 'italic', marginBottom: 10, lineHeight: 1.4 }}>
+            Two to five small things tend to stick best.
           </div>
-          {frequency === 'weekly' && (
-            <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
-              {DAY_CHIPS.map((d, i) => (
-                <button key={i} onClick={() => toggleDay(i)} style={{ width: 34, height: 34, borderRadius: '50%', border: `1.5px solid ${frequencyDays.includes(i) ? C.warmDark : C.border}`, background: frequencyDays.includes(i) ? C.warmDark : C.paper, color: frequencyDays.includes(i) ? C.cream : C.inkMute, fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{d}</button>
-              ))}
-            </div>
-          )}
-        </div>
-        <div style={{ marginBottom: 14 }}>
-          <label style={fieldLabel}>Importance</label>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {impOptions.map(({ v, label }) => (
-              <button key={v} onClick={() => setImportance(v)} style={{ ...pillBase, background: getImportanceStyle(v).bg, color: getImportanceStyle(v).fg, borderColor: importance === v ? getImportanceStyle(v).fg : C.border, outline: importance === v ? `2.5px solid ${getImportanceStyle(v).fg}` : 'none', outlineOffset: importance === v ? '2px' : '0' }}>{label}</button>
-            ))}
-          </div>
-        </div>
-        <div style={{ marginBottom: 14 }}>
-          <label style={fieldLabel}>Notes <span style={{ fontWeight: 400, color: C.inkMute, fontStyle: 'italic', textTransform: 'none', letterSpacing: 0 }}>(optional)</span></label>
-          <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Any context or reminders for this routine…"
-            rows={2}
-            style={{ width: '100%', boxSizing: 'border-box', background: C.paperHi, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '10px 14px', fontSize: 13, color: C.ink, outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.15s', resize: 'vertical' }}
-            onFocus={e=>{e.target.style.borderColor=C.warmDark}} onBlur={e=>{e.target.style.borderColor=C.border}}
-          />
-        </div>
-        <div style={{ marginBottom: 14 }}>
-          <label style={fieldLabel}>Items in this routine</label>
           {items.map((item, idx) => {
             const ft = openPickerIndex === idx ? filteredTasks() : []
             return (
@@ -9357,27 +9375,69 @@ function BuildRoutineScreen({ open, onClose, onSubmit, initialData = null, seedT
               </div>
             )
           })}
-          <button onClick={addItem} style={{ background: 'transparent', color: C.warmDark, border: `1.5px dashed ${C.border}`, padding: '8px 14px', borderRadius: 8, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', width: '100%', transition: 'all 0.15s' }}
-            onMouseEnter={e=>{e.currentTarget.style.borderColor=C.warmDark;e.currentTarget.style.background=C.bellySoft}}
+          <button onClick={addItem} style={{ background: 'transparent', color: C.warmDark, border: `1.5px dashed ${C.border}`, padding: '8px 14px', borderRadius: 8, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', width: '100%', marginTop: 4, transition: 'all 0.15s' }}
+            onMouseEnter={e=>{e.currentTarget.style.borderColor=C.warmDark;e.currentTarget.style.background=C.paper}}
             onMouseLeave={e=>{e.currentTarget.style.borderColor=C.border;e.currentTarget.style.background='transparent'}}
           >+ Add another item</button>
         </div>
-        <div style={{ marginBottom: 6 }}>
-          <label style={fieldLabel}>Date range <span style={{ fontWeight: 400, color: C.inkMute, fontStyle: 'italic', textTransform: 'none', letterSpacing: 0 }}>(optional)</span></label>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
-              style={{ flex: 1, background: C.paperHi, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '9px 12px', fontSize: 13, color: startDate ? C.ink : C.inkMute, outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.15s' }}
-              onFocus={e=>{e.target.style.borderColor=C.warmDark}} onBlur={e=>{e.target.style.borderColor=C.border}}
-            />
-            <span style={{ color: C.inkMute, fontSize: 12, flexShrink: 0 }}>to</span>
-            <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} min={startDate || undefined}
-              style={{ flex: 1, background: C.paperHi, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '9px 12px', fontSize: 13, color: endDate ? C.ink : C.inkMute, outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.15s' }}
+
+        {/* Frequency */}
+        <div style={{ marginBottom: 14 }}>
+          <label style={fieldLabel}>How often</label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {freqOptions.map(({ v, label }) => (
+              <button key={v} onClick={() => setFrequency(v)} style={{ ...pillBase, background: frequency === v ? C.warmDark : C.paper, borderColor: frequency === v ? C.warmDark : C.border, color: frequency === v ? C.cream : C.inkSoft }}>{label}</button>
+            ))}
+          </div>
+          {frequency === 'weekly' && (
+            <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+              {DAY_CHIPS.map((d, i) => (
+                <button key={i} onClick={() => toggleDay(i)} style={{ width: 34, height: 34, borderRadius: '50%', border: `1.5px solid ${frequencyDays.includes(i) ? C.warmDark : C.border}`, background: frequencyDays.includes(i) ? C.warmDark : C.paper, color: frequencyDays.includes(i) ? C.cream : C.inkMute, fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{d}</button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Importance */}
+        <div style={{ marginBottom: 18 }}>
+          <label style={fieldLabel}>How much it matters</label>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {impOptions.map(({ v, label }) => (
+              <button key={v} onClick={() => setImportance(v)} style={{ ...pillBase, background: getImportanceStyle(v).bg, color: getImportanceStyle(v).fg, borderColor: importance === v ? getImportanceStyle(v).fg : C.border, outline: importance === v ? `2.5px solid ${getImportanceStyle(v).fg}` : 'none', outlineOffset: importance === v ? '2px' : '0' }}>{label}</button>
+            ))}
+          </div>
+        </div>
+
+        {/* Optional details — visually demoted with a hairline divider so the
+            user understands these aren't required to ship the routine. Notes
+            and the date range both live in here. */}
+        <div style={{ paddingTop: 14, borderTop: `1px solid ${C.hairline}`, marginTop: 4 }}>
+          <div style={{ fontSize: 10.5, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 12 }}>Optional details</div>
+          <div style={{ marginBottom: 14 }}>
+            <label style={fieldLabel}>Notes</label>
+            <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Any context or reminders for this routine…"
+              rows={2}
+              style={{ width: '100%', boxSizing: 'border-box', background: C.paperHi, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '10px 14px', fontSize: 13, color: C.ink, outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.15s', resize: 'vertical' }}
               onFocus={e=>{e.target.style.borderColor=C.warmDark}} onBlur={e=>{e.target.style.borderColor=C.border}}
             />
           </div>
-          {(startDate || endDate) && (
-            <button onClick={() => { setStartDate(''); setEndDate('') }} style={{ background: 'none', border: 'none', color: C.inkMute, fontSize: 11.5, cursor: 'pointer', padding: '4px 0', fontFamily: 'inherit' }}>Clear dates</button>
-          )}
+          <div style={{ marginBottom: 6 }}>
+            <label style={fieldLabel}>Date range</label>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
+                style={{ flex: 1, background: C.paperHi, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '9px 12px', fontSize: 13, color: startDate ? C.ink : C.inkMute, outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.15s' }}
+                onFocus={e=>{e.target.style.borderColor=C.warmDark}} onBlur={e=>{e.target.style.borderColor=C.border}}
+              />
+              <span style={{ color: C.inkMute, fontSize: 12, flexShrink: 0 }}>to</span>
+              <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} min={startDate || undefined}
+                style={{ flex: 1, background: C.paperHi, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '9px 12px', fontSize: 13, color: endDate ? C.ink : C.inkMute, outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.15s' }}
+                onFocus={e=>{e.target.style.borderColor=C.warmDark}} onBlur={e=>{e.target.style.borderColor=C.border}}
+              />
+            </div>
+            {(startDate || endDate) && (
+              <button onClick={() => { setStartDate(''); setEndDate('') }} style={{ background: 'none', border: 'none', color: C.inkMute, fontSize: 11.5, cursor: 'pointer', padding: '4px 0', fontFamily: 'inherit' }}>Clear dates</button>
+            )}
+          </div>
         </div>
       </div>
       <div style={{ padding: '12px 16px', borderTop: `1px solid ${C.border}`, background: C.paperHi, flexShrink: 0 }}>

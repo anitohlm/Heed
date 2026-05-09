@@ -5511,9 +5511,12 @@ function PlanCompletionCelebration({ plan, onArchive, onDismiss }) {
 }
 
 // ── PlanBubbleDetailScreen ──────────────────────────────────────
-function PlanBubbleDetailScreen({ plan, onBack, onEdit, onCheck, onTaskSelect, onArchive, onAskHeed, addedTaskLabel, onAddedTaskLabelConsumed }) {
+function PlanBubbleDetailScreen({ plan, onBack, onEdit, onCheck, onTaskSelect, onArchive, onUpdatePlan, onAskHeed, addedTaskLabel, onAddedTaskLabelConsumed }) {
   const [showAddedBanner, setShowAddedBanner] = useState(false)
   const [bannerLabel, setBannerLabel] = useState('')
+  // 'add savings' bottom sheet — only used for numeric goals.
+  const [savingsOpen, setSavingsOpen] = useState(false)
+  const [savingsAmt, setSavingsAmt] = useState('')
   // Plan completion celebration. Fires once per plan id when pct crosses
   // to 100. localStorage flag survives reload so reopening doesn't replay.
   const [showCelebration, setShowCelebration] = useState(false)
@@ -5614,7 +5617,35 @@ function PlanBubbleDetailScreen({ plan, onBack, onEdit, onCheck, onTaskSelect, o
         </div>
         {plan.type === 'goal' && plan.goalKind === 'milestone' && (
           <div style={{ marginBottom: 20, textAlign: 'center' }}>
-            <span style={{ background: plan.achieved ? '#d4edda' : C.bellySoft, color: plan.achieved ? '#2d6a4f' : C.inkMute, borderRadius: 999, padding: '4px 14px', fontSize: 13, fontWeight: 600 }}>{plan.achieved ? '✓ Achieved!' : 'In progress'}</span>
+            {plan.achieved ? (
+              <span style={{ background: C.sageSoft, color: C.sage, border: `1px solid ${C.sage}55`, borderRadius: 999, padding: '5px 16px', fontSize: 13, fontWeight: 600 }}>✓ Achieved!</span>
+            ) : (
+              <button onClick={() => onUpdatePlan?.(plan.id, { achieved: true })}
+                style={{ ...getBtnPrimary(), padding: '10px 22px', fontSize: 13.5, borderRadius: 999 }}>
+                ✓ Mark achieved
+              </button>
+            )}
+          </div>
+        )}
+        {/* Action button for numeric goals — opens a small bottom sheet
+            so the user can log money saved without going to Edit. */}
+        {plan.type === 'goal' && plan.goalKind !== 'milestone' && (plan.current ?? 0) < (plan.target ?? 0) && (
+          <div style={{ marginBottom: 20 }}>
+            <button onClick={() => { setSavingsAmt(''); setSavingsOpen(true) }}
+              style={{
+                width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                padding: '12px 16px',
+                background: C.ochreSoft, color: C.ochre,
+                border: `1.5px solid ${C.ochre}55`, borderRadius: 12,
+                fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                transition: 'background 0.15s, border-color 0.15s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = C.ochre; e.currentTarget.style.background = C.ochreSoft }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = C.ochre + '55' }}
+            >
+              <span style={{ fontSize: 16 }}>💰</span>
+              <span>Log savings</span>
+            </button>
           </div>
         )}
         {(plan.tasks?.length ?? 0) > 0 && (
@@ -5669,6 +5700,78 @@ function PlanBubbleDetailScreen({ plan, onBack, onEdit, onCheck, onTaskSelect, o
         <button onClick={onArchive} style={{ width: '100%', padding: 12, background: 'none', border: `1px solid ${C.border}`, borderRadius: 10, color: C.inkMute, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', marginTop: 8 }}>Archive this plan</button>
       </div>
     </div>
+    {/* Savings logging sheet — numeric goals only. Quick-add chips for the
+        common increments + a free input. Submitting calls onUpdatePlan with
+        the new 'current' value, which triggers the celebration when it
+        crosses 'target'. */}
+    {savingsOpen && plan.type === 'goal' && plan.goalKind !== 'milestone' && (
+      <div onClick={() => setSavingsOpen(false)}
+        style={{ position: 'fixed', inset: 0, zIndex: 230, background: C.scrim, backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', animation: 'heed-fadeIn 0.2s ease' }}>
+        <div onClick={e => e.stopPropagation()}
+          role="dialog" aria-label="Log savings"
+          style={{ background: C.paperHi, width: '100%', maxWidth: 460, borderRadius: '20px 20px 0 0', border: `1px solid ${C.border}`, padding: '20px 22px calc(20px + env(safe-area-inset-bottom))', boxShadow: C.shadowMed, animation: 'heed-slideUp 0.3s cubic-bezier(0.16,1,0.3,1)' }}>
+          <div style={{ width: 36, height: 4, borderRadius: 2, background: C.border, margin: '0 auto 14px' }}/>
+          <div style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 19, fontWeight: 600, color: C.ink, letterSpacing: -0.2, marginBottom: 4 }}>How much did you save?</div>
+          <div style={{ fontSize: 12.5, color: C.inkMute, lineHeight: 1.45, marginBottom: 16 }}>
+            {plan.unit ?? ''}{(plan.current ?? 0).toLocaleString()} so far · {plan.unit ?? ''}{Math.max(0, (plan.target ?? 0) - (plan.current ?? 0)).toLocaleString()} to reach {plan.unit ?? ''}{(plan.target ?? 0).toLocaleString()}.
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '10px 14px', marginBottom: 12 }}>
+            <span style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 18, fontWeight: 600, color: C.warmDark }}>{plan.unit ?? ''}</span>
+            <input
+              type="number" inputMode="decimal" min="0" step="any" autoFocus
+              value={savingsAmt}
+              onChange={e => setSavingsAmt(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  const n = parseFloat(savingsAmt)
+                  if (!isNaN(n) && n > 0) {
+                    onUpdatePlan?.(plan.id, { current: (plan.current ?? 0) + n })
+                    setSavingsOpen(false)
+                  }
+                }
+              }}
+              placeholder="0"
+              style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 18, fontWeight: 500, color: C.ink, fontFamily: 'inherit' }}
+            />
+          </div>
+          {/* Quick-add chips — values scale to the goal so a ₱50,000 goal
+              suggests ₱500-₱10k while a ₱500 goal suggests ₱20-₱100. */}
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 18 }}>
+            {(() => {
+              const target = plan.target ?? 0
+              const base = target >= 50000 ? [500, 1000, 5000, 10000]
+                         : target >= 5000  ? [100, 500, 1000, 2500]
+                         : target >= 500   ? [10, 50, 100, 250]
+                         : [1, 5, 10, 25]
+              return base.map(amt => (
+                <button key={amt} type="button"
+                  onClick={() => setSavingsAmt(String((parseFloat(savingsAmt) || 0) + amt))}
+                  style={{ padding: '6px 12px', background: C.bellySoft, border: `1px solid ${C.border}`, borderRadius: 999, color: C.warmDark, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  +{plan.unit ?? ''}{amt.toLocaleString()}
+                </button>
+              ))
+            })()}
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={() => setSavingsOpen(false)}
+              style={{ flex: 1, padding: 12, background: 'transparent', color: C.inkSoft, border: `1.5px solid ${C.border}`, borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+              Cancel
+            </button>
+            <button
+              onClick={() => {
+                const n = parseFloat(savingsAmt)
+                if (isNaN(n) || n <= 0) return
+                onUpdatePlan?.(plan.id, { current: (plan.current ?? 0) + n })
+                setSavingsOpen(false)
+              }}
+              disabled={!savingsAmt || parseFloat(savingsAmt) <= 0}
+              style={{ flex: 1, padding: 12, background: C.ochre, color: C.cream, border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: (!savingsAmt || parseFloat(savingsAmt) <= 0) ? 0.5 : 1 }}>
+              Add savings
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     {showCelebration && (
       <PlanCompletionCelebration plan={plan} onArchive={onArchive} onDismiss={() => setShowCelebration(false)} />
     )}
@@ -7006,6 +7109,7 @@ function PlansPanel({ plans, checkTask, renameTask, addTask, deleteTask, reorder
             onCheck={checkTask}
             onTaskSelect={i => setTaskDetail({ planId: selectedPlan.id, taskIndex: i })}
             onArchive={() => { archivePlan?.(selectedPlan.id); setSelectedPlanId(null) }}
+            onUpdatePlan={updatePlan}
             onAskHeed={(query, planId) => { setSelectedPlanId(null); onAskHeed?.(query, planId) }}
             addedTaskLabel={addedTaskLabel}
             onAddedTaskLabelConsumed={onAddedTaskLabelConsumed}

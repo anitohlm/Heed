@@ -5467,7 +5467,15 @@ function PlanCompletionCelebration({ plan, onArchive, onDismiss }) {
             marginBottom: 14, maxWidth: 280,
             animation: 'heed-headline-reveal 0.5s cubic-bezier(0.16,1,0.3,1) 0.3s both',
           }}>
-            {plan.title} — wrapped up. Quietly proud of you.
+            {(() => {
+              if (plan.type === 'goal' && plan.goalKind !== 'milestone' && plan.target != null) {
+                return `${plan.title} — you reached ${plan.unit ?? ''}${(plan.target).toLocaleString()}. Quietly proud of you.`
+              }
+              if (plan.type === 'goal' && plan.goalKind === 'milestone') {
+                return `${plan.title} — achieved. Quietly proud of you.`
+              }
+              return `${plan.title} — wrapped up. Quietly proud of you.`
+            })()}
           </div>
 
           {/* Past Plans note — explicit so the user knows where the plan

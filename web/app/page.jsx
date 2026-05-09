@@ -11650,19 +11650,20 @@ export default function HeedApp() {
               else calm. Animates 'speaking' during streaming chat (handled by
               the Ask sheet's own MayaOwl). */}
           <MayaOwl size={40} mood={displayTasks.some(t => (t.overdue || 0) >= 7) ? 'worried' : 'calm'}/>
-          {(tab === 'context' || tab === 'tracks') ? (
-            // Life and Tracks tabs each get a contextual page header
-            // instead of the global greeting. The serif title + italic
-            // subtitle move up here so each screen has one clean header
-            // instead of two stacked ones. The subtitle deliberately
-            // omits the .heed-header-subtitle className — that class
-            // hides on mobile to save room next to the greeting, but
-            // here the subtitle IS the page header and must stay
-            // visible on every viewport.
+          {(tab === 'context' || tab === 'tracks' || tab === 'ask') ? (
+            // Life, Tracks, and Ask Heed each get a contextual page
+            // header instead of the global greeting. The serif title +
+            // italic subtitle move up here so each screen has one clean
+            // header instead of two stacked ones. The subtitle
+            // deliberately omits the .heed-header-subtitle className —
+            // that class hides on mobile to save room next to the
+            // greeting, but here the subtitle IS the page header and
+            // must stay visible on every viewport.
             (() => {
               const headers = {
-                context: { title: 'Life',   sub: 'Your plans and life events, in one place.' },
-                tracks:  { title: 'Tracks', sub: 'Everything Heed is following for you.' },
+                context: { title: 'Life',     sub: 'Your plans and life events, in one place.' },
+                tracks:  { title: 'Tracks',   sub: 'Everything Heed is following for you.' },
+                ask:     { title: 'Ask Heed', sub: 'Anything about your tasks, routines, or schedule.' },
               }
               const h = headers[tab]
               return (

@@ -10352,21 +10352,35 @@ export default function HeedApp() {
   }, [FUNCTIONS_URL])
 
   const handleAddContext = useCallback(async (data) => {
-    const body = { context_type: data.type, start_date: data.startDate, end_date: data.endDate, description: data.description }
-    // Optimistic local update so the UI responds immediately
+    if (!data || !data.type) return
+    // Backend accepts: travel | illness | busy | celebration | other.
+    // Map UI-only aliases (sick, low) to the closest persisted type.
+    const TYPE_ALIAS = { sick: 'illness', low: 'other' }
+    const apiType = TYPE_ALIAS[data.type] || data.type
     const ecfg = EVENT_TYPE_CONFIG[data.type]
     const qcfg = QUICK_CONTEXT_CONFIG[data.type]
-    const startDate = new Date()
-    const endDate = new Date()
-    endDate.setDate(endDate.getDate() + (qcfg?.defaultDays ?? 1) - 1)
+    const desc = data.description || data.desc || qcfg?.label || ecfg?.label || data.type
+    const toIso = (d) => {
+      if (!d) return null
+      if (typeof d === 'string') return d.slice(0, 10)
+      if (d instanceof Date) return d.toISOString().slice(0, 10)
+      return null
+    }
+    const todayIso = new Date().toISOString().slice(0, 10)
+    const days = data.lowDuration || qcfg?.defaultDays || 1
+    const fallbackEnd = new Date(); fallbackEnd.setDate(fallbackEnd.getDate() + days - 1)
+    const startIso = toIso(data.startDate) || todayIso
+    const endIso = toIso(data.endDate) || fallbackEnd.toISOString().slice(0, 10)
+    const body = { context_type: apiType, start_date: startIso, end_date: endIso, description: desc }
+    // Optimistic local update so the UI responds immediately
     const heldTaskIds = apiTasks.filter(t => t.status === 'active' && !dismissedIds.has(t.id)).map(t => t.id)
     setActiveContext({
       id: `ctx-${Date.now()}`,
       type: data.type,
-      label: data.description || qcfg?.label || ecfg?.label || data.type,
+      label: desc,
       icon: data.icon || ecfg?.icon || qcfg?.icon || '📍',
-      startDate,
-      endDate,
+      startDate: new Date(startIso),
+      endDate: new Date(endIso),
       heldTaskIds,
     })
     try {

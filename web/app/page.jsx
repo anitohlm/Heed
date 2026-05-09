@@ -5112,7 +5112,12 @@ function CalendarPicker({ value, onChange, label = 'Due date' }) {
   const [open, setOpen] = useState(false)
   const today = new Date()
   const valStr = value instanceof Date ? (isNaN(value) ? null : value.toISOString().slice(0, 10)) : (value ? String(value) : null)
-  const parsedValue = valStr ? new Date(valStr + (valStr.includes('T') ? '' : 'T00:00:00')) : null
+  // Demo data sometimes stores legacy strings like 'Dec 2026' or 'No target
+  // date'. new Date('Dec 2026T00:00:00') returns Invalid Date, which then
+  // poisons getMonth() (→ NaN) and toLocaleDateString() (→ 'Invalid Date').
+  // Guard with isNaN so an unparseable value behaves the same as no value.
+  const parsedRaw = valStr ? new Date(valStr + (valStr.includes('T') ? '' : 'T00:00:00')) : null
+  const parsedValue = parsedRaw && !isNaN(parsedRaw) ? parsedRaw : null
   const [viewYear, setViewYear]   = useState(parsedValue ? parsedValue.getFullYear() : today.getFullYear())
   const [viewMonth, setViewMonth] = useState(parsedValue ? parsedValue.getMonth()    : today.getMonth())
   const displayLabel = parsedValue ? parsedValue.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'No date set'
@@ -5282,7 +5287,17 @@ function EditPlanScreen({ plan, onBack, onSave, onAddTask, onDeleteTask, onRenam
   const [title, setTitle]         = useState(plan.title ?? '')
   const [desc, setDesc]           = useState(plan.description ?? '')
   const rawDate = plan.type === 'event' ? plan.eventDate : plan.type === 'goal' ? plan.targetDate : plan.dueDate
-  const rawDateStr = rawDate instanceof Date ? (isNaN(rawDate) ? null : rawDate.toISOString().slice(0, 10)) : (rawDate ? String(rawDate) : null)
+  // Only seed the picker with a string the picker can actually parse
+  // (YYYY-MM-DD or a Date). Legacy free-form strings ('Dec 2026',
+  // 'No target date') become null so the picker shows 'No date set'
+  // and the user can pick a real date.
+  const rawDateStr = (() => {
+    if (rawDate instanceof Date) return isNaN(rawDate) ? null : rawDate.toISOString().slice(0, 10)
+    if (!rawDate) return null
+    const s = String(rawDate)
+    const d = new Date(s.includes('T') ? s : s + 'T00:00:00')
+    return isNaN(d) ? null : d.toISOString().slice(0, 10)
+  })()
   const [dueDate, setDueDate]     = useState(rawDateStr ?? null)
   const [taskInputs, setTaskInputs] = useState(plan.tasks ? plan.tasks.map(t => t.label) : [])
   const [newTaskLabel, setNewTaskLabel] = useState('')

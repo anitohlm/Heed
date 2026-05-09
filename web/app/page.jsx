@@ -542,7 +542,7 @@ function useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded } = {}) {
       const parsed = JSON.parse(raw)
       if (!Array.isArray(parsed)) return []
       return parsed
-        .map(m => ({ role: m.role, content: m.content }))
+        .map(m => ({ role: m.role, content: m.content, ts: m.ts }))
         .filter(m => (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.length > 0)
     } catch { return [] }
   })
@@ -2698,31 +2698,34 @@ function TaskCard({ task, delay = 0, onMarkDone, onSkip, onEdit, onAddToRoutine,
   const [menuOpen, setMenuOpen] = useState(false)
   const completingRef = useRef(false)
   const timerRef = useRef(null)
+  const held = !!task.held
   const handleDone = useCallback(() => {
-    if (completingRef.current) return
+    if (completingRef.current || held) return
     completingRef.current = true
     setCompleting(true)
     timerRef.current = setTimeout(() => onMarkDone?.(task), 600)
-  }, [onMarkDone, task])
+  }, [onMarkDone, task, held])
   useEffect(() => () => clearTimeout(timerRef.current), [])
-  const { ref: swipeRef } = useSwipe(handleDone, () => onSkip?.(task))
+  const { ref: swipeRef } = useSwipe(
+    held ? () => {} : handleDone,
+    held ? () => {} : () => onSkip?.(task),
+  )
   const c = CATEGORY[task.category] || CATEGORY.admin
   const isOverdue = task.overdue != null
   const isCritical = isOverdue && task.overdue >= 7
 
   const menuItems = [
-    {
+    ...(held ? [] : [{
       label: 'Mark done',
       color: C.sage,
       icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M5 12l5 5L19 7" stroke={C.sage} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>,
       action: () => { handleDone(); setMenuOpen(false) },
-    },
-    {
+    }, {
       label: 'Skip',
       color: C.ochre,
       icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M13 17l5-5-5-5" stroke={C.ochre} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M6 17l5-5-5-5" stroke={C.ochre} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>,
       action: () => { onSkip?.(task); setMenuOpen(false) },
-    },
+    }]),
     {
       label: 'Edit task',
       color: C.inkSoft,
@@ -2778,8 +2781,21 @@ function TaskCard({ task, delay = 0, onMarkDone, onSkip, onEdit, onAddToRoutine,
           position: 'relative',
           animation: completing ? 'heed-done-flash 0.22s ease forwards' : 'heed-fadeUp 0.5s ease both',
           animationDelay: completing ? undefined : `${delay}ms`,
+          opacity: held ? 0.55 : 1,
+          filter: held ? 'saturate(0.85)' : 'none',
         }}
       >
+        {held && (
+          <div style={{
+            position: 'absolute', top: 8, right: 10,
+            fontSize: 10, fontWeight: 700, letterSpacing: 0.6, textTransform: 'uppercase',
+            color: C.inkSoft, background: C.bellySoft,
+            padding: '3px 8px', borderRadius: 999,
+            border: `1px solid ${C.border}`,
+          }}>
+            paused
+          </div>
+        )}
         {showHint && <SwipeHint onDismiss={onHintDismiss}/>}
         <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: isCritical ? C.rust : c.color, borderRadius: '3px 0 0 3px' }}/>
         {completing && (
@@ -7359,16 +7375,19 @@ function EventsPanel({ allUpcoming, activeContext, onAddContext, onQuickContext,
 }
 
 // ── LifeTab ──────────────────────────────────────────────────────
-function LifeTab({ upcoming, active, activeContext, plansHook, onAddContext, onQuickContext, onImBetter, onExtend, onDetailOpen, onAskHeed, openPlanId, onOpenPlanIdConsumed, addedTaskLabel, onAddedTaskLabelConsumed }) {
+function LifeTab({ upcoming, active, activeContext, plansHook, onAddContext, onQuickContext, onImBetter, onExtend, onDetailOpen, onAskHeed, onRemoveUpcoming, openPlanId, onOpenPlanIdConsumed, addedTaskLabel, onAddedTaskLabelConsumed }) {
   const [subtab, setSubtab] = useState('plans')
   useEffect(() => {
     if (!openPlanId) return
     setSubtab('plans')
   }, [openPlanId])
-  const [removedUpcomingIds, setRemovedUpcomingIds] = useState(new Set())
+  // Optimistically hide demo-only entries (no real id) without round-tripping
+  // through the API. Real records are removed by the parent via onRemoveUpcoming
+  // → DELETE /api/context/{id} → refresh apiContexts.
+  const [hiddenLocalIds, setHiddenLocalIds] = useState(new Set())
   const apiUpcoming = [...(active || []).map(mapApiContext), ...(upcoming || []).map(mapApiContext)]
   const allUpcoming = (apiUpcoming.length > 0 ? apiUpcoming : (isDemoMode() ? CONTEXTS_UPCOMING_DEMO : []))
-    .filter(c => !removedUpcomingIds.has(c.id || c.desc))
+    .filter(c => !hiddenLocalIds.has(c.id || c.desc))
   return (
     <div>
       <div style={{ marginBottom: 18 }}>
@@ -7389,7 +7408,12 @@ function LifeTab({ upcoming, active, activeContext, plansHook, onAddContext, onQ
           onImBetter={onImBetter}
           onExtend={onExtend}
           onDetailOpen={onDetailOpen}
-          onRemoveUpcoming={(ctx) => setRemovedUpcomingIds(s => new Set([...s, ctx.id || ctx.desc]))}
+          onRemoveUpcoming={(ctx) => {
+            // Always hide locally for instant feedback; parent handler then
+            // deletes from backend if it's a persisted record (real UUID id).
+            setHiddenLocalIds(s => new Set([...s, ctx.id || ctx.desc]))
+            onRemoveUpcoming?.(ctx)
+          }}
         />
       )}
     </div>
@@ -9988,6 +10012,11 @@ export default function HeedApp() {
   const [addToRoutineTask, setAddToRoutineTask] = useState(null)
   const [buildRoutineTask, setBuildRoutineTask] = useState(null)
   const [activeContext, setActiveContext] = useState(() => isDemoMode() ? ACTIVE_CONTEXT_DEMO : null)
+  // After ending a context with 'ease back' mode, we surface only the held
+  // tasks (highest importance first) for 24h instead of the full list. Cleared
+  // on expiry or on next 'resume'. Not persisted — wears off on reload by
+  // design, matching how the user thinks about a single rough day.
+  const [easeBackState, setEaseBackState] = useState(null)
   const [recoveryOpen, setRecoveryOpen] = useState(false)
   const [quickContextType, setQuickContextType] = useState(null)
   const [detailCtx, setDetailCtx] = useState(null)
@@ -10063,9 +10092,30 @@ export default function HeedApp() {
     return () => clearTimeout(t)
   }, [toast])
 
+  // While a context (Low Day, illness, trip) is active, tasks listed in
+  // heldTaskIds are paused. They still render so the user can scan the list
+  // and feel oriented, but TaskCard treats `held` tasks as read-only: dimmed,
+  // no swipe, mark-done/skip routed through a "release this one" prompt.
+  // After ending with 'ease' mode, easeBackState narrows Today to only those
+  // held tasks (highest importance first) for 24h.
+  const heldIdSet = new Set(activeContext?.heldTaskIds || [])
+  const easeIdSet = (easeBackState && easeBackState.until > Date.now())
+    ? new Set(easeBackState.heldTaskIds || [])
+    : null
   const displayTasks = apiTasks
     .filter(t => t.status === 'active' && !dismissedIds.has(t.id))
-    .map(computeTaskDisplay)
+    .filter(t => !easeIdSet || easeIdSet.has(t.id))
+    .map(t => ({ ...computeTaskDisplay(t), held: heldIdSet.has(t.id) }))
+
+  // Auto-expire ease-back state once the 24h window closes so the next render
+  // surfaces the full task list again without the user having to refresh.
+  useEffect(() => {
+    if (!easeBackState) return
+    const ms = easeBackState.until - Date.now()
+    if (ms <= 0) { setEaseBackState(null); return }
+    const t = setTimeout(() => setEaseBackState(null), ms)
+    return () => clearTimeout(t)
+  }, [easeBackState])
 
   // Document title prefix when something is overdue — the cheapest possible
   // "notification" surface. A user with the Heed tab open in another window
@@ -10390,6 +10440,12 @@ export default function HeedApp() {
         body: JSON.stringify(body),
       })
       if (resp.ok) {
+        const created = await resp.json().catch(() => null)
+        if (created?.context_id) {
+          // Replace the optimistic synthesized id with the real backend id so
+          // later PATCH / DELETE calls target the persisted record.
+          setActiveContext(ctx => ctx ? { ...ctx, id: created.context_id } : ctx)
+        }
         fetch(`${FUNCTIONS_URL}/api/context`, { headers: authHeaders() })
           .then(r => r.json())
           .then(d => d && setApiContexts(d))
@@ -10501,31 +10557,84 @@ export default function HeedApp() {
   const handleQuickContext = useCallback((type, days) => {
     const cfg = QUICK_CONTEXT_CONFIG[type]
     if (!cfg) return
-    const startDate = new Date()
-    const endDate = new Date()
-    endDate.setDate(endDate.getDate() + days - 1)
-    const heldTaskIds = apiTasks
-      .filter(t => t.status === 'active' && !dismissedIds.has(t.id))
-      .map(t => t.id)
-    setActiveContext({ id: `ctx-${Date.now()}`, type, label: cfg.label, icon: cfg.icon, startDate, endDate, heldTaskIds })
+    // Persist via the same path as the regular add flow so extend / end / refresh
+    // can target the backend record. handleAddContext sets activeContext
+    // optimistically and replaces the synthesized id with the real one once
+    // the POST returns.
+    handleAddContext({ type, lowDuration: days, description: cfg.label, icon: cfg.icon })
     setToast({ message: cfg.toastMsg })
-  }, [apiTasks, dismissedIds])
+  }, [handleAddContext])
 
-  const handleExtendContext = useCallback(() => {
+  const handleExtendContext = useCallback(async () => {
+    let extendedEndIso = null
     setActiveContext(ctx => {
       if (!ctx) return ctx
       const newEnd = new Date(ctx.endDate)
       newEnd.setDate(newEnd.getDate() + 2)
+      extendedEndIso = newEnd.toISOString().slice(0, 10)
       return { ...ctx, endDate: newEnd }
     })
     setToast({ message: "+2 days. I'll hold the line." })
-  }, [])
+    // Persist if we have a real backend id (created via handleAddContext POST).
+    // Local-only optimistic ids start with `ctx-` and have no server record yet.
+    setActiveContext(curr => {
+      if (curr && curr.id && !String(curr.id).startsWith('ctx-') && extendedEndIso) {
+        fetch(`${FUNCTIONS_URL}/api/context/${curr.id}`, {
+          method: 'PATCH',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ end_date: extendedEndIso }),
+        }).then(() => {
+          fetch(`${FUNCTIONS_URL}/api/context`, { headers: authHeaders() })
+            .then(r => r.json())
+            .then(d => d && setApiContexts(d))
+            .catch(() => {})
+        }).catch(() => {})
+      }
+      return curr
+    })
+  }, [FUNCTIONS_URL])
+
+  const handleRemoveUpcoming = useCallback((ctx) => {
+    if (!ctx?.id || String(ctx.id).startsWith('ctx-')) return
+    fetch(`${FUNCTIONS_URL}/api/context/${ctx.id}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    }).then(() => {
+      fetch(`${FUNCTIONS_URL}/api/context`, { headers: authHeaders() })
+        .then(r => r.json())
+        .then(d => d && setApiContexts(d))
+        .catch(() => {})
+    }).catch(() => {})
+  }, [FUNCTIONS_URL])
 
   const handleEndContext = useCallback((mode) => {
-    setActiveContext(null)
+    setActiveContext(prev => {
+      // Persist end-of-context to backend so reload doesn't bring it back.
+      if (prev?.id && !String(prev.id).startsWith('ctx-')) {
+        fetch(`${FUNCTIONS_URL}/api/context/${prev.id}`, {
+          method: 'DELETE',
+          headers: authHeaders(),
+        }).then(() => {
+          fetch(`${FUNCTIONS_URL}/api/context`, { headers: authHeaders() })
+            .then(r => r.json())
+            .then(d => d && setApiContexts(d))
+            .catch(() => {})
+        }).catch(() => {})
+      }
+      // 'ease' surfaces only top-N highest-importance held tasks for the next
+      // 24h via easeBackUntil + heldTaskIds carried over. 'resume' clears state
+      // entirely and shows everything as normal.
+      if (mode === 'ease' && prev?.heldTaskIds?.length) {
+        setEaseBackState({
+          heldTaskIds: prev.heldTaskIds,
+          until: Date.now() + 24 * 60 * 60 * 1000,
+        })
+      }
+      return null
+    })
     setRecoveryOpen(false)
     setToast({ message: mode === 'resume' ? "You're back — tasks resumed" : 'Easing you back in — top tasks surfaced' })
-  }, [])
+  }, [FUNCTIONS_URL])
 
   const handleDetailOpen = useCallback((ctx, status) => {
     setDetailCtx({ ...ctx, _status: status })
@@ -10640,7 +10749,7 @@ export default function HeedApp() {
           {tab === 'calendar' && <CalendarTab tasks={apiTasks} contexts={[...(apiContexts.active||[]), ...(apiContexts.upcoming||[])]} routines={routines} recentSkips={recentSkips} onReschedule={handleReschedule} onMarkDone={handleMarkDone} onSkip={handleSkip} onAddTask={() => setModalOpen(true)} onAddContext={() => setContextModalOpen(true)} onEditRoutine={handleEditRoutine} onApplyRetroSuggestion={handleApplyRetroSuggestion}/>}
           {tab === 'ask' && <AskTab prefill={askPrefill} autoSend={askAutoSend} onAutoSendDone={() => { setAskAutoSend(false); setAskPrefill('') }} onLightenRoutine={handleLightenRoutine} onTaskAdded={handleTaskAdded} onRoutineAdded={handleAddRoutine} onViewTask={() => setTab('context')}/>}
           {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} plans={plansHook.plans} checkTask={plansHook.checkTask} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onMarkRoutineDay={handleMarkRoutineDay} onEditTask={handleEditTask} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }}/>}
-          {tab === 'context' && <LifeTab upcoming={apiContexts.upcoming} active={apiContexts.active} activeContext={activeContext} plansHook={plansHook} onAddContext={(data) => data?.type ? handleAddContext({ type: data.type, description: data.desc || data.description, icon: data.icon }) : setContextModalOpen(true)} onQuickContext={type => setQuickContextType(type)} onImBetter={() => setRecoveryOpen(true)} onExtend={handleExtendContext} onDetailOpen={handleDetailOpen} onAskHeed={handleAskHeed} openPlanId={navigateToPlanId} onOpenPlanIdConsumed={() => setNavigateToPlanId(null)} addedTaskLabel={navigateToTaskLabel} onAddedTaskLabelConsumed={() => setNavigateToTaskLabel(null)}/>}
+          {tab === 'context' && <LifeTab upcoming={apiContexts.upcoming} active={apiContexts.active} activeContext={activeContext} plansHook={plansHook} onAddContext={(data) => data?.type ? handleAddContext({ type: data.type, description: data.desc || data.description, icon: data.icon }) : setContextModalOpen(true)} onQuickContext={type => setQuickContextType(type)} onImBetter={() => setRecoveryOpen(true)} onExtend={handleExtendContext} onDetailOpen={handleDetailOpen} onAskHeed={handleAskHeed} onRemoveUpcoming={handleRemoveUpcoming} openPlanId={navigateToPlanId} onOpenPlanIdConsumed={() => setNavigateToPlanId(null)} addedTaskLabel={navigateToTaskLabel} onAddedTaskLabelConsumed={() => setNavigateToTaskLabel(null)}/>}
         </div>
       </main>
 
@@ -10666,7 +10775,23 @@ export default function HeedApp() {
         onAskHeed={handleAskHeed}
       />
       <ShareCardSheet routine={shareCtx} onClose={handleShareClose}/>
-      <SettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} userName={username} onUserName={name => { setUsername(name); try { localStorage.setItem('heed.username', name) } catch (_) {} }} theme={theme} onTheme={handleSetTheme} customCategories={customCategories} onAddCategory={cat => setCustomCategories(cs => [...cs, cat])} customEventTypes={customEventTypes} onAddEventType={evt => setCustomEventTypes(es => [...es, evt])} onResetAllData={handleResetAllData} onLoadDemoData={handleLoadDemoData} onSwitchToRealData={handleSwitchToRealData} efMode={efMode} onSetEfMode={handleSetEfMode} avatar={avatar} onAvatarChange={handleAvatarChange} onClearChatToday={() => window.dispatchEvent(new Event('heed:chat-clear-today'))} onClearChatAll={() => window.dispatchEvent(new Event('heed:chat-clear-all'))}/>
+      <SettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} userName={username} onUserName={name => { setUsername(name); try { localStorage.setItem('heed.username', name) } catch (_) {} }} theme={theme} onTheme={handleSetTheme} customCategories={customCategories} onAddCategory={cat => setCustomCategories(cs => [...cs, cat])} customEventTypes={customEventTypes} onAddEventType={evt => setCustomEventTypes(es => [...es, evt])} onResetAllData={handleResetAllData} onLoadDemoData={handleLoadDemoData} onSwitchToRealData={handleSwitchToRealData} efMode={efMode} onSetEfMode={handleSetEfMode} avatar={avatar} onAvatarChange={handleAvatarChange} onClearChatToday={() => {
+        try {
+          const raw = localStorage.getItem('heed.chat-history.v1')
+          if (raw) {
+            const parsed = JSON.parse(raw)
+            if (Array.isArray(parsed)) {
+              const midnight = new Date(); midnight.setHours(0, 0, 0, 0)
+              const filtered = parsed.filter(m => !m.ts || m.ts < midnight.getTime())
+              localStorage.setItem('heed.chat-history.v1', JSON.stringify(filtered))
+            }
+          }
+        } catch (_) {}
+        window.dispatchEvent(new Event('heed:chat-clear-today'))
+      }} onClearChatAll={() => {
+        try { localStorage.removeItem('heed.chat-history.v1') } catch (_) {}
+        window.dispatchEvent(new Event('heed:chat-clear-all'))
+      }}/>
       {toast && <Toast message={toast.message} onView={toast.onView || (toast.showView ? handleToastView : undefined)} onUndo={toast.onUndo} onDismiss={() => setToast(null)} reasons={toast.reasons} onReason={toast.onReason}/>}
       <HeedFAB onAddTask={() => setModalOpen(true)} onAskHeed={() => setAskOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)}/>
     </div>

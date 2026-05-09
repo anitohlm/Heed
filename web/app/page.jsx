@@ -9987,7 +9987,8 @@ export default function HeedApp() {
   const [tab, setTab] = useState('today')
   useEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' }) }, [tab])
   const [theme, setTheme] = useState(DEFAULT_THEME)
-  setThemeState(theme)
+  // setThemeState is called below — after activeContext is declared — so we
+  // can override to 'periwinkle' for the duration of a Low Day context.
   const handleSetTheme = useCallback((name) => setTheme(name), [])
   useEffect(() => {
     const saved = localStorage.getItem('heed-theme')
@@ -10012,6 +10013,11 @@ export default function HeedApp() {
   const [addToRoutineTask, setAddToRoutineTask] = useState(null)
   const [buildRoutineTask, setBuildRoutineTask] = useState(null)
   const [activeContext, setActiveContext] = useState(() => isDemoMode() ? ACTIVE_CONTEXT_DEMO : null)
+  // While a Low Day context is active, the entire app shifts to a periwinkle
+  // palette. The user's chosen theme is preserved in `theme` state and
+  // restored automatically when the context ends.
+  const effectiveTheme = (activeContext?.type === 'low' && THEMES['periwinkle']) ? 'periwinkle' : theme
+  setThemeState(effectiveTheme)
   // After ending a context with 'ease back' mode, we surface only the held
   // tasks (highest importance first) for 24h instead of the full list. Cleared
   // on expiry or on next 'resume'. Not persisted — wears off on reload by

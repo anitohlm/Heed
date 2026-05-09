@@ -79,6 +79,35 @@ export const THEMES = {
     shadowSoft: '0 2px 12px rgba(0,0,0,0.5)',
     shadowMed:  '0 6px 22px rgba(0,0,0,0.6)',
   },
+  // Auto-applied while a Low Day context is active. Not selectable from the
+  // Settings theme picker — the app swaps to it the moment activeContext.type
+  // is 'low' and reverts to the user's chosen theme when the context ends.
+  'periwinkle': {
+    cream:      '#F1F0F8',
+    paper:      '#E8E5F2',
+    paperHi:    '#F6F4FB',
+    border:     '#C8C2DD',
+    hairline:   '#DAD4E8',
+    ink:        '#2D2A4A',
+    inkSoft:    '#6B6585',
+    inkMute:    '#9A93B3',
+    warm:       '#6E63A8',
+    warmDark:   '#6E63A8',
+    warmDeep:   '#F1F0F8',
+    belly:      '#E8E5F2',
+    bellySoft:  '#EDE9F5',
+    rust:       '#8A5A8A',
+    rustSoft:   '#F0E4F0',
+    sage:       '#6A8E8A',
+    sageSoft:   '#DDE6E4',
+    ochre:      '#8A6E40',
+    ochreSoft:  '#EDE5D6',
+    rose:       '#B080A0',
+    low:        '#6E63A8',
+    lowSoft:    '#EEEAF6',
+    shadowSoft: '0 2px 12px rgba(58,48,108,0.10)',
+    shadowMed:  '0 6px 22px rgba(58,48,108,0.16)',
+  },
 }
 
 // Owl colours use cross-theme contrast rotation:
@@ -109,6 +138,14 @@ export const OWL_THEMES = {
     tuft:    '#A0682A',
     beak:    '#A0682A',
     cheek:   '#C47060',
+  },
+  'periwinkle': {
+    body:    '#6E63A8',
+    eyeRing: '#F6F4FB',
+    pupil:   '#2D2A4A',
+    tuft:    '#8A5A8A',
+    beak:    '#8A6E40',
+    cheek:   '#B080A0',
   },
 }
 

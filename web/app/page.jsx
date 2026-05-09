@@ -5342,10 +5342,182 @@ function EditPlanScreen({ plan, onBack, onSave, onAddTask, onDeleteTask, onRenam
   )
 }
 
+// ── PlanCompletionCelebration ──────────────────────────────────
+// Fires once per plan when it crosses to 100% complete. Soft falling
+// botanical petals (sage / ochre / rose), a happy owl over the plan's
+// own image or icon, serif 'Plan complete.' headline, and an explicit
+// note that the plan will move to Past Plans. The Continue button
+// archives + closes; the small ghost link lets the user keep the plan
+// active if they're not ready. localStorage flag prevents replays.
+function PlanCompletionCelebration({ plan, onArchive, onDismiss }) {
+  const petals = [
+    { left: '6%',  delay: 0.0, dur: 5.2, size: 14, rot: 25,  tone: 'sage'  },
+    { left: '14%', delay: 1.4, dur: 4.4, size: 11, rot: -15, tone: 'rose'  },
+    { left: '22%', delay: 0.6, dur: 5.8, size: 16, rot: 40,  tone: 'ochre' },
+    { left: '30%', delay: 2.1, dur: 5.0, size: 12, rot: -30, tone: 'sage'  },
+    { left: '40%', delay: 0.9, dur: 4.6, size: 15, rot: 18,  tone: 'rose'  },
+    { left: '48%', delay: 1.7, dur: 5.4, size: 10, rot: -22, tone: 'ochre' },
+    { left: '56%', delay: 0.3, dur: 5.6, size: 13, rot: 35,  tone: 'sage'  },
+    { left: '64%', delay: 2.4, dur: 4.8, size: 14, rot: -10, tone: 'rose'  },
+    { left: '72%', delay: 1.1, dur: 5.0, size: 11, rot: 28,  tone: 'ochre' },
+    { left: '80%', delay: 0.5, dur: 5.4, size: 13, rot: -18, tone: 'sage'  },
+    { left: '88%', delay: 1.9, dur: 4.6, size: 15, rot: 32,  tone: 'rose'  },
+    { left: '94%', delay: 0.8, dur: 5.2, size: 10, rot: -25, tone: 'ochre' },
+  ]
+  const toneColor = (t) => t === 'sage' ? C.sage : t === 'ochre' ? C.ochre : C.rose
+  return (
+    <>
+      <style>{`
+        @keyframes heed-petal-fall {
+          0%   { transform: translate3d(0, -10vh, 0) rotate(0deg);   opacity: 0; }
+          10%  { opacity: 0.85; }
+          85%  { opacity: 0.85; }
+          100% { transform: translate3d(var(--drift), 110vh, 0) rotate(var(--end-rot)); opacity: 0; }
+        }
+        @keyframes heed-medallion-breathe {
+          0%, 100% { transform: scale(1); }
+          50%      { transform: scale(1.015); }
+        }
+        @keyframes heed-headline-reveal {
+          from { opacity: 0; transform: translateY(8px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+      <div onClick={onDismiss} role="presentation"
+        style={{
+          position: 'fixed', inset: 0, zIndex: 320,
+          background: C.scrim, backdropFilter: 'blur(6px)',
+          animation: 'heed-fadeIn 0.35s ease-out',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: 20, overflow: 'hidden',
+        }}>
+        <div aria-hidden="true" style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>
+          {petals.map((p, i) => (
+            <span key={i}
+              style={{
+                position: 'absolute', top: 0, left: p.left,
+                width: p.size, height: p.size * 1.4,
+                background: toneColor(p.tone),
+                borderRadius: '50% 0 50% 0',
+                opacity: 0.85,
+                animation: `heed-petal-fall ${p.dur}s ${p.delay}s linear infinite`,
+                ['--drift']: `${(i % 2 === 0 ? 30 : -40)}px`,
+                ['--end-rot']: `${p.rot * 6}deg`,
+                transformOrigin: 'center',
+              }}
+            />
+          ))}
+        </div>
+        <div onClick={e => e.stopPropagation()}
+          role="dialog" aria-label="Plan complete"
+          style={{
+            position: 'relative',
+            background: `radial-gradient(ellipse at top, ${C.bellySoft} 0%, ${C.paperHi} 70%)`,
+            border: `1.5px solid ${C.border}`,
+            borderRadius: 22,
+            padding: '34px 28px 22px',
+            maxWidth: 360, width: '100%',
+            boxShadow: C.shadowMed,
+            display: 'flex', flexDirection: 'column', alignItems: 'center',
+            animation: 'heed-medallion-breathe 4s ease-in-out infinite, heed-fadeUp 0.5s cubic-bezier(0.16,1,0.3,1)',
+            textAlign: 'center',
+          }}>
+          <div style={{ position: 'relative', marginBottom: 16 }}>
+            <div style={{
+              width: 96, height: 96, borderRadius: '50%',
+              background: C.paper,
+              border: `3px solid ${C.sage}`,
+              boxShadow: `0 0 0 6px ${C.sageSoft}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              overflow: 'hidden',
+            }}>
+              {plan.imageUrl
+                ? <img src={plan.imageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
+                : <span style={{ fontSize: 44 }}>{plan.icon || '✦'}</span>
+              }
+            </div>
+            <div style={{ position: 'absolute', top: -10, right: -16 }}>
+              <MayaOwl size={48} mood="happy" idle={true}/>
+            </div>
+            {['✦', '✧', '✦'].map((s, i) => (
+              <span key={i} aria-hidden="true" style={{
+                position: 'absolute',
+                top:   ['-4px',  '40%',   '92%'][i],
+                left:  ['-12px', '-22px', '-6px'][i],
+                fontSize: [16, 11, 13][i],
+                color: [C.ochre, C.sage, C.rose][i],
+                opacity: 0.85,
+                animation: `heed-fadeIn 0.6s ease ${0.3 + i * 0.15}s both`,
+              }}>{s}</span>
+            ))}
+          </div>
+
+          <div style={{
+            fontFamily: 'Lora, Georgia, serif',
+            fontSize: 26, fontWeight: 600, color: C.warmDark,
+            letterSpacing: -0.4, lineHeight: 1.1,
+            marginBottom: 6,
+            animation: 'heed-headline-reveal 0.5s cubic-bezier(0.16,1,0.3,1) 0.15s both',
+          }}>
+            Plan complete.
+          </div>
+          <div style={{
+            fontSize: 13.5, color: C.inkSoft,
+            fontStyle: 'italic', lineHeight: 1.45,
+            marginBottom: 14, maxWidth: 280,
+            animation: 'heed-headline-reveal 0.5s cubic-bezier(0.16,1,0.3,1) 0.3s both',
+          }}>
+            {plan.title} — wrapped up. Quietly proud of you.
+          </div>
+
+          {/* Past Plans note — explicit so the user knows where the plan
+              goes when they tap Continue. The matching arrow icon mirrors
+              the Past Plans nav item in the Plans panel. */}
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+            background: C.sageSoft, border: `1px solid ${C.sage}40`,
+            color: C.sage, fontSize: 12, fontWeight: 600,
+            padding: '6px 12px 6px 10px', borderRadius: 999,
+            margin: '0 auto 22px',
+            animation: 'heed-headline-reveal 0.5s cubic-bezier(0.16,1,0.3,1) 0.4s both',
+          }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M3 8l9-5 9 5M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8M9 14h6" stroke={C.sage} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <span>Moves to Past Plans</span>
+          </div>
+
+          <button onClick={() => { onArchive?.(); onDismiss?.() }}
+            style={{
+              ...getBtnPrimary(),
+              padding: '11px 28px', fontSize: 14, borderRadius: 999,
+              animation: 'heed-headline-reveal 0.5s cubic-bezier(0.16,1,0.3,1) 0.5s both',
+            }}>
+            Continue
+          </button>
+          <button onClick={onDismiss}
+            style={{
+              background: 'transparent', border: 'none',
+              color: C.inkMute, fontSize: 11.5, fontWeight: 500,
+              padding: '10px 4px 0', cursor: 'pointer', fontFamily: 'inherit',
+              animation: 'heed-headline-reveal 0.5s cubic-bezier(0.16,1,0.3,1) 0.55s both',
+            }}>
+            Keep it active for now
+          </button>
+        </div>
+      </div>
+    </>
+  )
+}
+
 // ── PlanBubbleDetailScreen ──────────────────────────────────────
 function PlanBubbleDetailScreen({ plan, onBack, onEdit, onCheck, onTaskSelect, onArchive, onAskHeed, addedTaskLabel, onAddedTaskLabelConsumed }) {
   const [showAddedBanner, setShowAddedBanner] = useState(false)
   const [bannerLabel, setBannerLabel] = useState('')
+  // Plan completion celebration. Fires once per plan id when pct crosses
+  // to 100. localStorage flag survives reload so reopening doesn't replay.
+  const [showCelebration, setShowCelebration] = useState(false)
+  const prevPctRef = useRef(null)
   useEffect(() => {
     if (!addedTaskLabel) return
     setBannerLabel(addedTaskLabel)
@@ -5373,7 +5545,29 @@ function PlanBubbleDetailScreen({ plan, onBack, onEdit, onCheck, onTaskSelect, o
   const stats = plan.type === 'goal' && plan.goalKind !== 'milestone'
     ? [{ v: `${plan.unit ?? ''}${(plan.current ?? 0).toLocaleString()}`, l: 'saved' }, { v: `${plan.unit ?? ''}${Math.max(0, (plan.target ?? 0) - (plan.current ?? 0)).toLocaleString()}`, l: 'to go' }, { v: `${pct}%`, l: 'progress' }]
     : [{ v: String(doneCount), l: 'done' }, { v: String(remaining), l: 'remaining' }, { v: String(totalCount), l: 'total' }]
+
+  // Watch for the plan crossing to 100%. Skip on first render (re-opening
+  // a finished plan shouldn't replay) and skip if the localStorage flag
+  // is already set. If pct drops back below 100, clear the flag so
+  // finishing again re-fires the show.
+  useEffect(() => {
+    const celebratedKey = `heed.plan-celebrated.${plan.id}`
+    let alreadyCelebrated = false
+    try { alreadyCelebrated = localStorage.getItem(celebratedKey) === '1' } catch (_) {}
+    const prev = prevPctRef.current
+    if (prev === null) { prevPctRef.current = pct; return }
+    if (pct === 100 && prev < 100 && !alreadyCelebrated) {
+      setShowCelebration(true)
+      try { localStorage.setItem(celebratedKey, '1') } catch (_) {}
+    }
+    prevPctRef.current = pct
+    if (pct < 100 && alreadyCelebrated) {
+      try { localStorage.removeItem(celebratedKey) } catch (_) {}
+    }
+  }, [pct, plan.id])
+
   return (
+    <>
     <div style={{ position: 'fixed', inset: 0, zIndex: 210, background: C.paper, display: 'flex', flexDirection: 'column', animation: 'heed-slideIn 0.3s cubic-bezier(0.16,1,0.3,1)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '18px 16px 12px', borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
         <button onClick={onBack} style={{ background: 'none', border: 'none', color: C.ink, fontSize: 22, cursor: 'pointer', padding: '2px 8px 2px 0', lineHeight: 1, fontFamily: 'inherit' }}>←</button>
@@ -5475,6 +5669,10 @@ function PlanBubbleDetailScreen({ plan, onBack, onEdit, onCheck, onTaskSelect, o
         <button onClick={onArchive} style={{ width: '100%', padding: 12, background: 'none', border: `1px solid ${C.border}`, borderRadius: 10, color: C.inkMute, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', marginTop: 8 }}>Archive this plan</button>
       </div>
     </div>
+    {showCelebration && (
+      <PlanCompletionCelebration plan={plan} onArchive={onArchive} onDismiss={() => setShowCelebration(false)} />
+    )}
+    </>
   )
 }
 

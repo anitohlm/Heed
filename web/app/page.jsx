@@ -6321,7 +6321,7 @@ function PlansPanel({ plans, checkTask, renameTask, addTask, deleteTask, reorder
             onCheck={checkTask}
             onTaskSelect={i => setTaskDetail({ planId: selectedPlan.id, taskIndex: i })}
             onArchive={() => { archivePlan?.(selectedPlan.id); setSelectedPlanId(null) }}
-            onAskHeed={onAskHeed}
+            onAskHeed={(query, planId) => { setSelectedPlanId(null); onAskHeed?.(query, planId) }}
           />
         )}
         {editPlan && (
@@ -7274,7 +7274,7 @@ function routineDays(routine) {
 // approximations in places where we don't yet have backend completion
 // history (noted inline). Backend endpoint will replace this in Phase 1b
 // keeping the same shape, so the UI doesn't change.
-function computeRetrospective(period, { tasks = [], routines = [], contexts = [], recentSkips = [] } = {}) {
+function computeRetrospective(period, { tasks = [], routines = [], contexts = [], recentSkips = [], periodCompletions = null } = {}) {
   // period: { year, monthIndex } where monthIndex is 0-based
   const periodStart = new Date(period.year, period.monthIndex, 1)
   const periodEnd   = new Date(period.year, period.monthIndex + 1, 0, 23, 59, 59)
@@ -7330,12 +7330,16 @@ function computeRetrospective(period, { tasks = [], routines = [], contexts = []
   })
 
   // ── Top-line stats ──────────────────────────────────────
-  // Approximation: tasks with last_done_at inside the period count as 1 completion each.
-  // (Backend will give us multi-completion accuracy later.)
-  const taskCompletions = tasks.filter(t => {
-    const d = parseDue(t.last_done_at)
-    return d && d >= periodStart && d <= periodEnd
-  }).length
+  // When the backend completion log for the period is available
+  // (periodCompletions), count actual 'done' events — captures multi-completion
+  // tasks accurately. Falls back to the last_done_at proxy for the current
+  // month or when the fetch is still in flight.
+  const taskCompletions = Array.isArray(periodCompletions)
+    ? periodCompletions.filter(c => c.event_type === 'done').length
+    : tasks.filter(t => {
+        const d = parseDue(t.last_done_at)
+        return d && d >= periodStart && d <= periodEnd
+      }).length
   const routineCompletions = routineSummaries.reduce((s, r) => s + r.days_completed, 0)
   const routineSkips = routineSummaries.reduce((s, r) => s + (r.days_due - r.days_completed), 0)
   const completions = taskCompletions + routineCompletions
@@ -7902,6 +7906,7 @@ function CalendarTab({ tasks, contexts, routines, recentSkips = [], onReschedule
   const [weekStart, setWeekStart]     = useState(startOfWeek(TODAY_DATE))
   const [detailTask, setDetailTask]   = useState(null)
   const [retroOpen, setRetroOpen]     = useState(false)
+  const [periodCompletions, setPeriodCompletions] = useState(null)
 
   useEffect(() => {
     const target = (weekStart.getFullYear() - TODAY_DATE.getFullYear()) * 12
@@ -7920,7 +7925,31 @@ function CalendarTab({ tasks, contexts, routines, recentSkips = [], onReschedule
   const isPastMonth = monthOffset < 0
   const isCurrentMonth = monthOffset === 0
   const showRetroPill = isPastMonth || isCurrentMonth  // Hide for future months.
-  const retrospective = retroOpen ? computeRetrospective(viewedPeriod, { tasks, routines, contexts, recentSkips }) : null
+
+  // Past-month retrospective is more accurate when computed from the real
+  // completion log instead of the live last_done_at snapshot. Fetch only when
+  // the user opens the retrospective for a past month.
+  useEffect(() => {
+    if (!retroOpen || !isPastMonth || isDemoMode()) {
+      setPeriodCompletions(null)
+      return
+    }
+    const pad = n => String(n).padStart(2, '0')
+    const y = viewedPeriod.year, m = viewedPeriod.monthIndex + 1
+    const lastDay = new Date(viewedPeriod.year, viewedPeriod.monthIndex + 1, 0).getDate()
+    const from = `${y}-${pad(m)}-01`
+    const to   = `${y}-${pad(m)}-${pad(lastDay)}`
+    let cancelled = false
+    fetch(`${FUNCTIONS_URL}/api/completions?from=${from}&to=${to}`, { headers: authHeaders() })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (!cancelled) setPeriodCompletions(Array.isArray(data?.items) ? data.items : []) })
+      .catch(() => { if (!cancelled) setPeriodCompletions([]) })
+    return () => { cancelled = true }
+  }, [retroOpen, isPastMonth, viewedPeriod.year, viewedPeriod.monthIndex])
+
+  const retrospective = retroOpen
+    ? computeRetrospective(viewedPeriod, { tasks, routines, contexts, recentSkips, periodCompletions })
+    : null
 
   return (
     <div>

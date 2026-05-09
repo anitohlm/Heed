@@ -10155,6 +10155,41 @@ export default function HeedApp() {
     return () => clearTimeout(t)
   }, [easeBackState])
 
+  // Hydrate the local activeContext (banner / periwinkle / held-task state)
+  // from the persisted backend record on mount. Without this, reloading
+  // mid-Low-Day would lose the banner and periwinkle theme because
+  // activeContext is local-only and starts null for non-demo users.
+  //
+  // Runs exactly once, after both apiContexts and apiTasks have loaded —
+  // we need apiTasks to compute heldTaskIds, since the server doesn't
+  // persist that subset. After the first hydration, local state owns
+  // activeContext (handleAddContext / handleEndContext / handleRemoveUpcoming
+  // mutate it directly) so this effect intentionally never runs again,
+  // preventing stale fetches from clobbering optimistic activations.
+  const hasHydratedActiveRef = useRef(false)
+  useEffect(() => {
+    if (hasHydratedActiveRef.current) return
+    const serverActive = (apiContexts.active || [])[0]
+    if (!serverActive) return
+    if (apiTasks.length === 0) return
+    const mapped = mapApiContext(serverActive)
+    const ecfg = EVENT_TYPE_CONFIG[mapped.type]
+    const qcfg = QUICK_CONTEXT_CONFIG[mapped.type]
+    const heldTaskIds = apiTasks
+      .filter(t => t.status === 'active' && !dismissedIds.has(t.id))
+      .map(t => t.id)
+    setActiveContext({
+      id: serverActive.id,
+      type: mapped.type,
+      label: mapped.desc || ecfg?.label || qcfg?.label || mapped.type,
+      icon: ecfg?.icon || qcfg?.icon || '📍',
+      startDate: serverActive.start_date ? new Date(serverActive.start_date) : new Date(),
+      endDate: serverActive.end_date ? new Date(serverActive.end_date) : new Date(),
+      heldTaskIds,
+    })
+    hasHydratedActiveRef.current = true
+  }, [apiContexts.active, apiTasks, dismissedIds])
+
   // Document title prefix when something is overdue — the cheapest possible
   // "notification" surface. A user with the Heed tab open in another window
   // (or returning to it) sees "(3) Heed — …" and gets pulled back. Stops

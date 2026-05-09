@@ -857,6 +857,77 @@ const getFieldLabel = () => ({
   letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 6,
 })
 
+// ── useFocusTrap ───────────────────────────────────────────────
+// Keeps keyboard focus inside `containerRef` while `isActive` is true. Tab
+// from the last focusable cycles to the first; Shift+Tab from the first
+// cycles to the last. On activation, focus moves to the first focusable
+// inside the container; on deactivation, focus returns to the element that
+// was focused before the trap engaged. Bring-your-own Escape close — this
+// hook only handles Tab cycling.
+const FOCUSABLE_SELECTOR = [
+  'a[href]',
+  'button:not([disabled])',
+  'input:not([disabled]):not([type="hidden"])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(',')
+
+function useFocusTrap(containerRef, isActive) {
+  useEffect(() => {
+    if (!isActive) return
+    const container = containerRef.current
+    if (!container) return
+    const previouslyFocused = typeof document !== 'undefined' ? document.activeElement : null
+
+    const getFocusable = () => Array.from(container.querySelectorAll(FOCUSABLE_SELECTOR))
+      .filter(el => el.offsetParent !== null || el === document.activeElement)
+
+    // On activation, move focus into the container if it isn't already.
+    if (!container.contains(document.activeElement)) {
+      const first = getFocusable()[0]
+      if (first) first.focus()
+    }
+
+    const onKeyDown = (e) => {
+      if (e.key !== 'Tab') return
+      const focusables = getFocusable()
+      if (focusables.length === 0) { e.preventDefault(); return }
+      const first = focusables[0]
+      const last = focusables[focusables.length - 1]
+      const active = document.activeElement
+      if (e.shiftKey && (active === first || !container.contains(active))) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && (active === last || !container.contains(active))) {
+        e.preventDefault()
+        first.focus()
+      }
+    }
+
+    container.addEventListener('keydown', onKeyDown)
+    return () => {
+      container.removeEventListener('keydown', onKeyDown)
+      if (previouslyFocused && typeof previouslyFocused.focus === 'function') {
+        try { previouslyFocused.focus() } catch (_) {}
+      }
+    }
+  }, [containerRef, isActive])
+}
+
+// ── useEscapeClose ─────────────────────────────────────────────
+// Tiny convenience: when `isActive` is true, Escape on the document calls
+// `onClose`. Wraps the same 4-line useEffect that several sheets had to
+// repeat manually.
+function useEscapeClose(isActive, onClose) {
+  useEffect(() => {
+    if (!isActive) return
+    const fn = (e) => { if (e.key === 'Escape') onClose?.() }
+    window.addEventListener('keydown', fn)
+    return () => window.removeEventListener('keydown', fn)
+  }, [isActive, onClose])
+}
+
 // ── ThemeSwitcher ──────────────────────────────────────────────
 const THEME_META = {
   'parchment-light': { dot: '#8B2E16', label: 'Parchment Light' },
@@ -955,6 +1026,10 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
       setPendingTheme(theme)
     }
   }, [open, userName, theme])
+
+  const containerRef = useRef(null)
+  useEscapeClose(open, onClose)
+  useFocusTrap(containerRef, open)
 
   if (!open) return null
 
@@ -1058,7 +1133,7 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(44,24,16,0.45)', backdropFilter: 'blur(4px)', animation: 'heed-fadeIn 0.2s ease' }}/>
       <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 201, display: 'flex', justifyContent: 'center', animation: 'heed-slideUp 0.3s cubic-bezier(0.16,1,0.3,1)' }}>
-        <div style={{ background: C.paperHi, width: '100%', maxWidth: 520, borderRadius: '22px 22px 0 0', padding: '0 16px 0 16px', boxShadow: '0 -12px 48px rgba(124,83,51,0.22)', border: `1px solid ${C.border}`, maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+        <div ref={containerRef} style={{ background: C.paperHi, width: '100%', maxWidth: 520, borderRadius: '22px 22px 0 0', padding: '0 16px 0 16px', boxShadow: '0 -12px 48px rgba(124,83,51,0.22)', border: `1px solid ${C.border}`, maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
 
           {/* Handle + Header */}
           <div style={{ flexShrink: 0, paddingTop: 12, paddingBottom: 16 }}>
@@ -6071,6 +6146,10 @@ function resizeImageToDataURL(file, maxPx = 256, quality = 0.82) {
 }
 
 function AddPlanSheet({ onClose, onAdd }) {
+  const containerRef = useRef(null)
+  // Conditionally rendered by parent — always active while mounted.
+  useEscapeClose(true, onClose)
+  useFocusTrap(containerRef, true)
   const [step, setStep]   = useState('pick')   // 'pick' | 'form'
   const [type, setType]   = useState(null)
   const [title, setTitle] = useState('')
@@ -6222,7 +6301,7 @@ function AddPlanSheet({ onClose, onAdd }) {
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: C.paper, display: 'flex', flexDirection: 'column', animation: 'heed-slideIn 0.3s cubic-bezier(0.16,1,0.3,1)' }}>
+    <div ref={containerRef} style={{ position: 'fixed', inset: 0, zIndex: 200, background: C.paper, display: 'flex', flexDirection: 'column', animation: 'heed-slideIn 0.3s cubic-bezier(0.16,1,0.3,1)' }}>
       <div style={{ display: 'flex', alignItems: 'center', padding: '14px 16px 10px', gap: 10, background: C.paperHi, borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
         <button onClick={step === 'form' ? () => setStep('pick') : onClose} aria-label="Back" style={{ background: 'transparent', border: 'none', color: C.warmDark, cursor: 'pointer', fontSize: 20, padding: '2px 8px 2px 0', lineHeight: 1, fontFamily: 'inherit', fontWeight: 700 }}>←</button>
         <span style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 17, fontWeight: 700, color: C.warmDark, letterSpacing: -0.2, flex: 1 }}>
@@ -8341,12 +8420,9 @@ function AskInlineModal({ open, onClose, onLightenRoutine, onTaskAdded, onRoutin
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
   useEffect(() => { if (open && !prefill && inputRef.current) setTimeout(() => inputRef.current?.focus(), 100) }, [open])
-  useEffect(() => {
-    if (!open) return
-    const fn = (e) => { if (e.key === 'Escape') onClose() }
-    window.addEventListener('keydown', fn)
-    return () => window.removeEventListener('keydown', fn)
-  }, [open, onClose])
+  const containerRef = useRef(null)
+  useEscapeClose(open, onClose)
+  useFocusTrap(containerRef, open)
   useEffect(() => {
     if (!open || !scrollRef.current) return
     requestAnimationFrame(() => {
@@ -8358,7 +8434,7 @@ function AskInlineModal({ open, onClose, onLightenRoutine, onTaskAdded, onRoutin
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(44,24,16,0.45)', backdropFilter: 'blur(4px)', animation: 'heed-fadeIn 0.2s ease' }}/>
       <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 101, display: 'flex', justifyContent: 'center', animation: 'heed-slideUp 0.3s cubic-bezier(0.16,1,0.3,1)', pointerEvents: 'none' }}>
-        <div style={{ background: C.paperHi, width: '100%', maxWidth: 560, margin: '0 16px 16px 16px', borderRadius: '20px 20px 14px 14px', padding: '20px 22px 16px 22px', boxShadow: '0 -8px 40px rgba(124,83,51,0.25)', border: `1px solid ${C.border}`, pointerEvents: 'auto', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
+        <div ref={containerRef} style={{ background: C.paperHi, width: '100%', maxWidth: 560, margin: '0 16px 16px 16px', borderRadius: '20px 20px 14px 14px', padding: '20px 22px 16px 22px', boxShadow: '0 -8px 40px rgba(124,83,51,0.25)', border: `1px solid ${C.border}`, pointerEvents: 'auto', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, flexShrink: 0 }}>
             <div style={{ position: 'relative' }}>
               <div style={{ position: 'absolute', inset: -6, borderRadius: '50%', background: `radial-gradient(circle, ${C.ochreSoft} 0%, transparent 70%)`, animation: 'heed-breathe 4s ease-in-out infinite' }}/>
@@ -8481,12 +8557,9 @@ function AddTaskModal({ open, onClose, onSubmit, onDelete, initialData = null, c
     setCadenceDays(cadenceSuggestion.days)
   }, [cadenceSuggestion?.days, isEdit, cadenceTouched])
   const markCadenceTouched = () => setCadenceTouched(true)
-  useEffect(() => {
-    if (!open) return
-    const fn = (e) => { if (e.key === 'Escape') onClose() }
-    window.addEventListener('keydown', fn)
-    return () => window.removeEventListener('keydown', fn)
-  }, [open, onClose])
+  const containerRef = useRef(null)
+  useEscapeClose(open, onClose)
+  useFocusTrap(containerRef, open)
   const submit = () => {
     if (!name.trim()) return
     const payload = {
@@ -8505,7 +8578,7 @@ function AddTaskModal({ open, onClose, onSubmit, onDelete, initialData = null, c
   if (!open) return null
   return (
     <>
-      <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: C.paper, display: 'flex', flexDirection: 'column', animation: 'heed-slideIn 0.3s cubic-bezier(0.16,1,0.3,1)' }}>
+      <div ref={containerRef} style={{ position: 'fixed', inset: 0, zIndex: 200, background: C.paper, display: 'flex', flexDirection: 'column', animation: 'heed-slideIn 0.3s cubic-bezier(0.16,1,0.3,1)' }}>
         <div style={{ display: 'flex', alignItems: 'center', padding: '14px 16px 10px', gap: 10, background: C.paperHi, borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
           <button onClick={onClose} aria-label="Back" style={{ background: 'transparent', border: 'none', color: C.warmDark, cursor: 'pointer', fontSize: 20, padding: '2px 8px 2px 0', lineHeight: 1, fontFamily: 'inherit', fontWeight: 700 }}>←</button>
           <span style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 17, fontWeight: 700, color: C.warmDark, letterSpacing: -0.2, flex: 1 }}>{isEdit ? 'Edit task' : 'Add a task'}</span>
@@ -8708,12 +8781,9 @@ function AddContextModal({ open, onClose, onSubmit, customEventTypes = [] }) {
   const [notes, setNotes] = useState('')
   const descRef = useRef(null)
   useEffect(() => { if (open && descRef.current) setTimeout(() => descRef.current?.focus(), 50) }, [open])
-  useEffect(() => {
-    if (!open) return
-    const fn = (e) => { if (e.key === 'Escape') onClose() }
-    window.addEventListener('keydown', fn)
-    return () => window.removeEventListener('keydown', fn)
-  }, [open, onClose])
+  const containerRef = useRef(null)
+  useEscapeClose(open, onClose)
+  useFocusTrap(containerRef, open)
   useEffect(() => { if (startDate && !endDate) setEndDate(startDate) }, [startDate, endDate])
   const isValid = description.trim() && startDate && endDate && (new Date(endDate) >= new Date(startDate))
   const submit = () => {
@@ -8742,7 +8812,7 @@ function AddContextModal({ open, onClose, onSubmit, customEventTypes = [] }) {
   ]
   const inputStyle = { width: '100%', boxSizing: 'border-box', background: C.paper, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '10px 14px', fontSize: 14, color: C.ink, outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.15s' }
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: C.paper, display: 'flex', flexDirection: 'column', animation: 'heed-slideIn 0.3s cubic-bezier(0.16,1,0.3,1)' }}>
+    <div ref={containerRef} style={{ position: 'fixed', inset: 0, zIndex: 200, background: C.paper, display: 'flex', flexDirection: 'column', animation: 'heed-slideIn 0.3s cubic-bezier(0.16,1,0.3,1)' }}>
       <div style={{ display: 'flex', alignItems: 'center', padding: '14px 16px 10px', gap: 10, background: C.paperHi, borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
         <button onClick={onClose} aria-label="Back" style={{ background: 'transparent', border: 'none', color: C.warmDark, cursor: 'pointer', fontSize: 20, padding: '2px 8px 2px 0', lineHeight: 1, fontFamily: 'inherit', fontWeight: 700 }}>←</button>
         <span style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 17, fontWeight: 700, color: C.warmDark, letterSpacing: -0.2, flex: 1 }}>Add a context</span>
@@ -8843,12 +8913,9 @@ function BuildRoutineScreen({ open, onClose, onSubmit, initialData = null, seedT
     setTimeout(() => nameRef.current?.focus(), 50)
   }, [open])
 
-  useEffect(() => {
-    if (!open) return
-    const fn = (e) => { if (e.key === 'Escape') onClose() }
-    window.addEventListener('keydown', fn)
-    return () => window.removeEventListener('keydown', fn)
-  }, [open, onClose])
+  const containerRef = useRef(null)
+  useEscapeClose(open, onClose)
+  useFocusTrap(containerRef, open)
 
   const addItem = () => setItems(i => [...i, { id: Math.max(...i.map(x=>x.id))+1, name: '' }])
   const removeItem = (id) => { if (items.length > 1) setItems(i => i.filter(x => x.id !== id)) }
@@ -8896,7 +8963,7 @@ function BuildRoutineScreen({ open, onClose, onSubmit, initialData = null, seedT
   const pillBase = { padding: '6px 13px', borderRadius: 999, fontSize: 12, fontWeight: 600, border: `1.5px solid ${C.border}`, background: C.paper, color: C.inkSoft, cursor: 'pointer', fontFamily: 'inherit' }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: C.paper, display: 'flex', flexDirection: 'column', animation: 'heed-slideIn 0.3s cubic-bezier(0.16,1,0.3,1)' }}>
+    <div ref={containerRef} style={{ position: 'fixed', inset: 0, zIndex: 200, background: C.paper, display: 'flex', flexDirection: 'column', animation: 'heed-slideIn 0.3s cubic-bezier(0.16,1,0.3,1)' }}>
       <div style={{ display: 'flex', alignItems: 'center', padding: '14px 16px 10px', gap: 10, background: C.paperHi, borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
         <button onClick={onClose} aria-label="Back" style={{ background: 'transparent', border: 'none', color: C.warmDark, cursor: 'pointer', fontSize: 20, padding: '2px 8px 2px 0', lineHeight: 1, fontFamily: 'inherit', fontWeight: 700 }}>←</button>
         <span style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 17, fontWeight: 700, color: C.warmDark, letterSpacing: -0.2, flex: 1 }}>{initialData ? 'Edit routine' : 'Build a routine'}</span>
@@ -9348,11 +9415,14 @@ function RetrospectiveSheet({ retrospective, onClose, onApplySuggestion }) {
 
 // ── TaskOptionsSheet ───────────────────────────────────────────
 function TaskOptionsSheet({ task, onClose, onMarkDone, onSkip, onEdit, onAddToRoutine, onBuildRoutine }) {
+  const containerRef = useRef(null)
+  useEscapeClose(!!task, onClose)
+  useFocusTrap(containerRef, !!task)
   if (!task) return null
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 200 }} onClick={onClose}>
       <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(2px)' }}/>
-      <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: C.paper, borderRadius: '20px 20px 0 0', padding: `24px 24px calc(24px + env(safe-area-inset-bottom)) 24px`, animation: 'heed-slideUp 0.28s cubic-bezier(0.32,0.72,0,1)', boxShadow: '0 -8px 32px rgba(0,0,0,0.12)' }}>
+      <div ref={containerRef} onClick={e => e.stopPropagation()} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: C.paper, borderRadius: '20px 20px 0 0', padding: `24px 24px calc(24px + env(safe-area-inset-bottom)) 24px`, animation: 'heed-slideUp 0.28s cubic-bezier(0.32,0.72,0,1)', boxShadow: '0 -8px 32px rgba(0,0,0,0.12)' }}>
         <div style={{ width: 40, height: 4, borderRadius: 2, background: C.border, margin: '0 auto 20px' }}/>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
           <CategoryBadge category={task.category}/>
@@ -9435,11 +9505,14 @@ function TaskOptionsSheet({ task, onClose, onMarkDone, onSkip, onEdit, onAddToRo
 
 // ── AddToRoutineSheet ──────────────────────────────────────────
 function AddToRoutineSheet({ task, routines, onClose, onSelect }) {
+  const containerRef = useRef(null)
+  useEscapeClose(!!task, onClose)
+  useFocusTrap(containerRef, !!task)
   if (!task) return null
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 200 }} onClick={onClose}>
       <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(2px)' }}/>
-      <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: C.paper, borderRadius: '20px 20px 0 0', padding: `24px 24px calc(24px + env(safe-area-inset-bottom)) 24px`, animation: 'heed-slideUp 0.28s cubic-bezier(0.32,0.72,0,1)', boxShadow: '0 -8px 32px rgba(0,0,0,0.12)', maxHeight: '70vh', overflowY: 'auto' }}>
+      <div ref={containerRef} onClick={e => e.stopPropagation()} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: C.paper, borderRadius: '20px 20px 0 0', padding: `24px 24px calc(24px + env(safe-area-inset-bottom)) 24px`, animation: 'heed-slideUp 0.28s cubic-bezier(0.32,0.72,0,1)', boxShadow: '0 -8px 32px rgba(0,0,0,0.12)', maxHeight: '70vh', overflowY: 'auto' }}>
         <div style={{ width: 40, height: 4, borderRadius: 2, background: C.border, margin: '0 auto 20px' }}/>
         <div style={{ fontFamily: 'Lora, serif', fontSize: 17, fontWeight: 600, color: C.ink, marginBottom: 3 }}>Add to a routine</div>
         <div style={{ fontSize: 12.5, color: C.inkMute, marginBottom: 20 }}>Choose a routine to add "{task.name}" to</div>
@@ -9480,11 +9553,14 @@ function QuickContextSheet({ type, onClose, onActivate }) {
     const defaultDays = type ? QUICK_CONTEXT_CONFIG[type]?.defaultDays : null
     if (defaultDays != null) setSelected(defaultDays)
   }, [type])
+  const containerRef = useRef(null)
+  useEscapeClose(!!type, onClose)
+  useFocusTrap(containerRef, !!type)
   if (!type) return null
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 200 }} onClick={onClose}>
       <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(2px)' }}/>
-      <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: C.paper, borderRadius: '20px 20px 0 0', padding: `24px 24px calc(24px + env(safe-area-inset-bottom)) 24px`, animation: 'heed-slideUp 0.28s cubic-bezier(0.32,0.72,0,1)', boxShadow: '0 -8px 32px rgba(0,0,0,0.12)' }}>
+      <div ref={containerRef} onClick={e => e.stopPropagation()} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: C.paper, borderRadius: '20px 20px 0 0', padding: `24px 24px calc(24px + env(safe-area-inset-bottom)) 24px`, animation: 'heed-slideUp 0.28s cubic-bezier(0.32,0.72,0,1)', boxShadow: '0 -8px 32px rgba(0,0,0,0.12)' }}>
         <div style={{ width: 40, height: 4, borderRadius: 2, background: C.border, margin: '0 auto 20px' }}/>
         <div style={{ fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 600, color: C.ink, marginBottom: 4 }}>{cfg.icon} {cfg.question}</div>
         <div style={{ fontSize: 12, color: C.inkMute, marginBottom: 16 }}>Heed will hold your tasks until then</div>
@@ -9533,6 +9609,10 @@ function ActiveContextCard({ context, onImBetter, onExtend, onClick }) {
 
 // ── RecoverySummarySheet ───────────────────────────────────────
 function RecoverySummarySheet({ open, context, heldTasks, onClose, onResumeAll, onEaseBack }) {
+  const containerRef = useRef(null)
+  const isActive = !!(open && context)
+  useEscapeClose(isActive, onClose)
+  useFocusTrap(containerRef, isActive)
   if (!open || !context) return null
   const now = new Date()
   const days = Math.max(1, Math.round((now - context.startDate) / 86400000))
@@ -9542,7 +9622,7 @@ function RecoverySummarySheet({ open, context, heldTasks, onClose, onResumeAll, 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 200 }} onClick={onClose}>
       <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(2px)' }}/>
-      <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: C.paper, borderRadius: '20px 20px 0 0', padding: `24px 24px calc(24px + env(safe-area-inset-bottom)) 24px`, animation: 'heed-slideUp 0.28s cubic-bezier(0.32,0.72,0,1)', boxShadow: '0 -8px 32px rgba(0,0,0,0.12)' }}>
+      <div ref={containerRef} onClick={e => e.stopPropagation()} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: C.paper, borderRadius: '20px 20px 0 0', padding: `24px 24px calc(24px + env(safe-area-inset-bottom)) 24px`, animation: 'heed-slideUp 0.28s cubic-bezier(0.32,0.72,0,1)', boxShadow: '0 -8px 32px rgba(0,0,0,0.12)' }}>
         <div style={{ width: 40, height: 4, borderRadius: 2, background: C.border, margin: '0 auto 20px' }}/>
         <div style={{ fontFamily: 'Lora, serif', fontSize: 17, fontWeight: 600, color: C.ink, marginBottom: 4 }}>Glad you're back {gladEmoji}</div>
         <div style={{ fontSize: 12.5, color: C.inkMute, marginBottom: 14 }}>{context.label} ran for <strong>{days} day{days !== 1 ? 's' : ''}</strong>. Here's what Heed held back:</div>
@@ -9604,6 +9684,9 @@ function ShareCardSheet({ routine, onClose }) {
     const id = setTimeout(() => setFallbackToast(false), 3500)
     return () => clearTimeout(id)
   }, [fallbackToast])
+  const containerRef = useRef(null)
+  useEscapeClose(!!routine, onClose)
+  useFocusTrap(containerRef, !!routine)
 
   if (!routine) return null
 
@@ -9637,7 +9720,7 @@ function ShareCardSheet({ routine, onClose }) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.45)' }} onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} style={{
+      <div ref={containerRef} onClick={e => e.stopPropagation()} style={{
         position: 'absolute', bottom: 0, left: 0, right: 0,
         background: C.paper, borderRadius: '20px 20px 0 0',
         padding: `22px 22px calc(22px + env(safe-area-inset-bottom)) 22px`,
@@ -9736,6 +9819,10 @@ function ShareCardSheet({ routine, onClose }) {
 
 // ── ContextDetailSheet ─────────────────────────────────────────
 function ContextDetailSheet({ open, ctx, heldTasks, onClose, onImBetter, onExtend, onAskHeed }) {
+  const containerRef = useRef(null)
+  const isActive = !!(open && ctx)
+  useEscapeClose(isActive, onClose)
+  useFocusTrap(containerRef, isActive)
   if (!open || !ctx) return null
 
   const fmtDate = d => {
@@ -9770,7 +9857,7 @@ function ContextDetailSheet({ open, ctx, heldTasks, onClose, onImBetter, onExten
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 200 }} onClick={onClose}>
       <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(2px)' }}/>
-      <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: C.paper, borderRadius: '20px 20px 0 0', padding: `24px 24px calc(24px + env(safe-area-inset-bottom)) 24px`, animation: 'heed-slideUp 0.28s cubic-bezier(0.32,0.72,0,1)', boxShadow: '0 -8px 32px rgba(0,0,0,0.12)', maxHeight: '80vh', overflowY: 'auto' }}>
+      <div ref={containerRef} onClick={e => e.stopPropagation()} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: C.paper, borderRadius: '20px 20px 0 0', padding: `24px 24px calc(24px + env(safe-area-inset-bottom)) 24px`, animation: 'heed-slideUp 0.28s cubic-bezier(0.32,0.72,0,1)', boxShadow: '0 -8px 32px rgba(0,0,0,0.12)', maxHeight: '80vh', overflowY: 'auto' }}>
         <div style={{ width: 40, height: 4, borderRadius: 2, background: C.border, margin: '0 auto 20px' }}/>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>

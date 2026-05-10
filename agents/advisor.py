@@ -318,16 +318,24 @@ def _dispatch_tool(name: str, arguments: dict, user_id: str) -> str:
                 completion14d = r.get("completion14d") or []
                 if not isinstance(completion14d, list):
                     completion14d = []
-                last7 = completion14d[-7:]
+
+                def _norm(entry):
+                    """Read either {done:int, total:int} or legacy bool. Returns True iff fully done."""
+                    if isinstance(entry, dict):
+                        d, t = entry.get("done"), entry.get("total")
+                        return isinstance(d, (int, float)) and isinstance(t, (int, float)) and t > 0 and d >= t
+                    return bool(entry)
+
+                last7 = [_norm(e) for e in completion14d[-7:]]
                 done_last7 = sum(1 for x in last7 if x)
                 # By convention, index len-1 of completion14d is TODAY.
-                done_today = bool(completion14d[-1]) if completion14d else False
-                done_yesterday = bool(completion14d[-2]) if len(completion14d) >= 2 else False
+                done_today = _norm(completion14d[-1]) if completion14d else False
+                done_yesterday = _norm(completion14d[-2]) if len(completion14d) >= 2 else False
                 # Index of the most recent True (0 = today, 1 = yesterday, etc).
                 # None if the routine has never been done in the 14-day window.
                 last_done_days_ago = None
                 for i, v in enumerate(reversed(completion14d)):
-                    if v:
+                    if _norm(v):
                         last_done_days_ago = i
                         break
                 shaped.append({

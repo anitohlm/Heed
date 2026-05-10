@@ -3767,6 +3767,251 @@ function RoutineRow({ routine, delay = 0, onMarkDone, onSkipToday, onLighten }) 
   )
 }
 
+// Linear-RGB mix between two hex colors. Used by the month log heatmap so
+// each cell's shade scales to the routine's done/total fraction (no fixed
+// buckets — a 7-item routine gets 7 visible steps automatically).
+function mixHex(a, b, t) {
+  const pa = a.startsWith('#') ? a.slice(1) : a
+  const pb = b.startsWith('#') ? b.slice(1) : b
+  const ar = parseInt(pa.slice(0,2),16), ag = parseInt(pa.slice(2,4),16), ab = parseInt(pa.slice(4,6),16)
+  const br = parseInt(pb.slice(0,2),16), bg = parseInt(pb.slice(2,4),16), bb = parseInt(pb.slice(4,6),16)
+  const r = Math.round(ar + (br - ar) * t)
+  const g = Math.round(ag + (bg - ag) * t)
+  const bl = Math.round(ab + (bb - ab) * t)
+  const hex = (n) => n.toString(16).padStart(2,'0')
+  return `#${hex(r)}${hex(g)}${hex(bl)}`
+}
+function mixSageBeige(frac) {
+  return mixHex(C.border, C.sage, Math.min(1, Math.max(0, frac)))
+}
+function RoutineMonthLog({ routine, onClose, onMarkAllDone, onLighten, onEdit, onShare }) {
+  const today = new Date(); today.setHours(0,0,0,0)
+  const [monthOffset, setMonthOffset] = useState(0)
+  const [tooltip, setTooltip] = useState(null) // { date, frac, done, total, items }
+
+  const live = (routine.items || []).filter(it => !(routine.lightenedItems || []).includes(it))
+  const liveTotal = live.length || (routine.items || []).length || 1
+
+  const base = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1)
+  const monthLabel = base.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+  const isCurrentMonth = monthOffset === 0
+  const canGoForward = monthOffset < 0
+
+  // Build the list of week-Mondays that overlap this month (5 or 6 weeks).
+  const firstMonday = startOfWeek(base)
+  const lastOfMonth = new Date(base.getFullYear(), base.getMonth() + 1, 0)
+  const weeks = []
+  let cur = new Date(firstMonday)
+  while (cur <= lastOfMonth && weeks.length < 6) {
+    weeks.push(new Date(cur))
+    cur = addDays(cur, 7)
+  }
+
+  // Stats — for the visible month, scoped to scheduled days.
+  const sched = routineDays(routine)
+  let sumDone = 0, sumTotal = 0
+  for (let i = 0; i < weeks.length; i++) {
+    for (let d = 0; d < 7; d++) {
+      const date = addDays(weeks[i], d)
+      if (date.getMonth() !== base.getMonth()) continue
+      if (date > today) continue
+      if (!sched.includes((date.getDay() + 6) % 7)) continue
+      const e = entryForDate(routine, date, today, liveTotal)
+      if (!e) continue
+      sumDone += e.done
+      sumTotal += e.total
+    }
+  }
+  const avgFrac = sumTotal ? sumDone / sumTotal : 0
+  const avgLabel = `${(avgFrac * liveTotal).toFixed(1)} / ${liveTotal}`
+  const streak = computeStreakCount(routine.completion14d, routine)
+  // Best run from completion14d (not month-scoped — same definition as RoutineCard's stats).
+  let best = 0, run = 0
+  for (const raw of (routine.completion14d || [])) {
+    if (entryIsFullyDone(normaliseCompletionEntry(raw, liveTotal))) { run++; best = Math.max(best, run) }
+    else run = 0
+  }
+
+  return (
+    <div role="dialog" aria-label={`${routine.name} month log`}
+      style={{ position: 'fixed', inset: 0, zIndex: 235, background: C.paper, display: 'flex', flexDirection: 'column', animation: 'heed-slideIn 0.3s cubic-bezier(0.16,1,0.3,1)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '18px 16px 12px', borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
+        <button onClick={onClose} aria-label="Back"
+          style={{ background: 'none', border: 'none', color: C.warmDark, fontSize: 22, cursor: 'pointer', padding: '2px 8px 2px 0', lineHeight: 1, fontFamily: 'inherit' }}>
+          ‹
+        </button>
+        <span style={{ fontSize: 18 }}>{routine.icon || '📅'}</span>
+        <span style={{ flex: 1, fontFamily: 'Lora, Georgia, serif', fontSize: 16, fontWeight: 600, color: C.warmDark, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+          {routine.name} <span style={{ color: C.inkMute, fontWeight: 500, fontSize: 12 }}>· {liveTotal} item{liveTotal === 1 ? '' : 's'}</span>
+        </span>
+      </div>
+
+      <div style={{ flex: 1, overflowY: 'auto', padding: '14px 16px 24px' }}>
+        {/* Stats */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginBottom: 14 }}>
+          {[
+            { lbl: 'Avg this month', val: sumTotal ? avgLabel : '—' },
+            { lbl: 'Streak (full)',  val: `${streak} d` },
+            { lbl: 'Best run',       val: `${best} d` },
+          ].map(({ lbl, val }) => (
+            <div key={lbl} style={{ background: C.bellySoft, borderRadius: 8, padding: '8px 10px' }}>
+              <div style={{ fontSize: 9, color: C.inkMute, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4 }}>{lbl}</div>
+              <div style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, color: C.warmDark, marginTop: 2 }}>{val}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Month nav */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 4px', marginBottom: 8 }}>
+          <button onClick={() => setMonthOffset(o => o - 1)} aria-label="Previous month"
+            style={{ background: 'none', border: 'none', color: C.warmDark, fontSize: 16, fontWeight: 700, cursor: 'pointer', padding: '0 8px' }}>
+            ‹
+          </button>
+          <span style={{ fontFamily: 'Lora, serif', fontWeight: 600, color: C.warmDark, fontSize: 14 }}>{monthLabel}</span>
+          <button onClick={() => canGoForward && setMonthOffset(o => o + 1)} aria-label="Next month"
+            disabled={!canGoForward}
+            style={{ background: 'none', border: 'none', color: canGoForward ? C.warmDark : C.inkMute, fontSize: 16, fontWeight: 700, cursor: canGoForward ? 'pointer' : 'default', opacity: canGoForward ? 1 : 0.4, padding: '0 8px' }}>
+            ›
+          </button>
+        </div>
+
+        {/* Weekday header */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginBottom: 5 }}>
+          {['M','T','W','T','F','S','S'].map((d, i) => (
+            <div key={i} style={{ textAlign: 'center', fontSize: 8, fontWeight: 700, color: C.inkMute, letterSpacing: 0.5 }}>{d}</div>
+          ))}
+        </div>
+
+        {/* Calendar grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
+          {weeks.map((weekMon, wi) => (
+            [0,1,2,3,4,5,6].map(di => {
+              const date = addDays(weekMon, di)
+              const inMonth = date.getMonth() === base.getMonth()
+              const isToday = sameDay(date, today)
+              const wd = (date.getDay() + 6) % 7
+              const scheduled = sched.includes(wd)
+              const isFuture = date > today
+              const e = entryForDate(routine, date, today, liveTotal)
+              let bg = C.bellySoft, color = C.inkMute, opacity = 1, border = 'none'
+              let fracLabel = ''
+              if (!inMonth) {
+                bg = 'transparent'; border = `1px dashed ${C.hairline}`; color = C.inkMute; opacity = 0.5
+              } else if (!scheduled) {
+                bg = C.bellySoft; opacity = 0.55; color = C.inkMute
+              } else if (isFuture) {
+                bg = C.bellySoft; color = C.inkMute
+              } else if (!e) {
+                bg = 'transparent'; border = `1px dashed ${C.hairline}`; color = C.inkMute
+              } else {
+                const f = entryFrac(e)
+                bg = mixSageBeige(f)
+                color = f >= 0.5 ? C.cream : C.ink
+                fracLabel = `${e.done}/${e.total}`
+              }
+              const boxShadow = isToday ? `inset 0 0 0 1.5px ${C.warmDark}` : 'none'
+              return (
+                <button key={`${wi}-${di}`}
+                  onClick={() => {
+                    if (!e) return
+                    setTooltip({
+                      date,
+                      done: e.done, total: e.total,
+                      frac: entryFrac(e),
+                      items: sameDay(date, today) ? (routine.todayItemsDone || []) : null,
+                    })
+                  }}
+                  disabled={!e}
+                  style={{
+                    aspectRatio: '1 / 1', borderRadius: 7, border, background: bg, color,
+                    opacity, boxShadow, cursor: e ? 'pointer' : 'default',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 11, fontWeight: 600, fontFamily: 'inherit', padding: 0,
+                  }}>
+                  <span style={{ lineHeight: 1 }}>{date.getDate()}</span>
+                  {fracLabel && <span style={{ fontSize: 7, opacity: 0.85, marginTop: 1, lineHeight: 1 }}>{fracLabel}</span>}
+                </button>
+              )
+            })
+          ))}
+        </div>
+
+        {/* Legend */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 14, fontSize: 10, color: C.ink, flexWrap: 'wrap' }}>
+          <span>0/{liveTotal}</span>
+          <span style={{ display: 'inline-flex', gap: 2 }}>
+            {Array.from({ length: liveTotal + 1 }, (_, i) => (
+              <span key={i} style={{ width: 14, height: 14, borderRadius: 3, background: mixSageBeige(i / liveTotal) }}/>
+            ))}
+          </span>
+          <span>{liveTotal}/{liveTotal}</span>
+          <span style={{ marginLeft: 10, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ width: 11, height: 11, borderRadius: 3, background: C.bellySoft, opacity: 0.55 }}/>Off-day
+          </span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ width: 11, height: 11, borderRadius: 3, background: C.bellySoft }}/>Future
+          </span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ width: 11, height: 11, borderRadius: 3, background: 'transparent', border: `1px dashed ${C.hairline}` }}/>No data
+          </span>
+        </div>
+
+        {/* Footer actions */}
+        <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
+          <button onClick={() => onLighten?.(routine.id)}
+            style={{ flex: 1, background: C.paper, border: `1.5px solid ${C.border}`, color: C.warmDark, padding: '10px 0', borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+            🪶 Lighten this week
+          </button>
+          <button onClick={() => onMarkAllDone?.(routine.id)}
+            style={{ flex: 1, background: C.rust, color: C.cream, border: 'none', padding: '10px 0', borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+            ✓ Mark all done
+          </button>
+        </div>
+      </div>
+
+      {/* Tap-cell tooltip */}
+      {tooltip && (
+        <div role="dialog" aria-label="Day detail"
+          onClick={() => setTooltip(null)}
+          style={{ position: 'absolute', inset: 0, background: `${C.ink}66`, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 1 }}>
+          <div onClick={e => e.stopPropagation()}
+            style={{ background: C.paperHi, borderRadius: '14px 14px 0 0', padding: '16px 18px 22px', width: '100%', maxWidth: 420, boxShadow: '0 -4px 20px rgba(0,0,0,0.12)' }}>
+            <div style={{ width: 36, height: 4, background: C.border, borderRadius: 2, margin: '0 auto 12px' }}/>
+            <div style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 700, color: C.warmDark, marginBottom: 6 }}>
+              {tooltip.date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+            </div>
+            <div style={{ fontSize: 13, color: C.ink, marginBottom: 10 }}>
+              <strong style={{ color: C.warmDark }}>{tooltip.done} / {tooltip.total} done</strong>
+              {tooltip.frac > 0 && tooltip.frac < 1 ? ' · partial' : ''}
+            </div>
+            {tooltip.items && tooltip.items.length > 0 && (
+              <div style={{ fontSize: 12, color: C.inkSoft }}>
+                Done: {tooltip.items.join(', ')}
+              </div>
+            )}
+            {tooltip.items && tooltip.items.length === 0 && (
+              <div style={{ fontSize: 12, color: C.inkMute, fontStyle: 'italic' }}>No items checked.</div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Resolve a date to its completion14d entry for the routine, or null when
+// the date is outside the persisted window.
+function entryForDate(routine, date, today, liveTotal) {
+  const arr = routine.completion14d || []
+  const t = new Date(today); t.setHours(0,0,0,0)
+  const d = new Date(date);  d.setHours(0,0,0,0)
+  const daysFromToday = Math.round((t - d) / 86400000)
+  if (daysFromToday < 0) return null
+  const idx = arr.length - 1 - daysFromToday
+  if (idx < 0 || idx >= arr.length) return null
+  return normaliseCompletionEntry(arr[idx], liveTotal)
+}
+
 // ── RoutineCard ────────────────────────────────────────────────
 function RoutineCard({ routine, delay = 0, onMarkDone, onLighten, onEdit, onShare, onMarkDay }) {
   const [hover, setHover] = useState(false)
@@ -11504,7 +11749,18 @@ export default function HeedApp() {
   // can override to 'periwinkle' for the duration of a Low Day context.
   const handleSetTheme = useCallback((name) => setTheme(name), [])
   useEffect(() => {
-    const saved = localStorage.getItem('heed-theme')
+    // One-time migration: the old DEFAULT_THEME was 'midnight-fern'. Anyone
+    // who launched the app before the parchment-light switch has it saved
+    // in localStorage even though they never explicitly picked it. Bump
+    // those users to the new default once. Users who genuinely choose
+    // midnight-fern after this migration ran are unaffected — the flag
+    // gates the rewrite so we never override a deliberate selection.
+    let saved = localStorage.getItem('heed-theme')
+    if (!localStorage.getItem('heed.theme-migrated.v2') && saved === 'midnight-fern') {
+      saved = 'parchment-light'
+      localStorage.setItem('heed-theme', 'parchment-light')
+    }
+    localStorage.setItem('heed.theme-migrated.v2', '1')
     if (saved && THEMES[saved]) setTheme(saved)
   }, [])
   useEffect(() => {

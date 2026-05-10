@@ -731,6 +731,7 @@ function useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded, onTaskDeferred
         const today = new Date().toISOString().slice(0, 10)
         const ctx = []
         ctx.push('[Demo-mode user state — read this before answering]')
+        ctx.push('Important: when the user asks to add, create, schedule, defer, or skip a task or routine, you MUST emit the matching action (add_task, add_routine, defer, skip, mark_done) via propose_action so it appears as a confirm button. Do NOT just reply "Done" or "Got it" — without an action, nothing actually happens. The user is shown the action and confirms it; only then does Heed mutate state.')
         ctx.push(`Today: ${today}`)
         if (ACTIVE_CONTEXT_DEMO) {
           ctx.push(`Active context: ${ACTIVE_CONTEXT_DEMO.label} (${ACTIVE_CONTEXT_DEMO.type}), ${ACTIVE_CONTEXT_DEMO.start} to ${ACTIVE_CONTEXT_DEMO.end}`)
@@ -11777,8 +11778,45 @@ export default function HeedApp() {
   // When the user has clicked "Load demo data", initialise apiTasks with the
   // curated TASKS_DEMO seed and skip the /api/tasks fetch (see effect below)
   // — otherwise stale Cosmos data overrides the demo and Focus Today empties.
-  const [apiTasks, setApiTasks] = useState(() => isDemoMode() ? TASKS_DEMO : [])
-  const [apiContexts, setApiContexts] = useState({ active: [], upcoming: [] })
+  // In demo mode we also rehydrate from localStorage('heed.demo-tasks.v1') so
+  // any tasks the user adds via Ask Heed / + button persist across reloads
+  // instead of getting wiped back to the curated seed.
+  const [apiTasks, setApiTasks] = useState(() => {
+    if (!isDemoMode()) return []
+    if (typeof window === 'undefined') return TASKS_DEMO
+    try {
+      const raw = localStorage.getItem('heed.demo-tasks.v1')
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed
+      }
+    } catch (_) {}
+    return TASKS_DEMO
+  })
+  // Persist demo apiTasks to localStorage so user additions survive reloads.
+  // Outside demo mode the backend is the source of truth — no local writes.
+  useEffect(() => {
+    if (!isDemoMode()) return
+    try { localStorage.setItem('heed.demo-tasks.v1', JSON.stringify(apiTasks)) } catch (_) {}
+  }, [apiTasks])
+  const [apiContexts, setApiContexts] = useState(() => {
+    if (!isDemoMode()) return { active: [], upcoming: [] }
+    if (typeof window === 'undefined') return { active: [], upcoming: [] }
+    try {
+      const raw = localStorage.getItem('heed.demo-contexts.v1')
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        if (parsed && (Array.isArray(parsed.active) || Array.isArray(parsed.upcoming))) {
+          return { active: parsed.active || [], upcoming: parsed.upcoming || [] }
+        }
+      }
+    } catch (_) {}
+    return { active: [], upcoming: [] }
+  })
+  useEffect(() => {
+    if (!isDemoMode()) return
+    try { localStorage.setItem('heed.demo-contexts.v1', JSON.stringify(apiContexts)) } catch (_) {}
+  }, [apiContexts])
   const [dismissedIds, setDismissedIds] = useState(new Set())
   // Last ~200 skip events with reason. Retrospective reads these to detect
   // forgot/busy patterns. Backend completion log will replace this in Phase 1b.
@@ -12408,7 +12446,7 @@ export default function HeedApp() {
   const handleSignOut = useCallback(() => {
     if (typeof window === 'undefined') return
     try {
-      const IDENTITY_KEYS = ['heed.username', 'heed.display-name', 'heed.auth-token', 'heed.avatar', 'heed.welcome-seen', 'heed.use-demo', 'heed.chat-history.v1', 'heed_plans']
+      const IDENTITY_KEYS = ['heed.username', 'heed.display-name', 'heed.auth-token', 'heed.avatar', 'heed.welcome-seen', 'heed.use-demo', 'heed.chat-history.v1', 'heed_plans', 'heed.demo-tasks.v1', 'heed.demo-contexts.v1']
       IDENTITY_KEYS.forEach(k => localStorage.removeItem(k))
     } catch (_) {}
     window.location.reload()

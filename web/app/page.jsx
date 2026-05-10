@@ -446,6 +446,70 @@ const SCRIPTED_RESPONSES = {
     ],
   },
 }
+// Per-plan scripted advice — keyed by plan title. The "Give me advice on
+// this plan: ... Plan: <Title>" query is dynamic (includes tasks, due
+// date, etc.), so we can't key by exact string in SCRIPTED_RESPONSES.
+// Instead, the demo short-circuit parses the plan title out of the
+// query and looks it up here. Anything not in this map falls through
+// to a generic plan-advice template at call time.
+const PLAN_ADVICE_RESPONSES = {
+  'Garden Project': {
+    thinking: [
+      "Reading your Garden Project checklist...",
+      "9 of 10 tasks done — you're at the finish line...",
+      "Looking at the May 20 deadline...",
+    ],
+    answer: `You're **9 of 10 done** on **Garden Project** — the only thing left is **"Final cleanup & photos"** before the May 20 deadline.\n\n**My advice:**\n• Block 60–90 minutes this weekend to wrap it. Saturday morning is your most consistent free slot based on the last three weeks.\n• Take photos in late-afternoon golden light — it'll make the final share-card actually look good.\n• Worth doing this BEFORE you fly to Singapore on Jun 5, otherwise the plan slips into "limbo" while you're away and momentum dies.\n\nYou've done the hard part. Don't let one task stall a near-finished plan.`,
+    chips: [
+      { emoji: '✓', text: 'Add a Saturday cleanup block' },
+      { emoji: '📸', text: 'What should the photos show?' },
+      { emoji: '🌱', text: 'Sounds right, thanks' },
+    ],
+  },
+  'Run a Marathon': {
+    thinking: [
+      "Pulling up your marathon training plan...",
+      "4 of 7 milestones complete...",
+      "Checking the Jun 30 race date against your travel window...",
+    ],
+    answer: `You're **4 of 7 done** on **Run a Marathon** — race day is **Jun 30**.\n\n**Where you stand:** registered, shoes bought, ran a 5km and a 10km without stopping.\n\n**What's left:** half-marathon distance, 4×/week training month, full 42km training run.\n\n**My advice — sequenced by what blocks what:**\n• Hit **4×/week for a month** first. Volume earns the right to attempt the half-marathon distance.\n• **Half-marathon** in mid-May (before Singapore trip) — gives you a recovery week, then taper.\n• The **full 42km training run** is risky to attempt while jet-lagged. Aim for the weekend of Jun 14–15 once you're back.\n\nWant me to lay these out as scheduled tasks?`,
+    chips: [
+      { emoji: '✓', text: 'Yes, schedule the training blocks' },
+      { emoji: '🏃', text: "What's a safe mileage ramp?" },
+      { emoji: '🌱', text: 'Just keeping me accountable' },
+    ],
+  },
+  'Save ₱50,000': {
+    thinking: [
+      "Reading your savings goal: ₱17,500 of ₱50,000...",
+      "35% of the way there with ~7 months to go...",
+      "Calculating monthly run-rate vs target...",
+    ],
+    answer: `You're **35% of the way** to **₱50,000** — ₱17,500 saved with about 7 months left.\n\n**The math:**\n• Remaining: ₱32,500\n• Months left: ~7 (Dec 2026 deadline)\n• Required pace: **~₱4,650 / month**\n• Current auto-transfer: ₱2,500 / month — gets you to ~₱35K, not ₱50K.\n\n**To actually hit ₱50K, you have two levers:**\n• Bump auto-transfer to **₱4,650/mo** (or round it up to ₱5K).\n• OR keep ₱2,500 and find ₱2,150/mo from cutting subscriptions — that task is still open in your plan.\n\nThe sub-stuff is the easier win — most people overpay for things they forgot they signed up for.`,
+    chips: [
+      { emoji: '💸', text: 'Audit my subscriptions' },
+      { emoji: '📈', text: 'Bump the auto-transfer' },
+      { emoji: '🌱', text: 'Got it, thanks' },
+    ],
+  },
+  'Singapore Trip': {
+    thinking: [
+      "Reading your Singapore Trip checklist...",
+      "5 prep tasks open, none done yet...",
+      "Cross-referencing the Jun 5 departure date...",
+    ],
+    answer: `**Singapore Trip** departs **Jun 5** — that's about 26 days out, and **none of the 5 prep tasks are done yet**.\n\n**My advice — sequenced by lead time:**\n• **Book flights** this week. Prices for Jun 5 will only go up.\n• **Travel insurance** within 14 days of booking — most policies require it.\n• **Hotel in Clarke Quay** can wait a couple weeks but lock it before late May.\n• **Travel documents** (passport check, eVisa if needed) — middle of May.\n• **Pack luggage** the day before; not now.\n\nAlso: I'll auto-pause your morning + evening routines while you're away, and your busy-period context ends today, so don't add more tasks until next week.`,
+    actions: [
+      { action_type: 'add_task', emoji: '✚', label: 'Book flights this week', payload: { name: 'Book Singapore flights', category: 'admin', importance: 'high' } },
+    ],
+    chips: [
+      { emoji: '🗺️', text: 'What am I forgetting before I leave?' },
+      { emoji: '🍃', text: 'Lighten my routine while away' },
+      { emoji: '🌱', text: 'Thanks, this helps' },
+    ],
+  },
+}
+
 const FALLBACK_RESPONSE = {
   thinking: ["Searching your task memory...", "Cross-referencing context...", "Drafting a response..."],
   answer: `I'm reaching out to your personal agent now. If I seem slow, I'm probably thinking hard.\n\nIn this prototype, a few scripted responses are pre-wired — try one of the suggestion chips above to see the full experience. The live agent uses Azure OpenAI + AI Search to answer anything about your tasks and patterns.`,
@@ -667,8 +731,18 @@ function useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded, onTaskDeferred
     //
     // Outside both branches the live advisor handles the request normally.
     const scriptedMatch = SCRIPTED_RESPONSES[trimmed]
-    if (scriptedMatch || isDemoMode()) {
-      const scripted = scriptedMatch || FALLBACK_RESPONSE
+    // Plan-advice queries are dynamic ("Give me advice on this plan: ...")
+    // so they won't match SCRIPTED_RESPONSES by exact key. Parse the plan
+    // title out and look it up in PLAN_ADVICE_RESPONSES instead.
+    let planAdviceMatch = null
+    if (!scriptedMatch && trimmed.startsWith('Give me advice on this plan:')) {
+      const planTitle = trimmed.split('\n').find(l => l.startsWith('Plan: '))?.replace('Plan: ', '').trim()
+      if (planTitle && PLAN_ADVICE_RESPONSES[planTitle]) {
+        planAdviceMatch = PLAN_ADVICE_RESPONSES[planTitle]
+      }
+    }
+    if (scriptedMatch || planAdviceMatch || isDemoMode()) {
+      const scripted = scriptedMatch || planAdviceMatch || FALLBACK_RESPONSE
       if (scripted.thinking) {
         for (const step of scripted.thinking) {
           thinkingSteps.push(step)

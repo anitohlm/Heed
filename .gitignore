@@ -18,3 +18,6 @@ local.settings.json
 # Agent reports — contain security findings and test failures, never commit
 docs/qa-reports/
 docs/security-reports/
+
+# Submission pack — local-only working doc for the demo recording
+docs/SUBMISSION_PACK.md

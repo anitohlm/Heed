@@ -1,6 +1,6 @@
 # Heed — Technical Reference
 
-Last updated: 2026-05-05
+Last updated: 2026-05-10
 
 ---
 
@@ -57,7 +57,7 @@ Browser (Next.js 14, Azure Static Web Apps)
 | LLM | Azure OpenAI via AI Foundry (`openai-heed`) |
 | Secrets | Azure Key Vault (`kv-heed-hack`) via Managed Identity |
 
-**Identity:** Each browser stores a username in `localStorage('heed.username')` after the `UsernameGate` prompt. Every fetch to the backend sends `X-User-ID: <username>`. The backend reads it via `_get_user_id(req)` to scope all Cosmos reads/writes. No sessions, no passwords.
+**Identity:** Each browser stores a username in `localStorage('heed.username')` after the `UsernameGate` prompt. Every fetch to the backend sends `X-User-ID: <username>` plus `X-Auth-Token: <hmac>` (token issued at registration, also stored in localStorage). The backend reads them via `_get_user_id(req)` and an HMAC verify in `agents/auth.py` to scope all Cosmos reads/writes. No sessions, no passwords.
 
 **Streaming constraint:** Azure Functions Consumption plan does not support chunked HTTP streaming. The advisor agent collects all SSE events into NDJSON and returns the full response at once. The frontend replays events word-by-word to simulate streaming.
 
@@ -82,10 +82,10 @@ Heed/
 │
 ├── web/                         ─── NEXT.JS FRONTEND ───
 │   ├── app/
-│   │   ├── page.jsx             ALL frontend code (~8500 lines)
+│   │   ├── page.jsx             ALL frontend code (~12,000 lines)
 │   │   ├── layout.jsx           Root layout, Google Fonts
-│   │   ├── globals.css          Reset only
-│   │   └── themes.js            Theme palettes + owl colour maps
+│   │   ├── globals.css          Reset + motion tokens (durations, easings, reduced-motion fallback)
+│   │   └── themes.js            Theme palettes (5 user-selectable + auto periwinkle) + owl colour maps
 │   ├── next.config.mjs          Static export config (output: 'export')
 │   ├── package.json
 │   └── out/                     Pre-built static export (committed for SWA deploy)
@@ -100,11 +100,15 @@ Heed/
 ├── agents/
 │   ├── advisor.py               Streaming advisor agent (async generator)
 │   ├── memory_keeper.py         Cadence learning (timer-triggered, every 6h)
+│   ├── auth.py                  HMAC token issue + verify (X-Auth-Token header)
+│   ├── telemetry.py             App Insights span helpers for agent calls
 │   ├── models.py                Pydantic models (AgentAction, AddRoutinePayload, …)
 │   ├── tools/
 │   │   ├── cosmos_tool.py       Read tasks, completions, context from Cosmos
 │   │   ├── action_tools.py      Mark done, skip, defer, add task, add routine
-│   │   └── search_tool.py       Azure AI Search queries
+│   │   ├── search_tool.py       Azure AI Search queries
+│   │   ├── bing_tool.py         Web grounding (date-sensitive answers)
+│   │   └── safety_tool.py       Risk-7 guardrail: confirms multi-task destructive ops
 │   └── prompts/
 │       ├── advisor_system.md    Advisor system prompt (loaded at runtime)
 │       └── memory_keeper_system.md
@@ -125,9 +129,11 @@ Heed/
 
 ## 2. Frontend
 
-The entire frontend is one `'use client'` file (`web/app/page.jsx`, ~8500 lines). No TypeScript, no external component library, all styles inline.
+The entire frontend is one `'use client'` file (`web/app/page.jsx`, ~12,000 lines). No TypeScript, no external component library, all styles inline.
 
 ### 2.1 page.jsx file structure
+
+Line numbers below are approximate — the file shifts every release. Search by symbol name (`function PlanDetailScreen`, `function HeedApp`, etc.) for an exact location.
 
 | Lines (approx.) | Content |
 |---|---|
@@ -158,17 +164,28 @@ The entire frontend is one `'use client'` file (`web/app/page.jsx`, ~8500 lines)
 
 **File:** `web/app/themes.js`
 
-Three built-in themes: `warm` (default), `forest`, `ink`. Each exports a color palette (20+ tokens) and `OWL_THEMES` — colour maps for the `MayaOwl` SVG fills.
+**Five user-selectable themes** plus one auto-applied theme:
 
-Active theme is stored in `localStorage('heed-theme')` and in a module-level `themeState` object. The `C` proxy reads `themeState.current` on every render, so theme switches are immediate without React context.
+| Theme | When | Vibe |
+|---|---|---|
+| `parchment-light` | User pick | Cream paper + sage + ochre — daytime calm |
+| `midnight-fern` | User pick · default | Deep forest dark mode + cream ink |
+| `inkwash` | User pick | Warm dark with bark/amber tones |
+| `flamingo` | User pick | Coral + mulberry warm palette |
+| `candy` | User pick | Hot pink + cosmos pastel + mint |
+| `periwinkle` | **Auto** | Activated when an `activeContext.type === 'low'` (Low Day) is present; reverts to the user's pick when the context ends. Not selectable from the picker. |
+
+Each theme exports a color palette (~25 tokens including `scrim`/`scrimLight` for modal overlays) and `OWL_THEMES` — colour maps for the `MayaOwl` SVG fills, rotated for cross-theme contrast.
+
+Active theme is stored in `localStorage('heed-theme')` and in a module-level `themeState` object. The `C` proxy reads `themeState.current` on every render, so theme switches are immediate without React context. Theme transitions cross-dissolve over 320ms via `var(--m-slow)` on the body root.
 
 ```js
 // themes.js exports
-export const THEMES = { warm: {...}, forest: {...}, ink: {...} }
-export const OWL_THEMES = { warm: {...}, forest: {...}, ink: {...} }
-export let themeState = { current: 'warm' }
+export const THEMES = { 'parchment-light': {...}, 'midnight-fern': {...}, 'inkwash': {...}, 'flamingo': {...}, 'candy': {...}, 'periwinkle': {...} }
+export const OWL_THEMES = { /* same keys */ }
+export const themeState = { current: 'midnight-fern' }
 export function setThemeState(name) { themeState.current = name }
-export const DEFAULT_THEME = 'warm'
+export const DEFAULT_THEME = 'midnight-fern'
 ```
 
 **Usage rule:** Never hardcode hex values — always use `C.*` tokens.
@@ -307,9 +324,10 @@ Pointer event swipe detector for task cards. Returns a `ref` to attach to a cont
 | `HeedFAB` | Speed-dial FAB for Add Task / Ask Heed / Add Routine |
 | `SpeedDialItem` | Individual FAB action item |
 | `SettingsRow` | 44pt settings row with tap handler |
-| `ThemeSwitcher` | Theme toggle (warm / forest / ink) |
-| `AvatarButton` | User avatar circle |
+| `ThemeSwitcher` | Theme picker (parchment-light / midnight-fern / inkwash / flamingo / candy) |
+| `AvatarButton` | User avatar circle — opens Settings |
 | `UsernameGate` | Full-screen overlay for first-time / returning users |
+| `DataModeWelcome` | One-shot post-login modal: choose demo data vs. real data (set via `heed.welcome-seen` flag) |
 
 #### Task components
 
@@ -341,8 +359,11 @@ Pointer event swipe detector for task cards. Returns a `ref` to attach to a cont
 |---|---|
 | `PlanCard` | Plan card (project / event / goal) in the Plans grid |
 | `PlanDetailScreen` | Full-screen checklist for a plan's tasks |
-| `AddPlanSheet` | Create a new plan (type, icon, title, date) |
+| `PlanBubbleDetailScreen` | Plan detail with progress ring, log savings (numeric goals), milestone tasks |
+| `EditPlanScreen` | Edit plan (icon, title, target date via `CalendarPicker`, target amount, type) |
+| `AddPlanSheet` | Create a new plan (type, icon, title, date, goal kind) |
 | `PlansPanel` | Plans tab — card grid or detail screen |
+| `CalendarPicker` | Inline month/day picker used in `EditPlanScreen` and add flows |
 
 #### Calendar components
 
@@ -370,7 +391,9 @@ Pointer event swipe detector for task cards. Returns a `ref` to attach to a cont
 | Component | Purpose |
 |---|---|
 | `AskInlineModal` | Floating bottom-sheet Ask Heed chat (from FAB / owl) |
-| `SettingsSheet` | Settings: profile, theme, categories, demo mode, reset |
+| `SettingsSheet` | Fullscreen Settings (despite the legacy name): index → detail nav. Index lists Profile + 5 destinations (Personalize, Categories, Data, Heed AI, About); each opens its own focused screen with a back chevron. |
+| `ConfirmSheet` | Bottom-sheet replacement for `window.confirm` — used for sign out, reset, demo swap |
+| `PlanCompletionCelebration` | Falling-petal + happy-owl + medallion celebration; fires once per plan via `heed.plan-celebrated.<id>` flag. Includes "Moves to Past Plans" pill. |
 
 #### Tabs (root screens)
 
@@ -444,18 +467,33 @@ Pointer event swipe detector for task cards. Returns a `ref` to attach to a cont
 - Recovery summary after context ends (resume all or ease back)
 - Context detail sheet with held task list
 
-#### Settings
-- Display name, theme switcher (warm / forest / ink)
-- Custom task categories and event types
-- Demo mode: "Load demo data" (enters demo mode) / "Switch to real data" (exits demo mode)
-- Reset all data (wipes localStorage + backend)
+#### Settings (fullscreen with internal nav)
+- Index screen with profile hero card + 5 chevron rows (Personalize · Categories · Data · Heed AI · About)
+- **Profile** — avatar upload, display name, sign out (clears identity keys, returns to UsernameGate)
+- **Personalize** — theme picker (5 themes), focus mode toggle
+- **Categories** — custom task categories + custom life event types
+- **Data** — demo data toggle, "Load demo data" / "Switch to real data", danger zone (full reset)
+- **Heed AI** — clear chat history (today / all)
+- **About** — version, credits
+
+#### Plan completion celebration
+- Fires when a plan reaches 100% completion (numeric goals: target reached; milestone goals: all tasks done)
+- Petals + happy MayaOwl + sparkle medallion + "Plan complete." headline + "Moves to Past Plans" pill
+- One-shot per plan via `heed.plan-celebrated.<id>` flag — won't replay on revisit
+- Numeric goals get an additional money-savings sheet for amount logging with quick-add chips that scale to goal size
+
+#### Welcome modal (one-shot post-login)
+- `DataModeWelcome` shown when a user logs in with `!heed.welcome-seen`
+- Two cards: "Try the demo" (Recommended) and "Use my own data"
+- Sets `heed.welcome-seen = '1'` on dismiss; survives demo-mode swaps so it doesn't re-appear
 
 #### Global
 - Toast notification system (slide-up, auto-dismiss, undo / view / reason chips)
 - Botanical decorative dividers
 - Bottom nav (5 tabs + mic shortcut on Today tab)
 - Speed-dial FAB (Add Task / Ask Heed / Add Routine)
-- Three-theme system with instant switching
+- Five-theme system with instant switching + auto periwinkle on Low Day
+- System-wide motion tokens — Settings detail slide, tab crossfade, theme cross-dissolve, prefers-reduced-motion fallback
 
 ---
 
@@ -464,11 +502,18 @@ Pointer event swipe detector for task cards. Returns a `ref` to attach to a cont
 | Key | Type | Purpose |
 |---|---|---|
 | `heed.username` | string | Logged-in username; read by `getUsername()` for `X-User-ID` header |
+| `heed.display-name` | string | Display name (separate from username — display can be edited; username can't) |
+| `heed.avatar` | data-URL | Uploaded avatar (≤1 MB, JPEG/PNG/WebP/GIF) |
+| `heed.auth-token` | string | HMAC token sent as `X-Auth-Token` on backend requests |
 | `heed.use-demo` | `'1'` | Demo mode flag; cleared by "Switch to real data" |
-| `heed-theme` | string | Active theme name (`warm` / `forest` / `ink`) |
+| `heed.welcome-seen` | `'1'` | One-shot flag for `DataModeWelcome` modal — survives demo swaps |
+| `heed-theme` | string | Active theme name (`parchment-light` / `midnight-fern` / `inkwash` / `flamingo` / `candy`) |
+| `heed.efMode` | `'1'` | Focus mode toggle — strips Today down to essentials |
 | `heed_plans` | JSON array | All plan data including tasks; write-through to backend |
+| `heed.plan-celebrated.<id>` | `'1'` | Per-plan completion-celebration flag — prevents replay |
 | `heed.routines.v1` | JSON array | Routines cache; write-through to backend |
-| `heed_chat` | JSON array | Chat message history |
+| `heed.chat-history.v1` | JSON array | Ask Heed chat history (current); cleared today / cleared all from Settings |
+| `heed_chat` | JSON array | Legacy chat key — kept for `useChat` hook compatibility |
 | `heed_custom_categories` | JSON array | User-added task categories |
 | `heed_custom_event_types` | JSON array | User-added event types |
 | `heed_swipe_hint_shown` | `'1'` | Whether the first-swipe hint has been shown |
@@ -720,9 +765,32 @@ items[idx].name = name; setItems(items)
 - Clickable divs → convert to `<button>` with `background:'none', border:'none', cursor:'pointer', fontFamily:'inherit'`
 - When `border: 'none'` and `borderBottom: ...` coexist, put `border` first (shorthand overrides longhand that follows)
 
-### Animations
+### Motion tokens
 
-All keyframes live in the `<style>` block inside `HeedApp`'s JSX. Naming: `heed-<name>`.
+Defined in `web/app/globals.css` as CSS variables so they work in both keyframes and inline JSX styles via `var(--…)`. Reduced-motion users get all transitions clamped to 0.01ms.
+
+| Token | Value | Use |
+|---|---|---|
+| `--m-fast` | 160ms | Button press, toggle flip, chip state |
+| `--m-base` | 220ms | Panel slide, modal in, tab change |
+| `--m-slow` | 320ms | Screen transition, theme swap |
+| `--ease-out` | `cubic-bezier(0.16, 1, 0.3, 1)` | Entering elements |
+| `--ease-in` | `cubic-bezier(0.5, 0, 0.75, 0)` | Exiting (60–70% of enter dur) |
+| `--ease-spring` | `cubic-bezier(0.34, 1.56, 0.64, 1)` | Playful overshoot |
+
+Reusable utility classes also in `globals.css`:
+
+| Class | Effect |
+|---|---|
+| `.heed-settings-detail` | Slide in from right (Settings detail screens, keyed off `settingsView`) |
+| `.heed-tab-fade` | Crossfade + 6px lift (tab body wrapper, keyed off `tab`) |
+| `.heed-stagger > *` | Per-child stagger via inline `style={{ '--i': index }}` (capped at 12) |
+| `.heed-pressable` | Generic press-scale 0.98 with token transitions |
+| `.heed-theme-bg` | Cross-dissolve background/border/color over `--m-slow` for theme swap |
+
+### Keyframes
+
+All keyframes live in the `<style>` block inside `HeedApp`'s JSX (or in `globals.css` for the motion utilities above). Naming: `heed-<name>`.
 
 | Name | Effect |
 |---|---|
@@ -733,7 +801,9 @@ All keyframes live in the `<style>` block inside `HeedApp`'s JSX. Naming: `heed-
 | `heed-slideUp` | opacity 0→1 + translateY 40px→0 (bottom sheets) |
 | `heed-slideRight` | opacity 0→1 + translateX 20px→0 |
 | `heed-slideIn` | translateX 100%→0 (full drawer slide) |
-| `heed-tab-in` | opacity 0→1 + translateX 12px→0 |
+| `heed-slide-in-right` | opacity 0→1 + translateX 16px→0 (Settings detail) |
+| `heed-tab-crossfade` | opacity 0→1 + translateY 6px→0 (tab body wrapper) |
+| `heed-stagger-up` | opacity 0→1 + translateY 8px→0 (list items, with `--i` delay) |
 | `heed-toast-up` | opacity 0→1 + translateY 20px→0 |
 | `heed-breathe` | scale + opacity pulse (owl glow) |
 | `heed-bob` | translateY bounce |
@@ -743,6 +813,9 @@ All keyframes live in the `<style>` block inside `HeedApp`'s JSX. Naming: `heed-
 | `heed-done-out` | slide-right + fade + collapse (task mark-done) |
 | `heed-done-check` | check icon scale-in |
 | `heed-check-draw` | SVG stroke draw |
+| `heed-petal-fall` | Petal drift (plan completion celebration) |
+| `heed-medallion-breathe` | Sparkle medallion pulse (plan completion) |
+| `heed-headline-reveal` | "Plan complete." headline reveal |
 
 ### Helpers before conditional returns
 

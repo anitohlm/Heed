@@ -147,10 +147,31 @@ const isDemoMode = () => {
 }
 
 // ── Share-card helpers ─────────────────────────────────────────
-function computeStreakCount(completion14d) {
+// Normalise one completion14d entry. Accepts the legacy boolean shape
+// (true = fully done that day) and the new {done, total} shape. Returns
+// {done: number, total: number}. Caller passes the routine's current live
+// item count so legacy `true` can be expanded to a fraction with the right
+// denominator.
+function normaliseCompletionEntry(entry, liveTotal) {
+  if (entry && typeof entry === 'object' && typeof entry.done === 'number' && typeof entry.total === 'number') {
+    return { done: Math.max(0, entry.done|0), total: Math.max(0, entry.total|0) }
+  }
+  if (entry === true)  return { done: liveTotal, total: liveTotal }
+  return { done: 0, total: liveTotal }
+}
+function entryIsFullyDone(entry) {
+  return entry && entry.total > 0 && entry.done === entry.total
+}
+function entryFrac(entry) {
+  if (!entry || !entry.total) return 0
+  return Math.min(1, Math.max(0, entry.done / entry.total))
+}
+function computeStreakCount(completion14d, routine) {
+  const liveTotal = (routine?.items || []).filter(it => !(routine?.lightenedItems || []).includes(it)).length || (routine?.items || []).length || 1
   let count = 0
-  for (let i = completion14d.length - 1; i >= 0; i--) {
-    if (!completion14d[i]) break
+  for (let i = (completion14d || []).length - 1; i >= 0; i--) {
+    const e = normaliseCompletionEntry(completion14d[i], liveTotal)
+    if (!entryIsFullyDone(e)) break
     count++
   }
   return count
@@ -159,8 +180,12 @@ function formatStartedDate(streakCount) {
   const d = new Date(Date.now() - Math.max(0, streakCount - 1) * 86400000)
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
-function computeCompletionPct(completion14d) {
-  return Math.round(completion14d.filter(Boolean).length / 14 * 100)
+function computeCompletionPct(completion14d, routine) {
+  const arr = completion14d || []
+  if (arr.length === 0) return 0
+  const liveTotal = (routine?.items || []).filter(it => !(routine?.lightenedItems || []).includes(it)).length || (routine?.items || []).length || 1
+  const fullDays = arr.filter(e => entryIsFullyDone(normaliseCompletionEntry(e, liveTotal))).length
+  return Math.round(fullDays / arr.length * 100)
 }
 
 const SHARE_THEMES = {
@@ -3438,8 +3463,8 @@ function RoutineVariant({ routine, t, pct }) {
 function ShareableCard({ routine, variant = 'streak', theme = 'B' }) {
   const _uid = React.useId().replace(/:/g, '')  // unique per render instance (preview vs hidden)
   const t = SHARE_THEMES[theme]
-  const streak = computeStreakCount(routine.completion14d)
-  const pct = computeCompletionPct(routine.completion14d)
+  const streak = computeStreakCount(routine.completion14d, routine)
+  const pct = computeCompletionPct(routine.completion14d, routine)
   const startedDate = formatStartedDate(streak)
   const uid = `${_uid}-${routine.id}-${theme}`
   const padLeft = t.vertRule ? 38 : 0
@@ -8502,8 +8527,10 @@ function routineDayState(routine, date, today = new Date()) {
   if (daysFromToday < 0) return 'future'
   const arr = routine.completion14d || []
   const idx = arr.length - 1 - daysFromToday
-  if (idx < 0 || idx >= arr.length) return 'missed'  // older than the window
-  return arr[idx] ? 'done' : 'missed'
+  if (idx < 0 || idx >= arr.length) return 'missed'
+  const liveTotal = (routine.items || []).filter(it => !(routine.lightenedItems || []).includes(it)).length || (routine.items || []).length || 1
+  const e = normaliseCompletionEntry(arr[idx], liveTotal)
+  return entryIsFullyDone(e) ? 'done' : 'missed'
 }
 
 // ── Monthly retrospective ─────────────────────────────────────────

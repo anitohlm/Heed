@@ -282,6 +282,18 @@ The "Try the demo" path in the welcome modal flips a localStorage flag. While se
 
 ---
 
+## AI tools used during development
+
+Heed itself runs on Azure OpenAI at runtime — that's the agentic personal-assistant pitch. But the *building* of Heed also used AI heavily, and the brief asks us to be transparent about what assisted us. The honest list:
+
+- **[Claude Code](https://www.anthropic.com/claude-code)** — primary pair-programming partner for the web app (`web/app/page.jsx`, `web/app/themes.js`, `web/app/globals.css`). Used for component scaffolding, debugging React state issues (the Low Day persistence bug, the routine save-confirm modal copy, the demo-mode network-leak bug), implementing the motion token system, and end-to-end UI testing via the Playwright MCP. The repository's commit history reflects this collaboration — large frontend changes were authored with Claude Code in the loop.
+- **[Claude Sonnet 4.6 / Haiku 4.5](https://www.anthropic.com/claude)** — at runtime, these power the in-app advisor and capture parser respectively (see *Multi-model strategy* above). They also assisted with backend Python code when Claude Code reached for them.
+- **GitHub Copilot** — light use for boilerplate completion in the early scaffold.
+
+What was *not* AI-generated: the product framing (gentle personal assistant for life admin), the visual design language (Lora serif + Nunito Sans, the parchment palette, the MayaOwl mascot, the periwinkle Low Day cross-dissolve), the risk model in `docs/SAFETY.md`, and every product decision about what to ship vs. what to cut.
+
+---
+
 ## License
 
 Hackathon submission — not yet licensed for redistribution.

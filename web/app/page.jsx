@@ -677,7 +677,7 @@ function parsePlanAdviceActions(text, planId = null) {
 }
 
 // ── useChat hook ───────────────────────────────────────────────
-function useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded, onTaskDeferred, onToast } = {}) {
+function useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded, onTaskDeferred, onToast, getDemoState } = {}) {
   const [messages, setMessages] = useState(() => {
     if (typeof window === 'undefined') return []
     try {
@@ -734,39 +734,72 @@ function useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded, onTaskDeferred
     if (isDemoMode()) {
       try {
         const today = new Date().toISOString().slice(0, 10)
+        // Pull the live state from HeedApp via getDemoState so the AI
+        // sees the user's CURRENT tasks / routines / contexts instead
+        // of the static seeds. This is what makes 'why did I skip my
+        // morning routine this week?' actually reflect today's marks.
+        const live = (typeof getDemoState === 'function' ? getDemoState() : null) || {}
+        const liveTasks    = Array.isArray(live.tasks)            ? live.tasks            : TASKS_DEMO
+        const liveRoutines = Array.isArray(live.routines)         ? live.routines         : ROUTINES
+        const liveActive   = live.activeContext                   || ACTIVE_CONTEXT_DEMO
+        const liveUpcoming = Array.isArray(live.upcomingContexts) ? live.upcomingContexts : CONTEXTS_UPCOMING_DEMO
+        const livePlans    = Array.isArray(live.plans)            ? live.plans            : DEMO_PLANS
         const ctx = []
         ctx.push('[Demo-mode user state — read this before answering]')
         ctx.push('Important: when the user asks to add, create, schedule, defer, or skip a task or routine, you MUST emit the matching action (add_task, add_routine, defer, skip, mark_done) via propose_action so it appears as a confirm button. Do NOT just reply "Done" or "Got it" — without an action, nothing actually happens. The user is shown the action and confirms it; only then does Heed mutate state.')
         ctx.push(`Today: ${today}`)
-        if (ACTIVE_CONTEXT_DEMO) {
-          ctx.push(`Active context: ${ACTIVE_CONTEXT_DEMO.label} (${ACTIVE_CONTEXT_DEMO.type}), ${ACTIVE_CONTEXT_DEMO.start} to ${ACTIVE_CONTEXT_DEMO.end}`)
+        if (liveActive) {
+          const startStr = liveActive.start || (liveActive.startDate instanceof Date ? liveActive.startDate.toISOString().slice(0,10) : 'today')
+          const endStr   = liveActive.end   || (liveActive.endDate   instanceof Date ? liveActive.endDate.toISOString().slice(0,10)   : 'today')
+          ctx.push(`Active context: ${liveActive.label || liveActive.desc || liveActive.type} (${liveActive.type}), ${startStr} to ${endStr}`)
         }
-        if (Array.isArray(CONTEXTS_UPCOMING_DEMO) && CONTEXTS_UPCOMING_DEMO.length) {
+        if (Array.isArray(liveUpcoming) && liveUpcoming.length) {
           ctx.push('Upcoming contexts:')
-          CONTEXTS_UPCOMING_DEMO.forEach(c => ctx.push(`  - ${c.desc} (${c.type}) ${c.start} to ${c.end}`))
+          liveUpcoming.forEach(c => ctx.push(`  - ${c.desc} (${c.type}) ${c.start || ''} to ${c.end || ''}`))
         }
-        if (Array.isArray(DEMO_PLANS) && DEMO_PLANS.length) {
+        if (Array.isArray(livePlans) && livePlans.length) {
           ctx.push('Plans:')
-          DEMO_PLANS.forEach(p => {
-            const done = p.tasks.filter(t => t.done).length
+          livePlans.forEach(p => {
+            const done = (p.tasks || []).filter(t => t.done).length
             const due = p.dueDate || (p.eventDate ? new Date(p.eventDate).toISOString().slice(0, 10) : null)
             const goal = p.target != null ? ` · ${p.current ?? 0}/${p.target}${p.unit || ''}` : ''
-            ctx.push(`  - ${p.title} [${p.type}]${due ? ` due ${due}` : ''} (${done}/${p.tasks.length} tasks)${goal}`)
+            ctx.push(`  - ${p.title} [${p.type}]${due ? ` due ${due}` : ''} (${done}/${(p.tasks || []).length} tasks)${goal}`)
           })
         }
-        if (Array.isArray(TASKS_DEMO) && TASKS_DEMO.length) {
+        if (Array.isArray(liveTasks) && liveTasks.length) {
           ctx.push('Tasks:')
           const now = Date.now()
-          TASKS_DEMO.forEach(t => {
+          liveTasks.forEach(t => {
             const dueAt = t.next_due_at ? new Date(t.next_due_at).getTime() : null
             const overdueDays = dueAt ? Math.round((now - dueAt) / 86400000) : null
             const status = overdueDays == null ? '' : overdueDays > 0 ? `${overdueDays}d overdue` : overdueDays === 0 ? 'due today' : `due in ${-overdueDays}d`
             ctx.push(`  - ${t.name} [${t.category}, ${t.importance}]${status ? ' · ' + status : ''}`)
           })
         }
-        if (Array.isArray(ROUTINES) && ROUTINES.length) {
+        if (Array.isArray(liveRoutines) && liveRoutines.length) {
           ctx.push('Routines:')
-          ROUTINES.forEach(r => ctx.push(`  - ${r.name}: ${r.items.join(', ')} (${r.weekRate})`))
+          // Decode last-7-days completion so the AI can answer questions
+          // like 'why did I skip my morning routine this week?' against
+          // the user's CURRENT marks instead of the static seed.
+          const dayLabel = (offsetFromToday) => {
+            const d = new Date(); d.setDate(d.getDate() + offsetFromToday)
+            return d.toLocaleDateString('en-US', { weekday: 'short' })
+          }
+          liveRoutines.forEach(r => {
+            const items = (r.items || []).join(', ')
+            const c14 = Array.isArray(r.completion14d) ? r.completion14d.slice(-7) : []
+            const last7 = c14.map((entry, i) => {
+              const offset = -(c14.length - 1 - i)
+              const lbl = i === c14.length - 1 ? 'today' : dayLabel(offset)
+              if (entry === true) return `${lbl}=full`
+              if (entry === false) return `${lbl}=skipped`
+              if (entry && typeof entry === 'object') return `${lbl}=${entry.done}/${entry.total}`
+              return `${lbl}=?`
+            }).join(', ')
+            const todayItems = Array.isArray(r.todayItemsDone) && r.todayItemsDone.length ? ` · today done: ${r.todayItemsDone.join(', ')}` : ''
+            ctx.push(`  - ${r.name} (${r.schedule || ''}): ${items}`)
+            if (last7) ctx.push(`    last 7 days: ${last7}${todayItems}`)
+          })
         }
         messageWithContext = `${ctx.join('\n')}\n\nUser asks: ${trimmed}`
       } catch (_) {
@@ -5069,8 +5102,8 @@ function MicButton({ listening, onToggle, disabled }) {
   )
 }
 
-function AskTab({ prefill = '', autoSend = false, onAutoSendDone, onLightenRoutine, onTaskAdded, onRoutineAdded, onTaskDeferred, onViewTask, onToast }) {
-  const { messages, input, setInput, thinking, streaming, busy, send, executeAction } = useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded, onTaskDeferred, onToast })
+function AskTab({ prefill = '', autoSend = false, onAutoSendDone, onLightenRoutine, onTaskAdded, onRoutineAdded, onTaskDeferred, onViewTask, onToast, getDemoState }) {
+  const { messages, input, setInput, thinking, streaming, busy, send, executeAction } = useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded, onTaskDeferred, onToast, getDemoState })
   const scrollRef = useRef(null)
   const { listening, toggle: toggleMic, supported: micSupported } = useMic(useCallback((text, isFinal) => { if (isFinal) send(text) }, [send]))
   useEffect(() => {
@@ -9918,8 +9951,8 @@ function HeedFAB({ onAddTask, onAskHeed, onAddRoutine }) {
 }
 
 // ── AskInlineModal ─────────────────────────────────────────────
-function AskInlineModal({ open, onClose, onLightenRoutine, onTaskAdded, onRoutineAdded, onTaskDeferred, onViewTask, prefill = '', autoSend = false, onAutoSendDone, contextPlanId = null, onToast }) {
-  const { messages, input, setInput, thinking, streaming, busy, send: rawSend, executeAction } = useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded, onTaskDeferred, onToast })
+function AskInlineModal({ open, onClose, onLightenRoutine, onTaskAdded, onRoutineAdded, onTaskDeferred, onViewTask, prefill = '', autoSend = false, onAutoSendDone, contextPlanId = null, onToast, getDemoState }) {
+  const { messages, input, setInput, thinking, streaming, busy, send: rawSend, executeAction } = useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded, onTaskDeferred, onToast, getDemoState })
   // Bind contextPlanId to every send so plan-advice mode keeps the same plan
   // attached across follow-up messages, chip clicks, and mic input.
   const send = useCallback((text) => rawSend(text, contextPlanId), [rawSend, contextPlanId])
@@ -12428,6 +12461,20 @@ export default function HeedApp() {
       .catch(() => {})
   }, [FUNCTIONS_URL])
 
+  // Snapshot the live demo-mode state for the Ask Heed context block.
+  // useChat calls this when isDemoMode() is on so the AI sees the user's
+  // CURRENT marks (today's checked items, today's completion fraction,
+  // active Low Day if any) instead of the static seeds. Returning a
+  // function-from-getter avoids a stale-closure problem if React kept
+  // an old reference to the data.
+  const getDemoState = useCallback(() => ({
+    tasks: apiTasks,
+    routines: routines,
+    plans: plansHook.plans,
+    activeContext: activeContext,
+    upcomingContexts: (apiContexts.upcoming || []).map(mapApiContext).concat(isDemoMode() ? CONTEXTS_UPCOMING_DEMO : []),
+  }), [apiTasks, routines, plansHook.plans, activeContext, apiContexts.upcoming])
+
   const handleAskHeed = useCallback((query, planId = null) => {
     const q = (query || '').trim()
     setAskPrefill(q)
@@ -13248,7 +13295,7 @@ export default function HeedApp() {
         <div key={tab} className="heed-tab-fade" style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
           {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} plans={plansHook.plans} upcomingContexts={upcomingContexts} skippedTasks={skippedTasks} userName={displayName || username} efMode={efMode} onSetEfMode={handleSetEfMode} onMarkDone={handleMarkDone} onSkip={handleSkip} onUnskip={handleUnskip} onMarkRoutineDone={handleMarkRoutineDone} onSkipRoutineToday={handleSkipRoutineToday} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAskHeed={handleAskHeed} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onAddTask={() => setModalOpen(true)} onEditTask={handleEditTask} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }} onNavigateToPlans={() => setTab('context')} onCapture={handleCaptureTask} onCaptureRoutine={handleAddRoutine} onViewTask={task => { setEditingTask(task); setModalOpen(true) }} onToast={setToast}/>}
           {tab === 'calendar' && <CalendarTab tasks={apiTasks} contexts={[...(apiContexts.active||[]), ...(apiContexts.upcoming||[])]} routines={routines} recentSkips={recentSkips} onReschedule={handleReschedule} onMarkDone={handleMarkDone} onSkip={handleSkip} onAddTask={() => setModalOpen(true)} onAddContext={() => setContextModalOpen(true)} onEditRoutine={handleEditRoutine} onApplyRetroSuggestion={handleApplyRetroSuggestion}/>}
-          {tab === 'ask' && <AskTab prefill={askPrefill} autoSend={askAutoSend} onAutoSendDone={() => { setAskAutoSend(false); setAskPrefill('') }} onLightenRoutine={handleLightenRoutine} onTaskAdded={handleTaskAdded} onRoutineAdded={handleAddRoutine} onTaskDeferred={handleTaskDeferred} onViewTask={() => setTab('context')} onToast={setToast}/>}
+          {tab === 'ask' && <AskTab prefill={askPrefill} autoSend={askAutoSend} onAutoSendDone={() => { setAskAutoSend(false); setAskPrefill('') }} onLightenRoutine={handleLightenRoutine} onTaskAdded={handleTaskAdded} onRoutineAdded={handleAddRoutine} onTaskDeferred={handleTaskDeferred} onViewTask={() => setTab('context')} onToast={setToast} getDemoState={getDemoState}/>}
           {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} plans={plansHook.plans} checkTask={plansHook.checkTask} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onMarkRoutineDay={handleMarkRoutineDay} onEditTask={handleEditTask} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }} onOpenMonthLog={id => setMonthLogRoutineId(id)}/>}
           {tab === 'context' && <LifeTab upcoming={apiContexts.upcoming} active={apiContexts.active} activeContext={activeContext} routines={routines} plansHook={plansHook} onAddContext={(data) => data?.type ? handleAddContext({ type: data.type, description: data.desc || data.description, icon: data.icon, startDate: data.startDate, endDate: data.endDate, lowDuration: data.lowDuration }) : setContextModalOpen(true)} onQuickContext={type => setQuickContextType(type)} onImBetter={() => setRecoveryOpen(true)} onExtend={handleExtendContext} onDetailOpen={handleDetailOpen} onAskHeed={handleAskHeed} onRemoveUpcoming={handleRemoveUpcoming} openPlanId={navigateToPlanId} onOpenPlanIdConsumed={() => setNavigateToPlanId(null)} addedTaskLabel={navigateToTaskLabel} onAddedTaskLabelConsumed={() => setNavigateToTaskLabel(null)}/>}
         </div>
@@ -13261,7 +13308,7 @@ export default function HeedApp() {
       <AddTaskModal open={modalOpen} onClose={() => { setModalOpen(false); setEditingTask(null) }} onSubmit={handleAddTask} onDelete={handleDeleteTask} initialData={editingTask} customCategories={customCategories}/>
       <BuildRoutineScreen open={routineModalOpen} onClose={() => { setRoutineModalOpen(false); setEditingRoutine(null); setBuildRoutineTask(null) }} onSubmit={data => handleAddRoutine(data, { navigate: true })} initialData={editingRoutine} seedTask={buildRoutineTask} tasks={displayTasks}/>
       <AddContextModal open={contextModalOpen} onClose={() => setContextModalOpen(false)} onSubmit={handleAddContext} customEventTypes={customEventTypes}/>
-      <AskInlineModal open={askOpen} onClose={() => setAskOpen(false)} onLightenRoutine={handleLightenRoutine} onTaskAdded={handleTaskAdded} onRoutineAdded={handleAddRoutine} onTaskDeferred={handleTaskDeferred} onViewTask={(task, planId) => { setAskOpen(false); setNavigateToTaskLabel(task?.name || null); if (planId) { setNavigateToPlanId(planId); setTab('context') } else { setTab('context') } }} prefill={askPrefill} autoSend={askAutoSend} onAutoSendDone={() => { setAskAutoSend(false); setAskPrefill('') }} contextPlanId={askContextPlanId} onToast={setToast}/>
+      <AskInlineModal open={askOpen} onClose={() => setAskOpen(false)} onLightenRoutine={handleLightenRoutine} onTaskAdded={handleTaskAdded} onRoutineAdded={handleAddRoutine} onTaskDeferred={handleTaskDeferred} onViewTask={(task, planId) => { setAskOpen(false); setNavigateToTaskLabel(task?.name || null); if (planId) { setNavigateToPlanId(planId); setTab('context') } else { setTab('context') } }} prefill={askPrefill} autoSend={askAutoSend} onAutoSendDone={() => { setAskAutoSend(false); setAskPrefill('') }} contextPlanId={askContextPlanId} onToast={setToast} getDemoState={getDemoState}/>
       <TaskOptionsSheet task={taskOptionsTask} onClose={() => setTaskOptionsTask(null)} onMarkDone={handleMarkDone} onSkip={handleSkip} onEdit={handleEditTask} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }}/>
       {monthLogRoutine && (
         <RoutineMonthLog

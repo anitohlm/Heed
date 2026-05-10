@@ -12567,7 +12567,19 @@ export default function HeedApp() {
       return null
     }
     const todayIso = new Date().toISOString().slice(0, 10)
-    const days = data.lowDuration || qcfg?.defaultDays || 1
+    // Low Day's lowDuration is a string key from the picker ('today' /
+    // 'few-days' / 'check-in'); other flows pass a number of days. Coerce
+    // to a number first — without this, `'today' - 1` becomes NaN and the
+    // subsequent fallbackEnd.toISOString() throws RangeError, killing
+    // the optimistic setActiveContext that should fire periwinkle.
+    const lowDurationDays = (() => {
+      const v = data.lowDuration
+      if (typeof v === 'number' && Number.isFinite(v) && v > 0) return v
+      if (v === 'few-days') return 3
+      if (v === 'today' || v === 'check-in') return 1
+      return null
+    })()
+    const days = lowDurationDays || qcfg?.defaultDays || 1
     const fallbackEnd = new Date(); fallbackEnd.setDate(fallbackEnd.getDate() + days - 1)
     const startIso = toIso(data.startDate) || todayIso
     const endIso = toIso(data.endDate) || fallbackEnd.toISOString().slice(0, 10)

@@ -407,6 +407,11 @@ const SCRIPTED_RESPONSES = {
       "Drafting a pre-trip and after-trip plan...",
     ],
     answer: `Got it — **Singapore trip Jun 5 – Jun 9** is locked in.\n\n**Before you leave:**\n• Pay Maynilad and Meralco — handle these well before you fly.\n• Submit timesheet (Friday before you leave).\n• Refill water dispenser the day before you fly.\n\n**While you're away:**\n• I'll pause your morning and evening routines automatically.\n\n**When you're back (Jun 10–12):**\n• I'll resume your routines on Jun 10 with a soft start — just the essentials.\n• Aircon cleaning can wait until that weekend.`,
+    actions: [
+      { action_type: 'add_task', emoji: '✈️', label: 'Add: Book Singapore flights', payload: { name: 'Book Singapore flights', category: 'admin', importance: 'high' } },
+      { action_type: 'add_task', emoji: '🧳', label: 'Add: Pack luggage (Jun 4)',   payload: { name: 'Pack luggage for Singapore', category: 'home', importance: 'medium' } },
+      { action_type: 'lighten_routine', emoji: '🪶', label: 'Pause routines Jun 5–9', routine_id: 'morning', payload: { duration_days: 5, preview: { remove: [{ name: 'Stretching', duration_min: 5 }, { name: 'Morning journal', duration_min: 10 }], keep: ['Vitamins', 'Coffee'] } } },
+    ],
     chips: [
       { emoji: '🍃', text: 'Lighten my routine while away' },
       { emoji: '🌾', text: 'What am I forgetting before I leave?' },
@@ -940,6 +945,23 @@ function useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded, onTaskDeferred
         setMessages(msgs => msgs.map((m, i) => i !== messageIndex ? m : {
           ...m,
           actions: m.actions.map((a, j) => j !== actionIndex ? a : { ...a, confirmed: true, summary: `Deferred to ${prettyDate}` }),
+        }))
+        return
+      }
+      if (action.action_type === 'lighten_routine') {
+        const routineId = action.routine_id || action.payload?.routine_id
+        if (routineId) onLightenRoutine?.(routineId)
+        setMessages(msgs => msgs.map((m, i) => i !== messageIndex ? m : {
+          ...m,
+          actions: m.actions.map((a, j) => j !== actionIndex ? a : { ...a, confirmed: true, summary: `Lightened ${routineId || 'routine'}` }),
+        }))
+        return
+      }
+      if (action.action_type === 'skip' || action.action_type === 'mark_done') {
+        const verb = action.action_type === 'skip' ? 'Skipped' : 'Marked done'
+        setMessages(msgs => msgs.map((m, i) => i !== messageIndex ? m : {
+          ...m,
+          actions: m.actions.map((a, j) => j !== actionIndex ? a : { ...a, confirmed: true, summary: `${verb}: ${action.label || 'task'}` }),
         }))
         return
       }

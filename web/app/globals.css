@@ -40,6 +40,36 @@ body {
   /* Clip swipe fly-off horizontal overflow. Kept on body only — setting
      overflow-x on html breaks position:fixed on iOS Safari. */
   overflow-x: hidden;
+  /* dvh is the dynamic viewport height — accounts for iOS Safari's
+     collapsing toolbar and Android's IME bar. Falls back to 100vh on
+     browsers that don't grok it. */
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* Pin html/body width to the visual viewport so a stray 100vw element,
+   wide image, or long unbroken string can never push the page wider
+   than the screen on small phones. Pairs with body overflow-x: hidden
+   as a belt-and-braces guard against horizontal bleed. */
+html, body {
+  width: 100%;
+  max-width: 100vw;
+}
+
+/* Long URLs / emails / hashtags wrap instead of pushing the layout
+   wider than the screen. Inputs and code blocks opt out — they have
+   their own scroll behaviour. */
+*:not(input):not(textarea):not(select):not(code):not(pre) {
+  overflow-wrap: anywhere;
+}
+
+/* Images never overflow their container. Cheap default that prevents
+   stray oversized assets (e.g. user-uploaded avatars before resize)
+   from forcing horizontal scroll. SVG icons are intentionally sized
+   per element, so they're excluded. */
+img, video {
+  max-width: 100%;
+  height: auto;
 }
 
 button {

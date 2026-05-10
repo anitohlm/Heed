@@ -21,3 +21,6 @@ docs/security-reports/
 
 # Submission pack — local-only working doc for the demo recording
 docs/SUBMISSION_PACK.md
+
+# Solution architecture PDF — local-only artefact, generator stays in repo
+docs/Heed-Solution-Architecture.pdf

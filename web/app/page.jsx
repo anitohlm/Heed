@@ -650,14 +650,25 @@ function useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded, onTaskDeferred
     let pendingChips = []
     let gotAnything = false
 
-    // Demo-mode short-circuit. The backend can't see DEMO_PLANS / TASKS_DEMO
-    // (they live client-side only), so a real advisor call would honestly
-    // reply "I don't see a Singapore trip in your data." For the submission
-    // demo we replay locally — scripted match → its answer, otherwise
-    // FALLBACK_RESPONSE. Outside demo mode this branch is skipped and the
-    // live advisor handles the request normally.
-    if (isDemoMode()) {
-      const scripted = SCRIPTED_RESPONSES[trimmed] || FALLBACK_RESPONSE
+    // Scripted-response short-circuit. Two trigger conditions:
+    //
+    //   1. The prompt matches a SCRIPTED_RESPONSES key — these are the
+    //      four curated demo answers (Singapore trip, "what am I
+    //      forgetting?", busy week, morning skips). They reference the
+    //      demo's tasks / contexts by name, so a live advisor call hitting
+    //      a backend without that data will honestly reply "I don't see a
+    //      Singapore trip." We always prefer the scripted answer when it
+    //      matches; non-demo users don't see these prompts in the chip
+    //      strip (filtered at the SuggestionChip level), so the only way
+    //      to hit one is by deliberately typing it.
+    //
+    //   2. isDemoMode() is on AND there's no scripted match — fall back
+    //      to FALLBACK_RESPONSE so demo mode never reaches the network.
+    //
+    // Outside both branches the live advisor handles the request normally.
+    const scriptedMatch = SCRIPTED_RESPONSES[trimmed]
+    if (scriptedMatch || isDemoMode()) {
+      const scripted = scriptedMatch || FALLBACK_RESPONSE
       if (scripted.thinking) {
         for (const step of scripted.thinking) {
           thinkingSteps.push(step)

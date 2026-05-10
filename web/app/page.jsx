@@ -4679,15 +4679,51 @@ function TodayTab({ tasks, routines, plans = [], upcomingContexts, skippedTasks 
   }, [])
   const [showAllTasks, setShowAllTasks] = useState(false)
   function scoreTask(task) {
-    let score = 0
-    if (task.overdue != null) score += task.overdue * 3
-    if (task.dueIn !== undefined) score += Math.max(0, 14 - task.dueIn)
-    if (upcomingContexts && upcomingContexts.length > 0) {
-      const contextTypes = upcomingContexts.map(c => (c.type || '').toLowerCase())
-      const cat = (task.category || '').toLowerCase()
-      if (contextTypes.some(ct => cat.includes(ct) || ct.includes(cat))) score += 5
+    // Risk-tier scoring. The previous purely-additive score was dominated by
+    // raw overdue days, so a 30-day-old toothbrush replacement (low importance)
+    // beat a 9-day-overdue electricity bill (high, disconnection risk). We
+    // bucket into tiers first so importance + category always dominate, then
+    // sort within tier by recency. Tier multiplied by 100 keeps tiers strictly
+    // separate from the intra-tier signal.
+    let tier = 0
+    const importance = task.importance || 'medium'
+    const cat = (task.category || '').toLowerCase()
+    const isOverdue = task.overdue != null && task.overdue > 0
+    const isDueToday = task.dueIn === 0
+
+    if (isOverdue) {
+      // Disconnection-risk categories (finance) get the top tier — utility
+      // bills overdue means real-world consequences (water/power cut).
+      if (importance === 'high' && cat === 'finance') tier = 7
+      // Other high-importance overdue (e.g. relationships, health)
+      else if (importance === 'high') tier = 6
+      else if (importance === 'medium') tier = 4
+      else tier = 2  // low + overdue: chronic but not urgent
+    } else if (isDueToday) {
+      if (importance === 'high') tier = 5
+      else if (importance === 'medium') tier = 3
+      else tier = 1
+    } else {
+      // Future tasks fall below everything else; the scoreTask consumers
+      // also gate them out of focusTasks via isForToday.
+      tier = importance === 'high' ? 0 : -1
     }
-    return score
+
+    // Within a tier: more overdue / closer due wins. Cap at 14 days so a
+    // forgotten task doesn't accumulate unbounded weight.
+    let intra = 0
+    if (task.overdue != null) intra = Math.min(task.overdue, 14) * 2
+    else if (task.dueIn !== undefined) intra = Math.max(0, 14 - task.dueIn)
+
+    // Small affinity bump for tasks that share a category with an upcoming
+    // context window — keeps trip-prep tasks visible as the date approaches.
+    let bonus = 0
+    if (upcomingContexts && upcomingContexts.length > 0) {
+      const ctxTypes = upcomingContexts.map(c => (c.type || '').toLowerCase())
+      if (ctxTypes.some(ct => cat.includes(ct) || ct.includes(cat))) bonus = 1
+    }
+
+    return tier * 100 + intra + bonus
   }
   const scoredTasks = tasks.map(t => ({ task: t, score: scoreTask(t) })).sort((a, b) => b.score - a.score)
   // Focus today = ONLY tasks for today: overdue (need handling now) or due today.

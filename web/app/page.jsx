@@ -1016,7 +1016,7 @@ function SettingsRow({ children, last = false, onClick }) {
   )
 }
 
-function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, customCategories, onAddCategory, customEventTypes, onAddEventType, onResetAllData, onLoadDemoData, onSwitchToRealData, efMode, onSetEfMode, avatar, onAvatarChange, onClearChatToday, onClearChatAll }) {
+function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, customCategories, onAddCategory, customEventTypes, onAddEventType, onResetAllData, onLoadDemoData, onSwitchToRealData, efMode, onSetEfMode, avatar, onAvatarChange, onClearChatToday, onClearChatAll, onSignOut }) {
   const [nameVal, setNameVal] = useState(userName)
   const [nameSaved, setNameSaved] = useState(false)
   const [pendingTheme, setPendingTheme] = useState(theme)
@@ -1031,7 +1031,7 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
   const [avatarUploading, setAvatarUploading] = useState(false)
   const [avatarError, setAvatarError] = useState('')
   // Which destructive confirmation sheet is open. null when none.
-  const [confirmSheet, setConfirmSheet] = useState(null) // 'demo' | 'reset' | null
+  const [confirmSheet, setConfirmSheet] = useState(null) // 'demo' | 'reset' | 'signout' | null
   const fileInputRef = useRef(null)
 
   useEffect(() => {
@@ -1271,6 +1271,39 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
                   }
                 </div>
               </div>
+              {/* Sign out — bottom of the Profile group, separated by a
+                  hairline. Uses the existing ConfirmSheet pattern since
+                  sign-out is locally destructive (clears identity, sends
+                  the user back to the username gate). */}
+              {onSignOut && (
+                <div style={{ borderTop: `1px solid ${C.hairline}` }}>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmSheet('signout')}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 12,
+                      width: '100%', padding: '13px 16px',
+                      background: 'transparent', border: 'none',
+                      cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+                      transition: 'background 0.12s',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = C.bellySoft }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                  >
+                    {iconTile(
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" stroke={C.inkSoft} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>,
+                      C.bellySoft
+                    )}
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 15, color: C.ink, fontWeight: 500 }}>Sign out</div>
+                      <div style={{ fontSize: 12, color: C.inkSoft, marginTop: 1 }}>Return to the username screen</div>
+                    </div>
+                    <span style={{ color: C.inkMute, fontSize: 18, flexShrink: 0 }}>›</span>
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Appearance */}
@@ -1704,6 +1737,16 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
         cancelLabel="Cancel"
         tone="rust"
         onConfirm={onResetAllData}
+        onClose={() => setConfirmSheet(null)}
+      />
+      <ConfirmSheet
+        open={confirmSheet === 'signout'}
+        title="Sign out of Heed?"
+        body="Heed will return you to the username screen. Your tasks, routines, and plans stay safe on the server — sign back in any time to pick them up."
+        confirmLabel="Sign out"
+        cancelLabel="Cancel"
+        tone="warm"
+        onConfirm={onSignOut}
         onClose={() => setConfirmSheet(null)}
       />
     </>
@@ -11725,6 +11768,20 @@ export default function HeedApp() {
     window.location.reload()
   }, [])
 
+  // Sign out — clears identity locally and returns to UsernameGate. The
+  // server data is untouched, so the user can sign back in with the same
+  // username and pick up where they left off. Theme + per-device prefs
+  // stay (those aren't identity). Demo mode flag clears so a fresh
+  // sign-in lands on the welcome modal again.
+  const handleSignOut = useCallback(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const IDENTITY_KEYS = ['heed.username', 'heed.display-name', 'heed.auth-token', 'heed.avatar', 'heed.welcome-seen', 'heed.use-demo', 'heed.chat-history.v1', 'heed_plans']
+      IDENTITY_KEYS.forEach(k => localStorage.removeItem(k))
+    } catch (_) {}
+    window.location.reload()
+  }, [])
+
   // succeeded so the sheet can mark it as ✓. Phase 2 wires adjust_cadence
   // (PATCH /api/tasks/{id}); other action_types fall through to no-op.
   const handleApplyRetroSuggestion = useCallback(async (suggestion) => {
@@ -12335,7 +12392,7 @@ export default function HeedApp() {
         onAskHeed={handleAskHeed}
       />
       <ShareCardSheet routine={shareCtx} onClose={handleShareClose}/>
-      <SettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} userName={displayName} onUserName={name => setDisplayName(name)} theme={theme} onTheme={handleSetTheme} customCategories={customCategories} onAddCategory={cat => setCustomCategories(cs => [...cs, cat])} customEventTypes={customEventTypes} onAddEventType={evt => setCustomEventTypes(es => [...es, evt])} onResetAllData={handleResetAllData} onLoadDemoData={handleLoadDemoData} onSwitchToRealData={handleSwitchToRealData} efMode={efMode} onSetEfMode={handleSetEfMode} avatar={avatar} onAvatarChange={handleAvatarChange} onClearChatToday={() => {
+      <SettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} userName={displayName} onUserName={name => setDisplayName(name)} theme={theme} onTheme={handleSetTheme} customCategories={customCategories} onAddCategory={cat => setCustomCategories(cs => [...cs, cat])} customEventTypes={customEventTypes} onAddEventType={evt => setCustomEventTypes(es => [...es, evt])} onResetAllData={handleResetAllData} onLoadDemoData={handleLoadDemoData} onSwitchToRealData={handleSwitchToRealData} onSignOut={handleSignOut} efMode={efMode} onSetEfMode={handleSetEfMode} avatar={avatar} onAvatarChange={handleAvatarChange} onClearChatToday={() => {
         try {
           const raw = localStorage.getItem('heed.chat-history.v1')
           if (raw) {

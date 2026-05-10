@@ -12741,6 +12741,19 @@ export default function HeedApp() {
         heldTaskIds,
       })
     }
+    // In demo mode, skip the network round-trip entirely. The previous
+    // code POSTed to /api/context and then refetched, which on the
+    // deployed site (where chelle has real auth and a populated Cosmos
+    // bucket) pulled stale prior contexts into apiContexts.active and
+    // tripped the hydration effect — overwriting the just-activated
+    // Low Day with whatever was at the top of chelle's saved list
+    // (usually a stale busy from an earlier test). The optimistic
+    // setActiveContext above already did the work; nothing else needs
+    // to happen in demo.
+    if (isDemoMode()) {
+      setToast({ message: "Noted. I'll plan around it." })
+      return
+    }
     try {
       const resp = await fetch(`${FUNCTIONS_URL}/api/context`, {
         method: 'POST',

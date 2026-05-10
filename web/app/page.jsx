@@ -8000,6 +8000,12 @@ function EventsPanel({ allUpcoming, activeContext, routines = [], onAddContext, 
   const [newEventType, setNewEventType] = useState('sick')
   const [newEventDesc, setNewEventDesc] = useState('')
   const [newLowDuration, setNewLowDuration] = useState('today')
+  // ISO yyyy-mm-dd strings driven by the <input type="date"> fields.
+  // Previously these inputs were uncontrolled, which meant any date the
+  // user picked was discarded — and the save flow's modal handler also
+  // never called onAddContext, so non-Low events silently never persisted.
+  const [newEventStart, setNewEventStart] = useState('')
+  const [newEventEnd, setNewEventEnd] = useState('')
   const [deferredResults, setDeferredResults] = useState({})
   const [summaryItems, setSummaryItems] = useState([])
   const [recoveryWantDeferred, setRecoveryWantDeferred] = useState(false)
@@ -8092,6 +8098,23 @@ function EventsPanel({ allUpcoming, activeContext, routines = [], onAddContext, 
 
   function handleApplySaveConfirm() {
     if (newEventType === 'low') { setModal(null); setScreen(null); return }
+    // Non-Low events are persisted here, not in handleSaveEvent — that
+    // function only opens the confirmation sheet. Without this call,
+    // adding a Travel/Busy/Sick/Celebration event with dates silently
+    // never went anywhere (it never appeared in Upcoming).
+    const name = newEventDesc.trim() || evtCfg(newEventType).label
+    const cfg = evtCfg(newEventType)
+    onAddContext?.({
+      type: newEventType,
+      desc: name,
+      icon: cfg.icon || '📍',
+      startDate: newEventStart || null,
+      endDate: newEventEnd || newEventStart || null,
+    })
+    // Reset form so the next "+ Add event" starts clean.
+    setNewEventDesc('')
+    setNewEventStart('')
+    setNewEventEnd('')
     const items = buildSaveConfirmItems(null)
     setSummaryItems(items)
     setModal('conflict-summary')
@@ -8547,12 +8570,14 @@ function EventsPanel({ allUpcoming, activeContext, routines = [], onAddContext, 
               <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 6 }}>Description <span style={{ fontWeight: 400, textTransform: 'none', fontSize: 10, letterSpacing: 0 }}>(optional)</span></div>
               <input value={newEventDesc} onChange={e => setNewEventDesc(e.target.value)} placeholder={evtCfg(newEventType).placeholder} style={{ width: '100%', padding: '11px 14px', background: C.paperHi, border: `1.5px solid ${C.border}`, borderRadius: 10, color: C.ink, fontSize: 14, fontFamily: 'inherit', outline: 'none', marginBottom: 16, boxSizing: 'border-box' }} onFocus={e => e.target.style.borderColor = C.warmDark} onBlur={e => e.target.style.borderColor = C.border}/>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 18 }}>
-                {['Start', 'End'].map((lbl, i) => (
-                  <div key={lbl}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 6 }}>{lbl}{i === 1 && <span style={{ fontWeight: 400, textTransform: 'none', fontSize: 10, letterSpacing: 0 }}> (optional)</span>}</div>
-                    <input type="date" style={{ width: '100%', padding: '10px 12px', background: C.paperHi, border: `1.5px solid ${C.border}`, borderRadius: 10, color: C.ink, fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}/>
-                  </div>
-                ))}
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 6 }}>Start</div>
+                  <input type="date" value={newEventStart} onChange={e => setNewEventStart(e.target.value)} style={{ width: '100%', padding: '10px 12px', background: C.paperHi, border: `1.5px solid ${C.border}`, borderRadius: 10, color: C.ink, fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}/>
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 6 }}>End <span style={{ fontWeight: 400, textTransform: 'none', fontSize: 10, letterSpacing: 0 }}>(optional)</span></div>
+                  <input type="date" value={newEventEnd} onChange={e => setNewEventEnd(e.target.value)} style={{ width: '100%', padding: '10px 12px', background: C.paperHi, border: `1.5px solid ${C.border}`, borderRadius: 10, color: C.ink, fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}/>
+                </div>
               </div>
             </>
           )}
@@ -8866,8 +8891,14 @@ function LifeTab({ upcoming, active, activeContext, routines, plansHook, onAddCo
   // them here was double-rendering Low Day records (banner + duplicate
   // upcoming card per record).
   const apiUpcoming = (upcoming || []).map(mapApiContext)
-  const allUpcoming = (apiUpcoming.length > 0 ? apiUpcoming : (isDemoMode() ? CONTEXTS_UPCOMING_DEMO : []))
-    .filter(c => !hiddenLocalIds.has(c.id || c.desc))
+  // In demo mode, always show the seeded upcoming events alongside any
+  // user-added ones so the Singapore trip / sister's graduation stay
+  // visible after the user adds their own. Outside demo mode the API
+  // is the only source.
+  const allUpcoming = (isDemoMode()
+    ? [...apiUpcoming, ...CONTEXTS_UPCOMING_DEMO]
+    : apiUpcoming
+  ).filter(c => !hiddenLocalIds.has(c.id || c.desc))
   return (
     <div>
       {/* The 'Life' title + subtitle now live in the global page header
@@ -12470,17 +12501,45 @@ export default function HeedApp() {
     }
 
     const body = { context_type: apiType, start_date: startIso, end_date: endIso, description: desc }
-    // Optimistic local update so the UI responds immediately
-    const heldTaskIds = apiTasks.filter(t => t.status === 'active' && !dismissedIds.has(t.id)).map(t => t.id)
-    setActiveContext({
-      id: `ctx-${Date.now()}`,
-      type: data.type,
-      label: desc,
-      icon: data.icon || ecfg?.icon || qcfg?.icon || '📍',
-      startDate: new Date(startIso),
-      endDate: new Date(endIso),
-      heldTaskIds,
-    })
+    // Decide whether this event is starting now (→ activeContext, banner +
+    // periwinkle for Low Day) or scheduled for later (→ apiContexts.upcoming
+    // so it shows in the Events tab's Upcoming list). Without this branch,
+    // a Travel event scheduled three weeks out was setting activeContext to
+    // a future-dated record and never appearing in Upcoming.
+    const startDay = new Date(startIso + 'T00:00:00')
+    const todayMidnight = new Date()
+    todayMidnight.setHours(0, 0, 0, 0)
+    const isFutureEvent = startDay.getTime() > todayMidnight.getTime()
+
+    if (isFutureEvent) {
+      const optimisticId = `ctx-${Date.now()}`
+      setApiContexts(c => ({
+        ...c,
+        upcoming: [
+          ...(c.upcoming || []),
+          {
+            id: optimisticId,
+            context_type: apiType,
+            start_date: startIso,
+            end_date: endIso,
+            description: desc,
+          },
+        ],
+      }))
+      setToast({ message: `Added to Upcoming.` })
+    } else {
+      // Optimistic local update so the UI responds immediately
+      const heldTaskIds = apiTasks.filter(t => t.status === 'active' && !dismissedIds.has(t.id)).map(t => t.id)
+      setActiveContext({
+        id: `ctx-${Date.now()}`,
+        type: data.type,
+        label: desc,
+        icon: data.icon || ecfg?.icon || qcfg?.icon || '📍',
+        startDate: new Date(startIso),
+        endDate: new Date(endIso),
+        heldTaskIds,
+      })
+    }
     try {
       const resp = await fetch(`${FUNCTIONS_URL}/api/context`, {
         method: 'POST',
@@ -12977,7 +13036,7 @@ export default function HeedApp() {
           {tab === 'calendar' && <CalendarTab tasks={apiTasks} contexts={[...(apiContexts.active||[]), ...(apiContexts.upcoming||[])]} routines={routines} recentSkips={recentSkips} onReschedule={handleReschedule} onMarkDone={handleMarkDone} onSkip={handleSkip} onAddTask={() => setModalOpen(true)} onAddContext={() => setContextModalOpen(true)} onEditRoutine={handleEditRoutine} onApplyRetroSuggestion={handleApplyRetroSuggestion}/>}
           {tab === 'ask' && <AskTab prefill={askPrefill} autoSend={askAutoSend} onAutoSendDone={() => { setAskAutoSend(false); setAskPrefill('') }} onLightenRoutine={handleLightenRoutine} onTaskAdded={handleTaskAdded} onRoutineAdded={handleAddRoutine} onTaskDeferred={handleTaskDeferred} onViewTask={() => setTab('context')} onToast={setToast}/>}
           {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} plans={plansHook.plans} checkTask={plansHook.checkTask} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onMarkRoutineDay={handleMarkRoutineDay} onEditTask={handleEditTask} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }} onOpenMonthLog={id => setMonthLogRoutineId(id)}/>}
-          {tab === 'context' && <LifeTab upcoming={apiContexts.upcoming} active={apiContexts.active} activeContext={activeContext} routines={routines} plansHook={plansHook} onAddContext={(data) => data?.type ? handleAddContext({ type: data.type, description: data.desc || data.description, icon: data.icon }) : setContextModalOpen(true)} onQuickContext={type => setQuickContextType(type)} onImBetter={() => setRecoveryOpen(true)} onExtend={handleExtendContext} onDetailOpen={handleDetailOpen} onAskHeed={handleAskHeed} onRemoveUpcoming={handleRemoveUpcoming} openPlanId={navigateToPlanId} onOpenPlanIdConsumed={() => setNavigateToPlanId(null)} addedTaskLabel={navigateToTaskLabel} onAddedTaskLabelConsumed={() => setNavigateToTaskLabel(null)}/>}
+          {tab === 'context' && <LifeTab upcoming={apiContexts.upcoming} active={apiContexts.active} activeContext={activeContext} routines={routines} plansHook={plansHook} onAddContext={(data) => data?.type ? handleAddContext({ type: data.type, description: data.desc || data.description, icon: data.icon, startDate: data.startDate, endDate: data.endDate, lowDuration: data.lowDuration }) : setContextModalOpen(true)} onQuickContext={type => setQuickContextType(type)} onImBetter={() => setRecoveryOpen(true)} onExtend={handleExtendContext} onDetailOpen={handleDetailOpen} onAskHeed={handleAskHeed} onRemoveUpcoming={handleRemoveUpcoming} openPlanId={navigateToPlanId} onOpenPlanIdConsumed={() => setNavigateToPlanId(null)} addedTaskLabel={navigateToTaskLabel} onAddedTaskLabelConsumed={() => setNavigateToTaskLabel(null)}/>}
         </div>
       </main>
 

@@ -1307,7 +1307,7 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
             </div>
 
             {/* Appearance */}
-            {secLabel('Appearance', null, '🎨')}
+            {secLabel('Appearance', 'How Heed looks across the app', '🎨')}
             <div style={group}>
               <SettingsRow last>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1 }}>
@@ -1330,8 +1330,66 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
               </SettingsRow>
             </div>
 
+            {/* Focus mode toggle — surfaces "Just one thing" mode for crash
+                days. Same flag the Today header toggles, so this is a calm
+                discoverability path for users who don't notice the inline pill. */}
+            {secLabel('Focus', 'Strip Today down on rough days', '🎯')}
+            <div style={group}>
+              <SettingsRow last
+                onClick={() => onSetEfMode?.(!efMode)}>
+                {iconTile(
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="9" stroke={C.warmDark} strokeWidth="1.6"/>
+                    <circle cx="12" cy="12" r="3.5" fill={C.warmDark}/>
+                  </svg>,
+                  C.warmDark + '18'
+                )}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 15, color: C.ink, fontWeight: 500 }}>Just one thing</div>
+                  <div style={{ fontSize: 13, color: C.inkSoft, marginTop: 3, lineHeight: 1.45 }}>
+                    Today shows only the single most important task. For crash days when a full list overwhelms.
+                  </div>
+                </div>
+                {/* Switch — 46×28 pill (was 38×22). On=sage (semantic positive
+                    state, matches streaks / ✓ accents). Wrapped in a 44pt
+                    hit-area so tap target meets iOS HIG / Material even though
+                    the visible pill is narrower. role="switch" + aria-checked
+                    so screen readers announce on/off (was aria-hidden before). */}
+                <span style={{
+                  flexShrink: 0,
+                  display: 'inline-flex',
+                  alignItems: 'center', justifyContent: 'center',
+                  minWidth: 56, height: 44,
+                  marginRight: -8,
+                }}>
+                  <span
+                    role="switch"
+                    aria-checked={efMode ? 'true' : 'false'}
+                    aria-label={`Just one thing mode${efMode ? ', on' : ', off'}`}
+                    style={{
+                      width: 46, height: 28,
+                      borderRadius: 999,
+                      background: efMode ? C.sage : C.border,
+                      position: 'relative',
+                      transition: 'background 0.18s',
+                    }}>
+                    <span aria-hidden="true" style={{
+                      position: 'absolute',
+                      top: 3,
+                      left: efMode ? 21 : 3,
+                      width: 22, height: 22,
+                      borderRadius: '50%',
+                      background: C.cream,
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.28)',
+                      transition: 'left 0.18s cubic-bezier(0.32,0.72,0,1)',
+                    }}/>
+                  </span>
+                </span>
+              </SettingsRow>
+            </div>
+
             {/* Task Categories */}
-            {secLabel('Task Categories', 'Used to tag and group your tasks', '🏷')}
+            {secLabel('Task Categories', 'Tag and group your tasks', '🏷')}
             <div style={group}>
               {builtinCategories.map((cat, i) => (
                 <SettingsRow key={cat.id} last={i === builtinCategories.length - 1 && customCategories.length === 0 && !catOpen}>
@@ -1437,66 +1495,8 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
               )}
             </div>
 
-            {/* Focus mode toggle — surfaces "Just one thing" mode for crash
-                days. Same flag the Today header toggles, so this is a calm
-                discoverability path for users who don't notice the inline pill. */}
-            {secLabel('Focus', null, '🎯')}
-            <div style={group}>
-              <SettingsRow last
-                onClick={() => onSetEfMode?.(!efMode)}>
-                {iconTile(
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-                    <circle cx="12" cy="12" r="9" stroke={C.warmDark} strokeWidth="1.6"/>
-                    <circle cx="12" cy="12" r="3.5" fill={C.warmDark}/>
-                  </svg>,
-                  C.warmDark + '18'
-                )}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 15, color: C.ink, fontWeight: 500 }}>Just one thing</div>
-                  <div style={{ fontSize: 13, color: C.inkSoft, marginTop: 3, lineHeight: 1.45 }}>
-                    Today shows only the single most important task. For crash days when a full list overwhelms.
-                  </div>
-                </div>
-                {/* Switch — 46×28 pill (was 38×22). On=sage (semantic positive
-                    state, matches streaks / ✓ accents). Wrapped in a 44pt
-                    hit-area so tap target meets iOS HIG / Material even though
-                    the visible pill is narrower. role="switch" + aria-checked
-                    so screen readers announce on/off (was aria-hidden before). */}
-                <span style={{
-                  flexShrink: 0,
-                  display: 'inline-flex',
-                  alignItems: 'center', justifyContent: 'center',
-                  minWidth: 56, height: 44,
-                  marginRight: -8,
-                }}>
-                  <span
-                    role="switch"
-                    aria-checked={efMode ? 'true' : 'false'}
-                    aria-label={`Just one thing mode${efMode ? ', on' : ', off'}`}
-                    style={{
-                      width: 46, height: 28,
-                      borderRadius: 999,
-                      background: efMode ? C.sage : C.border,
-                      position: 'relative',
-                      transition: 'background 0.18s',
-                    }}>
-                    <span aria-hidden="true" style={{
-                      position: 'absolute',
-                      top: 3,
-                      left: efMode ? 21 : 3,
-                      width: 22, height: 22,
-                      borderRadius: '50%',
-                      background: C.cream,
-                      boxShadow: '0 1px 3px rgba(0,0,0,0.28)',
-                      transition: 'left 0.18s cubic-bezier(0.32,0.72,0,1)',
-                    }}/>
-                  </span>
-                </span>
-              </SettingsRow>
-            </div>
-
             {/* Demo data — toggle between demo and real data modes */}
-            {secLabel('Demo data', null, '✨')}
+            {secLabel('Demo data', 'Try a curated sample or your own', '✨')}
             {isDemoMode() ? (
               <div style={{
                 background: C.paper,
@@ -1607,7 +1607,7 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
             )}
 
             {/* Heed AI */}
-            {secLabel('Heed AI', null, '🦉')}
+            {secLabel('Heed AI', 'Clear chat history with the owl', '🦉')}
             <div style={group}>
               <SettingsRow onClick={() => { onClearChatToday?.(); onClose() }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1 }}>
@@ -1638,7 +1638,7 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
             {/* Danger zone — pulled out of the standard list group so the
                 destructive action has visual weight, breathing room, and a
                 clear "this is different" treatment. */}
-            {secLabel('Danger zone', null, '⚠️')}
+            {secLabel('Danger zone', 'Wipe everything and start fresh', '⚠️')}
             <div style={{
               background: C.paper,
               border: `1px solid ${C.rust}55`,
@@ -1696,7 +1696,7 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
             </div>
 
             {/* About */}
-            {secLabel('About', null, '✦')}
+            {secLabel('About', 'Heed and the people behind it', '✦')}
             <div style={group}>
               <SettingsRow>
                 {iconTile(

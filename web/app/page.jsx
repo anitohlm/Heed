@@ -124,16 +124,25 @@ const TASKS_DEMO = (() => {
   const from = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString() }
   return [
     // Daily — due today (dueIn === 0)
-    { id: 'demo_today_1', status: 'active', name: 'Take vitamins',         category: 'health', importance: 'high',   next_due_at: ago(0), last_done_at: ago(1), explicit_cadence_days: 1 },
-    { id: 'demo_today_2', status: 'active', name: 'Drink 8 cups of water', category: 'health', importance: 'medium', next_due_at: ago(0), last_done_at: ago(1), explicit_cadence_days: 1 },
-    { id: 'demo_today_3', status: 'active', name: 'Quick journal',         category: 'health', importance: 'low',    next_due_at: ago(0), last_done_at: ago(1), explicit_cadence_days: 1 },
-    // Overdue
-    { id: 'demo_over_1',  status: 'active', name: 'Pay electricity bill',   category: 'finance',       importance: 'high',   next_due_at: ago(3), last_done_at: ago(33), explicit_cadence_days: 30 },
-    { id: 'demo_over_2',  status: 'active', name: 'Call Mom',               category: 'relationships', importance: 'high',   next_due_at: ago(2), last_done_at: ago(9),  learned_cadence_days: 7 },
+    { id: 'demo_today_1',  status: 'active', name: 'Take vitamins',         category: 'health', importance: 'high',   next_due_at: ago(0), last_done_at: ago(1), explicit_cadence_days: 1 },
+    { id: 'demo_today_2',  status: 'active', name: 'Drink 8 cups of water', category: 'health', importance: 'medium', next_due_at: ago(0), last_done_at: ago(1), explicit_cadence_days: 1 },
+    { id: 'demo_today_3',  status: 'active', name: 'Quick journal',         category: 'health', importance: 'low',    next_due_at: ago(0), last_done_at: ago(1), explicit_cadence_days: 1 },
+    // Overdue — these match the "What am I forgetting?" scripted answer
+    // (Maynilad 19 over, Meralco 9 over, Call Mom 17 over). Renaming
+    // mattered: in PH context the water bill = Maynilad and the power bill
+    // = Meralco, so the AI's reply lands as "yes, that's actually my data"
+    // when the demo is recorded.
+    { id: 'demo_maynilad', status: 'active', name: 'Pay Maynilad bill',     category: 'finance',       importance: 'high',   next_due_at: ago(19), last_done_at: ago(49), explicit_cadence_days: 30 },
+    { id: 'demo_meralco',  status: 'active', name: 'Pay Meralco bill',      category: 'finance',       importance: 'high',   next_due_at: ago(9),  last_done_at: ago(39), explicit_cadence_days: 30 },
+    { id: 'demo_callmom',  status: 'active', name: 'Call Mom',              category: 'relationships', importance: 'high',   next_due_at: ago(17), last_done_at: ago(24), learned_cadence_days: 7 },
     // Upcoming
-    { id: 'demo_up_1',    status: 'active', name: 'Refill water dispenser', category: 'home',          importance: 'medium', next_due_at: from(2), last_done_at: ago(12), explicit_cadence_days: 14 },
-    { id: 'demo_up_2',    status: 'active', name: 'Clean bathroom',         category: 'home',          importance: 'medium', next_due_at: from(4), last_done_at: ago(10), explicit_cadence_days: 14 },
-    { id: 'demo_up_3',    status: 'active', name: 'Back up photos',         category: 'admin',         importance: 'low',    next_due_at: from(7), last_done_at: ago(23), explicit_cadence_days: 30 },
+    { id: 'demo_up_1',     status: 'active', name: 'Refill water dispenser',category: 'home',          importance: 'medium', next_due_at: from(2),  last_done_at: ago(12),  explicit_cadence_days: 14 },
+    { id: 'demo_up_2',     status: 'active', name: 'Clean bathroom',        category: 'home',          importance: 'medium', next_due_at: from(4),  last_done_at: ago(10),  explicit_cadence_days: 14 },
+    { id: 'demo_up_3',     status: 'active', name: 'Back up photos',        category: 'admin',         importance: 'low',    next_due_at: from(7),  last_done_at: ago(23),  explicit_cadence_days: 30 },
+    // Longer-cadence — "easier wins" the scripted advisor surfaces
+    { id: 'demo_aircon',   status: 'active', name: 'Clean aircon filter',   category: 'home',          importance: 'medium', next_due_at: from(6),  last_done_at: ago(78),  explicit_cadence_days: 84 },
+    { id: 'demo_brush',    status: 'active', name: 'Change toothbrush',     category: 'self_care',     importance: 'low',    next_due_at: ago(30),  last_done_at: ago(120), explicit_cadence_days: 90 },
+    { id: 'demo_timesheet',status: 'active', name: 'Submit timesheet',      category: 'work',          importance: 'high',   next_due_at: from(5),  last_done_at: ago(2),   explicit_cadence_days: 7 },
   ]
 })()
 
@@ -619,6 +628,37 @@ function useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded, onTaskDeferred
     const pendingActions = []
     let pendingChips = []
     let gotAnything = false
+
+    // Demo-mode short-circuit. The backend can't see DEMO_PLANS / TASKS_DEMO
+    // (they live client-side only), so a real advisor call would honestly
+    // reply "I don't see a Singapore trip in your data." For the submission
+    // demo we replay locally — scripted match → its answer, otherwise
+    // FALLBACK_RESPONSE. Outside demo mode this branch is skipped and the
+    // live advisor handles the request normally.
+    if (isDemoMode()) {
+      const scripted = SCRIPTED_RESPONSES[trimmed] || FALLBACK_RESPONSE
+      if (scripted.thinking) {
+        for (const step of scripted.thinking) {
+          thinkingSteps.push(step)
+          setThinking([...thinkingSteps])
+          await new Promise(r => setTimeout(r, 650))
+        }
+      }
+      setThinking(null)
+      const words = scripted.answer.split(/(\s+)/)
+      for (const w of words) {
+        if (!w) continue
+        finalText += w
+        setStreaming(finalText)
+        await new Promise(r => setTimeout(r, 14))
+      }
+      ;(scripted.actions || []).forEach(a => pendingActions.push(a))
+      pendingChips = scripted.chips || []
+      setMessages(m => [...m, { role: 'assistant', content: finalText, actions: pendingActions, chips: pendingChips, ts: Date.now() }])
+      setStreaming('')
+      setBusy(false)
+      return
+    }
 
     const abortCtrl = new AbortController()
     const abortTimer = setTimeout(() => abortCtrl.abort(), 20000)

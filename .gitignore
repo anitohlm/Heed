@@ -11,7 +11,7 @@ local.settings.json
 *.log
 .DS_Store
 *.tmp
-.claude/worktrees/
+.claude/
 # Word lock files — auto-created when a .docx is open, should never be tracked
 ~$*.docx
 

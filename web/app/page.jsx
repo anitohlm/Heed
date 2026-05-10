@@ -870,6 +870,27 @@ function useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded, onTaskDeferred
       parsePlanAdviceActions(finalText, contextPlanId).forEach(a => pendingActions.push(a))
     }
 
+    // Demo-mode action backstop. The live advisor occasionally answers a
+    // scripted prompt with prose only — no propose_action emitted — which
+    // makes the demo look passive (no confirm chips). When we know the
+    // prompt has curated actions, surface them alongside the AI text. We
+    // also pull in the curated chips when the AI didn't emit any of those.
+    if (isDemoMode() && finalText && gotAnything) {
+      const curated = SCRIPTED_RESPONSES[trimmed] || (
+        trimmed.startsWith('Give me advice on this plan:')
+          ? PLAN_ADVICE_RESPONSES[trimmed.split('\n').find(l => l.startsWith('Plan: '))?.replace('Plan: ', '').trim() || '']
+          : null
+      )
+      if (curated) {
+        if (pendingActions.length === 0 && Array.isArray(curated.actions)) {
+          curated.actions.forEach(a => pendingActions.push(a))
+        }
+        if (pendingChips.length === 0 && Array.isArray(curated.chips)) {
+          pendingChips = curated.chips
+        }
+      }
+    }
+
     setThinking(null)
     setMessages(m => [...m, { role: 'assistant', content: finalText, actions: pendingActions, chips: pendingChips, ts: Date.now() }])
     setStreaming('')

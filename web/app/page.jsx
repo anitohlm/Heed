@@ -4013,7 +4013,7 @@ function entryForDate(routine, date, today, liveTotal) {
 }
 
 // ── RoutineCard ────────────────────────────────────────────────
-function RoutineCard({ routine, delay = 0, onMarkDone, onLighten, onEdit, onShare, onMarkDay }) {
+function RoutineCard({ routine, delay = 0, onMarkDone, onLighten, onEdit, onShare, onMarkDay, onOpenMonthLog }) {
   const [hover, setHover] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [statsOpen, setStatsOpen] = useState(false)
@@ -4255,6 +4255,18 @@ function RoutineCard({ routine, delay = 0, onMarkDone, onLighten, onEdit, onShar
           <div style={{ marginLeft: 8, fontSize: 10, color: C.inkMute, fontStyle: 'italic' }}>today →</div>
         </div>
       </div>
+      {onOpenMonthLog && (
+        <button onClick={() => onOpenMonthLog(routine.id)}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            width: '100%', marginTop: 4, marginBottom: 8, padding: '8px 0',
+            borderTop: `1px solid ${C.hairline}`,
+            background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+          }}>
+          <span style={{ fontSize: 12, color: C.warmDark, fontWeight: 600 }}>📊 See month log</span>
+          <span style={{ fontSize: 16, color: C.inkMute, fontWeight: 700 }}>›</span>
+        </button>
+      )}
       {routine.lightenedItems?.length ? (
         <div style={{ background: C.sageSoft, border: `1px solid ${C.sage}44`, borderRadius: 10, padding: '10px 14px', animation: 'heed-fadeIn 0.3s ease' }}>
           <div style={{ fontSize: 12.5, fontWeight: 700, color: C.sage, marginBottom: 8 }}>✓ Lightened for this week</div>
@@ -5021,7 +5033,7 @@ function SegmentButton({ active, onClick, label, count, accent }) {
   )
 }
 
-function TracksTab({ tasks, routines, plans, checkTask, onMarkDone, onSkip, onMarkRoutineDone, onLightenRoutine, onEditRoutine, onAddTask, onAddRoutine, onMoreOptions, onShareCard, onMarkRoutineDay, onEditTask, onAddToRoutine, onBuildRoutine }) {
+function TracksTab({ tasks, routines, plans, checkTask, onMarkDone, onSkip, onMarkRoutineDone, onLightenRoutine, onEditRoutine, onAddTask, onAddRoutine, onMoreOptions, onShareCard, onMarkRoutineDay, onEditTask, onAddToRoutine, onBuildRoutine, onOpenMonthLog }) {
   const [subtab, setSubtab] = useState('routines')
   const [filter, setFilter] = useState('all')
   const [sortBy, setSortBy] = useState('due')
@@ -5081,7 +5093,7 @@ function TracksTab({ tasks, routines, plans, checkTask, onMarkDone, onSkip, onMa
               </div>
             </div>
           ) : (
-            routines.map((r, i) => <RoutineCard key={r.id} routine={r} delay={i * 50} onMarkDone={onMarkRoutineDone} onLighten={onLightenRoutine} onEdit={onEditRoutine} onShare={onShareCard} onMarkDay={onMarkRoutineDay}/>)
+            routines.map((r, i) => <RoutineCard key={r.id} routine={r} delay={i * 50} onMarkDone={onMarkRoutineDone} onLighten={onLightenRoutine} onEdit={onEditRoutine} onShare={onShareCard} onMarkDay={onMarkRoutineDay} onOpenMonthLog={onOpenMonthLog}/>)
           )}
         </div>
       )}
@@ -11777,6 +11789,8 @@ export default function HeedApp() {
   const [askOpen, setAskOpen] = useState(false)
   const [routineModalOpen, setRoutineModalOpen] = useState(false)
   const [editingRoutine, setEditingRoutine] = useState(null)
+  const [monthLogRoutineId, setMonthLogRoutineId] = useState(null)
+  const monthLogRoutine = monthLogRoutineId ? routines.find(r => r.id === monthLogRoutineId) : null
   const [contextModalOpen, setContextModalOpen] = useState(false)
   const [taskOptionsTask, setTaskOptionsTask] = useState(null)
   const [addToRoutineTask, setAddToRoutineTask] = useState(null)
@@ -12859,7 +12873,7 @@ export default function HeedApp() {
           {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} plans={plansHook.plans} upcomingContexts={upcomingContexts} skippedTasks={skippedTasks} userName={displayName || username} efMode={efMode} onSetEfMode={handleSetEfMode} onMarkDone={handleMarkDone} onSkip={handleSkip} onUnskip={handleUnskip} onMarkRoutineDone={handleMarkRoutineDone} onSkipRoutineToday={handleSkipRoutineToday} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAskHeed={handleAskHeed} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onAddTask={() => setModalOpen(true)} onEditTask={handleEditTask} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }} onNavigateToPlans={() => setTab('context')} onCapture={handleCaptureTask} onCaptureRoutine={handleAddRoutine} onViewTask={task => { setEditingTask(task); setModalOpen(true) }} onToast={setToast}/>}
           {tab === 'calendar' && <CalendarTab tasks={apiTasks} contexts={[...(apiContexts.active||[]), ...(apiContexts.upcoming||[])]} routines={routines} recentSkips={recentSkips} onReschedule={handleReschedule} onMarkDone={handleMarkDone} onSkip={handleSkip} onAddTask={() => setModalOpen(true)} onAddContext={() => setContextModalOpen(true)} onEditRoutine={handleEditRoutine} onApplyRetroSuggestion={handleApplyRetroSuggestion}/>}
           {tab === 'ask' && <AskTab prefill={askPrefill} autoSend={askAutoSend} onAutoSendDone={() => { setAskAutoSend(false); setAskPrefill('') }} onLightenRoutine={handleLightenRoutine} onTaskAdded={handleTaskAdded} onRoutineAdded={handleAddRoutine} onTaskDeferred={handleTaskDeferred} onViewTask={() => setTab('context')} onToast={setToast}/>}
-          {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} plans={plansHook.plans} checkTask={plansHook.checkTask} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onMarkRoutineDay={handleMarkRoutineDay} onEditTask={handleEditTask} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }}/>}
+          {tab === 'tracks' && <TracksTab tasks={displayTasks} routines={routines} plans={plansHook.plans} checkTask={plansHook.checkTask} onMarkDone={handleMarkDone} onSkip={handleSkip} onMarkRoutineDone={handleMarkRoutineDone} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAddTask={() => setModalOpen(true)} onAddRoutine={() => setRoutineModalOpen(true)} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onMarkRoutineDay={handleMarkRoutineDay} onEditTask={handleEditTask} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }} onOpenMonthLog={id => setMonthLogRoutineId(id)}/>}
           {tab === 'context' && <LifeTab upcoming={apiContexts.upcoming} active={apiContexts.active} activeContext={activeContext} routines={routines} plansHook={plansHook} onAddContext={(data) => data?.type ? handleAddContext({ type: data.type, description: data.desc || data.description, icon: data.icon }) : setContextModalOpen(true)} onQuickContext={type => setQuickContextType(type)} onImBetter={() => setRecoveryOpen(true)} onExtend={handleExtendContext} onDetailOpen={handleDetailOpen} onAskHeed={handleAskHeed} onRemoveUpcoming={handleRemoveUpcoming} openPlanId={navigateToPlanId} onOpenPlanIdConsumed={() => setNavigateToPlanId(null)} addedTaskLabel={navigateToTaskLabel} onAddedTaskLabelConsumed={() => setNavigateToTaskLabel(null)}/>}
         </div>
       </main>
@@ -12873,6 +12887,16 @@ export default function HeedApp() {
       <AddContextModal open={contextModalOpen} onClose={() => setContextModalOpen(false)} onSubmit={handleAddContext} customEventTypes={customEventTypes}/>
       <AskInlineModal open={askOpen} onClose={() => setAskOpen(false)} onLightenRoutine={handleLightenRoutine} onTaskAdded={handleTaskAdded} onRoutineAdded={handleAddRoutine} onTaskDeferred={handleTaskDeferred} onViewTask={(task, planId) => { setAskOpen(false); setNavigateToTaskLabel(task?.name || null); if (planId) { setNavigateToPlanId(planId); setTab('context') } else { setTab('context') } }} prefill={askPrefill} autoSend={askAutoSend} onAutoSendDone={() => { setAskAutoSend(false); setAskPrefill('') }} contextPlanId={askContextPlanId} onToast={setToast}/>
       <TaskOptionsSheet task={taskOptionsTask} onClose={() => setTaskOptionsTask(null)} onMarkDone={handleMarkDone} onSkip={handleSkip} onEdit={handleEditTask} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }}/>
+      {monthLogRoutine && (
+        <RoutineMonthLog
+          routine={monthLogRoutine}
+          onClose={() => setMonthLogRoutineId(null)}
+          onMarkAllDone={(id) => handleMarkRoutineDone(id)}
+          onLighten={(id) => handleLightenRoutine(id)}
+          onEdit={handleEditRoutine}
+          onShare={handleShareOpen}
+        />
+      )}
       <AddToRoutineSheet task={addToRoutineTask} routines={routines} onClose={() => setAddToRoutineTask(null)} onSelect={handleAddTaskToRoutine}/>
       <QuickContextSheet type={quickContextType} onClose={() => setQuickContextType(null)} onActivate={handleQuickContext}/>
       <RecoverySummarySheet open={recoveryOpen} context={activeContext} heldTasks={activeContext ? displayTasks.filter(t => activeContext.heldTaskIds.includes(t.id)) : []} onClose={() => setRecoveryOpen(false)} onResumeAll={() => handleEndContext('resume')} onEaseBack={() => handleEndContext('ease')}/>

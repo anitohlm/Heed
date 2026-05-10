@@ -3963,15 +3963,15 @@ function RoutineMonthLog({ routine, onClose, onMarkAllDone, onLighten, onEdit, o
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '14px 16px 24px' }}>
         {/* Stats */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginBottom: 14 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 16 }}>
           {[
-            { lbl: 'Avg this month', val: sumTotal ? avgLabel : '—' },
-            { lbl: 'Streak (full)',  val: `${streak} d` },
-            { lbl: 'Best run',       val: `${best} d` },
+            { lbl: 'Avg',      val: sumTotal ? avgLabel : '—' },
+            { lbl: 'Streak',   val: `${streak} d` },
+            { lbl: 'Best run', val: `${best} d` },
           ].map(({ lbl, val }) => (
-            <div key={lbl} style={{ background: C.bellySoft, borderRadius: 8, padding: '8px 10px' }}>
-              <div style={{ fontSize: 9, color: C.inkMute, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4 }}>{lbl}</div>
-              <div style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, color: C.warmDark, marginTop: 2 }}>{val}</div>
+            <div key={lbl} style={{ background: C.bellySoft, border: `1px solid ${C.hairline}`, borderRadius: 10, padding: '10px 12px' }}>
+              <div style={{ fontSize: 10, color: C.inkMute, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6 }}>{lbl}</div>
+              <div style={{ fontFamily: 'Lora, serif', fontSize: 18, fontWeight: 600, color: C.warmDark, marginTop: 4, letterSpacing: -0.2, whiteSpace: 'nowrap' }}>{val}</div>
             </div>
           ))}
         </div>
@@ -4038,37 +4038,45 @@ function RoutineMonthLog({ routine, onClose, onMarkAllDone, onLighten, onEdit, o
                   }}
                   disabled={!e}
                   style={{
-                    aspectRatio: '1 / 1', borderRadius: 7, border, background: bg, color,
+                    aspectRatio: '1 / 1', borderRadius: 8, border, background: bg, color,
                     opacity, boxShadow, cursor: e ? 'pointer' : 'default',
                     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 11, fontWeight: 600, fontFamily: 'inherit', padding: 0,
+                    fontSize: 13, fontWeight: 600, fontFamily: 'inherit', padding: 0,
+                    touchAction: 'manipulation',
                   }}>
                   <span style={{ lineHeight: 1 }}>{date.getDate()}</span>
-                  {fracLabel && <span style={{ fontSize: 7, opacity: 0.85, marginTop: 1, lineHeight: 1 }}>{fracLabel}</span>}
+                  {fracLabel && <span style={{ fontSize: 9, opacity: 0.9, marginTop: 2, lineHeight: 1, fontWeight: 500 }}>{fracLabel}</span>}
                 </button>
               )
             })
           ))}
         </div>
 
-        {/* Legend */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 14, fontSize: 10, color: C.ink, flexWrap: 'wrap' }}>
-          <span>0/{liveTotal}</span>
-          <span style={{ display: 'inline-flex', gap: 2 }}>
-            {Array.from({ length: liveTotal + 1 }, (_, i) => (
-              <span key={i} style={{ width: 14, height: 14, borderRadius: 3, background: mixSageBeige(i / liveTotal) }}/>
-            ))}
-          </span>
-          <span>{liveTotal}/{liveTotal}</span>
-          <span style={{ marginLeft: 10, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ width: 11, height: 11, borderRadius: 3, background: C.bellySoft, opacity: 0.55 }}/>Off-day
-          </span>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ width: 11, height: 11, borderRadius: 3, background: C.bellySoft }}/>Future
-          </span>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ width: 11, height: 11, borderRadius: 3, background: 'transparent', border: `1px dashed ${C.hairline}` }}/>No data
-          </span>
+        {/* Legend — two rows so nothing wraps awkwardly on a 390px phone.
+            Row 1: completion gradient with 0/N → N/N endpoints.
+            Row 2: status swatches (off-day / future / no data) with
+            equal column widths so the labels line up. */}
+        <div style={{ marginTop: 16, fontSize: 11, color: C.inkSoft, lineHeight: 1.4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <span style={{ minWidth: 28, fontVariantNumeric: 'tabular-nums' }}>0/{liveTotal}</span>
+            <span style={{ flex: 1, display: 'flex', gap: 3 }}>
+              {Array.from({ length: liveTotal + 1 }, (_, i) => (
+                <span key={i} style={{ flex: 1, height: 14, borderRadius: 3, background: mixSageBeige(i / liveTotal) }}/>
+              ))}
+            </span>
+            <span style={{ minWidth: 28, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{liveTotal}/{liveTotal}</span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+              <span style={{ width: 11, height: 11, borderRadius: 3, background: C.bellySoft, opacity: 0.55, flexShrink: 0 }}/>Off-day
+            </span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+              <span style={{ width: 11, height: 11, borderRadius: 3, background: C.bellySoft, flexShrink: 0 }}/>Future
+            </span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+              <span style={{ width: 11, height: 11, borderRadius: 3, background: 'transparent', border: `1px dashed ${C.hairline}`, flexShrink: 0 }}/>No data
+            </span>
+          </div>
         </div>
 
         {/* Footer actions */}

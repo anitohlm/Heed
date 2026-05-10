@@ -11484,7 +11484,7 @@ export default function HeedApp() {
                : hour < 17 ? 'Afternoon'
                : hour < 22 ? 'Evening'
                : 'Late evening'
-    const first = (username || '').trim().split(/\s+/)[0]
+    const first = (displayName || username || '').trim().split(/\s+/)[0]
     const headline = first ? `${time}, ${first}.` : `${time}.`
     const todayCount = displayTasks.filter(t => t.overdue != null || t.dueIn === 0).length
     const overdue = displayTasks.filter(t => (t.overdue || 0) >= 7).length

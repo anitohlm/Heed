@@ -50,6 +50,24 @@ img {
   height: auto;
 }
 
+/* DataModeWelcome cards stack vertically on phones — at 1fr 1fr the
+   cards squeeze to ~143px wide on a 390px screen, which crowds the
+   icon, Recommended chip, title, and description. Single-column gives
+   each card breathing room; desktop keeps the side-by-side layout. */
+.heed-welcome-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+@media (max-width: 540px) {
+  .heed-welcome-cards { grid-template-columns: 1fr; gap: 10px; }
+  /* Stacked card: drop the tall minHeight (only made sense to balance
+     two side-by-side cards) and tighten vertical padding. Each card
+     is now full-width so the description wraps in 2 lines instead of
+     5, and 168px of empty space below looked broken. */
+  .heed-welcome-cards > button { min-height: 0 !important; padding: 14px 14px !important; }
+}
+
 button {
   cursor: pointer;
   font-family: inherit;

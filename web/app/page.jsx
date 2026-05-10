@@ -11531,7 +11531,7 @@ function DataModeWelcome({ displayName, isDemo, onPickDemo, onPickReal }) {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+        <div className="heed-welcome-cards" style={{ marginBottom: 16 }}>
           {/* Demo card — recommended for judges, gets the warm gradient
               treatment and a 'Recommended' tag in ochre. */}
           <button type="button" onClick={onPickDemo}

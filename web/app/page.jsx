@@ -714,56 +714,60 @@ function useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded, onTaskDeferred
     let pendingChips = []
     let gotAnything = false
 
-    // Scripted-response short-circuit. Two trigger conditions:
+    // In demo mode the backend can't see the user's plans / tasks /
+    // contexts (DEMO_PLANS et al. live client-side only). Instead of
+    // short-circuiting to scripted answers, we inject a context block
+    // describing the demo state into the request so the live advisor
+    // (Azure OpenAI + AI Search via /api/advisor_stream) actually has
+    // something to reason about. Judges then see real LLM output —
+    // which varies turn to turn — instead of canned text.
     //
-    //   1. The prompt matches a SCRIPTED_RESPONSES key — these are the
-    //      four curated demo answers (Singapore trip, "what am I
-    //      forgetting?", busy week, morning skips). They reference the
-    //      demo's tasks / contexts by name, so a live advisor call hitting
-    //      a backend without that data will honestly reply "I don't see a
-    //      Singapore trip." We always prefer the scripted answer when it
-    //      matches; non-demo users don't see these prompts in the chip
-    //      strip (filtered at the SuggestionChip level), so the only way
-    //      to hit one is by deliberately typing it.
-    //
-    //   2. isDemoMode() is on AND there's no scripted match — fall back
-    //      to FALLBACK_RESPONSE so demo mode never reaches the network.
-    //
-    // Outside both branches the live advisor handles the request normally.
-    const scriptedMatch = SCRIPTED_RESPONSES[trimmed]
-    // Plan-advice queries are dynamic ("Give me advice on this plan: ...")
-    // so they won't match SCRIPTED_RESPONSES by exact key. Parse the plan
-    // title out and look it up in PLAN_ADVICE_RESPONSES instead.
-    let planAdviceMatch = null
-    if (!scriptedMatch && trimmed.startsWith('Give me advice on this plan:')) {
-      const planTitle = trimmed.split('\n').find(l => l.startsWith('Plan: '))?.replace('Plan: ', '').trim()
-      if (planTitle && PLAN_ADVICE_RESPONSES[planTitle]) {
-        planAdviceMatch = PLAN_ADVICE_RESPONSES[planTitle]
-      }
-    }
-    if (scriptedMatch || planAdviceMatch || isDemoMode()) {
-      const scripted = scriptedMatch || planAdviceMatch || FALLBACK_RESPONSE
-      if (scripted.thinking) {
-        for (const step of scripted.thinking) {
-          thinkingSteps.push(step)
-          setThinking([...thinkingSteps])
-          await new Promise(r => setTimeout(r, 650))
+    // SCRIPTED_RESPONSES + PLAN_ADVICE_RESPONSES remain in place as
+    // fallbacks inside the catch block below for the case where the
+    // backend genuinely fails or is offline.
+    let messageWithContext = trimmed
+    if (isDemoMode()) {
+      try {
+        const today = new Date().toISOString().slice(0, 10)
+        const ctx = []
+        ctx.push('[Demo-mode user state — read this before answering]')
+        ctx.push(`Today: ${today}`)
+        if (ACTIVE_CONTEXT_DEMO) {
+          ctx.push(`Active context: ${ACTIVE_CONTEXT_DEMO.label} (${ACTIVE_CONTEXT_DEMO.type}), ${ACTIVE_CONTEXT_DEMO.start} to ${ACTIVE_CONTEXT_DEMO.end}`)
         }
+        if (Array.isArray(CONTEXTS_UPCOMING_DEMO) && CONTEXTS_UPCOMING_DEMO.length) {
+          ctx.push('Upcoming contexts:')
+          CONTEXTS_UPCOMING_DEMO.forEach(c => ctx.push(`  - ${c.desc} (${c.type}) ${c.start} to ${c.end}`))
+        }
+        if (Array.isArray(DEMO_PLANS) && DEMO_PLANS.length) {
+          ctx.push('Plans:')
+          DEMO_PLANS.forEach(p => {
+            const done = p.tasks.filter(t => t.done).length
+            const due = p.dueDate || (p.eventDate ? new Date(p.eventDate).toISOString().slice(0, 10) : null)
+            const goal = p.target != null ? ` · ${p.current ?? 0}/${p.target}${p.unit || ''}` : ''
+            ctx.push(`  - ${p.title} [${p.type}]${due ? ` due ${due}` : ''} (${done}/${p.tasks.length} tasks)${goal}`)
+          })
+        }
+        if (Array.isArray(TASKS_DEMO) && TASKS_DEMO.length) {
+          ctx.push('Tasks:')
+          const now = Date.now()
+          TASKS_DEMO.forEach(t => {
+            const dueAt = t.next_due_at ? new Date(t.next_due_at).getTime() : null
+            const overdueDays = dueAt ? Math.round((now - dueAt) / 86400000) : null
+            const status = overdueDays == null ? '' : overdueDays > 0 ? `${overdueDays}d overdue` : overdueDays === 0 ? 'due today' : `due in ${-overdueDays}d`
+            ctx.push(`  - ${t.name} [${t.category}, ${t.importance}]${status ? ' · ' + status : ''}`)
+          })
+        }
+        if (Array.isArray(ROUTINES) && ROUTINES.length) {
+          ctx.push('Routines:')
+          ROUTINES.forEach(r => ctx.push(`  - ${r.name}: ${r.items.join(', ')} (${r.weekRate})`))
+        }
+        messageWithContext = `${ctx.join('\n')}\n\nUser asks: ${trimmed}`
+      } catch (_) {
+        // If anything in the context build fails, fall back to the raw
+        // message — the catch block below still has scripted fallbacks.
+        messageWithContext = trimmed
       }
-      setThinking(null)
-      const words = scripted.answer.split(/(\s+)/)
-      for (const w of words) {
-        if (!w) continue
-        finalText += w
-        setStreaming(finalText)
-        await new Promise(r => setTimeout(r, 14))
-      }
-      ;(scripted.actions || []).forEach(a => pendingActions.push(a))
-      pendingChips = scripted.chips || []
-      setMessages(m => [...m, { role: 'assistant', content: finalText, actions: pendingActions, chips: pendingChips, ts: Date.now() }])
-      setStreaming('')
-      setBusy(false)
-      return
     }
 
     const abortCtrl = new AbortController()
@@ -772,7 +776,7 @@ function useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded, onTaskDeferred
       const resp = await fetch(`${FUNCTIONS_URL}/api/advisor_stream`, {
         method: 'POST',
         headers: authHeaders({ 'Content-Type': 'application/json' }),
-        body: JSON.stringify({ message: trimmed, history: snapshot }),
+        body: JSON.stringify({ message: messageWithContext, history: snapshot }),
         signal: abortCtrl.signal,
       })
       if (!resp.ok) throw new Error(`${resp.status}`)
@@ -835,17 +839,21 @@ function useChat({ onLightenRoutine, onTaskAdded, onRoutineAdded, onTaskDeferred
       clearTimeout(abortTimer)
     } catch {
       clearTimeout(abortTimer)
-      // For plan-advice queries use a helpful scripted fallback so the demo
-      // still shows actionable suggestions even when the backend is offline.
-      let scripted = SCRIPTED_RESPONSES[trimmed] || FALLBACK_RESPONSE
-      if (trimmed.startsWith('Give me advice on this plan:')) {
-        const planTitle = trimmed.split('\n').find(l => l.startsWith('Plan: '))?.replace('Plan: ', '') || 'your plan'
-        scripted = {
+      // Backend failed (timeout, offline, error). Fall back to a scripted
+      // answer so the demo still has something useful to show. Order:
+      // 1) exact-match SCRIPTED_RESPONSES, 2) plan-title PLAN_ADVICE_RESPONSES
+      // for "Give me advice on this plan:" prompts, 3) generic
+      // FALLBACK_RESPONSE.
+      let scripted = SCRIPTED_RESPONSES[trimmed] || null
+      if (!scripted && trimmed.startsWith('Give me advice on this plan:')) {
+        const planTitle = trimmed.split('\n').find(l => l.startsWith('Plan: '))?.replace('Plan: ', '').trim() || 'your plan'
+        scripted = PLAN_ADVICE_RESPONSES[planTitle] || {
           answer: `Here's my advice for **${planTitle}**:\n\n- Break larger tasks into smaller, manageable steps\n- Schedule focused work sessions for your most challenging items\n- Review your progress weekly and adjust timelines as needed\n- Identify any blockers early and address them before they stall progress\n- Celebrate small wins to keep your momentum going`,
           actions: [],
           chips: ['Help me prioritize', "What's overdue?", 'How do I stay consistent?'],
         }
       }
+      if (!scripted) scripted = FALLBACK_RESPONSE
       finalText = scripted.answer
       pendingActions.length = 0
       ;(scripted.actions || []).forEach(a => pendingActions.push(a))

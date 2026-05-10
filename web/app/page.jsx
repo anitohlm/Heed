@@ -1273,8 +1273,12 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
             </>
           )}
 
-          {/* Detail screen subtitle — sits above the existing section content */}
-          {settingsView !== 'index' && detail && (
+          {/* Detail screens — wrapped in a single keyed div so the slide-in
+              animation re-runs on every settingsView change. The key forces
+              React to remount the wrapper, which restarts the CSS keyframe. */}
+          {settingsView !== 'index' && (
+          <div key={settingsView} className="heed-settings-detail">
+          {detail && (
             <div style={{ padding: '12px 4px 14px' }}>
               <div style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 26, fontWeight: 600, color: C.ink, letterSpacing: -0.4, lineHeight: 1.15 }}>{detail.title}</div>
               <div style={{ fontSize: 14, color: C.inkSoft, marginTop: 4 }}>{detail.sub}</div>
@@ -1816,6 +1820,8 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
               </SettingsRow>
             </div>
           </>)}
+          </div>
+          )}
 
         </div>
       </div>
@@ -12349,7 +12355,7 @@ export default function HeedApp() {
   if (!mounted) return null
 
   return (
-    <div style={{ minHeight: '100vh', background: `radial-gradient(ellipse at 30% 0%, ${C.paper} 0%, ${C.cream} 60%)`, color: C.ink, fontFamily: '"Nunito Sans", -apple-system, BlinkMacSystemFont, sans-serif' }}>
+    <div className="heed-theme-bg" style={{ minHeight: '100vh', background: `radial-gradient(ellipse at 30% 0%, ${C.paper} 0%, ${C.cream} 60%)`, color: C.ink, fontFamily: '"Nunito Sans", -apple-system, BlinkMacSystemFont, sans-serif', transition: 'background var(--m-slow) var(--ease-out), color var(--m-slow) var(--ease-out)' }}>
       {!username && <UsernameGate onComplete={u => setUsername(u)} />}
       {username && !welcomeSeen && (
         <DataModeWelcome
@@ -12461,7 +12467,7 @@ export default function HeedApp() {
         {/* keyed wrapper so React remounts subtree on tab change → CSS animation
             replays. Slide-in from a few px right + fade gives a native-feeling
             transition without tracking previous tab for direction. */}
-        <div key={tab} style={{ animation: 'heed-tab-in 0.28s cubic-bezier(0.32,0.72,0,1) both', display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+        <div key={tab} className="heed-tab-fade" style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
           {tab === 'today' && <TodayTab tasks={displayTasks} routines={routines} plans={plansHook.plans} upcomingContexts={upcomingContexts} skippedTasks={skippedTasks} userName={displayName || username} efMode={efMode} onSetEfMode={handleSetEfMode} onMarkDone={handleMarkDone} onSkip={handleSkip} onUnskip={handleUnskip} onMarkRoutineDone={handleMarkRoutineDone} onSkipRoutineToday={handleSkipRoutineToday} onLightenRoutine={handleLightenRoutine} onEditRoutine={handleEditRoutine} onAskHeed={handleAskHeed} onMoreOptions={handleMoreOptions} onShareCard={handleShareOpen} onAddTask={() => setModalOpen(true)} onEditTask={handleEditTask} onAddToRoutine={t => setAddToRoutineTask(t)} onBuildRoutine={t => { setBuildRoutineTask(t); setRoutineModalOpen(true) }} onNavigateToPlans={() => setTab('context')} onCapture={handleCaptureTask} onCaptureRoutine={handleAddRoutine} onViewTask={task => { setEditingTask(task); setModalOpen(true) }} onToast={setToast}/>}
           {tab === 'calendar' && <CalendarTab tasks={apiTasks} contexts={[...(apiContexts.active||[]), ...(apiContexts.upcoming||[])]} routines={routines} recentSkips={recentSkips} onReschedule={handleReschedule} onMarkDone={handleMarkDone} onSkip={handleSkip} onAddTask={() => setModalOpen(true)} onAddContext={() => setContextModalOpen(true)} onEditRoutine={handleEditRoutine} onApplyRetroSuggestion={handleApplyRetroSuggestion}/>}
           {tab === 'ask' && <AskTab prefill={askPrefill} autoSend={askAutoSend} onAutoSendDone={() => { setAskAutoSend(false); setAskPrefill('') }} onLightenRoutine={handleLightenRoutine} onTaskAdded={handleTaskAdded} onRoutineAdded={handleAddRoutine} onTaskDeferred={handleTaskDeferred} onViewTask={() => setTab('context')} onToast={setToast}/>}

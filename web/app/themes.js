@@ -239,7 +239,7 @@ export const OWL_THEMES = {
   },
 }
 
-export const DEFAULT_THEME = 'midnight-fern'
+export const DEFAULT_THEME = 'parchment-light'
 
 const _VALID_THEMES = new Set(Object.keys(THEMES))
 

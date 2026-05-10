@@ -38,7 +38,7 @@ Built for the **Microsoft CWB Hackathon 2026**.
 │                                                                  │
 │   /api/tasks · /api/completions · /api/context · /api/plans      │
 │   /api/advisor_stream     ← streams NDJSON of agent events       │
-│   /api/parse_capture      ← free-text → task or routine (Haiku)  │
+│   /api/parse_capture      ← free-text → task or routine (mini)   │
 │   /api/execute_action     ← gated mutations from agent proposals │
 │   /api/memory_keeper_run  ← timer-triggered cadence learner      │
 └─────┬────────────────────────────┬───────────────────────────────┘
@@ -67,12 +67,14 @@ Built for the **Microsoft CWB Hackathon 2026**.
          │ AZURE OPENAI    │ │ AZURE AI       │ │ GROUNDING      │
          │ (Foundry)       │ │ SEARCH         │ │ WITH BING      │
          │                 │ │                │ │                │
-         │ Sonnet 4.6      │ │ task_memory    │ │ Web facts for  │
-         │  → Advisor      │ │  (vector+text) │ │ time-sensitive │
+         │ heed-advisor    │ │ task_memory    │ │ Web facts for  │
+         │  (gpt-5.4)      │ │  (vector+text) │ │ time-sensitive │
          │                 │ │                │ │ queries        │
-         │ Haiku 4.5       │ │ ph_calendar    │ │                │
-         │  → Capture      │ │  (cultural)    │ │                │
-         │  → Memory Keeper│ │                │ │                │
+         │ heed-keeper     │ │ ph_calendar    │ │                │
+         │  (gpt-5.4-mini) │ │  (cultural)    │ │                │
+         │                 │ │                │ │                │
+         │ heed-embed      │ │                │ │                │
+         │  (text-embed-3) │ │                │ │                │
          └─────────────────┘ └────────────────┘ └────────────────┘
 ```
 
@@ -82,7 +84,7 @@ Built for the **Microsoft CWB Hackathon 2026**.
 | Backend API | Azure Functions (Consumption plan, Python 3.11, v2 model) |
 | Database | Azure Cosmos DB for NoSQL — partition key `/user_id` on every container |
 | Vector search | Azure AI Search — `task_memory` (per-user vector + text), `ph_calendar` (PH holidays + cultural events) |
-| LLM | Azure OpenAI via AI Foundry — Claude Sonnet 4.6 (advisor reasoning) + Claude Haiku 4.5 (capture parsing, Memory Keeper) |
+| LLM | Azure OpenAI via AI Foundry — three deployments in one `openai-heed` resource: `heed-advisor` (gpt-5.4), `heed-keeper` (gpt-5.4-mini), `heed-embed` (text-embedding-3-small) |
 | Web grounding | Grounding with Bing (called as a tool by the advisor) |
 | Secrets | Azure Key Vault (`kv-heed-hack`) via Managed Identity |
 | Content safety | Azure AI Content Safety prompt shield on every chat input |
@@ -93,8 +95,9 @@ Built for the **Microsoft CWB Hackathon 2026**.
 
 | Model | Where | Why |
 |---|---|---|
-| **Claude Sonnet 4.6** | `advisor.py` — the agentic loop | Best for multi-step planning, tool selection, weighing trade-offs across the user's whole context. Higher per-token cost, justified by the small number of advisor calls per session. |
-| **Claude Haiku 4.5** | `parse_capture` (free-text → structured task), `memory_keeper.py` (cadence pattern learner) | Narrow, well-defined extraction tasks. Sub-500ms latency on capture parsing. |
+| **gpt-5.4** (deployment: `heed-advisor`) | `advisor.py` — the agentic loop | Best for multi-step planning, tool selection, weighing trade-offs across the user's whole context. Higher per-token cost, justified by the small number of advisor calls per session. |
+| **gpt-5.4-mini** (deployment: `heed-keeper`) | `parse_capture` (free-text → structured task), `memory_keeper.py` (cadence pattern learner), `bing_tool` summariser | Narrow, well-defined extraction and pattern-detection tasks. Sub-500ms latency on capture parsing. |
+| **text-embedding-3-small** (deployment: `heed-embed`) | `search_tool.py` — embeddings for the `task_memory` Azure AI Search index | Standard ada-class embedding for semantic recall over task names + completion notes. |
 
 The split keeps cost low on the high-volume paths (capture + background learning) while the user-facing reasoning surface stays sharp. See `docs/MULTI_MODEL_COMPARISON.md` for the eval.
 
@@ -268,7 +271,7 @@ The "Try the demo" path in the welcome modal flips a localStorage flag. While se
 | | Result |
 |---|---|
 | Safety (7 risk scenarios) | All seven mitigated in code — see `docs/SAFETY.md` |
-| Model comparison | Claude Sonnet 4.6 for Advisor, Haiku 4.5 for capture + Memory Keeper — see `docs/MULTI_MODEL_COMPARISON.md` |
+| Model comparison | gpt-5.4 (`heed-advisor`) for the advisor loop, gpt-5.4-mini (`heed-keeper`) for capture + Memory Keeper + Bing summariser — see `docs/MULTI_MODEL_COMPARISON.md` |
 | Accessibility | Color contrast ≥4.5:1 on all text; reduced-motion users get clamped transitions automatically; viewport meta + 44pt touch targets across mobile breakpoints |
 
 ---
@@ -287,7 +290,7 @@ The "Try the demo" path in the welcome modal flips a localStorage flag. While se
 Heed itself runs on Azure OpenAI at runtime — that's the agentic personal-assistant pitch. But the *building* of Heed also used AI heavily, and the brief asks us to be transparent about what assisted us. The honest list:
 
 - **[Claude Code](https://www.anthropic.com/claude-code)** — primary pair-programming partner for the web app (`web/app/page.jsx`, `web/app/themes.js`, `web/app/globals.css`). Used for component scaffolding, debugging React state issues (the Low Day persistence bug, the routine save-confirm modal copy, the demo-mode network-leak bug), implementing the motion token system, and end-to-end UI testing via the Playwright MCP. The repository's commit history reflects this collaboration — large frontend changes were authored with Claude Code in the loop.
-- **[Claude Sonnet 4.6 / Haiku 4.5](https://www.anthropic.com/claude)** — at runtime, these power the in-app advisor and capture parser respectively (see *Multi-model strategy* above). They also assisted with backend Python code when Claude Code reached for them.
+- **Azure OpenAI (gpt-5.4 + gpt-5.4-mini)** — at runtime, these power the in-app advisor (`heed-advisor`) and capture + Memory Keeper (`heed-keeper`) respectively. See *Multi-model strategy* above. The development assistance came from Anthropic models via Claude Code; the runtime models are different.
 - **GitHub Copilot** — light use for boilerplate completion in the early scaffold.
 
 What was *not* AI-generated: the product framing (gentle personal assistant for life admin), the visual design language (Lora serif + Nunito Sans, the parchment palette, the MayaOwl mascot, the periwinkle Low Day cross-dissolve), the risk model in `docs/SAFETY.md`, and every product decision about what to ship vs. what to cut.

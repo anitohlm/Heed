@@ -42,8 +42,9 @@ Browser (Next.js 14, Azure Static Web Apps)
     │                                    ┌──────────┼──────────┐
     │                                    ▼          ▼          ▼
     │                                Cosmos DB  Azure AI    Azure OpenAI
-    │                                (NoSQL)    Search      (claude-sonnet-4-6,
-    │                                                        claude-haiku-4-5)
+    │                                (NoSQL)    Search      (heed-advisor: gpt-5.4,
+    │                                                        heed-keeper: gpt-5.4-mini,
+    │                                                        heed-embed: text-embedding-3-small)
     │
     └── X-User-ID header on every request → backend reads username for data isolation
 ```
@@ -553,7 +554,7 @@ Every handler calls `user_id = _get_user_id(req)` as its first statement and pas
 | `GET` | `/api/today_view` | Aggregated today view (tasks + routines + context) |
 | `POST` | `/api/advisor_stream` | Advisor agent — returns NDJSON of SSE events |
 | `POST` | `/api/execute_action` | Execute an advisor-proposed action (mark_done, add_task, add_routine, edit_task, …) |
-| `POST` | `/api/parse_capture` | Parse free text into a structured task or routine (claude-haiku-4-5) |
+| `POST` | `/api/parse_capture` | Parse free text into a structured task or routine (`heed-keeper` / gpt-5.4-mini) |
 | `POST` | `/api/suggest_tasks` | LLM-generated task suggestions |
 | `GET/PUT` | `/api/user_state/{kind}` | Read / write user state blobs (routines, plans) |
 | `POST` | `/api/reset` | Wipe all user data from Cosmos |
@@ -662,7 +663,7 @@ Static corpus of Philippine holidays and cultural events. Grounds the advisor in
 
 #### Advisor (`agents/advisor.py`)
 
-Async generator that streams SSE events. Model: `claude-sonnet-4-6`. System prompt loaded from `agents/prompts/advisor_system.md`.
+Async generator that streams SSE events. Model: `heed-advisor` deployment (gpt-5.4) on Azure OpenAI. System prompt loaded from `agents/prompts/advisor_system.md`.
 
 Available tools: `get_tasks`, `get_context`, `search_tasks`, `get_today_view`, `propose_action` (mark_done, skip, defer, add_task, add_routine, edit_task, lighten_routine, add_context).
 
@@ -670,11 +671,11 @@ The frontend renders proposed actions as confirm buttons (or executes immediatel
 
 #### Memory Keeper (`agents/memory_keeper.py`)
 
-Runs every 6 hours. Re-computes `learned_cadence_days` and `learned_confidence` for tasks with sufficient history (≥5 completions, ≥3 weeks). Model: `claude-haiku-4-5`.
+Runs every 6 hours. Re-computes `learned_cadence_days` and `learned_confidence` for tasks with sufficient history (≥5 completions, ≥3 weeks). Model: `heed-keeper` deployment (gpt-5.4-mini) on Azure OpenAI.
 
 #### Parse Capture (`POST /api/parse_capture`)
 
-Single `messages.create` call using `claude-haiku-4-5`. Parses free text into `{ type: 'task'|'routine', payload: {...} }`. Used by the CaptureBar on Today tab.
+Single `chat.completions.create` call using the `heed-keeper` deployment (gpt-5.4-mini). Parses free text into `{ type: 'task'|'routine', payload: {...} }`. Used by the CaptureBar on Today tab.
 
 ---
 

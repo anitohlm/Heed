@@ -5569,7 +5569,10 @@ function usePlans(initialPlans) {
       const saved = localStorage.getItem('heed_plans')
       if (!saved) return initialPlans
       const parsed = JSON.parse(saved).map(normalizePlan)
-      if (isDemoMode()) return parsed
+      // In demo mode, an empty saved array (e.g. from a previous reset
+      // that wiped state) was overriding the DEMO_PLANS seed and Plans
+      // tab showed 0. Treat empty as 'never set' and fall back to seed.
+      if (isDemoMode()) return parsed.length > 0 ? parsed : initialPlans
       const real = stripDemoPlans(parsed)
       if (real.length < parsed.length) {
         try { real.length ? localStorage.setItem('heed_plans', JSON.stringify(real)) : localStorage.removeItem('heed_plans') } catch (_) {}
@@ -8848,16 +8851,45 @@ function EventsPanel({ allUpcoming, activeContext, routines = [], onAddContext, 
         <SheetActions primary="Continue" ghost="Cancel" onPrimary={handleApplyConflict} onGhost={() => setModal(null)}/>
       </HeedSheet>
 
-      {/* Save confirm (no conflict) */}
+      {/* Save confirm (no conflict). Copy adapts to event type — Low Day
+          gets gentle wording, sick/illness keeps 'rest up', other events
+          get a generic activation summary. Previously every type saw the
+          sick copy regardless. */}
       <HeedSheet open={modal === 'save-confirm'} onClose={() => setModal(null)}>
-        <HeedBubble emoji="🌿" title="Got it — rest up." body="Heed is handling things so nothing falls through while you recover."/>
-        <div style={{ padding: '0 18px 4px' }}>
-          {[
-            { label: 'Pause routines',           sub: 'Morning routine · Evening wind-down', id: 'sc-r' },
-            { label: 'Hold non-urgent tasks',     sub: "They'll be waiting when you're back", id: 'sc-t' },
-            { label: 'Check in after 3 days',     sub: '"Still resting?" — extend or close then', id: 'sc-c' },
-          ].map(item => <SheetCheckRow key={item.id} id={item.id} defaultChecked label={item.label} sub={item.sub}/>)}
-        </div>
+        {(() => {
+          const t = newEventType
+          if (t === 'low') return (
+            <>
+              <HeedBubble emoji="🌙" title="Heed is going gentle." body="Today is heavy. I'll quietly hold the things that can wait — no pressure to do them."/>
+              <div style={{ padding: '0 18px 4px' }}>
+                <SheetCheckRow id="sc-l1" defaultChecked label="Soften the palette" sub="The whole app shifts to periwinkle"/>
+                <SheetCheckRow id="sc-l2" defaultChecked label="Quietly pause routines" sub="Morning + evening — back when you're ready"/>
+                <SheetCheckRow id="sc-l3" defaultChecked label="Check in tomorrow" sub="A gentle nudge — no streaks at risk"/>
+              </div>
+            </>
+          )
+          if (t === 'sick' || t === 'illness') return (
+            <>
+              <HeedBubble emoji="🌿" title="Got it — rest up." body="Heed is handling things so nothing falls through while you recover."/>
+              <div style={{ padding: '0 18px 4px' }}>
+                <SheetCheckRow id="sc-s1" defaultChecked label="Pause routines" sub="Morning routine · Evening wind-down"/>
+                <SheetCheckRow id="sc-s2" defaultChecked label="Hold non-urgent tasks" sub="They'll be waiting when you're back"/>
+                <SheetCheckRow id="sc-s3" defaultChecked label="Check in after 3 days" sub='"Still resting?" — extend or close then'/>
+              </div>
+            </>
+          )
+          const cfg = evtCfg(t)
+          return (
+            <>
+              <HeedBubble emoji={cfg.icon || '🗒'} title={`Got it — ${cfg.label?.toLowerCase() || 'noted'}.`} body="Heed will plan around this so nothing falls through."/>
+              <div style={{ padding: '0 18px 4px' }}>
+                <SheetCheckRow id="sc-g1" defaultChecked label="Note this in your timeline" sub={cfg.label || 'Event'}/>
+                <SheetCheckRow id="sc-g2" defaultChecked label="Hold tasks that overlap" sub="Surface them again when the event ends"/>
+                <SheetCheckRow id="sc-g3" defaultChecked label="Check in when it wraps" sub="Resume routines, review held tasks"/>
+              </div>
+            </>
+          )
+        })()}
         <SheetActions primary="Looks good" ghost="Cancel" onPrimary={handleApplySaveConfirm} onGhost={() => setModal(null)}/>
       </HeedSheet>
 

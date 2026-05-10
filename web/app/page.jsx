@@ -175,6 +175,27 @@ function entryFrac(entry) {
   if (!entry || !entry.total) return 0
   return Math.min(1, Math.max(0, entry.done / entry.total))
 }
+// Advance a routine's completion14d window by `daysToRoll` days. For each
+// rolled day, append a new {done:0, total:liveTotal} entry (the day the user
+// missed) and drop the oldest. Returns a new routine object.
+function rollRoutineForward(routine, daysToRoll, todayIso) {
+  if (!daysToRoll || daysToRoll <= 0) return routine
+  const live = (routine.items || []).filter(it => !(routine.lightenedItems || []).includes(it))
+  const liveTotal = live.length || (routine.items || []).length || 1
+  const arr = [...(routine.completion14d || [])]
+  for (let i = 0; i < daysToRoll; i++) {
+    arr.push({ done: 0, total: liveTotal })
+    if (arr.length > 14) arr.shift()
+  }
+  return {
+    ...routine,
+    completion14d: arr,
+    todayItemsDone: [],
+    last_rollover_date: todayIso,
+    // Lightened items stay in place — they're a "this week" decision the
+    // user made; rolling a single day doesn't reset that scope.
+  }
+}
 function computeStreakCount(completion14d, routine) {
   const liveTotal = (routine?.items || []).filter(it => !(routine?.lightenedItems || []).includes(it)).length || (routine?.items || []).length || 1
   let count = 0
@@ -11439,6 +11460,40 @@ export default function HeedApp() {
       body: JSON.stringify({ items: routines }),
     }).catch(() => {})
   }, [routines, FUNCTIONS_URL])
+  // Daily roll-over: advance any routine whose last_rollover_date is older
+  // than today. Runs on mount and whenever the tab becomes visible (covers
+  // "left the app open overnight").
+  useEffect(() => {
+    function maybeRoll() {
+      setRoutines(rs => {
+        const today = new Date()
+        const todayIso = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`
+        let changed = false
+        const next = rs.map(r => {
+          const last = r.last_rollover_date
+          if (!last) {
+            // Legacy routine — adopt today as the baseline without rolling.
+            changed = true
+            return { ...r, last_rollover_date: todayIso }
+          }
+          if (last === todayIso) return r
+          // Days between last and today (rough — ignores DST seconds).
+          const lastDate = new Date(last + 'T00:00:00')
+          const ms = today.setHours(0,0,0,0) - lastDate.getTime()
+          const daysToRoll = Math.max(0, Math.round(ms / 86400000))
+          if (daysToRoll === 0) return r
+          changed = true
+          return rollRoutineForward(r, daysToRoll, todayIso)
+        })
+        return changed ? next : rs
+      })
+    }
+    maybeRoll()
+    function onVis() { if (document.visibilityState === 'visible') maybeRoll() }
+    document.addEventListener('visibilitychange', onVis)
+    return () => document.removeEventListener('visibilitychange', onVis)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   // Plans live at HeedApp level so both Today (read-only summary) and Life
   // (full management surface) share one source of truth.
   const plansHook = usePlans(isDemoMode() ? DEMO_PLANS : [])

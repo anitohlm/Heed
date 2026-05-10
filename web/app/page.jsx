@@ -12143,21 +12143,27 @@ export default function HeedApp() {
 
   const handleMarkRoutineDone = useCallback((routineId) => {
     let prevValue = null
+    let prevItemsDone = null
     setRoutines(rs => rs.map(r => {
       if (r.id !== routineId) return r
-      const updated = [...r.completion14d]
-      prevValue = updated[updated.length - 1]
-      updated[updated.length - 1] = true
-      return { ...r, completion14d: updated }
+      const live = (r.items || []).filter(it => !(r.lightenedItems || []).includes(it))
+      const liveTotal = live.length || (r.items || []).length || 1
+      const updated = [...(r.completion14d || [])]
+      prevValue = updated.length ? updated[updated.length - 1] : null
+      prevItemsDone = r.todayItemsDone || []
+      if (updated.length) {
+        updated[updated.length - 1] = { done: liveTotal, total: liveTotal }
+      }
+      return { ...r, completion14d: updated, todayItemsDone: [...live] }
     }))
     setToast({
       message: 'Done for today. Nice.',
       onUndo: () => {
         setRoutines(rs => rs.map(r => {
           if (r.id !== routineId) return r
-          const reverted = [...r.completion14d]
-          reverted[reverted.length - 1] = !!prevValue
-          return { ...r, completion14d: reverted }
+          const reverted = [...(r.completion14d || [])]
+          if (reverted.length) reverted[reverted.length - 1] = prevValue
+          return { ...r, completion14d: reverted, todayItemsDone: prevItemsDone || [] }
         }))
         setToast(null)
       },

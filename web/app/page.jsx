@@ -10869,6 +10869,131 @@ function ContextDetailSheet({ open, ctx, heldTasks, onClose, onImBetter, onExten
 // ── Username Gate ──────────────────────────────────────────────
 const USERNAME_RE = /^[a-zA-Z0-9_-]{3,20}$/
 
+// ── DataModeWelcome ────────────────────────────────────────────
+// One-shot welcome modal shown the first time a user lands in the app
+// after registering. Lets them pick between a curated demo set or a
+// clean real-data start. Dismissed flag is stored as 'heed.welcome-seen'
+// in localStorage; demo-mode and real-mode handlers preserve that flag
+// so the modal doesn't reappear after reload. Settings → Demo data
+// keeps the same toggle for later switching.
+function DataModeWelcome({ displayName, isDemo, onPickDemo, onPickReal }) {
+  const greet = displayName ? `Welcome, ${displayName}.` : 'Welcome.'
+  return (
+    <div role="dialog" aria-label="Choose data mode"
+      style={{
+        position: 'fixed', inset: 0, zIndex: 350,
+        background: C.scrim, backdropFilter: 'blur(6px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 20,
+        animation: 'heed-fadeIn 0.32s ease-out',
+      }}>
+      <div onClick={e => e.stopPropagation()}
+        style={{
+          width: '100%', maxWidth: 560,
+          background: `radial-gradient(ellipse at top, ${C.bellySoft} 0%, ${C.paperHi} 70%)`,
+          border: `1.5px solid ${C.border}`,
+          borderRadius: 22, padding: '28px 26px 22px',
+          boxShadow: C.shadowMed,
+          animation: 'heed-fadeUp 0.45s cubic-bezier(0.16,1,0.3,1)',
+        }}>
+        {/* Hero — owl + serif headline + subtitle, same opening pattern
+            as the create flows so this lands on familiar ground. */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 22 }}>
+          <div style={{ flexShrink: 0, marginTop: 2 }}>
+            <MayaOwl size={48} idle={true}/>
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 22, fontWeight: 600, color: C.warmDark, lineHeight: 1.15, letterSpacing: -0.3, marginBottom: 5 }}>
+              {greet}
+            </div>
+            <div style={{ fontSize: 13, color: C.inkMute, lineHeight: 1.5 }}>
+              Heed has two modes. Pick where you want to start — you can switch any time.
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+          {/* Demo card — recommended for judges, gets the warm gradient
+              treatment and a 'Recommended' tag in ochre. */}
+          <button type="button" onClick={onPickDemo}
+            style={{
+              display: 'flex', flexDirection: 'column', gap: 10,
+              textAlign: 'left',
+              background: isDemo ? `linear-gradient(135deg, ${C.bellySoft} 0%, ${C.paperHi} 100%)` : C.paperHi,
+              border: `1.5px solid ${isDemo ? C.warmDark : C.border}`,
+              borderRadius: 16, padding: '18px 16px 18px',
+              cursor: 'pointer', fontFamily: 'inherit',
+              boxShadow: C.shadowSoft,
+              transition: 'transform 0.18s ease-out, box-shadow 0.18s ease-out, border-color 0.18s ease-out',
+              minHeight: 168, position: 'relative',
+              touchAction: 'manipulation',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = C.shadowMed; e.currentTarget.style.borderColor = C.warmDark + '88' }}
+            onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = C.shadowSoft; e.currentTarget.style.borderColor = isDemo ? C.warmDark : C.border }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+              <div style={{
+                width: 40, height: 40, borderRadius: 11,
+                background: C.ochreSoft, border: `1px solid ${C.ochre}55`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 20, flexShrink: 0,
+              }}>✨</div>
+              <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.6, textTransform: 'uppercase', color: C.warmDark, background: C.ochreSoft, border: `1px solid ${C.ochre}33`, padding: '3px 8px', borderRadius: 999 }}>Recommended</span>
+            </div>
+            <div>
+              <div style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 17, fontWeight: 600, color: C.ink, letterSpacing: -0.1, marginBottom: 4 }}>Try the demo</div>
+              <div style={{ fontSize: 12, color: C.inkSoft, lineHeight: 1.5 }}>Curated tasks, routines, and plans so Today and Life feel populated. Best for a quick tour.</div>
+            </div>
+            {isDemo && (
+              <div style={{ position: 'absolute', top: 12, right: 12, width: 22, height: 22, borderRadius: '50%', background: C.warmDark, display: 'flex', alignItems: 'center', justifyContent: 'center' }} aria-hidden="true">
+                <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M2 7l3.5 3.5L12 4" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </div>
+            )}
+          </button>
+
+          {/* Real-data card. */}
+          <button type="button" onClick={onPickReal}
+            style={{
+              display: 'flex', flexDirection: 'column', gap: 10,
+              textAlign: 'left',
+              background: !isDemo ? `linear-gradient(135deg, ${C.bellySoft} 0%, ${C.paperHi} 100%)` : C.paperHi,
+              border: `1.5px solid ${!isDemo ? C.warmDark : C.border}`,
+              borderRadius: 16, padding: '18px 16px 18px',
+              cursor: 'pointer', fontFamily: 'inherit',
+              boxShadow: C.shadowSoft,
+              transition: 'transform 0.18s ease-out, box-shadow 0.18s ease-out, border-color 0.18s ease-out',
+              minHeight: 168, position: 'relative',
+              touchAction: 'manipulation',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = C.shadowMed; e.currentTarget.style.borderColor = C.warmDark + '88' }}
+            onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = C.shadowSoft; e.currentTarget.style.borderColor = !isDemo ? C.warmDark : C.border }}
+          >
+            <div style={{
+              width: 40, height: 40, borderRadius: 11,
+              background: C.sageSoft, border: `1px solid ${C.sage}55`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 20, flexShrink: 0, marginBottom: 2,
+            }}>📋</div>
+            <div>
+              <div style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 17, fontWeight: 600, color: C.ink, letterSpacing: -0.1, marginBottom: 4 }}>Use my own data</div>
+              <div style={{ fontSize: 12, color: C.inkSoft, lineHeight: 1.5 }}>Start with a clean slate. Add tasks, routines, plans yourself — Heed will track them as you go.</div>
+            </div>
+            {!isDemo && (
+              <div style={{ position: 'absolute', top: 12, right: 12, width: 22, height: 22, borderRadius: '50%', background: C.warmDark, display: 'flex', alignItems: 'center', justifyContent: 'center' }} aria-hidden="true">
+                <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M2 7l3.5 3.5L12 4" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </div>
+            )}
+          </button>
+        </div>
+
+        <div style={{ fontSize: 11.5, color: C.inkMute, fontStyle: 'italic', textAlign: 'center', lineHeight: 1.5 }}>
+          You can switch any time from Settings → Demo data.
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function UsernameGate({ onComplete }) {
   const [mode, setMode]         = React.useState('new')
   const [value, setValue]       = React.useState('')
@@ -11003,6 +11128,17 @@ function UsernameGate({ onComplete }) {
 // ── Main App ───────────────────────────────────────────────────
 export default function HeedApp() {
   const [username, setUsername] = React.useState(() => getUsername())
+  // One-shot welcome modal: shows after registration / first session for
+  // any user who hasn't seen it. Dismissed by either picking a data mode
+  // (sets heed.welcome-seen) or by Continue → real-data path.
+  const [welcomeSeen, setWelcomeSeen] = React.useState(() => {
+    if (typeof window === 'undefined') return true
+    try { return localStorage.getItem('heed.welcome-seen') === '1' } catch { return true }
+  })
+  const dismissWelcome = useCallback(() => {
+    try { localStorage.setItem('heed.welcome-seen', '1') } catch (_) {}
+    setWelcomeSeen(true)
+  }, [])
   // displayName is a UI-only label (greetings, initials). It defaults to
   // username on first load but can be changed independently in Settings
   // without affecting the X-User-ID identity used for API calls. Without
@@ -11564,13 +11700,18 @@ export default function HeedApp() {
   const handleLoadDemoData = useCallback(() => {
     if (typeof window === 'undefined') return
     try {
+      // Preserve identity + welcome flag across the demo wipe so the user
+      // doesn't get punted back to UsernameGate or shown the welcome modal
+      // again right after picking a mode.
+      const PRESERVE = new Set(['heed.username', 'heed.display-name', 'heed.auth-token', 'heed.avatar', 'heed.welcome-seen', 'heed-theme'])
       const keysToWipe = []
       for (let i = 0; i < localStorage.length; i++) {
         const k = localStorage.key(i)
-        if (k && (k.startsWith('heed.') || k.startsWith('heed_'))) keysToWipe.push(k)
+        if (k && (k.startsWith('heed.') || k.startsWith('heed_')) && !PRESERVE.has(k)) keysToWipe.push(k)
       }
       keysToWipe.forEach(k => localStorage.removeItem(k))
       localStorage.setItem('heed.use-demo', '1')
+      localStorage.setItem('heed.welcome-seen', '1')
     } catch (_) {}
     window.location.reload()
   }, [])
@@ -12053,6 +12194,14 @@ export default function HeedApp() {
   return (
     <div style={{ minHeight: '100vh', background: `radial-gradient(ellipse at 30% 0%, ${C.paper} 0%, ${C.cream} 60%)`, color: C.ink, fontFamily: '"Nunito Sans", -apple-system, BlinkMacSystemFont, sans-serif' }}>
       {!username && <UsernameGate onComplete={u => setUsername(u)} />}
+      {username && !welcomeSeen && (
+        <DataModeWelcome
+          displayName={displayName || username}
+          isDemo={isDemoMode()}
+          onPickDemo={handleLoadDemoData}
+          onPickReal={dismissWelcome}
+        />
+      )}
       <link href="https://fonts.googleapis.com/css2?family=Lora:wght@500;600;700&family=Nunito+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
       <style>{`
         @keyframes heed-owl-fly { 0% { transform:translate(300px,-420px) rotate(-28deg) scale(0.35); opacity:0; } 18% { opacity:1; } 68% { transform:translate(8px,-10px) rotate(5deg) scale(1.06); } 85% { transform:translate(-3px,3px) rotate(-2deg) scale(0.97); } 100% { transform:translate(0,0) rotate(0deg) scale(1); opacity:1; } }

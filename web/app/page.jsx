@@ -12147,11 +12147,15 @@ export default function HeedApp() {
           if (r.id !== routineId) return r
           const cur = r.todayItemsDone || []
           const next = cur.includes(value) ? cur.filter(x => x !== value) : [...cur, value]
-          // Filter out lightened items so they never count.
           const live = (r.items || []).filter(it => !(r.lightenedItems || []).includes(it))
-          const allDone = live.length > 0 && live.every(it => next.includes(it))
+          const liveTotal = live.length || (r.items || []).length || 1
+          // Count only items that are still live AND in `next`. This way, an
+          // already-checked item that gets lightened later doesn't inflate `done`.
+          const liveDone = next.filter(it => live.includes(it)).length
           const updatedC14 = [...(r.completion14d || [])]
-          if (updatedC14.length && allDone) updatedC14[updatedC14.length - 1] = true
+          if (updatedC14.length) {
+            updatedC14[updatedC14.length - 1] = { done: liveDone, total: liveTotal }
+          }
           return { ...r, todayItemsDone: next, completion14d: updatedC14 }
         })
       })

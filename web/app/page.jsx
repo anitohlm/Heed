@@ -1033,14 +1033,36 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
   // Which destructive confirmation sheet is open. null when none.
   const [confirmSheet, setConfirmSheet] = useState(null) // 'demo' | 'reset' | 'signout' | null
   const fileInputRef = useRef(null)
+  // Internal navigation stack inside the Settings screen. 'index' = the
+  // landing list, all others are detail destinations. Resets to 'index'
+  // every time the screen opens so users always land at the top.
+  const [settingsView, setSettingsView] = useState('index')
 
   useEffect(() => {
     if (open) {
       setNameVal(userName)
       setNameSaved(false)
       setPendingTheme(theme)
+      setSettingsView('index')
     }
   }, [open, userName, theme])
+
+  // Back button: from a detail returns to index; from index closes Settings.
+  const handleBack = () => {
+    if (settingsView === 'index') onClose()
+    else setSettingsView('index')
+  }
+
+  // Title shown in the top bar on detail screens (index screen has its own
+  // big serif title block instead).
+  const detailTitles = {
+    profile:     { title: 'Profile',     sub: 'Your name and how you sign in.' },
+    personalize: { title: 'Personalize', sub: 'How Heed looks and how it adapts on rough days.' },
+    categories:  { title: 'Categories',  sub: 'Tags for tasks, and the life events that shift your flow.' },
+    data:        { title: 'Data',        sub: 'Try the demo, or wipe everything and start fresh.' },
+    ai:          { title: 'Heed AI',     sub: 'What the owl remembers from your conversations.' },
+    about:       { title: 'About',       sub: 'Heed and the people behind it.' },
+  }
 
   const containerRef = useRef(null)
   useEscapeClose(open, onClose)
@@ -1159,44 +1181,109 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
 
   const initials = (nameVal || 'U').split(' ').map(w => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase()
 
+  // Index screen rows — combine the 9 source sections into 5 destinations
+  // plus the Profile hero card. Order matters: identity first, then
+  // personalisation, then content tags, then data, AI, and about.
+  const indexRows = [
+    { key: 'personalize', icon: '🎨', title: 'Personalize', sub: 'Theme · Focus mode',          tint: C.lowSoft,   accent: C.low },
+    { key: 'categories',  icon: '🏷', title: 'Categories',  sub: 'Tasks · Life events',          tint: C.sageSoft,  accent: C.sage },
+    { key: 'data',        icon: '✨', title: 'Data',         sub: 'Demo data · Reset everything', tint: C.ochreSoft, accent: C.ochre },
+    { key: 'ai',          icon: '🦉', title: 'Heed AI',     sub: 'Clear chat history',           tint: C.warmDark + '18', accent: C.warmDark },
+    { key: 'about',       icon: '✦',  title: 'About',        sub: 'Credits and version',          tint: C.bellySoft, accent: C.inkSoft },
+  ]
+
+  const detail = detailTitles[settingsView]
+
   return (
     <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 200, background: C.scrim, backdropFilter: 'blur(4px)', animation: 'heed-fadeIn 0.2s ease' }}/>
-      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 201, display: 'flex', justifyContent: 'center', animation: 'heed-slideUp 0.3s cubic-bezier(0.16,1,0.3,1)' }}>
-        <div ref={containerRef} style={{ background: C.paperHi, width: '100%', maxWidth: 520, borderRadius: '22px 22px 0 0', padding: '0 16px 0 16px', boxShadow: '0 -12px 48px rgba(124,83,51,0.22)', border: `1px solid ${C.border}`, maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+      <div ref={containerRef} style={{
+        position: 'fixed', inset: 0, zIndex: 200,
+        background: C.cream,
+        display: 'flex', flexDirection: 'column',
+        animation: 'heed-fadeIn 0.18s ease',
+      }}>
 
-          {/* Handle + hero header — owl + serif title + warm subtitle, same
-              opening pattern the four creation flows use. Keeps the close X
-              on the right because this is a bottom sheet and X is the
-              expected dismiss affordance. */}
-          <div style={{ flexShrink: 0, paddingTop: 12, paddingBottom: 14 }}>
-            <div style={{ width: 36, height: 4, borderRadius: 2, background: C.border, margin: '0 auto 14px' }}/>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-              <div style={{ flexShrink: 0, marginTop: 1 }}>
-                <MayaOwl size={38} idle={true}/>
+        {/* Top bar — back chevron always present. Detail screens get a
+            secondary serif title row beneath; the index screen renders its
+            own larger title block as part of the scrollable content. */}
+        <div style={{ flexShrink: 0, paddingTop: 'calc(env(safe-area-inset-top) + 8px)', paddingBottom: 4, paddingLeft: 8, paddingRight: 16, display: 'flex', alignItems: 'center', gap: 4, height: 'calc(env(safe-area-inset-top) + 52px)', background: C.cream, borderBottom: settingsView === 'index' ? 'none' : `1px solid ${C.hairline}` }}>
+          <button
+            onClick={handleBack}
+            aria-label={settingsView === 'index' ? 'Close settings' : 'Back to settings'}
+            style={{ width: 40, height: 40, borderRadius: '50%', background: 'transparent', border: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.ink, touchAction: 'manipulation' }}
+            onMouseEnter={e => { e.currentTarget.style.background = C.paper }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          </button>
+        </div>
+
+        {/* Scrollable body */}
+        <div style={{ flex: 1, overflowY: 'auto', overscrollBehavior: 'contain', padding: '0 16px', paddingBottom: 'calc(env(safe-area-inset-bottom) + 40px)' }}>
+
+          {/* Index — title block + profile hero + chevron rows */}
+          {settingsView === 'index' && (
+            <>
+              <div style={{ padding: '8px 4px 18px' }}>
+                <div style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 30, fontWeight: 600, color: C.ink, letterSpacing: -0.5, lineHeight: 1.1 }}>Settings</div>
+                <div style={{ fontSize: 14, color: C.inkSoft, marginTop: 4 }}>Make Heed yours.</div>
               </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 21, fontWeight: 600, color: C.ink, letterSpacing: -0.3, lineHeight: 1.1 }}>Settings</div>
-                <div style={{ fontSize: 12.5, color: C.inkMute, marginTop: 3, lineHeight: 1.4 }}>Tune Heed to fit you.</div>
-              </div>
+
               <button
-                onClick={onClose}
-                aria-label="Close settings"
-                style={{ width: 40, height: 40, borderRadius: '50%', background: C.paper, border: `1px solid ${C.border}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'background 0.12s', touchAction: 'manipulation' }}
-                onMouseEnter={e => { e.currentTarget.style.background = C.bellySoft }}
-                onMouseLeave={e => { e.currentTarget.style.background = C.paper }}
+                onClick={() => setSettingsView('profile')}
+                style={{ display: 'flex', alignItems: 'center', gap: 14, width: '100%', padding: '14px 16px', background: C.paperHi, border: `1px solid ${C.hairline}`, borderRadius: 18, marginBottom: 18, cursor: 'pointer', textAlign: 'left', touchAction: 'manipulation', transition: 'background 0.16s, transform 0.14s' }}
+                onMouseEnter={e => { e.currentTarget.style.background = C.paper }}
+                onMouseLeave={e => { e.currentTarget.style.background = C.paperHi }}
+                onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.99)' }}
+                onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)' }}
               >
-                <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
-                  <path d="M1 1l12 12M13 1L1 13" stroke={C.inkSoft} strokeWidth="1.8" strokeLinecap="round"/>
-                </svg>
+                <div style={{ width: 48, height: 48, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: `linear-gradient(135deg, ${C.warmDark} 0%, ${C.ochre} 100%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 2px 8px ${C.warmDark}25` }}>
+                  {avatar
+                    ? <img src={avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
+                    : <span style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 18, fontWeight: 700, color: '#fff' }}>{initials}</span>
+                  }
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 17, fontWeight: 600, color: C.ink, lineHeight: 1.2 }}>{nameVal || 'You'}</div>
+                  <div style={{ fontSize: 13, color: C.inkSoft, marginTop: 2 }}>Profile, sign out</div>
+                </div>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={C.inkMute} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M9 18l6-6-6-6"/></svg>
               </button>
+
+              <div style={{ background: C.paper, border: `1px solid ${C.hairline}`, borderRadius: 18, overflow: 'hidden' }}>
+                {indexRows.map((row, i) => (
+                  <button
+                    key={row.key}
+                    onClick={() => setSettingsView(row.key)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 14, width: '100%', padding: '14px 16px', background: 'transparent', border: 0, borderTop: i === 0 ? 'none' : `1px solid ${C.hairline}`, cursor: 'pointer', textAlign: 'left', color: C.ink, touchAction: 'manipulation', transition: 'background 0.16s' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = C.paperHi }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                  >
+                    <div style={{ width: 36, height: 36, borderRadius: 11, background: row.tint, color: row.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, flexShrink: 0 }}>{row.icon}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 16, fontWeight: 600, color: C.ink, lineHeight: 1.25 }}>{row.title}</div>
+                      <div style={{ fontSize: 13, color: C.inkSoft, marginTop: 2 }}>{row.sub}</div>
+                    </div>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={C.inkMute} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M9 18l6-6-6-6"/></svg>
+                  </button>
+                ))}
+              </div>
+
+              <div style={{ height: 24 }}/>
+            </>
+          )}
+
+          {/* Detail screen subtitle — sits above the existing section content */}
+          {settingsView !== 'index' && detail && (
+            <div style={{ padding: '12px 4px 14px' }}>
+              <div style={{ fontFamily: 'Lora, Georgia, serif', fontSize: 26, fontWeight: 600, color: C.ink, letterSpacing: -0.4, lineHeight: 1.15 }}>{detail.title}</div>
+              <div style={{ fontSize: 14, color: C.inkSoft, marginTop: 4 }}>{detail.sub}</div>
             </div>
-          </div>
+          )}
 
-          {/* Scrollable body */}
-          <div style={{ flex: 1, overflowY: 'auto', overscrollBehavior: 'contain', paddingBottom: 'calc(env(safe-area-inset-bottom) + 40px)' }}>
-
-            {/* Profile */}
+          {/* Profile */}
+          {settingsView === 'profile' && (<>
+          {/* (original Profile group below) */}
             <div style={{ ...group, marginTop: 4 }}>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px 16px 16px', borderBottom: `1px solid ${C.hairline}` }}>
                 <div aria-label="Change avatar"
@@ -1305,8 +1392,10 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
                 </div>
               )}
             </div>
+          </>)}
 
-            {/* Appearance */}
+          {/* Personalize — Appearance + Focus */}
+          {settingsView === 'personalize' && (<>
             {secLabel('Appearance', 'How Heed looks across the app', '🎨')}
             <div style={group}>
               <SettingsRow last>
@@ -1387,8 +1476,10 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
                 </span>
               </SettingsRow>
             </div>
+          </>)}
 
-            {/* Task Categories */}
+          {/* Categories — Task categories + Life event types */}
+          {settingsView === 'categories' && (<>
             {secLabel('Task Categories', 'Tag and group your tasks', '🏷')}
             <div style={group}>
               {builtinCategories.map((cat, i) => (
@@ -1494,8 +1585,11 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
                 </SettingsRow>
               )}
             </div>
+          </>)}
 
-            {/* Demo data — toggle between demo and real data modes */}
+          {/* Data — Demo data + Danger zone (AI is rendered separately so the
+              wrap closes here and reopens after the Heed AI section.) */}
+          {settingsView === 'data' && (<>
             {secLabel('Demo data', 'Try a curated sample or your own', '✨')}
             {isDemoMode() ? (
               <div style={{
@@ -1605,8 +1699,10 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
                 </button>
               </div>
             )}
+          </>)}
 
-            {/* Heed AI */}
+          {/* Heed AI */}
+          {settingsView === 'ai' && (<>
             {secLabel('Heed AI', 'Clear chat history with the owl', '🦉')}
             <div style={group}>
               <SettingsRow onClick={() => { onClearChatToday?.(); onClose() }}>
@@ -1634,10 +1730,12 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
                 </div>
               </SettingsRow>
             </div>
+          </>)}
 
-            {/* Danger zone — pulled out of the standard list group so the
-                destructive action has visual weight, breathing room, and a
-                clear "this is different" treatment. */}
+          {/* Data continued — Danger zone. Pulled out of the standard list
+              group so the destructive action has visual weight, breathing
+              room, and a clear "this is different" treatment. */}
+          {settingsView === 'data' && (<>
             {secLabel('Danger zone', 'Wipe everything and start fresh', '⚠️')}
             <div style={{
               background: C.paper,
@@ -1694,8 +1792,10 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
                 Reset everything
               </button>
             </div>
+          </>)}
 
-            {/* About */}
+          {/* About */}
+          {settingsView === 'about' && (<>
             {secLabel('About', 'Heed and the people behind it', '✦')}
             <div style={group}>
               <SettingsRow>
@@ -1715,8 +1815,8 @@ function SettingsSheet({ open, onClose, userName, onUserName, theme, onTheme, cu
                 <span style={{ fontSize: 13, color: C.inkMute }}>anitohlm</span>
               </SettingsRow>
             </div>
+          </>)}
 
-          </div>
         </div>
       </div>
       <ConfirmSheet

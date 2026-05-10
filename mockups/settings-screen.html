@@ -1,0 +1,679 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Heed · Settings redesign — Direction B</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..700&family=Nunito+Sans:opsz,wght@6..12,300..900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream:     #F5F0E6;
+    --paper:     #EDE7D7;
+    --paperHi:   #F9F6EE;
+    --border:    #D4C9A8;
+    --hairline:  #E0D8C0;
+    --ink:       #2A3522;
+    --inkSoft:   #7A7060;
+    --inkMute:   #A8987A;
+    --warm:      #8B2E16;
+    --warmSoft:  #F0E4D8;
+    --sage:      #4A7040;
+    --sageSoft:  #DDE8D4;
+    --ochre:     #8B4A20;
+    --ochreSoft: #F0E4D4;
+    --rust:      #8B2E16;
+    --rustSoft:  #F0E4D8;
+    --low:       #7070B0;
+    --lowSoft:   #EEEAF6;
+    --shadowSoft: 0 2px 12px rgba(0,0,0,0.08);
+    --shadowMed:  0 6px 22px rgba(0,0,0,0.12);
+    --serif:  'Lora', Georgia, serif;
+    --sans:   'Nunito Sans', -apple-system, system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: var(--sans);
+    background: #2A2A28;
+    color: var(--ink);
+    min-height: 100dvh;
+    padding: 24px 12px 60px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+  }
+
+  .stage-label {
+    font-family: var(--serif);
+    color: #C9C2A8;
+    font-size: 13px;
+    letter-spacing: 0.04em;
+  }
+
+  .frame {
+    width: 390px;
+    max-width: 100%;
+    height: 780px;
+    background: var(--cream);
+    border-radius: 32px;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.45), 0 4px 12px rgba(0,0,0,0.3);
+    overflow: hidden;
+    position: relative;
+    border: 1px solid #1a1a18;
+  }
+
+  .frame::before {
+    content: "";
+    position: absolute;
+    top: 8px; left: 50%;
+    transform: translateX(-50%);
+    width: 110px; height: 26px;
+    background: #0a0a08;
+    border-radius: 14px;
+    z-index: 100;
+  }
+
+  .scroll {
+    position: absolute;
+    inset: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 48px 0 24px;
+  }
+
+  .scroll::-webkit-scrollbar { width: 0; }
+
+  /* ── Header ───────────────────────────────────────── */
+  .top-bar {
+    display: flex;
+    align-items: center;
+    height: 44px;
+    padding: 0 18px;
+    margin-bottom: 4px;
+  }
+
+  .back-btn {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: transparent;
+    border: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--ink);
+    cursor: pointer;
+    margin-left: -8px;
+    transition: background 160ms ease;
+  }
+  .back-btn:hover { background: var(--paper); }
+  .back-btn svg { width: 22px; height: 22px; }
+
+  .title-block {
+    padding: 4px 24px 18px;
+  }
+  .title {
+    font-family: var(--serif);
+    font-size: 30px;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+    line-height: 1.1;
+    margin: 0;
+  }
+  .subtitle {
+    font-size: 14px;
+    color: var(--inkSoft);
+    margin: 4px 0 0;
+  }
+
+  /* ── Profile hero card ────────────────────────────── */
+  .profile-card {
+    margin: 8px 18px 22px;
+    background: var(--paperHi);
+    border-radius: 18px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    cursor: pointer;
+    border: 1px solid var(--hairline);
+    transition: transform 140ms ease, background 160ms ease;
+  }
+  .profile-card:hover { background: var(--paper); }
+  .profile-card:active { transform: scale(0.99); }
+
+  .avatar {
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    background: var(--ochreSoft);
+    color: var(--ochre);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: 20px;
+    flex: none;
+  }
+
+  .profile-info { flex: 1; min-width: 0; }
+  .profile-name {
+    font-family: var(--serif);
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--ink);
+    line-height: 1.2;
+  }
+  .profile-handle {
+    font-size: 13px;
+    color: var(--inkSoft);
+    margin-top: 2px;
+  }
+
+  .chev {
+    color: var(--inkMute);
+    flex: none;
+  }
+  .chev svg { width: 18px; height: 18px; display: block; }
+
+  /* ── Index rows ───────────────────────────────────── */
+  .group {
+    background: var(--paper);
+    margin: 0 18px 14px;
+    border-radius: 18px;
+    overflow: hidden;
+    border: 1px solid var(--hairline);
+  }
+
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    background: transparent;
+    border: 0;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    transition: background 160ms ease, transform 140ms ease;
+    color: var(--ink);
+    font-family: var(--sans);
+  }
+  .row:hover { background: var(--paperHi); }
+  .row:active { transform: scale(0.995); }
+  .row + .row { border-top: 1px solid var(--hairline); }
+
+  .row-icon {
+    width: 36px; height: 36px;
+    border-radius: 11px;
+    display: flex; align-items: center; justify-content: center;
+    flex: none;
+  }
+  .row-icon svg { width: 20px; height: 20px; }
+
+  .icon-personalize { background: var(--lowSoft);   color: var(--low); }
+  .icon-categories  { background: var(--sageSoft);  color: var(--sage); }
+  .icon-data        { background: var(--ochreSoft); color: var(--ochre); }
+  .icon-ai          { background: var(--warmSoft);  color: var(--warm); }
+  .icon-about       { background: var(--paperHi);   color: var(--inkSoft); border: 1px solid var(--hairline); }
+
+  .row-text { flex: 1; min-width: 0; }
+  .row-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--ink);
+    line-height: 1.25;
+  }
+  .row-sub {
+    font-size: 13px;
+    color: var(--inkSoft);
+    margin-top: 2px;
+  }
+
+  /* ── Detail screens ────────────────────────────────── */
+  .detail-header {
+    padding: 0 18px 18px;
+  }
+  .detail-title {
+    font-family: var(--serif);
+    font-size: 26px;
+    font-weight: 600;
+    color: var(--ink);
+    margin: 6px 0 4px;
+    line-height: 1.15;
+  }
+  .detail-sub {
+    font-size: 14px;
+    color: var(--inkSoft);
+  }
+
+  .sec-label {
+    font-family: var(--serif);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--inkMute);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin: 22px 18px 10px;
+  }
+
+  .card {
+    margin: 0 18px 14px;
+    background: var(--paper);
+    border-radius: 18px;
+    border: 1px solid var(--hairline);
+    overflow: hidden;
+  }
+
+  .card-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 16px;
+    font-size: 15px;
+  }
+  .card-row + .card-row { border-top: 1px solid var(--hairline); }
+  .card-row .label { flex: 1; color: var(--ink); font-weight: 500; }
+  .card-row .value { color: var(--inkSoft); font-size: 13px; }
+
+  .swatch-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    padding: 14px;
+  }
+  .swatch {
+    aspect-ratio: 1.5;
+    border-radius: 12px;
+    border: 2px solid transparent;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--shadowSoft);
+    transition: transform 140ms ease;
+  }
+  .swatch:hover { transform: translateY(-1px); }
+  .swatch.active { border-color: var(--warm); }
+  .swatch-name {
+    position: absolute; bottom: 6px; left: 8px;
+    font-size: 11px;
+    color: rgba(255,255,255,0.95);
+    text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+    font-weight: 600;
+  }
+
+  .toggle {
+    width: 44px; height: 26px;
+    border-radius: 13px;
+    background: var(--hairline);
+    position: relative;
+    cursor: pointer;
+    transition: background 200ms ease;
+  }
+  .toggle::after {
+    content: "";
+    position: absolute;
+    top: 3px; left: 3px;
+    width: 20px; height: 20px;
+    background: var(--paperHi);
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    transition: transform 200ms ease;
+  }
+  .toggle.on { background: var(--sage); }
+  .toggle.on::after { transform: translateX(18px); }
+
+  .chip-row {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    padding: 14px;
+  }
+  .chip {
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-size: 13px;
+    background: var(--paperHi);
+    border: 1px solid var(--hairline);
+    color: var(--ink);
+    cursor: pointer;
+  }
+  .chip.active { background: var(--sage); color: var(--cream); border-color: var(--sage); }
+
+  .danger-card {
+    background: var(--rustSoft);
+    border-color: #DDB6A0;
+  }
+  .danger-card .label { color: var(--rust); }
+  .danger-card .row-title { color: var(--rust); }
+
+  .btn {
+    width: calc(100% - 36px);
+    margin: 14px 18px;
+    padding: 14px;
+    border-radius: 14px;
+    border: 1px solid var(--hairline);
+    background: var(--paperHi);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 15px;
+    cursor: pointer;
+  }
+  .btn-danger {
+    background: var(--rust);
+    color: var(--cream);
+    border-color: var(--rust);
+  }
+
+  /* ── Screens visibility ────────────────────────────── */
+  .screen { display: none; animation: slideIn 240ms ease; }
+  .screen.is-active { display: block; }
+  @keyframes slideIn {
+    from { transform: translateX(20px); opacity: 0; }
+    to   { transform: translateX(0); opacity: 1; }
+  }
+  @keyframes slideInLeft {
+    from { transform: translateX(-20px); opacity: 0; }
+    to   { transform: translateX(0); opacity: 1; }
+  }
+  .screen.is-back { animation: slideInLeft 240ms ease; }
+
+  .leaf {
+    color: var(--sage);
+    width: 14px; height: 14px;
+    display: inline-block;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+</style>
+</head>
+<body>
+
+<div class="stage-label">Heed · Settings (Direction B — index → detail)</div>
+
+<div class="frame">
+  <div class="scroll" id="scroll">
+
+    <!-- ─────── Index ─────── -->
+    <section class="screen is-active" data-screen="index">
+      <div class="top-bar">
+        <button class="back-btn" title="Close Settings (returns to previous tab)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+      </div>
+      <div class="title-block">
+        <h1 class="title">Settings</h1>
+        <p class="subtitle">Make Heed yours.</p>
+      </div>
+
+      <button class="profile-card" onclick="go('profile')">
+        <div class="avatar">C</div>
+        <div class="profile-info">
+          <div class="profile-name">chelle</div>
+          <div class="profile-handle">@anitohlm</div>
+        </div>
+        <span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span>
+      </button>
+
+      <div class="group">
+        <button class="row" onclick="go('personalize')">
+          <span class="row-icon icon-personalize">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3a4 4 0 0 0 0 8c2 0 3.5 1.5 3.5 3.5S14 18 12 18a6 6 0 0 1-6-6"/></svg>
+          </span>
+          <div class="row-text">
+            <div class="row-title">Personalize</div>
+            <div class="row-sub">Theme · Focus mode</div>
+          </div>
+          <span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span>
+        </button>
+        <button class="row" onclick="go('categories')">
+          <span class="row-icon icon-categories">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 12l9 4 9-4"/><path d="M3 17l9 4 9-4"/></svg>
+          </span>
+          <div class="row-text">
+            <div class="row-title">Categories</div>
+            <div class="row-sub">Tasks · Life events</div>
+          </div>
+          <span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span>
+        </button>
+        <button class="row" onclick="go('data')">
+          <span class="row-icon icon-data">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>
+          </span>
+          <div class="row-text">
+            <div class="row-title">Data</div>
+            <div class="row-sub">Demo data · Reset everything</div>
+          </div>
+          <span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span>
+        </button>
+        <button class="row" onclick="go('ai')">
+          <span class="row-icon icon-ai">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4c4 0 7 2.5 7 6 0 1.6-.7 3-2 4l-1 4-2-2c-.7.1-1.3.2-2 .2-4 0-7-2.5-7-6s3-6.2 7-6.2z"/><circle cx="10" cy="10" r="0.8" fill="currentColor"/><circle cx="14" cy="10" r="0.8" fill="currentColor"/></svg>
+          </span>
+          <div class="row-text">
+            <div class="row-title">Heed AI</div>
+            <div class="row-sub">Clear chat history</div>
+          </div>
+          <span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span>
+        </button>
+        <button class="row" onclick="go('about')">
+          <span class="row-icon icon-about">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v.5M12 11v5"/></svg>
+          </span>
+          <div class="row-text">
+            <div class="row-title">About</div>
+            <div class="row-sub">Version, credits, privacy</div>
+          </div>
+          <span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span>
+        </button>
+      </div>
+
+      <div style="height: 24px;"></div>
+    </section>
+
+    <!-- ─────── Profile detail ─────── -->
+    <section class="screen" data-screen="profile">
+      <div class="top-bar">
+        <button class="back-btn" onclick="back()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      </div>
+      <div class="detail-header">
+        <h2 class="detail-title">Profile</h2>
+        <p class="detail-sub">Your name and how you sign in.</p>
+      </div>
+
+      <div class="card" style="padding: 22px 18px; display: flex; flex-direction: column; align-items: center; gap: 10px;">
+        <div class="avatar" style="width: 76px; height: 76px; font-size: 30px;">C</div>
+        <div style="font-family: var(--serif); font-size: 20px; font-weight: 600;">chelle</div>
+        <div style="font-size: 13px; color: var(--inkSoft);">@anitohlm · since Apr 2026</div>
+      </div>
+
+      <div class="card">
+        <div class="card-row"><span class="label">Display name</span><span class="value">chelle ›</span></div>
+        <div class="card-row"><span class="label">Avatar tile</span><span class="value">Ochre ›</span></div>
+        <div class="card-row"><span class="label">Username</span><span class="value">@anitohlm</span></div>
+      </div>
+
+      <button class="btn" style="background: transparent; color: var(--rust); border-color: #DDB6A0;">Sign out</button>
+    </section>
+
+    <!-- ─────── Personalize detail ─────── -->
+    <section class="screen" data-screen="personalize">
+      <div class="top-bar">
+        <button class="back-btn" onclick="back()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      </div>
+      <div class="detail-header">
+        <h2 class="detail-title">Personalize</h2>
+        <p class="detail-sub">How Heed looks and how it adapts on rough days.</p>
+      </div>
+
+      <div class="sec-label">Appearance</div>
+      <div class="card">
+        <div class="swatch-grid">
+          <div class="swatch active" style="background: linear-gradient(135deg, #F5F0E6, #4A7040);"><div class="swatch-name">Parchment</div></div>
+          <div class="swatch" style="background: linear-gradient(135deg, #162218, #6A9E6A);"><div class="swatch-name">Midnight</div></div>
+          <div class="swatch" style="background: linear-gradient(135deg, #18140C, #A0682A);"><div class="swatch-name">Inkwash</div></div>
+          <div class="swatch" style="background: linear-gradient(135deg, #FCF1F0, #E8755A);"><div class="swatch-name">Flamingo</div></div>
+          <div class="swatch" style="background: linear-gradient(135deg, #FFE9EE, #FD65B2);"><div class="swatch-name">Candy</div></div>
+          <div class="swatch" style="background: linear-gradient(135deg, #E8E5F2, #6E63A8);"><div class="swatch-name">Periwinkle</div></div>
+        </div>
+      </div>
+
+      <div class="sec-label">Focus mode</div>
+      <div class="card">
+        <div class="card-row">
+          <div style="flex:1;">
+            <div style="font-weight: 600;">Strip Today down</div>
+            <div style="font-size: 13px; color: var(--inkSoft); margin-top: 2px;">Hide non-essential rows on rough days.</div>
+          </div>
+          <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+        </div>
+        <div class="card-row">
+          <div style="flex:1;">
+            <div style="font-weight: 600;">Auto-periwinkle on Low Day</div>
+            <div style="font-size: 13px; color: var(--inkSoft); margin-top: 2px;">Soften the palette automatically.</div>
+          </div>
+          <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────── Categories detail ─────── -->
+    <section class="screen" data-screen="categories">
+      <div class="top-bar">
+        <button class="back-btn" onclick="back()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      </div>
+      <div class="detail-header">
+        <h2 class="detail-title">Categories</h2>
+        <p class="detail-sub">Tags for tasks, and the life events that shift your flow.</p>
+      </div>
+
+      <div class="sec-label">Task categories</div>
+      <div class="card">
+        <div class="chip-row">
+          <span class="chip active">Home</span>
+          <span class="chip active">Work</span>
+          <span class="chip active">Health</span>
+          <span class="chip active">Money</span>
+          <span class="chip">+ Add</span>
+        </div>
+      </div>
+
+      <div class="sec-label">Life event types</div>
+      <div class="card">
+        <div class="card-row"><span style="color: var(--low); font-size: 18px; margin-right: 8px;">●</span><span class="label">Low Day</span><span class="value">Auto-soft theme ›</span></div>
+        <div class="card-row"><span style="color: var(--ochre); font-size: 18px; margin-right: 8px;">●</span><span class="label">Travel</span><span class="value">Flexible flow ›</span></div>
+        <div class="card-row"><span style="color: var(--warm); font-size: 18px; margin-right: 8px;">●</span><span class="label">Busy week</span><span class="value">Strict flow ›</span></div>
+        <div class="card-row" style="color: var(--inkSoft);"><span class="label">+ Add type</span></div>
+      </div>
+    </section>
+
+    <!-- ─────── Data detail ─────── -->
+    <section class="screen" data-screen="data">
+      <div class="top-bar">
+        <button class="back-btn" onclick="back()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      </div>
+      <div class="detail-header">
+        <h2 class="detail-title">Data</h2>
+        <p class="detail-sub">Try the demo, or wipe everything and start fresh.</p>
+      </div>
+
+      <div class="sec-label">Demo data</div>
+      <div class="card">
+        <div class="card-row">
+          <div style="flex:1;">
+            <div style="font-weight: 600;">Currently using</div>
+            <div style="font-size: 13px; color: var(--inkSoft); margin-top: 2px;">Sample data — chelle's curated set.</div>
+          </div>
+          <span class="chip active" style="cursor:default;">Demo</span>
+        </div>
+        <div class="card-row" style="cursor: pointer;">
+          <span class="label">Switch to my own data</span>
+          <span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span>
+        </div>
+        <div class="card-row" style="cursor: pointer;">
+          <span class="label">Reload demo data</span>
+          <span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span>
+        </div>
+      </div>
+
+      <div class="sec-label" style="color: #B8624A;">Danger zone</div>
+      <div class="card danger-card">
+        <div class="card-row" style="cursor: pointer;">
+          <span class="label">Wipe everything and start fresh</span>
+          <span class="chev" style="color: #B8624A;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────── Heed AI detail ─────── -->
+    <section class="screen" data-screen="ai">
+      <div class="top-bar">
+        <button class="back-btn" onclick="back()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      </div>
+      <div class="detail-header">
+        <h2 class="detail-title">Heed AI</h2>
+        <p class="detail-sub">What the owl remembers from your conversations.</p>
+      </div>
+
+      <div class="card" style="padding: 24px; text-align: center;">
+        <div style="font-size: 44px; line-height: 1;">🦉</div>
+        <div style="font-family: var(--serif); font-size: 17px; font-weight: 600; margin-top: 10px;">128 messages stored</div>
+        <div style="font-size: 13px; color: var(--inkSoft); margin-top: 6px;">Last cleared: never</div>
+      </div>
+
+      <button class="btn">Export chat history</button>
+      <button class="btn" style="background: transparent; color: var(--rust); border-color: #DDB6A0;">Clear chat history</button>
+    </section>
+
+    <!-- ─────── About detail ─────── -->
+    <section class="screen" data-screen="about">
+      <div class="top-bar">
+        <button class="back-btn" onclick="back()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      </div>
+      <div class="detail-header">
+        <h2 class="detail-title">About</h2>
+        <p class="detail-sub">Heed and the people behind it.</p>
+      </div>
+
+      <div class="card" style="padding: 22px 18px; text-align: center;">
+        <div style="font-family: var(--serif); font-size: 28px; font-weight: 600;">Heed</div>
+        <div style="font-size: 13px; color: var(--inkSoft); margin-top: 4px;">v0.9.4 · build 2026.05.10</div>
+      </div>
+
+      <div class="card">
+        <div class="card-row"><span class="label">Privacy</span><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="card-row"><span class="label">Terms</span><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="card-row"><span class="label">Open source acknowledgements</span><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+      </div>
+
+      <div style="text-align:center; padding: 22px 18px; font-size: 12px; color: var(--inkMute); font-style: italic; font-family: var(--serif);">Made gently. ✦</div>
+    </section>
+
+  </div>
+</div>
+
+<div style="color: #8a8377; font-size: 12px; max-width: 390px; text-align: center; line-height: 1.5;">
+  Tap a row → detail · tap ‹ → back to index. All 6 detail screens are wired.
+</div>
+
+<script>
+  const stack = ['index'];
+  function go(name) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('is-active', 'is-back'));
+    const next = document.querySelector(`[data-screen="${name}"]`);
+    next.classList.add('is-active');
+    document.getElementById('scroll').scrollTop = 0;
+    stack.push(name);
+  }
+  function back() {
+    if (stack.length <= 1) return;
+    stack.pop();
+    const prev = stack[stack.length - 1];
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('is-active', 'is-back'));
+    const dest = document.querySelector(`[data-screen="${prev}"]`);
+    dest.classList.add('is-active', 'is-back');
+    document.getElementById('scroll').scrollTop = 0;
+  }
+</script>
+
+</body>
+</html>

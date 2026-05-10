@@ -12076,7 +12076,39 @@ export default function HeedApp() {
   const [taskOptionsTask, setTaskOptionsTask] = useState(null)
   const [addToRoutineTask, setAddToRoutineTask] = useState(null)
   const [buildRoutineTask, setBuildRoutineTask] = useState(null)
-  const [activeContext, setActiveContext] = useState(() => isDemoMode() ? ACTIVE_CONTEXT_DEMO : null)
+  const [activeContext, setActiveContext] = useState(() => {
+    if (!isDemoMode()) return null
+    if (typeof window === 'undefined') return ACTIVE_CONTEXT_DEMO
+    // Hydrate from localStorage so a Low Day (or any swap from the
+    // seeded busy context) survives a reload. Without this, activating
+    // Low Day worked while the page was open but reverted to the
+    // busy-period seed on refresh — which read as 'Low Day not working
+    // in demo data.'
+    try {
+      const raw = localStorage.getItem('heed.demo-active-context.v1')
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        if (parsed && parsed.type) {
+          return {
+            ...parsed,
+            startDate: parsed.startDate ? new Date(parsed.startDate) : new Date(),
+            endDate:   parsed.endDate   ? new Date(parsed.endDate)   : new Date(),
+          }
+        }
+      }
+    } catch (_) {}
+    return ACTIVE_CONTEXT_DEMO
+  })
+  // Persist demo activeContext so Low Day (and other swaps) survive
+  // reloads. Outside demo mode, activeContext is hydrated from the
+  // backend on mount — no local writes needed.
+  useEffect(() => {
+    if (!isDemoMode() || typeof window === 'undefined') return
+    try {
+      if (activeContext) localStorage.setItem('heed.demo-active-context.v1', JSON.stringify(activeContext))
+      else localStorage.removeItem('heed.demo-active-context.v1')
+    } catch (_) {}
+  }, [activeContext])
   // While a Low Day context is active, the entire app shifts to a periwinkle
   // palette. The user's chosen theme is preserved in `theme` state and
   // restored automatically when the context ends.
@@ -12565,7 +12597,7 @@ export default function HeedApp() {
   const handleSignOut = useCallback(() => {
     if (typeof window === 'undefined') return
     try {
-      const IDENTITY_KEYS = ['heed.username', 'heed.display-name', 'heed.auth-token', 'heed.avatar', 'heed.welcome-seen', 'heed.use-demo', 'heed.chat-history.v1', 'heed_plans', 'heed.demo-tasks.v1', 'heed.demo-contexts.v1']
+      const IDENTITY_KEYS = ['heed.username', 'heed.display-name', 'heed.auth-token', 'heed.avatar', 'heed.welcome-seen', 'heed.use-demo', 'heed.chat-history.v1', 'heed_plans', 'heed.demo-tasks.v1', 'heed.demo-contexts.v1', 'heed.demo-active-context.v1']
       IDENTITY_KEYS.forEach(k => localStorage.removeItem(k))
     } catch (_) {}
     window.location.reload()

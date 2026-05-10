@@ -11892,8 +11892,18 @@ export default function HeedApp() {
   // While a Low Day context is active, the entire app shifts to a periwinkle
   // palette. The user's chosen theme is preserved in `theme` state and
   // restored automatically when the context ends.
-  const effectiveTheme = (activeContext?.type === 'low' && THEMES['periwinkle']) ? 'periwinkle' : theme
+  const isLowDay = activeContext?.type === 'low'
+  const effectiveTheme = (isLowDay && THEMES['periwinkle']) ? 'periwinkle' : theme
   setThemeState(effectiveTheme)
+  // Belt-and-braces for Low Day: also flip a body class so any stylesheet
+  // rule that needs to react (e.g. system-level overlays, motion tokens)
+  // can do so without needing to re-read themeState. Cleared the moment
+  // the context ends or transitions to a different type.
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    if (isLowDay) document.documentElement.classList.add('heed-low-day')
+    else document.documentElement.classList.remove('heed-low-day')
+  }, [isLowDay])
   // After ending a context with 'ease back' mode, we surface only the held
   // tasks (highest importance first) for 24h instead of the full list. Cleared
   // on expiry or on next 'resume'. Not persisted — wears off on reload by
